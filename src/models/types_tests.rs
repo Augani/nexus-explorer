@@ -216,3 +216,201 @@ proptest! {
         }
     }
 }
+
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    /// **Feature: ui-enhancements, Property 11: Sort Toggle Reversal**
+    /// **Validates: Requirements 3.5**
+    ///
+    /// *For any* SortState with a given column, clicking the same column header twice
+    /// SHALL reverse the sort direction (ascending becomes descending, descending becomes ascending).
+    #[test]
+    fn prop_sort_toggle_reversal(
+        column in prop_oneof![
+            Just(SortColumn::Name),
+            Just(SortColumn::Date),
+            Just(SortColumn::Type),
+            Just(SortColumn::Size),
+        ]
+    ) {
+        let mut sort_state = SortState::new();
+        
+        // First click sets the column with default direction
+        sort_state.toggle_column(column);
+        let first_direction = sort_state.direction;
+        
+        // Second click on same column should reverse direction
+        sort_state.toggle_column(column);
+        let second_direction = sort_state.direction;
+        
+        prop_assert_ne!(
+            first_direction, second_direction,
+            "Clicking same column twice should reverse direction"
+        );
+        
+        // Third click should return to original direction
+        sort_state.toggle_column(column);
+        let third_direction = sort_state.direction;
+        
+        prop_assert_eq!(
+            first_direction, third_direction,
+            "Clicking same column three times should return to original direction"
+        );
+    }
+}
+
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    /// **Feature: ui-enhancements, Property 12: Directories First Invariant**
+    /// **Validates: Requirements 3.7**
+    ///
+    /// *For any* sorted list with directories_first enabled, all directory entries 
+    /// SHALL appear before all file entries.
+    #[test]
+    fn prop_directories_first_invariant(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
+        let mut entries = entries;
+        let mut sort_state = SortState::new();
+        sort_state.directories_first = true;
+        
+        sort_state.sort_entries(&mut entries);
+        
+        // Find the first file (non-directory) index
+        let first_file_idx = entries.iter().position(|e| !e.is_dir);
+        
+        // If there are files, all entries after the first file should also be files
+        if let Some(first_file) = first_file_idx {
+            for (i, entry) in entries.iter().enumerate().skip(first_file) {
+                prop_assert!(
+                    !entry.is_dir,
+                    "Directory found at index {} after first file at index {}. Entry: {}",
+                    i, first_file, entry.name
+                );
+            }
+        }
+        
+        // All entries before the first file should be directories
+        if let Some(first_file) = first_file_idx {
+            for (i, entry) in entries.iter().enumerate().take(first_file) {
+                prop_assert!(
+                    entry.is_dir,
+                    "File found at index {} before first file at index {}. Entry: {}",
+                    i, first_file, entry.name
+                );
+            }
+        }
+    }
+}
+
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    /// **Feature: ui-enhancements, Property 13: Sort Stability on Update**
+    /// **Validates: Requirements 3.8**
+    ///
+    /// *For any* SortState and list of entries, when new entries are added and sorted,
+    /// the sort order SHALL be maintained consistently (same column and direction).
+    #[test]
+    fn prop_sort_stability_on_update(
+        initial_count in 1usize..50,
+        additional_count in 1usize..20,
+        column in prop_oneof![
+            Just(SortColumn::Name),
+            Just(SortColumn::Date),
+            Just(SortColumn::Type),
+            Just(SortColumn::Size),
+        ],
+        ascending in proptest::bool::ANY,
+    ) {
+        use std::time::{Duration, UNIX_EPOCH};
+        
+        // Create initial entries
+        let mut entries: Vec<FileEntry> = (0..initial_count)
+            .map(|i| {
+                let name = format!("file_{:04}.txt", i);
+                FileEntry::new(
+                    name.clone(),
+                    std::path::PathBuf::from(format!("/test/{}", name)),
+                    false,
+                    (i as u64 + 1) * 1000,
+                    UNIX_EPOCH + Duration::from_secs(i as u64 * 86400),
+                )
+            })
+            .collect();
+        
+        // Set up sort state
+        let mut sort_state = SortState::new();
+        sort_state.column = column;
+        sort_state.direction = if ascending { SortDirection::Ascending } else { SortDirection::Descending };
+        sort_state.directories_first = false;
+        
+        // Sort initial entries
+        sort_state.sort_entries(&mut entries);
+        
+        // Verify initial sort is correct
+        verify_sort_order(&entries, column, sort_state.direction)?;
+        
+        // Add new entries
+        let new_entries: Vec<FileEntry> = (0..additional_count)
+            .map(|i| {
+                let name = format!("new_file_{:04}.txt", i);
+                FileEntry::new(
+                    name.clone(),
+                    std::path::PathBuf::from(format!("/test/{}", name)),
+                    false,
+                    (i as u64 + 100) * 1000,
+                    UNIX_EPOCH + Duration::from_secs((i as u64 + 100) * 86400),
+                )
+            })
+            .collect();
+        
+        entries.extend(new_entries);
+        
+        // Re-sort with same sort state
+        sort_state.sort_entries(&mut entries);
+        
+        // Verify sort order is maintained after update
+        verify_sort_order(&entries, column, sort_state.direction)?;
+    }
+}
+
+fn verify_sort_order(
+    entries: &[FileEntry],
+    column: SortColumn,
+    direction: SortDirection,
+) -> std::result::Result<(), proptest::test_runner::TestCaseError> {
+    use proptest::prop_assert;
+    
+    for window in entries.windows(2) {
+        let a = &window[0];
+        let b = &window[1];
+        
+        let ordering = match column {
+            SortColumn::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            SortColumn::Date => a.modified.cmp(&b.modified),
+            SortColumn::Type => {
+                let ext_a = a.name.rsplit('.').next().filter(|e| *e != &a.name).unwrap_or("").to_lowercase();
+                let ext_b = b.name.rsplit('.').next().filter(|e| *e != &b.name).unwrap_or("").to_lowercase();
+                ext_a.cmp(&ext_b)
+            }
+            SortColumn::Size => a.size.cmp(&b.size),
+        };
+        
+        let is_valid = match direction {
+            SortDirection::Ascending => ordering != std::cmp::Ordering::Greater,
+            SortDirection::Descending => ordering != std::cmp::Ordering::Less,
+        };
+        
+        prop_assert!(
+            is_valid,
+            "Sort order violated: '{}' vs '{}' with {:?} {:?}",
+            a.name, b.name, column, direction
+        );
+    }
+    
+    Ok(())
+}

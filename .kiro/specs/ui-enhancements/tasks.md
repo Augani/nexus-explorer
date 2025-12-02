@@ -56,7 +56,7 @@
 - [x] 3. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 4. Column Sorting
+- [x] 4. Column Sorting
   - [x] 4.1 Implement SortState with column and direction
     - Create `SortState` struct with column enum and direction
     - Implement toggle logic for same-column clicks
@@ -67,80 +67,80 @@
     - Sort by type (extension alphabetical)
     - Sort by size (largest/smallest first)
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
-  - [-] 4.3 Write property tests for sort ordering
+  - [x] 4.3 Write property tests for sort ordering
     - **Property 7: Sort by Name Ordering**
     - **Property 8: Sort by Date Ordering**
     - **Property 9: Sort by Type Ordering**
     - **Property 10: Sort by Size Ordering**
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
-  - [ ] 4.4 Write property test for sort toggle reversal
+  - [x] 4.4 Write property test for sort toggle reversal
     - **Property 11: Sort Toggle Reversal**
     - **Validates: Requirements 3.5**
-  - [ ] 4.5 Implement directories-first grouping
+  - [x] 4.5 Implement directories-first grouping
     - Partition entries into directories and files
     - Apply sort within each group
     - _Requirements: 3.7_
-  - [ ] 4.6 Write property test for directories first invariant
+  - [x] 4.6 Write property test for directories first invariant
     - **Property 12: Directories First Invariant**
     - **Validates: Requirements 3.7**
-  - [ ] 4.7 Wire sort state to FileList column headers
+  - [x] 4.7 Wire sort state to FileList column headers
     - Add click handlers to column headers
     - Display sort direction indicator
     - Maintain sort on directory changes
     - _Requirements: 3.6, 3.8_
-  - [ ] 4.8 Write property test for sort stability on update
+  - [x] 4.8 Write property test for sort stability on update
     - **Property 13: Sort Stability on Update**
     - **Validates: Requirements 3.8**
 
-- [ ] 5. Checkpoint - Ensure all tests pass
+- [x] 5. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Sidebar Favorites with Drag-and-Drop
-  - [ ] 6.1 Implement Favorites model with persistence
+- [x] 6. Sidebar Favorites with Drag-and-Drop
+  - [x] 6.1 Implement Favorites model with persistence
     - Create `Favorites` struct with add/remove/reorder
     - Implement save/load to JSON config file
     - _Requirements: 4.2, 4.3_
-  - [ ] 6.2 Write property test for favorites persistence
+  - [x] 6.2 Write property test for favorites persistence
     - **Property 14: Favorites Add Persistence**
     - **Validates: Requirements 4.2, 4.3**
-  - [ ] 6.3 Implement drag-and-drop for adding favorites
+  - [x] 6.3 Implement drag-and-drop for adding favorites
     - Detect folder drag from FileList
     - Show drop zone indicator in Sidebar
     - Add dropped folder to favorites
     - _Requirements: 4.1, 4.2_
-  - [ ] 6.4 Implement favorites reordering
+  - [x] 6.4 Implement favorites reordering
     - Allow drag within favorites section
     - Update order on drop
     - _Requirements: 4.6_
-  - [ ] 6.5 Write property test for favorites reorder
+  - [x] 6.5 Write property test for favorites reorder
     - **Property 15: Favorites Reorder Preservation**
     - **Validates: Requirements 4.6**
-  - [ ] 6.6 Implement favorites validation and context menu
+  - [x] 6.6 Implement favorites validation and context menu
     - Validate paths exist on load
     - Show warning for invalid paths
     - Context menu with Remove option
     - _Requirements: 4.5, 4.7, 4.8_
-  - [ ] 6.7 Write property test for invalid path detection
+  - [x] 6.7 Write property test for invalid path detection
     - **Property 16: Favorites Invalid Path Detection**
     - **Validates: Requirements 4.7**
 
-- [ ] 7. Checkpoint - Ensure all tests pass
+- [x] 7. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Grid View Mode
-  - [ ] 8.1 Implement ViewMode enum and GridConfig
+- [-] 8. Grid View Mode
+  - [x] 8.1 Implement ViewMode enum and GridConfig
     - Create `ViewMode` enum with List/Grid variants
     - Create `GridConfig` with icon size and spacing
     - Add view mode to GlobalSettings
     - _Requirements: 5.1, 5.4_
-  - [ ] 8.2 Implement grid layout calculation
+  - [x] 8.2 Implement grid layout calculation
     - Calculate columns based on viewport width
     - Implement responsive grid arrangement
     - _Requirements: 5.3_
-  - [ ] 8.3 Write property test for grid columns calculation
+  - [x] 8.3 Write property test for grid columns calculation
     - **Property 17: Grid Columns Calculation**
     - **Validates: Requirements 5.3**
-  - [ ] 8.4 Implement GridView rendering
+  - [x] 8.4 Implement GridView rendering
     - Render file icons at 64x64
     - Display file name below icon
     - Support selection and context menu
@@ -160,57 +160,57 @@
     - **Property 19: View Mode Persistence**
     - **Validates: Requirements 5.8**
 
-- [ ] 9. Checkpoint - Ensure all tests pass
+- [x] 9. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Theme System with RPG Aesthetics
-  - [ ] 10.1 Implement Theme, ThemeColors, and ThemeDecorations structs
+- [-] 10. Theme System with RPG Aesthetics
+  - [x] 10.1 Implement Theme, ThemeColors, and ThemeDecorations structs
     - Define ThemeColors with all color fields (backgrounds, text, accents, semantic, borders, file colors, terminal)
     - Define ThemeDecorations with border styles, corner flourishes, divider styles, shadows, background effects
     - Define ThemeTypography with font families, weights, sizes per theme
     - _Requirements: 14.4_
-  - [ ] 10.2 Implement Dragon Forge theme (default)
+  - [x] 10.2 Implement Dragon Forge theme (default)
     - Deep crimson (#d43f3f) and molten gold (#f4b842) palette
     - Warm parchment text (#f4e8dc) on volcanic backgrounds
     - Ember glow effects, gold-trimmed ornate borders
     - Volcanic background pattern with noise texture
     - _Requirements: 14.5_
-  - [ ] 10.3 Implement Frost Haven theme
+  - [x] 10.3 Implement Frost Haven theme
     - Ice blues (#6bd4ff) and aurora purples (#b48aff)
     - Crystalline borders with northern lights glow
     - Frosted glass backgrounds with ice crystal patterns
     - _Requirements: 14.6_
-  - [ ] 10.4 Implement Ancient Tome theme
+  - [x] 10.4 Implement Ancient Tome theme
     - Parchment textures, leather browns (#8b4513), gold leaf (#d4af37)
     - Medieval serif typography emphasis (Newsreader font)
     - Weathered paper backgrounds, embossed borders
     - _Requirements: 14.7_
-  - [ ] 10.5 Implement Shadow Realm theme
+  - [x] 10.5 Implement Shadow Realm theme
     - Deep purples (#4a0080), ethereal glows (#9966ff), void blacks
     - Mystical particle effects, swirling void patterns
     - Ethereal glow shadows
     - _Requirements: 14.8_
-  - [ ] 10.6 Implement Elven Glade theme
+  - [x] 10.6 Implement Elven Glade theme
     - Forest greens (#228b22), moonlight silver, bark browns
     - Organic flowing borders, vine patterns
     - Soft moonlight glow effects
     - _Requirements: 14.9_
-  - [ ] 10.7 Write property test for theme color completeness
+  - [x] 10.7 Write property test for theme color completeness
     - **Property 36: Theme Color Completeness**
     - **Validates: Requirements 14.4**
-  - [ ] 10.8 Implement ThemeManager with persistence
+  - [x] 10.8 Implement ThemeManager with persistence
     - Load/save current theme selection
     - Provide theme switching API with transition animations
     - _Requirements: 14.1, 14.10_
-  - [ ] 10.9 Write property test for theme persistence
+  - [x] 10.9 Write property test for theme persistence
     - **Property 35: Theme Persistence**
     - **Validates: Requirements 14.1, 14.10**
-  - [ ] 10.10 Integrate theme colors and decorations into all UI components
+  - [x] 10.10 Integrate theme colors and decorations into all UI components
     - Update Workspace, FileList, Sidebar, Terminal, Preview, StatusBar
     - Apply themed shadows, glows, borders, backgrounds
     - Use theme-specific font weights and letter spacing
     - _Requirements: 14.3, 14.4_
-  - [ ] 10.11 Write property test for theme application consistency
+  - [x] 10.11 Write property test for theme application consistency
     - **Property 37: Theme Application Consistency**
     - **Validates: Requirements 14.3, 14.4**
   - [ ] 10.12 Implement theme picker UI with animated previews
@@ -219,23 +219,23 @@
     - Display theme name, description, and color swatches
     - _Requirements: 14.2, 14.3_
 
-- [ ] 11. Checkpoint - Ensure all tests pass
+- [x] 11. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 12. Integrated Terminal
-  - [ ] 12.1 Implement TerminalState model
+- [-] 12. Integrated Terminal
+  - [x] 12.1 Implement TerminalState model
     - Create `TerminalState` with lines, cursor, scroll
     - Create `TerminalLine` and `TerminalCell` structs
     - _Requirements: 6.3_
-  - [ ] 12.2 Implement ANSI parser
+  - [x] 12.2 Implement ANSI parser
     - Parse ANSI escape sequences for colors/styles
     - Handle cursor movement and clear commands
     - _Requirements: 6.4_
-  - [ ] 12.3 Write property test for ANSI color parsing
+  - [x] 12.3 Write property test for ANSI color parsing
     - **Property 20: ANSI Color Parsing**
     - **Validates: Requirements 6.4**
-  - [ ] 12.4 Implement PTY service
+  - [x] 12.4 Implement PTY service
     - Spawn shell process (zsh/bash/cmd)
     - Handle stdin/stdout communication
     - Set working directory
@@ -261,66 +261,66 @@
     - Selection and copy/paste
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 13. Checkpoint - Ensure all tests pass
+- [x] 13. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 14. File Preview Panel
-  - [ ] 14.1 Implement Preview component with metadata display
+- [x] 14. File Preview Panel
+  - [x] 14.1 Implement Preview component with metadata display
     - Show file name, size, type, date, permissions
     - Update on file selection
     - _Requirements: 7.1_
-  - [ ] 14.2 Write property test for preview metadata completeness
+  - [x] 14.2 Write property test for preview metadata completeness
     - **Property 22: Preview Metadata Completeness**
     - **Validates: Requirements 7.1**
-  - [ ] 14.3 Implement text file preview with syntax highlighting
+  - [x] 14.3 Implement text file preview with syntax highlighting
     - Detect file language from extension
     - Display content with line numbers
     - _Requirements: 7.2_
-  - [ ] 14.4 Write property test for preview text line numbers
+  - [x] 14.4 Write property test for preview text line numbers
     - **Property 23: Preview Text Line Numbers**
     - **Validates: Requirements 7.2**
-  - [ ] 14.5 Implement image preview with thumbnails
+  - [x] 14.5 Implement image preview with thumbnails
     - Load and display image thumbnail
     - Show dimensions and format
     - _Requirements: 7.3_
-  - [ ] 14.6 Write property test for preview image dimensions
+  - [x] 14.6 Write property test for preview image dimensions
     - **Property 24: Preview Image Dimensions**
     - **Validates: Requirements 7.3**
-  - [ ] 14.7 Implement binary file hex dump preview
+  - [x] 14.7 Implement binary file hex dump preview
     - Read first 256 bytes
     - Display as hex dump with ASCII
     - _Requirements: 7.5_
-  - [ ] 14.8 Write property test for preview hex dump size
+  - [x] 14.8 Write property test for preview hex dump size
     - **Property 25: Preview Hex Dump Size**
     - **Validates: Requirements 7.5**
-  - [ ] 14.9 Implement directory preview with statistics
+  - [x] 14.9 Implement directory preview with statistics
     - Count items and subdirectories
     - Calculate total size
     - _Requirements: 7.6_
-  - [ ] 14.10 Write property test for preview directory statistics
+  - [x] 14.10 Write property test for preview directory statistics
     - **Property 26: Preview Directory Statistics**
     - **Validates: Requirements 7.6**
 
-- [ ] 15. Checkpoint - Ensure all tests pass
+- [x] 15. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Tools Section
-  - [ ] 16.1 Implement Tools section in Sidebar
+- [-] 16. Tools Section
+  - [x] 16.1 Implement Tools section in Sidebar
     - Create collapsible panel with action buttons
     - _Requirements: 8.1_
-  - [ ] 16.2 Implement New File and New Folder actions
+  - [x] 16.2 Implement New File and New Folder actions
     - Show name input dialog
     - Create file/folder in current directory
     - _Requirements: 8.2, 8.3_
-  - [ ] 16.3 Implement batch operations
+  - [x] 16.3 Implement batch operations
     - Enable copy/move/delete when files selected
     - _Requirements: 8.4_
-  - [ ] 16.4 Implement utility actions
+  - [x] 16.4 Implement utility actions
     - Open Terminal Here
     - Copy Path to clipboard
     - Refresh directory
     - _Requirements: 8.5, 8.6, 8.7_
-  - [ ] 16.5 Implement hidden files toggle
+  - [x] 16.5 Implement hidden files toggle
     - Toggle visibility of dotfiles
     - Persist setting
     - _Requirements: 8.8_
@@ -328,36 +328,36 @@
     - **Property 27: Hidden Files Toggle**
     - **Validates: Requirements 8.8**
 
-- [ ] 17. Tab Management
-  - [ ] 17.1 Implement TabState model
+- [x] 17. Tab Management
+  - [x] 17.1 Implement TabState model
     - Create `Tab` and `TabState` structs
     - Implement open/close/switch operations
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
-  - [ ] 17.2 Write property test for tab open increases count
+  - [x] 17.2 Write property test for tab open increases count
     - **Property 28: Tab Open Increases Count**
     - **Validates: Requirements 9.2**
-  - [ ] 17.3 Write property test for tab close decreases count
+  - [x] 17.3 Write property test for tab close decreases count
     - **Property 29: Tab Close Decreases Count**
     - **Validates: Requirements 9.4**
-  - [ ] 17.4 Implement TabBar view
+  - [x] 17.4 Implement TabBar view
     - Render tabs with titles and close buttons
     - Handle tab clicks and close
     - _Requirements: 9.5_
-  - [ ] 17.5 Write property test for tab title matches directory
+  - [x] 17.5 Write property test for tab title matches directory
     - **Property 30: Tab Title Matches Directory**
     - **Validates: Requirements 9.5**
-  - [ ] 17.6 Implement tab overflow handling
+  - [x] 17.6 Implement tab overflow handling
     - Scroll or dropdown when tabs exceed width
     - _Requirements: 9.7_
-  - [ ] 17.7 Handle last tab close
+  - [x] 17.7 Handle last tab close
     - Open new tab with home directory
     - _Requirements: 9.8_
 
-- [ ] 18. Checkpoint - Ensure all tests pass
+- [x] 18. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 19. Status Bar
-  - [ ] 19.1 Implement StatusBar component
+- [-] 19. Status Bar
+  - [-] 19.1 Implement StatusBar component
     - Display total items and selected count
     - _Requirements: 10.1, 10.2_
   - [ ] 19.2 Write property test for status bar item count

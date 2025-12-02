@@ -198,10 +198,7 @@ impl BreadcrumbView {
         self.pending_navigation.take()
     }
 
-    fn handle_segment_click(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
-        if let Some(ref callback) = self.on_navigate {
-            callback(path.clone(), window, &mut cx.app_mut());
-        }
+    fn handle_segment_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
         self.pending_navigation = Some(path);
         cx.notify();
     }
@@ -211,9 +208,10 @@ impl BreadcrumbView {
         cx.notify();
     }
 
-    fn copy_path_to_clipboard(&mut self, path: &Path, window: &mut Window, _cx: &mut Context<Self>) {
+    fn copy_path_to_clipboard(&mut self, path: &Path, _window: &mut Window, cx: &mut Context<Self>) {
         if let Some(path_str) = path.to_str() {
-            window.write_to_clipboard(gpui::ClipboardItem::new_string(path_str.to_string()));
+            // Copy to clipboard - using cx to write to clipboard
+            cx.write_to_clipboard(gpui::ClipboardItem::new_string(path_str.to_string()));
         }
         self.context_menu_path = None;
     }
@@ -305,7 +303,6 @@ impl Render for BreadcrumbView {
                                             .shadow_lg()
                                             .py_1()
                                             .min_w(px(150.0))
-                                            .z_index(100)
                                             .children(hidden.into_iter().map(|seg| {
                                                 let nav_path = seg.path.clone();
                                                 div()
@@ -363,7 +360,6 @@ impl Render for BreadcrumbView {
                         .shadow_lg()
                         .py_1()
                         .min_w(px(120.0))
-                        .z_index(100)
                         .child(
                             div()
                                 .id("copy-path-menu")

@@ -4,10 +4,10 @@ use std::time::SystemTime;
 use gpui::{
     div, prelude::*, px, svg, uniform_list, App, Context, FocusHandle, Focusable,
     InteractiveElement, IntoElement, MouseButton, ParentElement, Point, Pixels, Render, 
-    SharedString, Styled, UniformListScrollHandle, Window, MouseDownEvent, Hsla,
+    SharedString, Styled, UniformListScrollHandle, Window, MouseDownEvent,
 };
 
-use crate::models::{FileEntry, IconKey};
+use crate::models::{FileEntry, IconKey, SortColumn, SortDirection, SortState, theme_colors};
 
 pub const DEFAULT_ROW_HEIGHT: f32 = 36.0;
 pub const DEFAULT_BUFFER_SIZE: usize = 5;
@@ -22,6 +22,7 @@ pub struct FileList {
     highlight_positions: Option<Vec<Vec<usize>>>,
     selected_index: Option<usize>,
     search_query: String,
+    sort_state: SortState,
 }
 
 /// A filtered entry with its original index and match positions
@@ -135,7 +136,14 @@ impl Render for FileListView {
                 view.close_context_menu();
                 cx.notify();
             }))
-            .child(
+            .child({
+                let sort_column = self.file_list.sort_state.column;
+                let sort_direction = self.file_list.sort_state.direction;
+                let entity = cx.entity().clone();
+                let entity_date = entity.clone();
+                let entity_type = entity.clone();
+                let entity_size = entity.clone();
+                
                 div()
                     .flex()
                     .h(px(36.0))
@@ -155,11 +163,19 @@ impl Render for FileListView {
                             .gap_1()
                             .cursor_pointer()
                             .hover(|s| s.bg(hover_bg).text_color(text_light))
+                            .when(sort_column == SortColumn::Name, |s| s.text_color(text_light))
+                            .on_click(move |_event, _window, cx| {
+                                entity.update(cx, |view, cx| {
+                                    view.file_list.toggle_sort_column(SortColumn::Name);
+                                    cx.notify();
+                                });
+                            })
                             .child("NAME")
-                            .child(render_sort_icon("arrow-down-up", text_gray)),
+                            .child(render_sort_indicator(SortColumn::Name, sort_column, sort_direction, text_gray, text_light)),
                     )
                     .child(
                         div()
+                            .id("header-date")
                             .w(px(120.0))
                             .px_4()
                             .flex()
@@ -169,34 +185,61 @@ impl Render for FileListView {
                             .border_color(border_subtle)
                             .cursor_pointer()
                             .hover(|s| s.bg(hover_bg).text_color(text_light))
+                            .when(sort_column == SortColumn::Date, |s| s.text_color(text_light))
+                            .on_click(move |_event, _window, cx| {
+                                entity_date.update(cx, |view, cx| {
+                                    view.file_list.toggle_sort_column(SortColumn::Date);
+                                    cx.notify();
+                                });
+                            })
                             .child("DATE")
-                            .child(render_sort_icon("calendar", text_gray)),
+                            .child(render_sort_indicator(SortColumn::Date, sort_column, sort_direction, text_gray, text_light)),
                     )
                     .child(
                         div()
+                            .id("header-type")
                             .w(px(100.0))
                             .px_4()
                             .flex()
                             .items_center()
+                            .gap_1()
                             .border_l_1()
                             .border_color(border_subtle)
                             .cursor_pointer()
                             .hover(|s| s.bg(hover_bg).text_color(text_light))
-                            .child("TYPE"),
+                            .when(sort_column == SortColumn::Type, |s| s.text_color(text_light))
+                            .on_click(move |_event, _window, cx| {
+                                entity_type.update(cx, |view, cx| {
+                                    view.file_list.toggle_sort_column(SortColumn::Type);
+                                    cx.notify();
+                                });
+                            })
+                            .child("TYPE")
+                            .child(render_sort_indicator(SortColumn::Type, sort_column, sort_direction, text_gray, text_light)),
                     )
                     .child(
                         div()
+                            .id("header-size")
                             .w(px(80.0))
                             .px_4()
                             .flex()
                             .items_center()
+                            .gap_1()
                             .border_l_1()
                             .border_color(border_subtle)
                             .cursor_pointer()
                             .hover(|s| s.bg(hover_bg).text_color(text_light))
-                            .child("SIZE"),
-                    ),
-            )
+                            .when(sort_column == SortColumn::Size, |s| s.text_color(text_light))
+                            .on_click(move |_event, _window, cx| {
+                                entity_size.update(cx, |view, cx| {
+                                    view.file_list.toggle_sort_column(SortColumn::Size);
+                                    cx.notify();
+                                });
+                            })
+                            .child("SIZE")
+                            .child(render_sort_indicator(SortColumn::Size, sort_column, sort_direction, text_gray, text_light)),
+                    )
+            })
             .child(
                 div()
                     .flex_1()
@@ -481,12 +524,28 @@ impl Render for FileListView {
     }
 }
 
-fn render_sort_icon(icon_name: &str, color: gpui::Rgba) -> impl IntoElement {
+fn render_sort_indicator(
+    column: SortColumn,
+    active_column: SortColumn,
+    direction: SortDirection,
+    inactive_color: gpui::Rgba,
+    active_color: gpui::Rgba,
+) -> impl IntoElement {
+    let is_active = column == active_column;
+    let icon_name = if is_active {
+        match direction {
+            SortDirection::Ascending => "chevron-up",
+            SortDirection::Descending => "chevron-down",
+        }
+    } else {
+        "arrow-down-up"
+    };
+    
     svg()
         .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
         .size(px(12.0))
-        .text_color(color)
-        .opacity(0.5)
+        .text_color(if is_active { active_color } else { inactive_color })
+        .when(!is_active, |s| s.opacity(0.5))
 }
 
 fn render_highlighted_name(
@@ -628,7 +687,7 @@ fn get_file_type(name: &str) -> String {
     "File".to_string()
 }
 
-fn get_file_icon(name: &str, is_dir: bool) -> &'static str {
+pub fn get_file_icon(name: &str, is_dir: bool) -> &'static str {
     if is_dir {
         if name.starts_with('.') {
             return "folder-cog";
@@ -676,7 +735,7 @@ fn get_file_icon(name: &str, is_dir: bool) -> &'static str {
     }
 }
 
-fn get_file_icon_color(name: &str) -> gpui::Rgba {
+pub fn get_file_icon_color(name: &str) -> gpui::Rgba {
     let ext = name.rsplit('.').next().unwrap_or("");
     match ext.to_lowercase().as_str() {
         "rs" => gpui::rgb(0xdea584),      // Rust orange
@@ -725,6 +784,7 @@ impl FileList {
             highlight_positions: None,
             selected_index: None,
             search_query: String::new(),
+            sort_state: SortState::new(),
         }
     }
 
@@ -739,6 +799,7 @@ impl FileList {
             highlight_positions: None,
             selected_index: None,
             search_query: String::new(),
+            sort_state: SortState::new(),
         }
     }
 
@@ -776,14 +837,42 @@ impl FileList {
 
     pub fn set_entries(&mut self, entries: Vec<FileEntry>) {
         self.entries = entries;
+        self.sort_state.sort_entries(&mut self.entries);
         self.filtered_entries = None;
         self.highlight_positions = None;
         self.selected_index = None;
         self.search_query.clear();
     }
 
+    pub fn sort_state(&self) -> &SortState {
+        &self.sort_state
+    }
+
+    pub fn sort_state_mut(&mut self) -> &mut SortState {
+        &mut self.sort_state
+    }
+
+    pub fn toggle_sort_column(&mut self, column: SortColumn) {
+        self.sort_state.toggle_column(column);
+        self.sort_state.sort_entries(&mut self.entries);
+    }
+
+    pub fn apply_sort(&mut self) {
+        self.sort_state.sort_entries(&mut self.entries);
+    }
+
     pub fn entries(&self) -> &[FileEntry] {
         &self.entries
+    }
+
+    /// Returns the currently selected index
+    pub fn selected_index(&self) -> Option<usize> {
+        self.selected_index
+    }
+
+    /// Sets the selected index
+    pub fn set_selected_index(&mut self, index: Option<usize>) {
+        self.selected_index = index;
     }
 
     /// Returns the currently visible entries (filtered if search is active)

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc be1d2507e66fc66cb80cafad7f83a7574f941356c56db0972cafe840f7823b2d # shrinks to config = GridConfig { icon_size: 16.0, item_width: 201.52739, item_height: 48.0, gap: 4.0, min_columns: 7 }, viewport_width = 100.0
