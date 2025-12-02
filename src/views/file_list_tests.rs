@@ -452,3 +452,390 @@ fn test_search_result_highlighting_empty_positions() {
     assert!(rendered.highlight_positions.is_empty());
     assert!(!rendered.is_highlighted(0));
 }
+
+// **Feature: ui-enhancements, Property 1: Search Filter Correctness**
+// **Validates: Requirements 1.2, 1.4**
+// 
+// *For any* file list with entries and a search query, when filtering is applied,
+// all returned entries SHALL contain the search query as a substring (case-insensitive fuzzy match),
+// and the filtered count SHALL be less than or equal to the original count.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+    
+    #[test]
+    fn prop_search_filter_correctness(
+        entry_count in 1usize..100,
+        query_len in 1usize..5,
+    ) {
+        // Generate random file entries
+        let entries: Vec<FileEntry> = (0..entry_count)
+            .map(|i| {
+                let name = format!("file_{:04}.txt", i);
+                create_test_entry(&name, false, i as u64 * 100)
+            })
+            .collect();
+        
+        let mut list = FileList::new();
+        list.set_entries(entries.clone());
+        
+        // Generate a query from the first few characters of a random entry name
+        let query: String = if !entries.is_empty() {
+            let sample_name = &entries[0].name;
+            sample_name.chars().take(query_len.min(sample_name.len())).collect()
+        } else {
+            "file".to_string()
+        };
+        
+        // Simulate search results - find entries that contain the query
+        let matches: Vec<(usize, Vec<usize>, u32)> = entries
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, entry)| {
+                let name_lower = entry.name.to_lowercase();
+                let query_lower = query.to_lowercase();
+                if name_lower.contains(&query_lower) {
+                    // Find match positions
+                    let positions: Vec<usize> = name_lower
+                        .match_indices(&query_lower)
+                        .flat_map(|(start, matched)| start..start + matched.len())
+                        .collect();
+                    Some((idx, positions, 100))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        let match_count = matches.len();
+        list.apply_search_filter(&query, matches);
+        
+        // Property 1: Filtered count <= original count
+        prop_assert!(
+            list.item_count() <= entry_count,
+            "Filtered count {} exceeds original count {}",
+            list.item_count(), entry_count
+        );
+        
+        // Property 2: Filtered count matches expected matches
+        prop_assert_eq!(
+            list.item_count(), match_count,
+            "Filtered count {} doesn't match expected matches {}",
+            list.item_count(), match_count
+        );
+        
+        // Property 3: All filtered entries contain the query (case-insensitive)
+        for i in 0..list.item_count() {
+            if let Some(entry) = list.get_display_entry(i) {
+                let name_lower = entry.name.to_lowercase();
+                let query_lower = query.to_lowercase();
+                prop_assert!(
+                    name_lower.contains(&query_lower),
+                    "Entry '{}' doesn't contain query '{}'",
+                    entry.name, query
+                );
+            }
+        }
+        
+        // Property 4: Search query is stored correctly
+        prop_assert_eq!(
+            list.search_query(), &query,
+            "Search query mismatch: got '{}', expected '{}'",
+            list.search_query(), query
+        );
+    }
+}
+
+#[test]
+fn test_apply_search_filter() {
+    let mut list = FileList::new();
+    list.set_entries(vec![
+        create_test_entry("document.txt", false, 1024),
+        create_test_entry("data.csv", false, 2048),
+        create_test_entry("readme.md", false, 512),
+        create_test_entry("config.json", false, 256),
+    ]);
+    
+    // Apply filter matching "doc" and "data"
+    let matches = vec![
+        (0, vec![0, 1, 2], 100),  // document.txt
+        (1, vec![0, 1, 2], 90),   // data.csv
+    ];
+    list.apply_search_filter("d", matches);
+    
+    assert_eq!(list.item_count(), 2);
+    assert!(list.is_filtered());
+    assert_eq!(list.search_query(), "d");
+    
+    // Verify filtered entries
+    let entry0 = list.get_display_entry(0).unwrap();
+    assert_eq!(entry0.name, "document.txt");
+    
+    let entry1 = list.get_display_entry(1).unwrap();
+    assert_eq!(entry1.name, "data.csv");
+}
+
+#[test]
+fn test_clear_search_filter() {
+    let mut list = FileList::new();
+    list.set_entries(vec![
+        create_test_entry("document.txt", false, 1024),
+        create_test_entry("data.csv", false, 2048),
+    ]);
+    
+    // Apply filter
+    list.apply_search_filter("doc", vec![(0, vec![0, 1, 2], 100)]);
+    assert_eq!(list.item_count(), 1);
+    
+    // Clear filter
+    list.clear_search_filter();
+    assert_eq!(list.item_count(), 2);
+    assert!(!list.is_filtered());
+    assert!(list.search_query().is_empty());
+}
+
+#[test]
+fn test_empty_query_clears_filter() {
+    let mut list = FileList::new();
+    list.set_entries(vec![
+        create_test_entry("document.txt", false, 1024),
+        create_test_entry("data.csv", false, 2048),
+    ]);
+    
+    // Apply filter with empty query should clear
+    list.apply_search_filter("", vec![]);
+    assert_eq!(list.item_count(), 2);
+    assert!(!list.is_filtered());
+}
+
+// **Feature: ui-enhancements, Property 2: Search Highlight Positions Validity**
+// **Validates: Requirements 1.3**
+// 
+// *For any* filtered entry with match positions, all highlight positions SHALL be
+// valid indices within the entry name (0 <= position < name.len()).
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+    
+    #[test]
+    fn prop_highlight_positions_validity(
+        name_len in 1usize..50,
+        num_positions in 0usize..20,
+    ) {
+        // Generate a random name
+        let name: String = (0..name_len).map(|i| ((i % 26) as u8 + b'a') as char).collect();
+        let entry = create_test_entry(&name, false, 1024);
+        
+        let mut list = FileList::new();
+        list.set_entries(vec![entry]);
+        
+        // Generate valid match positions (all within bounds)
+        let positions: Vec<usize> = (0..num_positions.min(name_len))
+            .map(|i| i % name_len)
+            .collect();
+        
+        // Apply filter with these positions
+        let matches = vec![(0, positions.clone(), 100)];
+        list.apply_search_filter("test", matches);
+        
+        // Verify all positions are valid
+        if let Some(filtered_entry) = list.get_filtered_entry(0) {
+            for &pos in &filtered_entry.match_positions {
+                prop_assert!(
+                    pos < name_len,
+                    "Position {} is out of bounds for name of length {}",
+                    pos, name_len
+                );
+            }
+        }
+        
+        // Verify get_match_positions returns the same positions
+        if let Some(match_positions) = list.get_match_positions(0) {
+            prop_assert_eq!(
+                match_positions.len(), positions.len(),
+                "Match positions count mismatch"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_highlight_positions_within_bounds() {
+    let mut list = FileList::new();
+    list.set_entries(vec![create_test_entry("test.txt", false, 100)]);
+    
+    // Apply filter with valid positions
+    let matches = vec![(0, vec![0, 1, 2, 3], 100)];  // "test" in "test.txt"
+    list.apply_search_filter("test", matches);
+    
+    let positions = list.get_match_positions(0).unwrap();
+    assert_eq!(positions, &[0, 1, 2, 3]);
+    
+    // All positions should be within the name length (8 chars)
+    for &pos in positions {
+        assert!(pos < 8, "Position {} out of bounds", pos);
+    }
+}
+
+#[test]
+fn test_highlight_positions_empty_for_no_match() {
+    let mut list = FileList::new();
+    list.set_entries(vec![create_test_entry("test.txt", false, 100)]);
+    
+    // Apply filter with empty positions
+    let matches = vec![(0, vec![], 100)];
+    list.apply_search_filter("xyz", matches);
+    
+    let positions = list.get_match_positions(0).unwrap();
+    assert!(positions.is_empty());
+}
+
+
+// **Feature: ui-enhancements, Property 3: Empty Search Returns All**
+// **Validates: Requirements 1.5**
+// 
+// *For any* file list with N entries, when the search query is empty or cleared,
+// the FileList SHALL display all N original entries.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+    
+    #[test]
+    fn prop_empty_search_returns_all(
+        entry_count in 1usize..200,
+        initial_query_len in 1usize..10,
+    ) {
+        // Generate random file entries
+        let entries: Vec<FileEntry> = (0..entry_count)
+            .map(|i| {
+                let name = format!("file_{:04}.txt", i);
+                create_test_entry(&name, i % 3 == 0, i as u64 * 100)
+            })
+            .collect();
+        
+        let original_count = entries.len();
+        let mut list = FileList::new();
+        list.set_entries(entries.clone());
+        
+        // Verify initial state shows all entries
+        prop_assert_eq!(
+            list.item_count(), original_count,
+            "Initial count {} doesn't match original {}",
+            list.item_count(), original_count
+        );
+        
+        // Generate a query and apply a filter (simulating some matches)
+        let query: String = (0..initial_query_len).map(|_| 'f').collect();
+        let matches: Vec<(usize, Vec<usize>, u32)> = entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.name.to_lowercase().contains(&query.to_lowercase()))
+            .map(|(idx, _)| (idx, vec![0], 100))
+            .collect();
+        
+        list.apply_search_filter(&query, matches);
+        
+        // Now clear the search with empty query
+        list.apply_search_filter("", vec![]);
+        
+        // Property: After clearing, all original entries should be visible
+        prop_assert_eq!(
+            list.item_count(), original_count,
+            "After clearing search, count {} doesn't match original {}",
+            list.item_count(), original_count
+        );
+        
+        // Property: Filter should be cleared
+        prop_assert!(
+            !list.is_filtered(),
+            "List should not be filtered after clearing search"
+        );
+        
+        // Property: Search query should be empty
+        prop_assert!(
+            list.search_query().is_empty(),
+            "Search query should be empty after clearing, got '{}'",
+            list.search_query()
+        );
+        
+        // Property: All original entries should be accessible
+        for i in 0..original_count {
+            let entry = list.get_display_entry(i);
+            prop_assert!(
+                entry.is_some(),
+                "Entry at index {} should be accessible after clearing search",
+                i
+            );
+            
+            // Verify the entry matches the original
+            if let Some(e) = entry {
+                prop_assert_eq!(
+                    &e.name, &entries[i].name,
+                    "Entry name mismatch at index {}: got '{}', expected '{}'",
+                    i, e.name, entries[i].name
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_clear_search_filter_restores_all() {
+    let mut list = FileList::new();
+    let entries = vec![
+        create_test_entry("alpha.txt", false, 100),
+        create_test_entry("beta.txt", false, 200),
+        create_test_entry("gamma.txt", false, 300),
+        create_test_entry("delta.txt", false, 400),
+        create_test_entry("epsilon.txt", false, 500),
+    ];
+    list.set_entries(entries.clone());
+    
+    // Verify initial count
+    assert_eq!(list.item_count(), 5);
+    
+    // Apply filter that matches only some entries
+    let matches = vec![
+        (0, vec![0, 1], 100),  // alpha
+        (3, vec![0, 1], 90),   // delta
+    ];
+    list.apply_search_filter("a", matches);
+    
+    // Verify filtered count
+    assert_eq!(list.item_count(), 2);
+    assert!(list.is_filtered());
+    
+    // Clear filter using clear_search_filter
+    list.clear_search_filter();
+    
+    // Verify all entries are restored
+    assert_eq!(list.item_count(), 5);
+    assert!(!list.is_filtered());
+    assert!(list.search_query().is_empty());
+    
+    // Verify each entry is accessible and correct
+    for (i, original) in entries.iter().enumerate() {
+        let entry = list.get_display_entry(i).unwrap();
+        assert_eq!(entry.name, original.name);
+    }
+}
+
+#[test]
+fn test_escape_clears_search_restores_entries() {
+    let mut list = FileList::new();
+    let entries = vec![
+        create_test_entry("document.pdf", false, 1024),
+        create_test_entry("spreadsheet.xlsx", false, 2048),
+        create_test_entry("presentation.pptx", false, 4096),
+    ];
+    list.set_entries(entries.clone());
+    
+    // Apply filter
+    let matches = vec![(0, vec![0, 1, 2], 100)];
+    list.apply_search_filter("doc", matches);
+    assert_eq!(list.item_count(), 1);
+    
+    // Simulate escape key by applying empty search
+    list.apply_search_filter("", vec![]);
+    
+    // All entries should be restored
+    assert_eq!(list.item_count(), 3);
+    assert!(!list.is_filtered());
+}

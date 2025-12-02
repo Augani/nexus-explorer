@@ -8,7 +8,7 @@ use gpui::{
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{FileSystem, IconCache, SearchEngine};
-use crate::views::{FileList, FileListView, Preview, PreviewView, Sidebar, SidebarView};
+use crate::views::{FileList, FileListView, Preview, PreviewView, SearchInputView, Sidebar, SidebarView};
 
 pub struct Workspace {
     file_system: Entity<FileSystem>,
@@ -16,15 +16,20 @@ pub struct Workspace {
     search_engine: Entity<SearchEngine>,
     file_list: Entity<FileListView>,
     sidebar: Entity<SidebarView>,
+    search_input: Entity<SearchInputView>,
     preview: Option<Entity<PreviewView>>,
     focus_handle: FocusHandle,
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
     is_terminal_open: bool,
+    cached_entries: Vec<crate::models::FileEntry>,
 }
 
 impl Workspace {
     pub fn build(initial_path: PathBuf, cx: &mut App) -> Entity<Self> {
+        // Register search input key bindings
+        SearchInputView::register_key_bindings(cx);
+        
         cx.new(|cx| {
             let mut file_system = FileSystem::new(initial_path.clone());
 
@@ -44,19 +49,30 @@ impl Workspace {
             let _ = op.traversal_handle.join();
             file_system.finalize_load(request_id, start.elapsed());
 
+            let cached_entries = file_system.entries().to_vec();
             let mut file_list_inner = FileList::new();
-            file_list_inner.set_entries(file_system.entries().to_vec());
+            file_list_inner.set_entries(cached_entries.clone());
             file_list_inner.set_viewport_height(600.0);
 
             let file_system = cx.new(|_| file_system);
             let icon_cache = cx.new(|_| IconCache::new());
-            let search_engine = cx.new(|_| SearchEngine::new());
+            
+            // Create search engine and inject initial entries
+            let search_engine_inner = SearchEngine::new();
+            for entry in &cached_entries {
+                search_engine_inner.inject(entry.path.clone());
+            }
+            let search_engine = cx.new(|_| search_engine_inner);
 
             let file_list = cx.new(|cx| FileListView::with_file_list(file_list_inner, cx));
             let sidebar = cx.new(|cx| {
                 let mut sidebar_view = SidebarView::new(cx);
                 sidebar_view.set_workspace_root(initial_path.clone());
                 sidebar_view
+            });
+            
+            let search_input = cx.new(|cx| {
+                SearchInputView::new(cx).with_search_engine(search_engine.clone())
             });
 
             // Observe file list for navigation requests
@@ -67,6 +83,13 @@ impl Workspace {
                 }
             })
             .detach();
+            
+            // Observe search input for query changes
+            cx.observe(&search_input, |workspace: &mut Workspace, search_input, cx| {
+                let query = search_input.read(cx).query().to_string();
+                workspace.handle_search_query_change(&query, cx);
+            })
+            .detach();
 
             Self {
                 file_system,
@@ -74,13 +97,48 @@ impl Workspace {
                 search_engine,
                 file_list,
                 sidebar,
+                search_input,
                 preview: None,
                 focus_handle: cx.focus_handle(),
                 current_path: initial_path.clone(),
                 path_history: vec![initial_path],
                 is_terminal_open: true,
+                cached_entries,
             }
         })
+    }
+    
+    fn handle_search_query_change(&mut self, query: &str, cx: &mut Context<Self>) {
+        if query.is_empty() {
+            // Clear search - restore full file list
+            self.file_list.update(cx, |view, _| {
+                view.inner_mut().clear_search_filter();
+            });
+        } else {
+            // Apply search filter
+            let matches = self.search_engine.update(cx, |engine, _| {
+                engine.set_pattern(query);
+                let snapshot = engine.snapshot();
+                snapshot.matches
+            });
+            
+            // Convert matches to the format FileList expects
+            let file_matches: Vec<(usize, Vec<usize>, u32)> = matches
+                .iter()
+                .filter_map(|m| {
+                    // Find the index in cached_entries that matches this path
+                    self.cached_entries
+                        .iter()
+                        .position(|e| e.path == m.path)
+                        .map(|idx| (idx, m.positions.clone(), m.score))
+                })
+                .collect();
+            
+            self.file_list.update(cx, |view, _| {
+                view.inner_mut().apply_search_filter(query, file_matches);
+            });
+        }
+        cx.notify();
     }
 
     pub fn navigate_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
@@ -99,8 +157,23 @@ impl Workspace {
         });
 
         let entries = self.file_system.read(cx).entries().to_vec();
+        self.cached_entries = entries.clone();
+        
+        // Clear search and update file list
+        self.search_input.update(cx, |view, cx| {
+            view.clear(cx);
+        });
+        
         self.file_list.update(cx, |view, _| {
-            view.inner_mut().set_entries(entries);
+            view.inner_mut().set_entries(entries.clone());
+        });
+        
+        // Re-inject paths into search engine for new directory
+        self.search_engine.update(cx, |engine, _| {
+            engine.clear();
+            for entry in &entries {
+                engine.inject(entry.path.clone());
+            }
         });
 
         self.path_history.push(path.clone());
@@ -128,8 +201,23 @@ impl Workspace {
                 });
 
                 let entries = self.file_system.read(cx).entries().to_vec();
+                self.cached_entries = entries.clone();
+                
+                // Clear search and update file list
+                self.search_input.update(cx, |view, cx| {
+                    view.clear(cx);
+                });
+                
                 self.file_list.update(cx, |view, _| {
-                    view.inner_mut().set_entries(entries);
+                    view.inner_mut().set_entries(entries.clone());
+                });
+                
+                // Re-inject paths into search engine
+                self.search_engine.update(cx, |engine, _| {
+                    engine.clear();
+                    for entry in &entries {
+                        engine.inject(entry.path.clone());
+                    }
                 });
 
                 self.current_path = prev_path;
@@ -285,32 +373,7 @@ impl Render for Workspace {
                             .relative()
                             .w_1_3()
                             .max_w(px(450.0))
-                            .child(
-                                div()
-                                    .w_full()
-                                    .bg(gpui::rgb(0x161b22))
-                                    .text_xs()
-                                    .rounded_md()
-                                    .border_1()
-                                    .border_color(border_color)
-                                    .py_1p5()
-                                    .pl(px(32.0))
-                                    .pr_3()
-                                    .text_color(text_gray)
-                                    .flex()
-                                    .items_center()
-                                    .relative()
-                                    .child(
-                                        svg()
-                                            .path("assets/icons/search.svg")
-                                            .size(px(13.0))
-                                            .text_color(gpui::rgb(0x6e7681))
-                                            .absolute()
-                                            .left(px(10.0))
-                                            .top(px(6.0)),
-                                    )
-                                    .child("Search files, commands..."),
-                            ),
+                            .child(self.search_input.clone()),
                     )
                     .child(
                         div()

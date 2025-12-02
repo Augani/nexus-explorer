@@ -1,31 +1,31 @@
 # Implementation Plan
 
-- [ ] 1. Search Functionality
-  - [ ] 1.1 Implement SearchInput component with focus handling
+- [-] 1. Search Functionality
+  - [x] 1.1 Implement SearchInput component with focus handling
     - Create `SearchInput` struct with query state and focus tracking
     - Implement text input handling with real-time updates
     - Wire to existing SearchEngine model
     - _Requirements: 1.1, 1.2_
-  - [ ] 1.2 Implement search filtering in FileList
+  - [x] 1.2 Implement search filtering in FileList
     - Filter entries based on search query
     - Integrate with nucleo fuzzy matching
     - Update FileList to show filtered results
     - _Requirements: 1.2, 1.4_
-  - [ ] 1.3 Write property test for search filter correctness
+  - [x] 1.3 Write property test for search filter correctness
     - **Property 1: Search Filter Correctness**
     - **Validates: Requirements 1.2, 1.4**
-  - [ ] 1.4 Implement search result highlighting
+  - [x] 1.4 Implement search result highlighting
     - Extract match positions from nucleo
     - Apply highlight styling to matched characters
     - _Requirements: 1.3_
-  - [ ] 1.5 Write property test for highlight positions validity
+  - [x] 1.5 Write property test for highlight positions validity
     - **Property 2: Search Highlight Positions Validity**
     - **Validates: Requirements 1.3**
-  - [ ] 1.6 Implement search clear and escape handling
+  - [x] 1.6 Implement search clear and escape handling
     - Clear search on empty input or Escape key
     - Restore full file list when cleared
     - _Requirements: 1.5, 1.6_
-  - [ ] 1.7 Write property test for empty search returns all
+  - [-] 1.7 Write property test for empty search returns all
     - **Property 3: Empty Search Returns All**
     - **Validates: Requirements 1.5**
 
@@ -53,21 +53,21 @@
     - Copy path to clipboard on selection
     - _Requirements: 2.7_
 
-- [ ] 3. Checkpoint - Ensure all tests pass
+- [x] 3. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Column Sorting
-  - [ ] 4.1 Implement SortState with column and direction
+- [-] 4. Column Sorting
+  - [x] 4.1 Implement SortState with column and direction
     - Create `SortState` struct with column enum and direction
     - Implement toggle logic for same-column clicks
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
-  - [ ] 4.2 Implement sort functions for each column
+  - [x] 4.2 Implement sort functions for each column
     - Sort by name (alphabetical, case-insensitive)
     - Sort by date (newest/oldest first)
     - Sort by type (extension alphabetical)
     - Sort by size (largest/smallest first)
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
-  - [ ] 4.3 Write property tests for sort ordering
+  - [-] 4.3 Write property tests for sort ordering
     - **Property 7: Sort by Name Ordering**
     - **Property 8: Sort by Date Ordering**
     - **Property 9: Sort by Type Ordering**

@@ -14,12 +14,23 @@ pub const DEFAULT_BUFFER_SIZE: usize = 5;
 
 pub struct FileList {
     entries: Vec<FileEntry>,
+    filtered_entries: Option<Vec<FilteredEntry>>,
     row_height: f32,
     buffer_size: usize,
     scroll_offset: f32,
     viewport_height: f32,
     highlight_positions: Option<Vec<Vec<usize>>>,
     selected_index: Option<usize>,
+    search_query: String,
+}
+
+/// A filtered entry with its original index and match positions
+#[derive(Debug, Clone)]
+pub struct FilteredEntry {
+    pub original_index: usize,
+    pub entry: FileEntry,
+    pub match_positions: Vec<usize>,
+    pub score: u32,
 }
 
 pub struct FileListView {
@@ -219,28 +230,36 @@ impl Render for FileListView {
                                 cx.processor(move |view, range, _window, _cx| {
                                     let mut items = Vec::new();
                                     for ix in range {
-                                        if let Some(entry) = view.file_list.entries.get(ix) {
-                                            let is_selected = selected_index == Some(ix);
-                                            let is_dir = entry.is_dir;
-                                            let name = entry.name.clone();
-                                            let size = format_size(entry.size, entry.is_dir);
-                                            let date = format_date(entry.modified);
-                                            let file_type = if is_dir {
-                                                "Folder".to_string()
-                                            } else {
-                                                get_file_type(&name)
-                                            };
-                                            let icon_name = get_file_icon(&name, is_dir);
-                                            let icon_color = if is_dir { 
-                                                if is_selected { folder_open_color } else { folder_color }
-                                            } else { 
-                                                get_file_icon_color(&name) 
-                                            };
-                                            let entry_path = entry.path.clone();
-                                            let entity = entity.clone();
-                                            let entity_for_ctx = entity.clone();
+                                        // Get entry from filtered or unfiltered list
+                                        let (entry, match_positions) = if let Some(filtered) = view.file_list.get_filtered_entry(ix) {
+                                            (filtered.entry.clone(), Some(filtered.match_positions.clone()))
+                                        } else if let Some(entry) = view.file_list.entries.get(ix) {
+                                            (entry.clone(), None)
+                                        } else {
+                                            continue;
+                                        };
+                                        
+                                        let is_selected = selected_index == Some(ix);
+                                        let is_dir = entry.is_dir;
+                                        let name = entry.name.clone();
+                                        let size = format_size(entry.size, entry.is_dir);
+                                        let date = format_date(entry.modified);
+                                        let file_type = if is_dir {
+                                            "Folder".to_string()
+                                        } else {
+                                            get_file_type(&name)
+                                        };
+                                        let icon_name = get_file_icon(&name, is_dir);
+                                        let icon_color = if is_dir { 
+                                            if is_selected { folder_open_color } else { folder_color }
+                                        } else { 
+                                            get_file_icon_color(&name) 
+                                        };
+                                        let entry_path = entry.path.clone();
+                                        let entity = entity.clone();
+                                        let entity_for_ctx = entity.clone();
 
-                                            items.push(
+                                        items.push(
                                                 div()
                                                     .id(SharedString::from(format!("file-{}", ix)))
                                                     .h(px(row_height))
@@ -299,11 +318,12 @@ impl Render for FileListView {
                                                                             .flex_shrink_0(),
                                                                     )
                                                                     .child(
-                                                                        div()
-                                                                            .text_color(if is_selected { gpui::rgb(0xffffff) } else { text_light })
-                                                                            .font_weight(if is_selected { gpui::FontWeight::MEDIUM } else { gpui::FontWeight::NORMAL })
-                                                                            .truncate()
-                                                                            .child(name),
+                                                                        render_highlighted_name(
+                                                                            &name,
+                                                                            match_positions.as_ref(),
+                                                                            is_selected,
+                                                                            text_light,
+                                                                        ),
                                                                     ),
                                                             ),
                                                     )
@@ -336,7 +356,6 @@ impl Render for FileListView {
                                                             .child(size),
                                                     ),
                                             );
-                                        }
                                     }
                                     items
                                 }),
@@ -468,6 +487,93 @@ fn render_sort_icon(icon_name: &str, color: gpui::Rgba) -> impl IntoElement {
         .size(px(12.0))
         .text_color(color)
         .opacity(0.5)
+}
+
+fn render_highlighted_name(
+    name: &str,
+    match_positions: Option<&Vec<usize>>,
+    is_selected: bool,
+    text_light: gpui::Rgba,
+) -> impl IntoElement {
+    let highlight_color = gpui::rgb(0xf0c674); // Yellow highlight for matches
+    let text_color = if is_selected { gpui::rgb(0xffffff) } else { text_light };
+    let font_weight = if is_selected { gpui::FontWeight::MEDIUM } else { gpui::FontWeight::NORMAL };
+
+    match match_positions {
+        Some(positions) if !positions.is_empty() => {
+            // Render with highlights
+            let chars: Vec<char> = name.chars().collect();
+            let mut elements: Vec<gpui::AnyElement> = Vec::new();
+            let mut current_segment = String::new();
+            let mut in_highlight = false;
+
+            for (i, ch) in chars.iter().enumerate() {
+                let should_highlight = positions.contains(&i);
+                
+                if should_highlight != in_highlight {
+                    // Flush current segment
+                    if !current_segment.is_empty() {
+                        if in_highlight {
+                            elements.push(
+                                div()
+                                    .text_color(highlight_color)
+                                    .font_weight(gpui::FontWeight::BOLD)
+                                    .child(current_segment.clone())
+                                    .into_any_element()
+                            );
+                        } else {
+                            elements.push(
+                                div()
+                                    .text_color(text_color)
+                                    .font_weight(font_weight)
+                                    .child(current_segment.clone())
+                                    .into_any_element()
+                            );
+                        }
+                        current_segment.clear();
+                    }
+                    in_highlight = should_highlight;
+                }
+                current_segment.push(*ch);
+            }
+
+            // Flush remaining segment
+            if !current_segment.is_empty() {
+                if in_highlight {
+                    elements.push(
+                        div()
+                            .text_color(highlight_color)
+                            .font_weight(gpui::FontWeight::BOLD)
+                            .child(current_segment)
+                            .into_any_element()
+                    );
+                } else {
+                    elements.push(
+                        div()
+                            .text_color(text_color)
+                            .font_weight(font_weight)
+                            .child(current_segment)
+                            .into_any_element()
+                    );
+                }
+            }
+
+            div()
+                .flex()
+                .truncate()
+                .children(elements)
+                .into_any_element()
+        }
+        _ => {
+            // No highlights, render normally
+            div()
+                .text_color(text_color)
+                .font_weight(font_weight)
+                .truncate()
+                .child(name.to_string())
+                .into_any_element()
+        }
+    }
 }
 
 fn render_context_menu_item<F>(
@@ -611,29 +717,45 @@ impl FileList {
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
+            filtered_entries: None,
             row_height: DEFAULT_ROW_HEIGHT,
             buffer_size: DEFAULT_BUFFER_SIZE,
             scroll_offset: 0.0,
             viewport_height: 0.0,
             highlight_positions: None,
             selected_index: None,
+            search_query: String::new(),
         }
     }
 
     pub fn with_config(row_height: f32, buffer_size: usize) -> Self {
         Self {
             entries: Vec::new(),
+            filtered_entries: None,
             row_height: row_height.max(1.0),
             buffer_size,
             scroll_offset: 0.0,
             viewport_height: 0.0,
             highlight_positions: None,
             selected_index: None,
+            search_query: String::new(),
         }
     }
 
     pub fn item_count(&self) -> usize {
-        self.entries.len()
+        if let Some(filtered) = &self.filtered_entries {
+            filtered.len()
+        } else {
+            self.entries.len()
+        }
+    }
+
+    pub fn is_filtered(&self) -> bool {
+        self.filtered_entries.is_some()
+    }
+
+    pub fn search_query(&self) -> &str {
+        &self.search_query
     }
 
     pub fn row_height(&self) -> f32 {
@@ -654,12 +776,78 @@ impl FileList {
 
     pub fn set_entries(&mut self, entries: Vec<FileEntry>) {
         self.entries = entries;
+        self.filtered_entries = None;
         self.highlight_positions = None;
         self.selected_index = None;
+        self.search_query.clear();
     }
 
     pub fn entries(&self) -> &[FileEntry] {
         &self.entries
+    }
+
+    /// Returns the currently visible entries (filtered if search is active)
+    pub fn visible_entries(&self) -> Vec<&FileEntry> {
+        if let Some(filtered) = &self.filtered_entries {
+            filtered.iter().map(|f| &f.entry).collect()
+        } else {
+            self.entries.iter().collect()
+        }
+    }
+
+    /// Get entry at display index (accounts for filtering)
+    pub fn get_display_entry(&self, display_index: usize) -> Option<&FileEntry> {
+        if let Some(filtered) = &self.filtered_entries {
+            filtered.get(display_index).map(|f| &f.entry)
+        } else {
+            self.entries.get(display_index)
+        }
+    }
+
+    /// Get filtered entry with match positions at display index
+    pub fn get_filtered_entry(&self, display_index: usize) -> Option<&FilteredEntry> {
+        self.filtered_entries.as_ref()?.get(display_index)
+    }
+
+    /// Apply search filter using nucleo fuzzy matching results
+    pub fn apply_search_filter(&mut self, query: &str, matches: Vec<(usize, Vec<usize>, u32)>) {
+        self.search_query = query.to_string();
+        
+        if query.is_empty() {
+            self.clear_search_filter();
+            return;
+        }
+
+        let filtered: Vec<FilteredEntry> = matches
+            .into_iter()
+            .filter_map(|(original_index, positions, score)| {
+                self.entries.get(original_index).map(|entry| FilteredEntry {
+                    original_index,
+                    entry: entry.clone(),
+                    match_positions: positions,
+                    score,
+                })
+            })
+            .collect();
+
+        self.filtered_entries = Some(filtered);
+        self.selected_index = None;
+        self.scroll_offset = 0.0;
+    }
+
+    /// Clear search filter and show all entries
+    pub fn clear_search_filter(&mut self) {
+        self.filtered_entries = None;
+        self.search_query.clear();
+        self.selected_index = None;
+    }
+
+    /// Get match positions for a display index (for highlighting)
+    pub fn get_match_positions(&self, display_index: usize) -> Option<&[usize]> {
+        self.filtered_entries
+            .as_ref()?
+            .get(display_index)
+            .map(|f| f.match_positions.as_slice())
     }
 
     pub fn set_scroll_offset(&mut self, offset: f32) {

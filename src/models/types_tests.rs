@@ -1,7 +1,7 @@
 /// Property-based tests for core types
 /// **Feature: file-explorer-core**
 
-use super::{FileEntry, FileType, IconKey};
+use super::{FileEntry, FileType, IconKey, SortColumn, SortDirection, SortState};
 use proptest::prelude::*;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -100,6 +100,119 @@ proptest! {
             Err(_) => {
                 // Expected behavior: corrupted data should be rejected
             }
+        }
+    }
+
+    /// **Feature: ui-enhancements, Property 7: Sort by Name Ordering**
+    /// **Validates: Requirements 3.1**
+    ///
+    /// *For any* list of file entries sorted by name in ascending order,
+    /// each entry's name (case-insensitive) SHALL be <= the next entry's name.
+    #[test]
+    fn prop_sort_by_name_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
+        let mut entries = entries;
+        let mut sort_state = SortState::new();
+        sort_state.column = SortColumn::Name;
+        sort_state.direction = SortDirection::Ascending;
+        sort_state.directories_first = false; // Test pure name sorting
+        
+        sort_state.sort_entries(&mut entries);
+        
+        for window in entries.windows(2) {
+            let a = &window[0];
+            let b = &window[1];
+            prop_assert!(
+                a.name.to_lowercase() <= b.name.to_lowercase(),
+                "Name sort failed: '{}' should come before '{}'",
+                a.name, b.name
+            );
+        }
+    }
+
+    /// **Feature: ui-enhancements, Property 8: Sort by Date Ordering**
+    /// **Validates: Requirements 3.2**
+    ///
+    /// *For any* list of file entries sorted by date in descending order (newest first),
+    /// each entry's modified time SHALL be >= the next entry's modified time.
+    #[test]
+    fn prop_sort_by_date_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
+        let mut entries = entries;
+        let mut sort_state = SortState::new();
+        sort_state.column = SortColumn::Date;
+        sort_state.direction = SortDirection::Descending;
+        sort_state.directories_first = false;
+        
+        sort_state.sort_entries(&mut entries);
+        
+        for window in entries.windows(2) {
+            let a = &window[0];
+            let b = &window[1];
+            prop_assert!(
+                a.modified >= b.modified,
+                "Date sort failed: {:?} should come before {:?}",
+                a.modified, b.modified
+            );
+        }
+    }
+
+    /// **Feature: ui-enhancements, Property 9: Sort by Type Ordering**
+    /// **Validates: Requirements 3.3**
+    ///
+    /// *For any* list of file entries sorted by type (extension) in ascending order,
+    /// each entry's extension (case-insensitive) SHALL be <= the next entry's extension.
+    #[test]
+    fn prop_sort_by_type_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
+        let mut entries = entries;
+        let mut sort_state = SortState::new();
+        sort_state.column = SortColumn::Type;
+        sort_state.direction = SortDirection::Ascending;
+        sort_state.directories_first = false;
+        
+        sort_state.sort_entries(&mut entries);
+        
+        fn get_ext(name: &str) -> String {
+            name.rsplit('.').next()
+                .filter(|ext| *ext != name)
+                .unwrap_or("")
+                .to_lowercase()
+        }
+        
+        for window in entries.windows(2) {
+            let a = &window[0];
+            let b = &window[1];
+            let ext_a = get_ext(&a.name);
+            let ext_b = get_ext(&b.name);
+            prop_assert!(
+                ext_a <= ext_b,
+                "Type sort failed: extension '{}' should come before '{}'",
+                ext_a, ext_b
+            );
+        }
+    }
+
+    /// **Feature: ui-enhancements, Property 10: Sort by Size Ordering**
+    /// **Validates: Requirements 3.4**
+    ///
+    /// *For any* list of file entries sorted by size in descending order (largest first),
+    /// each entry's size SHALL be >= the next entry's size.
+    #[test]
+    fn prop_sort_by_size_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
+        let mut entries = entries;
+        let mut sort_state = SortState::new();
+        sort_state.column = SortColumn::Size;
+        sort_state.direction = SortDirection::Descending;
+        sort_state.directories_first = false;
+        
+        sort_state.sort_entries(&mut entries);
+        
+        for window in entries.windows(2) {
+            let a = &window[0];
+            let b = &window[1];
+            prop_assert!(
+                a.size >= b.size,
+                "Size sort failed: {} should come before {}",
+                a.size, b.size
+            );
         }
     }
 }
