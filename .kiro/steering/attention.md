@@ -16,3 +16,5 @@ Make sure you pay attention to the code very well. after each change, reevaluate
 
 
 # Always read the components from the gpui folder and adbaraka folder if unsure about the implementation or want to extend capabilities, it has all you need to build custom beautiful components in case they don't exist already in the components.
+
+#We are building the app to look like the design in mockapp.tsx in the nexus file explorer folder
