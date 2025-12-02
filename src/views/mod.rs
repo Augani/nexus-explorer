@@ -7,5 +7,5 @@ pub use file_list::{
     format_date, format_size,
     DEFAULT_BUFFER_SIZE, DEFAULT_ROW_HEIGHT,
 };
-pub use preview::*;
-pub use sidebar::*;
+pub use preview::{Preview, PreviewView};
+pub use sidebar::{Sidebar, SidebarView, SidebarItem};

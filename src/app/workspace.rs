@@ -2,20 +2,14 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use gpui::{
-    div, prelude::*, px, App, AppContext, Context, Entity, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, SharedString, Styled, Window,
+    div, prelude::*, px, svg, App, Context, Entity, FocusHandle, Focusable, InteractiveElement,
+    IntoElement, MouseButton, ParentElement, Render, SharedString, Styled, Window,
 };
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{FileSystem, IconCache, SearchEngine};
 use crate::views::{FileList, FileListView, Preview, PreviewView, Sidebar, SidebarView};
 
-/// Root View managing layout panes for the file explorer.
-/// 
-/// The Workspace is the top-level container that:
-/// - Holds Entity handles for FileSystem, IconCache, and SearchEngine
-/// - Manages layout panes (Sidebar, FileList, Preview)
-/// - Coordinates between views and models
 pub struct Workspace {
     file_system: Entity<FileSystem>,
     icon_cache: Entity<IconCache>,
@@ -24,46 +18,55 @@ pub struct Workspace {
     sidebar: Entity<SidebarView>,
     preview: Option<Entity<PreviewView>>,
     focus_handle: FocusHandle,
+    current_path: PathBuf,
+    path_history: Vec<PathBuf>,
+    is_terminal_open: bool,
 }
 
-
-
 impl Workspace {
-    /// Creates a new Workspace with the given initial path.
     pub fn build(initial_path: PathBuf, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| {
             let mut file_system = FileSystem::new(initial_path.clone());
-            
-            // Load the initial directory synchronously for now
+
             let start = Instant::now();
             let op = file_system.load_path(
-                initial_path,
+                initial_path.clone(),
                 SortKey::Name,
                 SortOrder::Ascending,
                 false,
             );
             let request_id = op.request_id;
-            
-            // Process all batches
+
             while let Ok(batch) = op.batch_receiver.recv() {
                 file_system.process_batch(request_id, batch);
             }
-            
-            // Wait for traversal and finalize
+
             let _ = op.traversal_handle.join();
             file_system.finalize_load(request_id, start.elapsed());
-            
-            // Create FileList with entries from FileSystem
+
             let mut file_list_inner = FileList::new();
             file_list_inner.set_entries(file_system.entries().to_vec());
-            file_list_inner.set_viewport_height(800.0); // Default viewport
-            
+            file_list_inner.set_viewport_height(600.0);
+
             let file_system = cx.new(|_| file_system);
             let icon_cache = cx.new(|_| IconCache::new());
             let search_engine = cx.new(|_| SearchEngine::new());
 
             let file_list = cx.new(|cx| FileListView::with_file_list(file_list_inner, cx));
-            let sidebar = cx.new(|cx| SidebarView::new(cx));
+            let sidebar = cx.new(|cx| {
+                let mut sidebar_view = SidebarView::new(cx);
+                sidebar_view.set_workspace_root(initial_path.clone());
+                sidebar_view
+            });
+
+            // Observe file list for navigation requests
+            cx.observe(&file_list, |workspace: &mut Workspace, file_list, cx| {
+                let nav_path = file_list.update(cx, |view, _| view.take_pending_navigation());
+                if let Some(path) = nav_path {
+                    workspace.navigate_to(path, cx);
+                }
+            })
+            .detach();
 
             Self {
                 file_system,
@@ -73,77 +76,125 @@ impl Workspace {
                 sidebar,
                 preview: None,
                 focus_handle: cx.focus_handle(),
+                current_path: initial_path.clone(),
+                path_history: vec![initial_path],
+                is_terminal_open: true,
             }
         })
     }
 
-    /// Returns a reference to the FileSystem entity.
-    pub fn file_system(&self) -> &Entity<FileSystem> {
-        &self.file_system
+    pub fn navigate_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let start = Instant::now();
+
+        self.file_system.update(cx, |fs, _| {
+            let op = fs.load_path(path.clone(), SortKey::Name, SortOrder::Ascending, false);
+            let request_id = op.request_id;
+
+            while let Ok(batch) = op.batch_receiver.recv() {
+                fs.process_batch(request_id, batch);
+            }
+
+            let _ = op.traversal_handle.join();
+            fs.finalize_load(request_id, start.elapsed());
+        });
+
+        let entries = self.file_system.read(cx).entries().to_vec();
+        self.file_list.update(cx, |view, _| {
+            view.inner_mut().set_entries(entries);
+        });
+
+        self.path_history.push(path.clone());
+        self.current_path = path;
+        cx.notify();
     }
 
-    /// Returns a reference to the IconCache entity.
-    pub fn icon_cache(&self) -> &Entity<IconCache> {
-        &self.icon_cache
-    }
+    pub fn navigate_back(&mut self, cx: &mut Context<Self>) {
+        if self.path_history.len() > 1 {
+            self.path_history.pop();
+            if let Some(prev_path) = self.path_history.last().cloned() {
+                let start = Instant::now();
 
-    /// Returns a reference to the SearchEngine entity.
-    pub fn search_engine(&self) -> &Entity<SearchEngine> {
-        &self.search_engine
-    }
+                self.file_system.update(cx, |fs, _| {
+                    let op =
+                        fs.load_path(prev_path.clone(), SortKey::Name, SortOrder::Ascending, false);
+                    let request_id = op.request_id;
 
-    /// Returns a reference to the FileList view entity.
-    pub fn file_list(&self) -> &Entity<FileListView> {
-        &self.file_list
-    }
+                    while let Ok(batch) = op.batch_receiver.recv() {
+                        fs.process_batch(request_id, batch);
+                    }
 
-    /// Returns a reference to the Sidebar view entity.
-    pub fn sidebar(&self) -> &Entity<SidebarView> {
-        &self.sidebar
-    }
+                    let _ = op.traversal_handle.join();
+                    fs.finalize_load(request_id, start.elapsed());
+                });
 
-    /// Returns a reference to the Preview view entity if it exists.
-    pub fn preview(&self) -> Option<&Entity<PreviewView>> {
-        self.preview.as_ref()
-    }
+                let entries = self.file_system.read(cx).entries().to_vec();
+                self.file_list.update(cx, |view, _| {
+                    view.inner_mut().set_entries(entries);
+                });
 
-    /// Shows the preview pane.
-    pub fn show_preview(&mut self, cx: &mut Context<Self>) {
-        if self.preview.is_none() {
-            self.preview = Some(cx.new(|cx| PreviewView::new(cx)));
+                self.current_path = prev_path;
+                cx.notify();
+            }
         }
     }
 
-    /// Hides the preview pane.
-    pub fn hide_preview(&mut self) {
-        self.preview = None;
-    }
-
-    /// Toggles the preview pane visibility.
-    pub fn toggle_preview(&mut self, cx: &mut Context<Self>) {
-        if self.preview.is_some() {
-            self.hide_preview();
-        } else {
-            self.show_preview(cx);
+    pub fn navigate_up(&mut self, cx: &mut Context<Self>) {
+        if let Some(parent) = self.current_path.parent() {
+            self.navigate_to(parent.to_path_buf(), cx);
         }
     }
 
-    /// Returns the current view mode (Grid or List).
-    pub fn view_mode(&self) -> ViewMode {
-        // TODO: Store this in a proper state
-        ViewMode::List
+    pub fn toggle_terminal(&mut self, cx: &mut Context<Self>) {
+        self.is_terminal_open = !self.is_terminal_open;
+        cx.notify();
     }
 
-    /// Toggles the terminal visibility.
-    pub fn toggle_terminal(&mut self, _cx: &mut Context<Self>) {
-        // TODO: Implement terminal toggle
-    }
-}
+    fn render_breadcrumbs(&self) -> impl IntoElement {
+        let text_gray = gpui::rgb(0x8b949e);
+        let text_light = gpui::rgb(0xc9d1d9);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ViewMode {
-    Grid,
-    List,
+        let mut parts: Vec<String> = Vec::new();
+        let mut current = Some(self.current_path.as_path());
+
+        while let Some(path) = current {
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                parts.push(name.to_string());
+            }
+            current = path.parent();
+            if parts.len() >= 4 {
+                break;
+            }
+        }
+
+        parts.reverse();
+
+        div()
+            .flex()
+            .items_center()
+            .text_sm()
+            .font_weight(gpui::FontWeight::MEDIUM)
+            .children(parts.into_iter().enumerate().map(|(i, part)| {
+                div()
+                    .flex()
+                    .items_center()
+                    .when(i > 0, |s| {
+                        s.child(
+                            svg()
+                                .path("assets/icons/chevron-right.svg")
+                                .size(px(14.0))
+                                .text_color(text_gray)
+                                .mx_1(),
+                        )
+                    })
+                    .child(
+                        div()
+                            .text_color(text_light)
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(gpui::rgb(0x58a6ff)))
+                            .child(part)
+                    )
+            }))
+    }
 }
 
 impl Focusable for Workspace {
@@ -153,11 +204,16 @@ impl Focusable for Workspace {
 }
 
 impl Render for Workspace {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        // Colors from MockApp.tsx
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let bg_dark = gpui::rgb(0x0d1117);
         let bg_darker = gpui::rgb(0x010409);
-        let border_color = gpui::rgb(0x30363d); // gray-800 approx
+        let border_color = gpui::rgb(0x30363d);
+        let text_gray = gpui::rgb(0x8b949e);
+        let hover_bg = gpui::rgb(0x21262d);
+        let blue_active = gpui::rgb(0x1f6feb);
+
+        let is_terminal_open = self.is_terminal_open;
+        let can_go_back = self.path_history.len() > 1;
 
         div()
             .id("workspace")
@@ -165,12 +221,11 @@ impl Render for Workspace {
             .flex()
             .flex_col()
             .bg(bg_dark)
-            .text_color(gpui::rgb(0xc9d1d9)) // text-gray-300 approx
-            .font_family("Inter")
-            // Title Bar
+            .text_color(gpui::rgb(0xc9d1d9))
+            .font_family(".SystemUIFont")
             .child(
                 div()
-                    .h(px(40.0)) // h-10
+                    .h(px(40.0))
                     .bg(bg_darker)
                     .flex()
                     .items_center()
@@ -179,58 +234,120 @@ impl Render for Workspace {
                     .border_b_1()
                     .border_color(border_color)
                     .child(
-                        div().flex().items_center().gap_3().child(
-                            // Traffic Lights
-                            div().flex().gap_1p5().mr_4().children(vec![
-                                div().w(px(12.0)).h(px(12.0)).rounded_full().bg(gpui::rgb(0xff5f56)).border_1().border_color(gpui::rgb(0xe0443e)),
-                                div().w(px(12.0)).h(px(12.0)).rounded_full().bg(gpui::rgb(0xffbd2e)).border_1().border_color(gpui::rgb(0xdea123)),
-                                div().w(px(12.0)).h(px(12.0)).rounded_full().bg(gpui::rgb(0x27c93f)).border_1().border_color(gpui::rgb(0x1aab29)),
-                            ])
-                        ).child(
-                            // App Title
-                            div().text_xs().font_weight(gpui::FontWeight::MEDIUM).text_color(gpui::rgb(0x8b949e)).flex().items_center().child("Nexus Explorer")
-                        )
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_3()
+                            .child(
+                                div().flex().gap_1p5().mr_4().children(vec![
+                                    div()
+                                        .w(px(12.0))
+                                        .h(px(12.0))
+                                        .rounded_full()
+                                        .bg(gpui::rgb(0xff5f56))
+                                        .border_1()
+                                        .border_color(gpui::rgb(0xe0443e)),
+                                    div()
+                                        .w(px(12.0))
+                                        .h(px(12.0))
+                                        .rounded_full()
+                                        .bg(gpui::rgb(0xffbd2e))
+                                        .border_1()
+                                        .border_color(gpui::rgb(0xdea123)),
+                                    div()
+                                        .w(px(12.0))
+                                        .h(px(12.0))
+                                        .rounded_full()
+                                        .bg(gpui::rgb(0x27c93f))
+                                        .border_1()
+                                        .border_color(gpui::rgb(0x1aab29)),
+                                ]),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(text_gray)
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        svg()
+                                            .path("assets/icons/hard-drive.svg")
+                                            .size(px(12.0))
+                                            .text_color(text_gray),
+                                    )
+                                    .child("Nexus Explorer"),
+                            ),
                     )
-                    // Universal Search
                     .child(
-                        div().relative().w_1_3().max_w(px(450.0)).child(
-                            div()
-                                .w_full()
-                                .bg(gpui::rgb(0x161b22))
-                                .text_xs()
-                                .rounded_md()
-                                .border_1()
-                                .border_color(gpui::rgb(0x30363d))
-                                .py_1p5()
-                                .pl_9()
-                                .pr_3()
-                                .text_color(gpui::rgb(0x8b949e))
-                                .child("Search files, commands, and more...")
-                        )
+                        div()
+                            .relative()
+                            .w_1_3()
+                            .max_w(px(450.0))
+                            .child(
+                                div()
+                                    .w_full()
+                                    .bg(gpui::rgb(0x161b22))
+                                    .text_xs()
+                                    .rounded_md()
+                                    .border_1()
+                                    .border_color(border_color)
+                                    .py_1p5()
+                                    .pl(px(32.0))
+                                    .pr_3()
+                                    .text_color(text_gray)
+                                    .flex()
+                                    .items_center()
+                                    .relative()
+                                    .child(
+                                        svg()
+                                            .path("assets/icons/search.svg")
+                                            .size(px(13.0))
+                                            .text_color(gpui::rgb(0x6e7681))
+                                            .absolute()
+                                            .left(px(10.0))
+                                            .top(px(6.0)),
+                                    )
+                                    .child("Search files, commands..."),
+                            ),
                     )
-                    // Right Icons
                     .child(
-                        div().flex().items_center().gap_3().text_color(gpui::rgb(0x8b949e)).child("Icons") // Placeholders
-                    )
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_3()
+                            .child(
+                                svg()
+                                    .path("assets/icons/sparkles.svg")
+                                    .size(px(14.0))
+                                    .text_color(text_gray)
+                                    .cursor_pointer(),
+                            )
+                            .child(
+                                svg()
+                                    .path("assets/icons/monitor.svg")
+                                    .size(px(14.0))
+                                    .text_color(text_gray)
+                                    .cursor_pointer(),
+                            ),
+                    ),
             )
-            // Main Content Area
             .child(
                 div()
                     .flex()
                     .flex_1()
                     .overflow_hidden()
-                    // COLUMN 1: SIDEBAR
                     .child(
                         div()
-                            .w(px(256.0)) // w-64
+                            .w(px(256.0))
                             .bg(bg_dark)
                             .border_r_1()
                             .border_color(border_color)
                             .flex()
                             .flex_col()
-                            .child(self.sidebar.clone())
+                            .child(self.sidebar.clone()),
                     )
-                    // COLUMN 2: BROWSER (Main Content)
                     .child(
                         div()
                             .flex_1()
@@ -238,10 +355,9 @@ impl Render for Workspace {
                             .flex_col()
                             .bg(bg_darker)
                             .min_w_0()
-                            // Toolbar
                             .child(
                                 div()
-                                    .h(px(48.0)) // h-12
+                                    .h(px(48.0))
                                     .bg(bg_dark)
                                     .border_b_1()
                                     .border_color(border_color)
@@ -250,43 +366,261 @@ impl Render for Workspace {
                                     .justify_between()
                                     .px_4()
                                     .child(
-                                        div().flex().items_center().gap_2().child("Breadcrumbs")
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap_2()
+                                            .child(
+                                                div()
+                                                    .id("back-btn")
+                                                    .p_1p5()
+                                                    .rounded_md()
+                                                    .cursor_pointer()
+                                                    .when(can_go_back, |s| {
+                                                        s.hover(|h| h.bg(hover_bg))
+                                                    })
+                                                    .when(!can_go_back, |s| s.opacity(0.3))
+                                                    .on_mouse_down(
+                                                        MouseButton::Left,
+                                                        cx.listener(|view, _event, _window, cx| {
+                                                            view.navigate_back(cx);
+                                                        }),
+                                                    )
+                                                    .child(
+                                                        svg()
+                                                            .path("assets/icons/arrow-left.svg")
+                                                            .size(px(16.0))
+                                                            .text_color(text_gray),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(16.0))
+                                                    .w(px(1.0))
+                                                    .bg(gpui::rgb(0x30363d))
+                                                    .mx_1(),
+                                            )
+                                            .child(self.render_breadcrumbs()),
                                     )
                                     .child(
-                                        div().flex().items_center().gap_1().child("Actions")
-                                    )
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap_1()
+                                            .child(
+                                                div()
+                                                    .id("terminal-btn")
+                                                    .p_1p5()
+                                                    .rounded_md()
+                                                    .cursor_pointer()
+                                                    .when(is_terminal_open, |s| {
+                                                        s.bg(gpui::rgb(0x1f3a5f))
+                                                    })
+                                                    .when(!is_terminal_open, |s| {
+                                                        s.hover(|h| h.bg(hover_bg))
+                                                    })
+                                                    .on_mouse_down(
+                                                        MouseButton::Left,
+                                                        cx.listener(|view, _event, _window, cx| {
+                                                            view.toggle_terminal(cx);
+                                                        }),
+                                                    )
+                                                    .child(
+                                                        svg()
+                                                            .path("assets/icons/terminal.svg")
+                                                            .size(px(16.0))
+                                                            .text_color(if is_terminal_open { gpui::rgb(0x54aeff) } else { text_gray }),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(16.0))
+                                                    .w(px(1.0))
+                                                    .bg(gpui::rgb(0x30363d))
+                                                    .mx_2(),
+                                            )
+                                            .child(
+                                                div()
+                                                    .id("copy-btn")
+                                                    .p_1p5()
+                                                    .rounded_md()
+                                                    .cursor_pointer()
+                                                    .hover(|h| h.bg(hover_bg))
+                                                    .child(
+                                                        svg()
+                                                            .path("assets/icons/copy.svg")
+                                                            .size(px(16.0))
+                                                            .text_color(text_gray),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .id("trash-btn")
+                                                    .p_1p5()
+                                                    .rounded_md()
+                                                    .cursor_pointer()
+                                                    .hover(|h| h.bg(hover_bg))
+                                                    .child(
+                                                        svg()
+                                                            .path("assets/icons/trash-2.svg")
+                                                            .size(px(16.0))
+                                                            .text_color(text_gray),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(16.0))
+                                                    .w(px(1.0))
+                                                    .bg(gpui::rgb(0x30363d))
+                                                    .mx_2(),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .bg(gpui::rgb(0x21262d))
+                                                    .rounded_lg()
+                                                    .p_0p5()
+                                                    .child(
+                                                        div()
+                                                            .p_1()
+                                                            .rounded_md()
+                                                            .cursor_pointer()
+                                                            .child(
+                                                                svg()
+                                                                    .path("assets/icons/grid-2x2.svg")
+                                                                    .size(px(14.0))
+                                                                    .text_color(text_gray),
+                                                            ),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .p_1()
+                                                            .rounded_md()
+                                                            .bg(gpui::rgb(0x30363d))
+                                                            .cursor_pointer()
+                                                            .child(
+                                                                svg()
+                                                                    .path("assets/icons/list.svg")
+                                                                    .size(px(14.0))
+                                                                    .text_color(gpui::white()),
+                                                            ),
+                                                    ),
+                                            ),
+                                    ),
                             )
-                            // File Grid/List View
                             .child(
                                 div()
                                     .flex_1()
-                                    // .overflow_y_scroll()
                                     .bg(bg_darker)
-                                    .child(self.file_list.clone())
+                                    .overflow_hidden()
+                                    .child(self.file_list.clone()),
                             )
-                            // Collapsible Terminal Panel (Placeholder)
-                            .child(
-                                div()
-                                    .h(px(192.0)) // h-48
-                                    .bg(bg_dark)
-                                    .border_t_1()
-                                    .border_color(border_color)
-                                    .child("Terminal")
-                            )
+                            .when(is_terminal_open, |this| {
+                                this.child(
+                                    div()
+                                        .h(px(192.0))
+                                        .bg(bg_dark)
+                                        .border_t_1()
+                                        .border_color(border_color)
+                                        .flex()
+                                        .flex_col()
+                                        .child(
+                                            div()
+                                                .h(px(32.0))
+                                                .flex()
+                                                .items_center()
+                                                .px_4()
+                                                .border_b_1()
+                                                .border_color(border_color)
+                                                .justify_between()
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_4()
+                                                        .text_xs()
+                                                        .font_family("Mono")
+                                                        .child(
+                                                            div()
+                                                                .text_color(blue_active)
+                                                                .border_b_2()
+                                                                .border_color(blue_active)
+                                                                .py_2()
+                                                                .cursor_pointer()
+                                                                .child("Terminal"),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .text_color(text_gray)
+                                                                .py_2()
+                                                                .cursor_pointer()
+                                                                .hover(|s| s.text_color(gpui::rgb(0xc9d1d9)))
+                                                                .child("Output"),
+                                                        ),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .id("close-terminal")
+                                                        .text_color(text_gray)
+                                                        .cursor_pointer()
+                                                        .hover(|s| s.text_color(gpui::white()))
+                                                        .on_mouse_down(
+                                                            MouseButton::Left,
+                                                            cx.listener(|view, _event, _window, cx| {
+                                                                view.toggle_terminal(cx);
+                                                            }),
+                                                        )
+                                                        .child("▼"),
+                                                ),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex_1()
+                                                .p_3()
+                                                .font_family("Mono")
+                                                .text_xs()
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .child(
+                                                            div()
+                                                                .text_color(gpui::rgb(0x3fb950))
+                                                                .mr_2()
+                                                                .child("➜"),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .text_color(blue_active)
+                                                                .mr_2()
+                                                                .child("~"),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .w(px(8.0))
+                                                                .h(px(16.0))
+                                                                .bg(text_gray),
+                                                        ),
+                                                ),
+                                        ),
+                                )
+                            }),
                     )
-                    // COLUMN 3: INSPECTOR (Preview Pane)
                     .children(self.preview.clone().map(|preview| {
                         div()
-                            .w(px(320.0)) // w-80
+                            .w(px(320.0))
                             .bg(bg_dark)
                             .border_l_1()
                             .border_color(border_color)
                             .flex()
                             .flex_col()
                             .child(preview)
-                    }))
+                    })),
             )
     }
 }
 
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewMode {
+    Grid,
+    List,
+}

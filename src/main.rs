@@ -7,16 +7,50 @@ mod views;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use gpui::{px, size, Application, Bounds, WindowBounds, WindowOptions};
+use gpui::{px, size, Application, AssetSource, Bounds, Result, SharedString, WindowBounds, WindowOptions};
 use tokio::runtime::Runtime;
 
 use app::Workspace;
 use models::{GlobalSettings, IconCache, IconKey};
 
+struct Assets {
+    base: PathBuf,
+}
+
+impl AssetSource for Assets {
+    fn load(&self, path: &str) -> Result<Option<std::borrow::Cow<'static, [u8]>>> {
+        std::fs::read(self.base.join(path))
+            .map(|data| Some(std::borrow::Cow::Owned(data)))
+            .map_err(|err| err.into())
+    }
+
+    fn list(&self, path: &str) -> Result<Vec<SharedString>> {
+        std::fs::read_dir(self.base.join(path))
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        entry
+                            .ok()
+                            .and_then(|entry| entry.file_name().into_string().ok())
+                            .map(SharedString::from)
+                    })
+                    .collect()
+            })
+            .map_err(|err| err.into())
+    }
+}
+
 fn main() {
-    let app = Application::new();
+    let app = Application::new()
+        .with_assets(Assets {
+            base: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+        });
     
     app.run(|cx| {
+        // Initialize adabraka-ui components and set icon path
+        adabraka_ui::init(cx);
+        adabraka_ui::set_icon_base_path("assets/icons");
+        
         // Register GlobalSettings as GPUI global state
         cx.set_global(GlobalSettings::default());
         
