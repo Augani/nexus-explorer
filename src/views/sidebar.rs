@@ -6,7 +6,11 @@ use gpui::{
     Styled, Window,
 };
 
-use crate::models::{Bookmark, BookmarkId, BookmarkManager, Favorite, Favorites, SmartFolder, SmartFolderId, SmartFolderManager, theme_colors, sidebar as sidebar_spacing};
+use crate::models::{
+    Bookmark, BookmarkId, BookmarkManager, CloudStorageManager, Device, DeviceMonitor,
+    DeviceType, Favorite, Favorites, NetworkLocationId, NetworkSidebarState, NetworkStorageManager,
+    WslDistribution, theme_colors, sidebar as sidebar_spacing,
+};
 
 #[derive(Clone)]
 pub struct SidebarItem {
@@ -79,8 +83,13 @@ pub struct Sidebar {
     is_drop_target: bool,
     is_tools_expanded: bool,
     is_bookmarks_expanded: bool,
+    is_network_expanded: bool,
+    is_devices_expanded: bool,
     show_hidden_files: bool,
     current_directory: Option<PathBuf>,
+    network_manager: NetworkStorageManager,
+    cloud_manager: CloudStorageManager,
+    device_monitor: DeviceMonitor,
 }
 
 impl Sidebar {
@@ -100,6 +109,17 @@ impl Sidebar {
         // Try to load bookmarks from disk
         let bookmarks = BookmarkManager::load().unwrap_or_else(|_| BookmarkManager::new());
 
+        // Load network locations
+        let network_manager = NetworkStorageManager::load();
+
+        // Detect cloud storage providers
+        let mut cloud_manager = CloudStorageManager::new();
+        cloud_manager.detect_all_providers();
+
+        // Initialize device monitor and enumerate devices
+        let mut device_monitor = DeviceMonitor::new();
+        device_monitor.start_monitoring();
+
         Self {
             favorites,
             bookmarks,
@@ -108,8 +128,13 @@ impl Sidebar {
             is_drop_target: false,
             is_tools_expanded: true,
             is_bookmarks_expanded: true,
+            is_network_expanded: true,
+            is_devices_expanded: true,
             show_hidden_files: false,
             current_directory: None,
+            network_manager,
+            cloud_manager,
+            device_monitor,
         }
     }
 
@@ -229,6 +254,67 @@ impl Sidebar {
     pub fn set_drop_target(&mut self, is_target: bool) {
         self.is_drop_target = is_target;
     }
+
+    pub fn is_network_expanded(&self) -> bool {
+        self.is_network_expanded
+    }
+
+    pub fn toggle_network_expanded(&mut self) {
+        self.is_network_expanded = !self.is_network_expanded;
+    }
+
+    pub fn network_manager(&self) -> &NetworkStorageManager {
+        &self.network_manager
+    }
+
+    pub fn network_manager_mut(&mut self) -> &mut NetworkStorageManager {
+        &mut self.network_manager
+    }
+
+    pub fn cloud_manager(&self) -> &CloudStorageManager {
+        &self.cloud_manager
+    }
+
+    pub fn cloud_manager_mut(&mut self) -> &mut CloudStorageManager {
+        &mut self.cloud_manager
+    }
+
+    pub fn refresh_cloud_providers(&mut self) {
+        self.cloud_manager.detect_all_providers();
+    }
+
+    pub fn get_network_sidebar_state(&self) -> NetworkSidebarState {
+        NetworkSidebarState::from_managers(&self.network_manager, &self.cloud_manager)
+    }
+
+    pub fn is_devices_expanded(&self) -> bool {
+        self.is_devices_expanded
+    }
+
+    pub fn toggle_devices_expanded(&mut self) {
+        self.is_devices_expanded = !self.is_devices_expanded;
+    }
+
+    pub fn device_monitor(&self) -> &DeviceMonitor {
+        &self.device_monitor
+    }
+
+    pub fn device_monitor_mut(&mut self) -> &mut DeviceMonitor {
+        &mut self.device_monitor
+    }
+
+    pub fn refresh_devices(&mut self) {
+        self.device_monitor.enumerate_devices();
+        self.device_monitor.refresh_space_info();
+    }
+
+    pub fn devices(&self) -> &[Device] {
+        self.device_monitor.devices()
+    }
+
+    pub fn wsl_distributions(&self) -> &[WslDistribution] {
+        self.device_monitor.wsl_distributions()
+    }
 }
 
 pub struct SidebarView {
@@ -240,6 +326,7 @@ pub struct SidebarView {
     pending_action: Option<ToolAction>,
     selected_file_count: usize,
     context_menu_bookmark_id: Option<BookmarkId>,
+    show_network_dialog: bool,
 }
 
 impl SidebarView {
@@ -253,6 +340,7 @@ impl SidebarView {
             pending_action: None,
             selected_file_count: 0,
             context_menu_bookmark_id: None,
+            show_network_dialog: false,
         }
     }
 
@@ -313,6 +401,93 @@ impl SidebarView {
         self.sidebar.toggle_hidden_files();
         self.pending_action = Some(ToolAction::ToggleHiddenFiles);
         cx.notify();
+    }
+
+    /// Toggle network section
+    fn toggle_network_section(&mut self, cx: &mut Context<Self>) {
+        self.sidebar.toggle_network_expanded();
+        cx.notify();
+    }
+
+    /// Handle cloud location click for navigation
+    fn handle_cloud_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
+        self.sidebar.selected_path = Some(path.clone());
+        self.pending_navigation = Some(path);
+        cx.notify();
+    }
+
+    /// Handle network location click
+    fn handle_network_click(&mut self, id: NetworkLocationId, _window: &mut Window, cx: &mut Context<Self>) {
+        // Connect to the network location if not connected
+        let _ = self.sidebar.network_manager_mut().connect(id);
+        
+        // If connected and has mount point, navigate to it
+        let mount_point = self.sidebar.network_manager()
+            .get_location(id)
+            .and_then(|loc| loc.mount_point.clone());
+        
+        if let Some(path) = mount_point {
+            self.sidebar.selected_path = Some(path.clone());
+            self.pending_navigation = Some(path);
+        }
+        cx.notify();
+    }
+
+    /// Show the network connection dialog
+    pub fn show_network_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_network_dialog = true;
+        cx.notify();
+    }
+
+    /// Hide the network connection dialog
+    pub fn hide_network_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_network_dialog = false;
+        cx.notify();
+    }
+
+    /// Check if network dialog is visible
+    pub fn is_network_dialog_visible(&self) -> bool {
+        self.show_network_dialog
+    }
+
+    /// Refresh cloud storage providers
+    pub fn refresh_cloud_providers(&mut self, cx: &mut Context<Self>) {
+        self.sidebar.refresh_cloud_providers();
+        cx.notify();
+    }
+
+    /// Get network sidebar state for display
+    pub fn network_state(&self) -> NetworkSidebarState {
+        self.sidebar.get_network_sidebar_state()
+    }
+
+    /// Toggle devices section
+    fn toggle_devices_section(&mut self, cx: &mut Context<Self>) {
+        self.sidebar.toggle_devices_expanded();
+        cx.notify();
+    }
+
+    /// Handle device click for navigation
+    fn handle_device_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
+        self.sidebar.selected_path = Some(path.clone());
+        self.pending_navigation = Some(path);
+        cx.notify();
+    }
+
+    /// Refresh devices list
+    pub fn refresh_devices(&mut self, cx: &mut Context<Self>) {
+        self.sidebar.refresh_devices();
+        cx.notify();
+    }
+
+    /// Get all devices
+    pub fn devices(&self) -> &[Device] {
+        self.sidebar.devices()
+    }
+
+    /// Get WSL distributions
+    pub fn wsl_distributions(&self) -> &[WslDistribution] {
+        self.sidebar.wsl_distributions()
     }
 
     fn handle_tool_action(&mut self, action: ToolAction, _window: &mut Window, cx: &mut Context<Self>) {
@@ -666,6 +841,27 @@ impl Render for SidebarView {
                                 )
                             })
                     )
+                    // Devices Section
+                    .child(self.render_devices_section(
+                        label_color,
+                        text_gray,
+                        text_light,
+                        hover_bg,
+                        selected_bg,
+                        icon_blue,
+                        warning_color,
+                        cx,
+                    ))
+                    // Network & Cloud Section
+                    .child(self.render_network_section(
+                        label_color,
+                        text_gray,
+                        text_light,
+                        hover_bg,
+                        selected_bg,
+                        icon_blue,
+                        cx,
+                    ))
                     // Bookmarks Section (above Favorites per Requirements 20.2)
                     .child(self.render_bookmarks_section(
                         label_color,
@@ -1041,6 +1237,458 @@ impl SidebarView {
                                     })
                             }),
                         )
+                )
+            })
+    }
+
+    fn render_network_section(
+        &self,
+        label_color: gpui::Rgba,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        selected_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_expanded = self.sidebar.is_network_expanded();
+        let network_state = self.network_state();
+        let selected_path = self.sidebar.selected_path.clone();
+
+        div()
+            .mb_4()
+            .child(
+                div()
+                    .id("network-header")
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(label_color)
+                    .mb_2()
+                    .px_2()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .cursor_pointer()
+                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+                        view.toggle_network_section(cx);
+                    }))
+                    .child("NETWORK & CLOUD")
+                    .child(
+                        svg()
+                            .path(if is_expanded {
+                                "assets/icons/chevron-down.svg"
+                            } else {
+                                "assets/icons/chevron-right.svg"
+                            })
+                            .size(px(12.0))
+                            .text_color(label_color),
+                    ),
+            )
+            .when(is_expanded, |s| {
+                s.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_0p5()
+                        .p_1()
+                        // Cloud Storage Locations
+                        .children(
+                            network_state.cloud_locations.iter().map(|cloud| {
+                                let is_selected = selected_path.as_ref() == Some(&cloud.path);
+                                let path_clone = cloud.path.clone();
+                                let is_available = cloud.is_available;
+                                let icon_name = cloud.provider.icon_name();
+                                let display_name = cloud.name.clone();
+
+                                div()
+                                    .id(SharedString::from(format!("cloud-{}", display_name)))
+                                    .flex()
+                                    .items_center()
+                                    .gap_3()
+                                    .px_2()
+                                    .py_1p5()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .text_sm()
+                                    .when(is_selected, |s| {
+                                        s.bg(selected_bg).text_color(text_light)
+                                    })
+                                    .when(!is_selected && is_available, |s| {
+                                        s.text_color(text_gray)
+                                            .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                    })
+                                    .when(!is_available, |s| {
+                                        s.text_color(text_gray).opacity(0.5)
+                                    })
+                                    .when(is_available, |s| {
+                                        s.on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                                            view.handle_cloud_click(path_clone.clone(), window, cx);
+                                        }))
+                                    })
+                                    .child(
+                                        svg()
+                                            .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                                            .size(px(14.0))
+                                            .text_color(if is_selected { text_light } else { icon_blue }),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .overflow_hidden()
+                                            .child(display_name)
+                                    )
+                                    .when(is_available, |s| {
+                                        s.child(
+                                            div()
+                                                .w(px(6.0))
+                                                .h(px(6.0))
+                                                .rounded_full()
+                                                .bg(gpui::rgb(0x3fb950))
+                                        )
+                                    })
+                            }).collect::<Vec<_>>()
+                        )
+                        // Network Locations
+                        .children(
+                            network_state.network_locations.iter().map(|network| {
+                                let is_connected = network.is_connected;
+                                let display_name = network.name.clone();
+                                let protocol_icon = network.protocol.icon_name();
+                                let latency = network.latency_ms;
+                                let network_id = network.id;
+
+                                div()
+                                    .id(SharedString::from(format!("network-{}", network.id.0)))
+                                    .flex()
+                                    .items_center()
+                                    .gap_3()
+                                    .px_2()
+                                    .py_1p5()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .text_sm()
+                                    .text_color(text_gray)
+                                    .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                                        view.handle_network_click(network_id, window, cx);
+                                    }))
+                                    .child(
+                                        svg()
+                                            .path(SharedString::from(format!("assets/icons/{}.svg", protocol_icon)))
+                                            .size(px(14.0))
+                                            .text_color(icon_blue),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .overflow_hidden()
+                                            .child(display_name)
+                                    )
+                                    .when(is_connected, |s| {
+                                        s.child(
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .gap_1()
+                                                .child(
+                                                    div()
+                                                        .w(px(6.0))
+                                                        .h(px(6.0))
+                                                        .rounded_full()
+                                                        .bg(gpui::rgb(0x3fb950))
+                                                )
+                                                .when(latency.is_some(), |s| {
+                                                    s.child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(text_gray)
+                                                            .opacity(0.6)
+                                                            .child(format!("{}ms", latency.unwrap_or(0)))
+                                                    )
+                                                })
+                                        )
+                                    })
+                            }).collect::<Vec<_>>()
+                        )
+                        // Connect to Server button
+                        .child(
+                            div()
+                                .id("connect-server-btn")
+                                .flex()
+                                .items_center()
+                                .gap_3()
+                                .px_2()
+                                .py_1p5()
+                                .rounded_md()
+                                .cursor_pointer()
+                                .text_sm()
+                                .text_color(text_gray)
+                                .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+                                    view.show_network_dialog(cx);
+                                }))
+                                .child(
+                                    svg()
+                                        .path("assets/icons/folder-plus.svg")
+                                        .size(px(14.0))
+                                        .text_color(icon_blue),
+                                )
+                                .child("Connect to Server...")
+                        )
+                        // Empty state when no locations
+                        .when(network_state.cloud_locations.is_empty() && network_state.network_locations.is_empty(), |s| {
+                            s.child(
+                                div()
+                                    .px_2()
+                                    .py_1p5()
+                                    .text_sm()
+                                    .text_color(text_gray)
+                                    .opacity(0.7)
+                                    .child("No cloud storage detected")
+                            )
+                        })
+                )
+            })
+    }
+
+    fn render_devices_section(
+        &self,
+        label_color: gpui::Rgba,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        selected_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        warning_color: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_expanded = self.sidebar.is_devices_expanded();
+        let devices = self.sidebar.devices().to_vec();
+        let wsl_distros = self.sidebar.wsl_distributions().to_vec();
+        let selected_path = self.sidebar.selected_path.clone();
+
+        div()
+            .mb_4()
+            .child(
+                div()
+                    .id("devices-header")
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(label_color)
+                    .mb_2()
+                    .px_2()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .cursor_pointer()
+                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+                        view.toggle_devices_section(cx);
+                    }))
+                    .child("DEVICES")
+                    .child(
+                        svg()
+                            .path(if is_expanded {
+                                "assets/icons/chevron-down.svg"
+                            } else {
+                                "assets/icons/chevron-right.svg"
+                            })
+                            .size(px(12.0))
+                            .text_color(label_color),
+                    ),
+            )
+            .when(is_expanded, |s| {
+                s.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_0p5()
+                        .p_1()
+                        // Render devices
+                        .children(
+                            devices.iter().map(|device| {
+                                let is_selected = selected_path.as_ref() == Some(&device.path);
+                                let path_clone = device.path.clone();
+                                let icon_name = device.device_type.icon_name();
+                                let display_name = device.name.clone();
+                                let is_read_only = device.is_read_only;
+                                let is_removable = device.is_removable;
+                                let is_wsl = matches!(device.device_type, DeviceType::WslDistribution);
+                                
+                                // Format space info
+                                let space_info = if device.total_space > 0 {
+                                    let used_gb = device.used_space() as f64 / 1_073_741_824.0;
+                                    let total_gb = device.total_space as f64 / 1_073_741_824.0;
+                                    Some(format!("{:.1} GB / {:.1} GB", used_gb, total_gb))
+                                } else {
+                                    None
+                                };
+
+                                div()
+                                    .id(SharedString::from(format!("device-{}", device.id.0)))
+                                    .flex()
+                                    .flex_col()
+                                    .px_2()
+                                    .py_1p5()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .when(is_selected, |s| {
+                                        s.bg(selected_bg)
+                                    })
+                                    .when(!is_selected, |s| {
+                                        s.hover(|h| h.bg(hover_bg))
+                                    })
+                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                                        view.handle_device_click(path_clone.clone(), window, cx);
+                                    }))
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap_3()
+                                            .child(
+                                                svg()
+                                                    .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                                                    .size(px(14.0))
+                                                    .text_color(if is_selected { text_light } else { icon_blue }),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .overflow_hidden()
+                                                    .text_sm()
+                                                    .text_color(if is_selected { text_light } else { text_gray })
+                                                    .child(display_name)
+                                            )
+                                            // Read-only lock icon
+                                            .when(is_read_only, |s| {
+                                                s.child(
+                                                    svg()
+                                                        .path("assets/icons/file-lock.svg")
+                                                        .size(px(12.0))
+                                                        .text_color(warning_color)
+                                                )
+                                            })
+                                            // Removable indicator
+                                            .when(is_removable && !is_wsl, |s| {
+                                                s.child(
+                                                    svg()
+                                                        .path("assets/icons/hard-drive.svg")
+                                                        .size(px(10.0))
+                                                        .text_color(text_gray)
+                                                        .opacity(0.5)
+                                                )
+                                            })
+                                    )
+                                    // Space info on second line
+                                    .when(space_info.is_some(), |s| {
+                                        s.child(
+                                            div()
+                                                .pl(px(26.0)) // Align with text after icon
+                                                .text_xs()
+                                                .text_color(text_gray)
+                                                .opacity(0.7)
+                                                .child(space_info.unwrap_or_default())
+                                        )
+                                    })
+                            }).collect::<Vec<_>>()
+                        )
+                        // Render WSL distributions (Windows only)
+                        .when(!wsl_distros.is_empty(), |s| {
+                            s.child(
+                                div()
+                                    .h(px(1.0))
+                                    .bg(gpui::rgb(0x21262d))
+                                    .my_2()
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(label_color)
+                                    .opacity(0.7)
+                                    .px_2()
+                                    .mb_1()
+                                    .child("WSL Distributions")
+                            )
+                            .children(
+                                wsl_distros.iter().map(|distro| {
+                                    let is_selected = selected_path.as_ref() == Some(&distro.path);
+                                    let path_clone = distro.path.clone();
+                                    let display_name = distro.name.clone();
+                                    let is_running = distro.is_running;
+                                    let version = distro.version;
+
+                                    div()
+                                        .id(SharedString::from(format!("wsl-{}", display_name)))
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .px_2()
+                                        .py_1p5()
+                                        .rounded_md()
+                                        .cursor_pointer()
+                                        .text_sm()
+                                        .when(is_selected, |s| {
+                                            s.bg(selected_bg).text_color(text_light)
+                                        })
+                                        .when(!is_selected, |s| {
+                                            s.text_color(text_gray)
+                                                .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                        })
+                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                                            view.handle_device_click(path_clone.clone(), window, cx);
+                                        }))
+                                        .child(
+                                            svg()
+                                                .path("assets/icons/terminal.svg")
+                                                .size(px(14.0))
+                                                .text_color(if is_selected { text_light } else { icon_blue }),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex_1()
+                                                .overflow_hidden()
+                                                .child(display_name)
+                                        )
+                                        // Running status indicator
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .gap_1()
+                                                .child(
+                                                    div()
+                                                        .w(px(6.0))
+                                                        .h(px(6.0))
+                                                        .rounded_full()
+                                                        .bg(if is_running { 
+                                                            gpui::rgb(0x3fb950) // Green for running
+                                                        } else { 
+                                                            gpui::rgb(0x6e7681) // Gray for stopped
+                                                        })
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_xs()
+                                                        .text_color(text_gray)
+                                                        .opacity(0.6)
+                                                        .child(format!("WSL{}", version))
+                                                )
+                                        )
+                                }).collect::<Vec<_>>()
+                            )
+                        })
+                        // Empty state when no devices
+                        .when(devices.is_empty() && wsl_distros.is_empty(), |s| {
+                            s.child(
+                                div()
+                                    .px_2()
+                                    .py_1p5()
+                                    .text_sm()
+                                    .text_color(text_gray)
+                                    .opacity(0.7)
+                                    .child("No devices detected")
+                            )
+                        })
                 )
             })
     }

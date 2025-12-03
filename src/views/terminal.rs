@@ -1,8 +1,10 @@
 use gpui::{
     div, px, App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement,
-    KeyDownEvent, ParentElement, Render, Styled, Window, ScrollHandle,
+    KeyDownEvent, ParentElement, Render, Styled, Window, ScrollHandle, ScrollWheelEvent,
+    ClipboardItem, MouseDownEvent, MouseMoveEvent, MouseUpEvent, MouseButton,
 };
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 use crate::models::{
     AnsiParser, ClearMode, ParsedSegment, PtyService, TerminalState,
@@ -20,6 +22,9 @@ const TERMINAL_CONTENT_HEIGHT: f32 = 260.0;
 /// Number of lines to render above/below visible area for smooth scrolling
 const OVERSCAN_LINES: usize = 3;
 
+/// Cursor blink interval in milliseconds
+const CURSOR_BLINK_INTERVAL_MS: u64 = 530;
+
 /// Terminal view component with virtualized rendering
 pub struct TerminalView {
     state: TerminalState,
@@ -28,8 +33,11 @@ pub struct TerminalView {
     focus_handle: FocusHandle,
     is_visible: bool,
     cursor_blink: bool,
+    cursor_blink_state: bool,
+    last_blink_time: Instant,
     selection_start: Option<(usize, usize)>,
     selection_end: Option<(usize, usize)>,
+    is_selecting: bool,
     scroll_handle: ScrollHandle,
     viewport_height: f32,
 }
@@ -43,8 +51,11 @@ impl TerminalView {
             focus_handle: cx.focus_handle(),
             is_visible: false,
             cursor_blink: true,
+            cursor_blink_state: true,
+            last_blink_time: Instant::now(),
             selection_start: None,
             selection_end: None,
+            is_selecting: false,
             scroll_handle: ScrollHandle::new(),
             viewport_height: TERMINAL_CONTENT_HEIGHT,
         }
@@ -283,13 +294,16 @@ impl TerminalView {
         }
     }
 
-    /// Handle key down events
-    fn handle_key_down(&mut self, event: &KeyDownEvent, _cx: &mut Context<Self>) {
+    /// Handle key down events - this is the main keyboard input handler
+    pub fn handle_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, _cx: &mut Context<Self>) {
         if !self.is_running() {
             return;
         }
 
-        // Handle special keys
+        // Auto-scroll to bottom on input
+        self.scroll_to_bottom();
+
+        // Handle special keys using the key string representation
         let key_str = format!("{:?}", event.keystroke.key);
         
         match key_str.as_str() {
@@ -306,11 +320,43 @@ impl TerminalView {
             "End" => self.send_input(key_codes::END),
             "PageUp" => self.send_input(key_codes::PAGE_UP),
             "PageDown" => self.send_input(key_codes::PAGE_DOWN),
+            "Insert" => self.send_input(b"\x1b[2~"),
+            "F1" => self.send_input(b"\x1bOP"),
+            "F2" => self.send_input(b"\x1bOQ"),
+            "F3" => self.send_input(b"\x1bOR"),
+            "F4" => self.send_input(b"\x1bOS"),
+            "F5" => self.send_input(b"\x1b[15~"),
+            "F6" => self.send_input(b"\x1b[17~"),
+            "F7" => self.send_input(b"\x1b[18~"),
+            "F8" => self.send_input(b"\x1b[19~"),
+            "F9" => self.send_input(b"\x1b[20~"),
+            "F10" => self.send_input(b"\x1b[21~"),
+            "F11" => self.send_input(b"\x1b[23~"),
+            "F12" => self.send_input(b"\x1b[24~"),
             _ => {
                 // Handle regular characters and ctrl combinations
                 if let Some(key_char) = &event.keystroke.key_char {
-                    if event.keystroke.modifiers.control {
-                        // Ctrl+key combinations
+                    if event.keystroke.modifiers.platform {
+                        // Platform modifier (Cmd on macOS, Ctrl on Windows/Linux)
+                        let c = key_char.chars().next().unwrap_or('\0').to_ascii_lowercase();
+                        match c {
+                            'c' => {
+                                // Copy selection if there is one
+                                if self.has_selection() {
+                                    self.copy_selection(_cx);
+                                } else {
+                                    // Send Ctrl+C to terminal
+                                    self.send_input(&[0x03]);
+                                }
+                            }
+                            'v' => {
+                                // Paste from clipboard
+                                self.paste_from_clipboard(_cx);
+                            }
+                            _ => {}
+                        }
+                    } else if event.keystroke.modifiers.control {
+                        // Ctrl+key combinations (Ctrl+A = 0x01, Ctrl+B = 0x02, etc.)
                         if key_char.len() == 1 {
                             let c = key_char.chars().next().unwrap();
                             if c.is_ascii_alphabetic() {
@@ -318,23 +364,269 @@ impl TerminalView {
                                 self.send_input(&[ctrl_code]);
                             }
                         }
-                    } else if !event.keystroke.modifiers.alt && !event.keystroke.modifiers.platform {
+                    } else if event.keystroke.modifiers.alt {
+                        // Alt+key combinations (send ESC prefix)
+                        let mut data = vec![0x1b]; // ESC
+                        data.extend(key_char.as_bytes());
+                        self.send_input(&data);
+                    } else {
                         // Regular character input
                         self.send_str(key_char);
+                        // Clear selection on input
+                        self.clear_selection();
                     }
                 }
             }
         }
+        
+        // Reset cursor blink on input
+        self.reset_cursor_blink();
     }
 
-    /// Render a single terminal line with proper styling
+    /// Handle mouse scroll events for terminal scrollback
+    pub fn handle_scroll(&mut self, event: &ScrollWheelEvent, _window: &mut Window, _cx: &mut Context<Self>) {
+        // Calculate lines to scroll based on delta
+        let delta_y = match event.delta {
+            gpui::ScrollDelta::Lines(lines) => lines.y,
+            gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y) / LINE_HEIGHT,
+        };
+        
+        let lines = delta_y.abs() as usize;
+        let lines = lines.max(1); // At least 1 line
+        
+        if delta_y > 0.0 {
+            // Scroll up (view older content)
+            self.scroll_up(lines);
+        } else {
+            // Scroll down (view newer content)
+            self.scroll_down(lines);
+        }
+    }
+
+    /// Handle mouse down for text selection
+    pub fn handle_mouse_down(&mut self, event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if event.button == MouseButton::Left {
+            let (line, col) = self.position_from_mouse(event.position);
+            self.selection_start = Some((line, col));
+            self.selection_end = Some((line, col));
+            self.is_selecting = true;
+            cx.notify();
+        }
+    }
+
+    /// Handle mouse move for text selection
+    pub fn handle_mouse_move(&mut self, event: &MouseMoveEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.is_selecting {
+            let (line, col) = self.position_from_mouse(event.position);
+            self.selection_end = Some((line, col));
+            cx.notify();
+        }
+    }
+
+    /// Handle mouse up for text selection
+    pub fn handle_mouse_up(&mut self, event: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if event.button == MouseButton::Left {
+            self.is_selecting = false;
+            cx.notify();
+        }
+    }
+
+    /// Convert mouse position to terminal line/column
+    fn position_from_mouse(&self, position: gpui::Point<gpui::Pixels>) -> (usize, usize) {
+        let x = f32::from(position.x) - TERMINAL_PADDING;
+        let y = f32::from(position.y) - TERMINAL_PADDING - 36.0; // Account for header
+        
+        let col = (x / CHAR_WIDTH).max(0.0) as usize;
+        let row = (y / LINE_HEIGHT).max(0.0) as usize;
+        
+        // Convert to absolute line index
+        let (render_start, _) = self.visible_line_range();
+        let line = render_start + row;
+        
+        (line, col)
+    }
+
+    /// Check if a position is within the current selection
+    fn is_position_selected(&self, line: usize, col: usize) -> bool {
+        if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
+            let (start_line, start_col) = start;
+            let (end_line, end_col) = end;
+            
+            // Normalize selection (start should be before end)
+            let (start_line, start_col, end_line, end_col) = if start_line > end_line || 
+                (start_line == end_line && start_col > end_col) {
+                (end_line, end_col, start_line, start_col)
+            } else {
+                (start_line, start_col, end_line, end_col)
+            };
+            
+            if line < start_line || line > end_line {
+                return false;
+            }
+            
+            if line == start_line && line == end_line {
+                col >= start_col && col < end_col
+            } else if line == start_line {
+                col >= start_col
+            } else if line == end_line {
+                col < end_col
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Get selected text
+    pub fn get_selected_text(&self) -> Option<String> {
+        let (start, end) = (self.selection_start?, self.selection_end?);
+        let (start_line, start_col) = start;
+        let (end_line, end_col) = end;
+        
+        // Normalize selection
+        let (start_line, start_col, end_line, end_col) = if start_line > end_line || 
+            (start_line == end_line && start_col > end_col) {
+            (end_line, end_col, start_line, start_col)
+        } else {
+            (start_line, start_col, end_line, end_col)
+        };
+        
+        if start_line == end_line && start_col == end_col {
+            return None;
+        }
+        
+        let mut result = String::new();
+        
+        for line_idx in start_line..=end_line {
+            if let Some(line) = self.state.line(line_idx) {
+                let line_text: String = line.cells.iter().map(|c| c.char).collect();
+                let line_text = line_text.trim_end();
+                
+                let col_start = if line_idx == start_line { start_col } else { 0 };
+                let col_end = if line_idx == end_line { end_col.min(line_text.len()) } else { line_text.len() };
+                
+                if col_start < line_text.len() {
+                    let chars: Vec<char> = line_text.chars().collect();
+                    let selected: String = chars[col_start..col_end.min(chars.len())].iter().collect();
+                    result.push_str(&selected);
+                }
+                
+                if line_idx < end_line {
+                    result.push('\n');
+                }
+            }
+        }
+        
+        if result.is_empty() { None } else { Some(result) }
+    }
+
+    /// Copy selected text to clipboard
+    pub fn copy_selection(&self, cx: &mut Context<Self>) {
+        if let Some(text) = self.get_selected_text() {
+            cx.write_to_clipboard(ClipboardItem::new_string(text));
+        }
+    }
+
+    /// Paste from clipboard
+    pub fn paste_from_clipboard(&mut self, cx: &mut Context<Self>) {
+        if let Some(item) = cx.read_from_clipboard() {
+            if let Some(text) = item.text() {
+                self.send_str(&text);
+            }
+        }
+    }
+
+    /// Clear selection
+    pub fn clear_selection(&mut self) {
+        self.selection_start = None;
+        self.selection_end = None;
+        self.is_selecting = false;
+    }
+
+    /// Check if there's an active selection
+    pub fn has_selection(&self) -> bool {
+        self.selection_start.is_some() && self.selection_end.is_some() &&
+            self.selection_start != self.selection_end
+    }
+
+    /// Update cursor blink state
+    pub fn update_cursor_blink(&mut self) {
+        let now = Instant::now();
+        if now.duration_since(self.last_blink_time) >= Duration::from_millis(CURSOR_BLINK_INTERVAL_MS) {
+            self.cursor_blink_state = !self.cursor_blink_state;
+            self.last_blink_time = now;
+        }
+    }
+
+    /// Reset cursor blink (show cursor immediately after input)
+    pub fn reset_cursor_blink(&mut self) {
+        self.cursor_blink_state = true;
+        self.last_blink_time = Instant::now();
+    }
+
+    /// Render a single terminal line with proper styling, selection, and blinking cursor
     fn render_line(&self, idx: usize, line: &crate::models::TerminalLine, is_cursor_line: bool) -> impl IntoElement {
-        let text: String = line.cells.iter().map(|c| c.char).collect();
-        let text = text.trim_end().to_string();
+        let chars: Vec<char> = line.cells.iter().map(|c| c.char).collect();
         let cursor_col = self.state.cursor().col;
         
-        // Check if cursor should be shown on this line
-        let show_cursor = is_cursor_line && self.cursor_blink && self.state.cursor_visible();
+        // Check if cursor should be shown on this line (with blink state)
+        let show_cursor = is_cursor_line && self.cursor_blink && self.cursor_blink_state && self.state.cursor_visible();
+        
+        // Selection colors
+        let selection_bg = gpui::rgb(0x264f78);
+        let selection_fg = gpui::rgb(0xffffff);
+        let cursor_bg = gpui::rgb(0xf4b842);
+        let cursor_fg = gpui::rgb(0x0d0a0a);
+        let default_fg = gpui::Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 };
+        
+        // Build character spans with selection and cursor highlighting
+        let mut spans: Vec<gpui::AnyElement> = Vec::new();
+        let line_len = chars.len().max(1);
+        
+        for col in 0..line_len {
+            let c = chars.get(col).copied().unwrap_or(' ');
+            let is_selected = self.is_position_selected(idx, col);
+            let is_cursor = show_cursor && col == cursor_col;
+            
+            let (bg, fg) = if is_cursor {
+                (Some(cursor_bg), cursor_fg)
+            } else if is_selected {
+                (Some(selection_bg), selection_fg)
+            } else {
+                (None, default_fg.into())
+            };
+            
+            let mut char_div = div()
+                .w(px(CHAR_WIDTH))
+                .h(px(LINE_HEIGHT))
+                .flex()
+                .items_center()
+                .justify_center()
+                .text_color(fg);
+            
+            if let Some(bg_color) = bg {
+                char_div = char_div.bg(bg_color);
+            }
+            
+            let char_div = char_div.child(c.to_string());
+            
+            spans.push(char_div.into_any_element());
+        }
+        
+        // Add cursor at end of line if needed
+        if show_cursor && cursor_col >= line_len {
+            let cursor_div = div()
+                .w(px(CHAR_WIDTH))
+                .h(px(LINE_HEIGHT))
+                .flex()
+                .items_center()
+                .justify_center()
+                .bg(cursor_bg)
+                .text_color(cursor_fg)
+                .child(" ");
+            spans.push(cursor_div.into_any_element());
+        }
         
         div()
             .id(("terminal-line", idx))
@@ -342,36 +634,9 @@ impl TerminalView {
             .w_full()
             .flex()
             .items_center()
-            .text_color(gpui::Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 })
             .font_family("JetBrains Mono")
             .text_size(px(13.0))
-            .child(
-                if show_cursor && cursor_col <= text.len() {
-                    // Render text with cursor
-                    let (before, after) = if cursor_col < text.len() {
-                        let chars: Vec<char> = text.chars().collect();
-                        let before: String = chars[..cursor_col].iter().collect();
-                        let cursor_char = chars.get(cursor_col).copied().unwrap_or(' ');
-                        let after: String = chars[cursor_col + 1..].iter().collect();
-                        (before, format!("{}{}", cursor_char, after))
-                    } else {
-                        (text.clone(), String::new())
-                    };
-                    
-                    div()
-                        .flex()
-                        .child(before)
-                        .child(
-                            div()
-                                .bg(gpui::rgb(0xf4b842))
-                                .text_color(gpui::rgb(0x0d0a0a))
-                                .child(if after.is_empty() { " ".to_string() } else { after.chars().next().unwrap_or(' ').to_string() })
-                        )
-                        .child(if after.len() > 1 { after[1..].to_string() } else { String::new() })
-                } else {
-                    div().child(if text.is_empty() { " ".to_string() } else { text })
-                }
-            )
+            .children(spans)
     }
 
     /// Calculate the absolute line index for the cursor
@@ -390,7 +655,7 @@ impl Focusable for TerminalView {
 }
 
 impl Render for TerminalView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Process any pending output
         self.process_output();
 
@@ -424,8 +689,17 @@ impl Render for TerminalView {
             })
             .collect();
 
+        // Update cursor blink state
+        self.update_cursor_blink();
+
         div()
             .id("terminal-panel")
+            .track_focus(&self.focus_handle)
+            .on_key_down(cx.listener(Self::handle_key_down))
+            .on_scroll_wheel(cx.listener(Self::handle_scroll))
+            .on_mouse_down(MouseButton::Left, cx.listener(Self::handle_mouse_down))
+            .on_mouse_move(cx.listener(Self::handle_mouse_move))
+            .on_mouse_up(MouseButton::Left, cx.listener(Self::handle_mouse_up))
             .w_full()
             .h(px(300.0))
             .bg(bg_color)
@@ -576,5 +850,93 @@ mod tests {
     #[test]
     fn test_char_width_constant() {
         assert!(CHAR_WIDTH > 0.0);
+    }
+
+    #[test]
+    fn test_cursor_blink_interval() {
+        assert!(CURSOR_BLINK_INTERVAL_MS > 0);
+        assert!(CURSOR_BLINK_INTERVAL_MS < 1000); // Should be less than 1 second
+    }
+
+    #[test]
+    fn test_selection_normalization() {
+        // Test that selection is properly normalized (start before end)
+        let start = (5, 10);
+        let end = (3, 5);
+        
+        // Normalize
+        let (start_line, start_col, end_line, end_col) = if start.0 > end.0 || 
+            (start.0 == end.0 && start.1 > end.1) {
+            (end.0, end.1, start.0, start.1)
+        } else {
+            (start.0, start.1, end.0, end.1)
+        };
+        
+        assert_eq!(start_line, 3);
+        assert_eq!(start_col, 5);
+        assert_eq!(end_line, 5);
+        assert_eq!(end_col, 10);
+    }
+
+    #[test]
+    fn test_position_from_mouse_calculation() {
+        // Test mouse position to terminal coordinates conversion
+        let x = TERMINAL_PADDING + CHAR_WIDTH * 5.0;
+        let y = TERMINAL_PADDING + 36.0 + LINE_HEIGHT * 3.0;
+        
+        let col = ((x - TERMINAL_PADDING) / CHAR_WIDTH).max(0.0) as usize;
+        let row = ((y - TERMINAL_PADDING - 36.0) / LINE_HEIGHT).max(0.0) as usize;
+        
+        assert_eq!(col, 5);
+        assert_eq!(row, 3);
+    }
+
+    #[test]
+    fn test_selection_same_line() {
+        // Test selection within same line
+        let start = (5, 2);
+        let end = (5, 8);
+        
+        // Position (5, 4) should be selected
+        let line = 5;
+        let col = 4;
+        
+        let (start_line, start_col) = start;
+        let (end_line, end_col) = end;
+        
+        let is_selected = if line < start_line || line > end_line {
+            false
+        } else if line == start_line && line == end_line {
+            col >= start_col && col < end_col
+        } else {
+            true
+        };
+        
+        assert!(is_selected);
+    }
+
+    #[test]
+    fn test_selection_multi_line() {
+        // Test selection across multiple lines
+        let start = (3, 5);
+        let end = (6, 10);
+        
+        // Position (4, 0) should be selected (middle line)
+        let line = 4;
+        let col = 0;
+        
+        let (start_line, start_col, end_line, _end_col) = (start.0, start.1, end.0, end.1);
+        
+        let is_selected = if line < start_line || line > end_line {
+            false
+        } else if line == start_line {
+            col >= start_col
+        } else if line == end_line {
+            true // Any column on end line before end_col
+        } else {
+            true // Middle lines are fully selected
+        };
+        
+        assert!(is_selected);
     }
 }

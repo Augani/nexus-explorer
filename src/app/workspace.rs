@@ -3,13 +3,22 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use gpui::{
-    div, prelude::*, px, svg, App, Context, Entity, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, MouseButton, ParentElement, Render, SharedString, Styled, Window,
+    actions, div, prelude::*, px, svg, App, Context, Entity, FocusHandle, Focusable, InteractiveElement,
+    IntoElement, KeyBinding, MouseButton, ParentElement, Render, SharedString, Styled, Window,
 };
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors};
-use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction};
+use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView};
+
+// Define global keyboard shortcut actions
+actions!(workspace, [
+    NewTab,
+    CloseTab,
+    ToggleTerminal,
+    FocusSearch,
+    NewWindow,
+]);
 
 /// Dialog state for creating new files/folders
 #[derive(Clone)]
@@ -30,6 +39,7 @@ pub struct Workspace {
     preview: Option<Entity<PreviewView>>,
     theme_picker: Entity<ThemePickerView>,
     status_bar: Entity<StatusBarView>,
+    terminal: Entity<TerminalView>,
     focus_handle: FocusHandle,
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
@@ -63,10 +73,27 @@ impl Workspace {
 }
 
 impl Workspace {
+    /// Register global keyboard shortcuts for the workspace
+    pub fn register_key_bindings(cx: &mut App) {
+        cx.bind_keys([
+            // Cmd+T for new tab (currently opens new window since tabs aren't fully implemented)
+            KeyBinding::new("cmd-t", NewTab, Some("Workspace")),
+            // Cmd+W for close tab/window
+            KeyBinding::new("cmd-w", CloseTab, Some("Workspace")),
+            // Cmd+` for terminal toggle
+            KeyBinding::new("cmd-`", ToggleTerminal, Some("Workspace")),
+            // Cmd+F for search focus
+            KeyBinding::new("cmd-f", FocusSearch, Some("Workspace")),
+            // Cmd+N for new window
+            KeyBinding::new("cmd-n", NewWindow, Some("Workspace")),
+        ]);
+    }
+
     pub fn build(initial_path: PathBuf, cx: &mut App) -> Entity<Self> {
         // Register key bindings for all views
         SearchInputView::register_key_bindings(cx);
         FileListView::register_key_bindings(cx);
+        Self::register_key_bindings(cx);
         
         cx.new(|cx| {
             let mut file_system = FileSystem::new(initial_path.clone());
@@ -137,6 +164,11 @@ impl Workspace {
                 status_bar_view.set_current_directory(&initial_path, cx);
                 status_bar_view.set_view_mode(view_mode, cx);
                 status_bar_view
+            });
+
+            // Create terminal view with initial working directory
+            let terminal = cx.new(|cx| {
+                TerminalView::new(cx).with_working_directory(initial_path.clone())
             });
 
             // Observe file list for navigation requests and selection changes
@@ -237,10 +269,11 @@ impl Workspace {
                 preview: None,
                 theme_picker,
                 status_bar,
+                terminal,
                 focus_handle: cx.focus_handle(),
                 current_path: initial_path.clone(),
                 path_history: vec![initial_path],
-                is_terminal_open: true,
+                is_terminal_open: false,
                 cached_entries,
                 view_mode,
                 dialog_state: DialogState::None,
@@ -419,6 +452,14 @@ impl Workspace {
             view.set_current_directory(&path, cx);
         });
         
+        // Sync terminal working directory if terminal is open
+        if self.is_terminal_open {
+            let terminal_path = path.clone();
+            self.terminal.update(cx, |terminal, _| {
+                terminal.set_working_directory(terminal_path);
+            });
+        }
+        
         cx.notify();
     }
 
@@ -493,6 +534,25 @@ impl Workspace {
 
     pub fn toggle_terminal(&mut self, cx: &mut Context<Self>) {
         self.is_terminal_open = !self.is_terminal_open;
+        
+        // Start or stop the terminal based on visibility
+        if self.is_terminal_open {
+            // Sync working directory and start terminal
+            let current_path = self.current_path.clone();
+            self.terminal.update(cx, |terminal, _| {
+                terminal.set_working_directory(current_path);
+                terminal.set_visible(true);
+                if !terminal.is_running() {
+                    let _ = terminal.start();
+                }
+            });
+        } else {
+            // Hide terminal (but keep it running for quick toggle)
+            self.terminal.update(cx, |terminal, _| {
+                terminal.set_visible(false);
+            });
+        }
+        
         // Update status bar terminal state
         self.status_bar.update(cx, |view, cx| {
             view.set_terminal_open(self.is_terminal_open, cx);
@@ -582,6 +642,51 @@ impl Workspace {
         let _ = settings.save();
     }
 
+    // Global keyboard shortcut handlers
+    
+    /// Handle Cmd+T - New Tab (opens new window for now)
+    fn handle_new_tab(&mut self, _: &NewTab, _window: &mut Window, cx: &mut Context<Self>) {
+        // For now, open a new window since full tab support isn't implemented
+        let path = self.current_path.clone();
+        cx.defer(move |cx| {
+            if cx.has_global::<WindowManager>() {
+                cx.update_global::<WindowManager, _>(|manager, cx| {
+                    manager.open_window(path, cx);
+                });
+            }
+        });
+    }
+
+    /// Handle Cmd+W - Close Tab/Window
+    fn handle_close_tab(&mut self, _: &CloseTab, window: &mut Window, _cx: &mut Context<Self>) {
+        // Close the current window
+        window.remove_window();
+    }
+
+    /// Handle Cmd+` - Toggle Terminal
+    fn handle_toggle_terminal(&mut self, _: &ToggleTerminal, _window: &mut Window, cx: &mut Context<Self>) {
+        self.toggle_terminal(cx);
+    }
+
+    /// Handle Cmd+F - Focus Search
+    fn handle_focus_search(&mut self, _: &FocusSearch, window: &mut Window, cx: &mut Context<Self>) {
+        self.search_input.update(cx, |view, _cx| {
+            view.focus(window);
+        });
+    }
+
+    /// Handle Cmd+N - New Window
+    fn handle_new_window(&mut self, _: &NewWindow, _window: &mut Window, cx: &mut Context<Self>) {
+        let path = self.current_path.clone();
+        cx.defer(move |cx| {
+            if cx.has_global::<WindowManager>() {
+                cx.update_global::<WindowManager, _>(|manager, cx| {
+                    manager.open_window(path, cx);
+                });
+            }
+        });
+    }
+
     fn render_breadcrumbs(&self) -> impl IntoElement {
         let theme = theme_colors();
         let text_gray = theme.text_muted;
@@ -653,6 +758,13 @@ impl Render for Workspace {
 
         div()
             .id("workspace")
+            .key_context("Workspace")
+            .track_focus(&self.focus_handle)
+            .on_action(cx.listener(Self::handle_new_tab))
+            .on_action(cx.listener(Self::handle_close_tab))
+            .on_action(cx.listener(Self::handle_toggle_terminal))
+            .on_action(cx.listener(Self::handle_focus_search))
+            .on_action(cx.listener(Self::handle_new_window))
             .size_full()
             .flex()
             .flex_col()
@@ -959,93 +1071,7 @@ impl Render for Workspace {
                                     .when(!is_grid, |this| this.child(self.file_list.clone()))
                             })
                             .when(is_terminal_open, |this| {
-                                this.child(
-                                    div()
-                                        .h(px(192.0))
-                                        .bg(bg_dark)
-                                        .border_t_1()
-                                        .border_color(border_color)
-                                        .flex()
-                                        .flex_col()
-                                        .child(
-                                            div()
-                                                .h(px(32.0))
-                                                .flex()
-                                                .items_center()
-                                                .px_4()
-                                                .border_b_1()
-                                                .border_color(border_color)
-                                                .justify_between()
-                                                .child(
-                                                    div()
-                                                        .flex()
-                                                        .items_center()
-                                                        .gap_4()
-                                                        .text_xs()
-                                                        .font_family("Mono")
-                                                        .child(
-                                                            div()
-                                                                .text_color(blue_active)
-                                                                .border_b_2()
-                                                                .border_color(blue_active)
-                                                                .py_2()
-                                                                .cursor_pointer()
-                                                                .child("Terminal"),
-                                                        )
-                                                        .child(
-                                                            div()
-                                                                .text_color(text_gray)
-                                                                .py_2()
-                                                                .cursor_pointer()
-                                                                .hover(|s| s.text_color(gpui::rgb(0xc9d1d9)))
-                                                                .child("Output"),
-                                                        ),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .id("close-terminal")
-                                                        .text_color(text_gray)
-                                                        .cursor_pointer()
-                                                        .hover(|s| s.text_color(gpui::white()))
-                                                        .on_mouse_down(
-                                                            MouseButton::Left,
-                                                            cx.listener(|view, _event, _window, cx| {
-                                                                view.toggle_terminal(cx);
-                                                            }),
-                                                        )
-                                                        .child("▼"),
-                                                ),
-                                        )
-                                        .child(
-                                            div()
-                                                .flex_1()
-                                                .p_3()
-                                                .font_family("Mono")
-                                                .text_xs()
-                                                .child(
-                                                    div()
-                                                        .flex()
-                                                        .child(
-                                                            div()
-                                                                .text_color(gpui::rgb(0x3fb950))
-                                                                .mr_2()
-                                                                .child("➜"),
-                                                        )
-                                                        .child(
-                                                            div()
-                                                                .text_color(blue_active)
-                                                                .mr_2()
-                                                                .child("~"),
-                                                        )
-                                                        .child(
-                                                            div()
-                                                                .w(px(8.0))
-                                                                .h(px(16.0))
-                                                                .bg(text_gray),
-                                                        ),
-                                                ),
-                                        ),
-                                )
+                                this.child(self.terminal.clone())
                             }),
                     )
                     .children(self.preview.clone().map(|preview| {

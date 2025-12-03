@@ -223,7 +223,7 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [-] 12. Integrated Terminal
+- [x] 12. Integrated Terminal
   - [x] 12.1 Implement TerminalState model
     - Create `TerminalState` with lines, cursor, scroll
     - Create `TerminalLine` and `TerminalCell` structs
@@ -247,15 +247,15 @@
   - [x] 12.6 Write property test for terminal virtualization
     - **Property 21: Terminal Virtualization**
     - **Validates: Requirements 6.8**
-  - [ ] 12.7 Implement terminal input handling
+  - [x] 12.7 Implement terminal input handling
     - Capture keystrokes and send to PTY
     - Handle special keys (arrows, backspace, etc.)
     - _Requirements: 6.3_
-  - [ ] 12.8 Implement terminal toggle and working directory sync
+  - [x] 12.8 Implement terminal toggle and working directory sync
     - Toggle terminal panel visibility
     - Sync working directory with explorer
     - _Requirements: 6.1, 6.5, 6.6_
-  - [ ] 12.9 Implement terminal visual polish
+  - [x] 12.9 Implement terminal visual polish
     - Monospace font rendering
     - Blinking cursor
     - Selection and copy/paste
@@ -304,7 +304,7 @@
 - [x] 15. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 16. Tools Section
+- [x] 16. Tools Section
   - [x] 16.1 Implement Tools section in Sidebar
     - Create collapsible panel with action buttons
     - _Requirements: 8.1_
@@ -378,7 +378,7 @@
     - Read current branch name
     - _Requirements: 10.7_
 
-- [-] 20. Keyboard Navigation
+- [x] 20. Keyboard Navigation
   - [x] 20.1 Implement arrow key navigation in FileList
     - Move selection with Up/Down arrows
     - _Requirements: 13.1_
@@ -389,10 +389,10 @@
     - Enter to open directory
     - Backspace to go to parent
     - _Requirements: 13.2, 13.3_
-  - [ ] 20.4 Write property test for parent navigation
+  - [x] 20.4 Write property test for parent navigation
     - **Property 34: Parent Navigation**
     - **Validates: Requirements 13.3**
-  - [ ] 20.5 Implement global keyboard shortcuts
+  - [x] 20.5 Implement global keyboard shortcuts
     - Cmd+T for new tab
     - Cmd+W for close tab
     - Cmd+` for terminal toggle
@@ -423,7 +423,7 @@
     - Ornate section dividers with flourishes
     - Themed hover glow effects
     - _Requirements: 11.5, 11.8, 11.9_
-  - [ ] 22.5 Apply RPG styling to FileList
+  - [-] 22.5 Apply RPG styling to FileList
     - 40px row height with 20px icons, 12px icon-to-text gap
     - Subtle hover glow effects matching theme
     - Selection with themed accent colors
@@ -444,7 +444,7 @@
     - Gold/themed trim on important elements
     - _Requirements: 11.8_
 
-- [-] 23. Quick Look
+- [ ] 23. Quick Look
   - [ ] 23.1 Implement QuickLook overlay component
     - Create full-screen overlay
     - Handle Space key to toggle
@@ -472,7 +472,7 @@
     - Allow file drag between windows
     - _Requirements: 16.3_
 
-- [-] 25. File Operations with Progress
+- [ ] 25. File Operations with Progress
   - [x] 25.1 Implement FileOperationsManager
     - Create operation queue
     - Track progress for each operation
@@ -558,7 +558,7 @@
 - [x] 31. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 32. Dual Pane Mode
+- [ ] 32. Dual Pane Mode
   - [x] 32.1 Implement DualPane state
     - Left and right pane states
     - Active pane tracking
@@ -637,7 +637,7 @@
     - **Property 48: Device Space Accuracy**
     - **Validates: Requirements 26.2**
 
-- [-] 37. WSL Integration (Windows)
+- [x] 37. WSL Integration (Windows)
   - [x] 37.1 Implement WSL distribution detection
     - Query installed distributions
     - Check running status
@@ -653,11 +653,11 @@
     - Open Terminal Here for WSL
     - _Requirements: 27.6_
 
-- [ ] 38. Network and Cloud Storage
-  - [ ] 38.1 Implement network location browser
+- [-] 38. Network and Cloud Storage
+  - [x] 38.1 Implement network location browser
     - SMB/FTP/SFTP connection dialog
     - _Requirements: 25.1, 25.2_
-  - [ ] 38.2 Implement network file operations
+  - [x] 38.2 Implement network file operations
     - Remote file listing
     - Loading indicators
     - _Requirements: 25.3, 25.5_
@@ -666,19 +666,19 @@
     - Show sync status
     - _Requirements: 25.6, 25.7_
 
-- [ ] 39. Devices UI in Sidebar
-  - [ ] 39.1 Implement Devices section in Sidebar
+- [x] 39. Devices UI in Sidebar
+  - [x] 39.1 Implement Devices section in Sidebar
     - Display connected devices
     - Show device icons and labels
     - _Requirements: 26.1, 26.2, 28.6_
-  - [ ] 39.2 Implement device click navigation
+  - [x] 39.2 Implement device click navigation
     - Navigate to device root on click
     - _Requirements: 26.4, 26.5, 26.6_
-  - [ ] 39.3 Implement device indicators
+  - [x] 39.3 Implement device indicators
     - Read-only lock icon
     - Running status for WSL
     - _Requirements: 27.5, 28.7_
 
-- [ ] 40. Final Checkpoint - Ensure all tests pass
+- [x] 40. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
