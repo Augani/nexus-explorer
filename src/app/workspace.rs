@@ -8,8 +8,8 @@ use gpui::{
 };
 
 use crate::io::{SortKey, SortOrder};
-use crate::models::{FileSystem, GridConfig, IconCache, SearchEngine, ViewMode, theme_colors};
-use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, ToolAction};
+use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors};
+use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction};
 
 /// Dialog state for creating new files/folders
 #[derive(Clone)]
@@ -28,6 +28,8 @@ pub struct Workspace {
     sidebar: Entity<SidebarView>,
     search_input: Entity<SearchInputView>,
     preview: Option<Entity<PreviewView>>,
+    theme_picker: Entity<ThemePickerView>,
+    status_bar: Entity<StatusBarView>,
     focus_handle: FocusHandle,
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
@@ -36,12 +38,35 @@ pub struct Workspace {
     view_mode: ViewMode,
     dialog_state: DialogState,
     show_hidden_files: bool,
+    current_theme_id: ThemeId,
+}
+
+impl Workspace {
+    /// Returns the current directory path for this workspace
+    pub fn current_path(&self) -> &PathBuf {
+        &self.current_path
+    }
+
+    /// Opens a new window with the specified path
+    pub fn open_new_window(path: PathBuf, cx: &mut App) {
+        if cx.has_global::<WindowManager>() {
+            cx.update_global::<WindowManager, _>(|manager, cx| {
+                manager.open_window(path, cx);
+            });
+        }
+    }
+
+    /// Opens a new window with the current directory
+    pub fn open_new_window_here(&self, cx: &mut App) {
+        Self::open_new_window(self.current_path.clone(), cx);
+    }
 }
 
 impl Workspace {
     pub fn build(initial_path: PathBuf, cx: &mut App) -> Entity<Self> {
-        // Register search input key bindings
+        // Register key bindings for all views
         SearchInputView::register_key_bindings(cx);
+        FileListView::register_key_bindings(cx);
         
         cx.new(|cx| {
             let mut file_system = FileSystem::new(initial_path.clone());
@@ -94,24 +119,59 @@ impl Workspace {
                 SearchInputView::new(cx).with_search_engine(search_engine.clone())
             });
 
+            // Load persisted settings
+            let settings = GlobalSettings::load();
+            let view_mode = settings.view_mode;
+            let show_hidden_files = settings.show_hidden_files;
+            let current_theme_id = settings.theme_id;
+
+            // Create theme picker
+            let theme_picker = cx.new(|cx| {
+                ThemePickerView::new(cx).with_selected_theme(current_theme_id)
+            });
+
+            // Create status bar and initialize with current directory info
+            let status_bar = cx.new(|cx| {
+                let mut status_bar_view = StatusBarView::new(cx);
+                status_bar_view.update_from_entries(&cached_entries, None, cx);
+                status_bar_view.set_current_directory(&initial_path, cx);
+                status_bar_view.set_view_mode(view_mode, cx);
+                status_bar_view
+            });
+
             // Observe file list for navigation requests and selection changes
             let sidebar_for_file_list = sidebar.clone();
+            let status_bar_for_file_list = status_bar.clone();
             cx.observe(&file_list, move |workspace: &mut Workspace, file_list, cx| {
+                // Check for parent navigation request (Backspace key)
+                let wants_parent = file_list.update(cx, |view, _| view.take_pending_parent_navigation());
+                if wants_parent {
+                    workspace.navigate_up(cx);
+                }
+                
+                // Check for directory navigation request (Enter key or double-click)
                 let nav_path = file_list.update(cx, |view, _| view.take_pending_navigation());
                 if let Some(path) = nav_path {
                     workspace.navigate_to(path, cx);
                 }
                 
                 // Update sidebar with selection count (single selection for now)
-                let selection_count = if file_list.read(cx).inner().selected_index().is_some() { 1 } else { 0 };
+                let selected_index = file_list.read(cx).inner().selected_index();
+                let selection_count = if selected_index.is_some() { 1 } else { 0 };
                 sidebar_for_file_list.update(cx, |view, _| {
                     view.set_selected_file_count(selection_count);
+                });
+                
+                // Update status bar with selection
+                status_bar_for_file_list.update(cx, |view, cx| {
+                    view.update_from_entries(&workspace.cached_entries, selected_index, cx);
                 });
             })
             .detach();
             
             // Observe grid view for navigation requests and selection changes
             let sidebar_for_grid = sidebar.clone();
+            let status_bar_for_grid = status_bar.clone();
             cx.observe(&grid_view, move |workspace: &mut Workspace, grid_view, cx| {
                 let nav_path = grid_view.update(cx, |view, _| view.take_pending_navigation());
                 if let Some(path) = nav_path {
@@ -119,9 +179,15 @@ impl Workspace {
                 }
                 
                 // Update sidebar with selection count
-                let selection_count = if grid_view.read(cx).inner().selected_index().is_some() { 1 } else { 0 };
+                let selected_index = grid_view.read(cx).inner().selected_index();
+                let selection_count = if selected_index.is_some() { 1 } else { 0 };
                 sidebar_for_grid.update(cx, |view, _| {
                     view.set_selected_file_count(selection_count);
+                });
+                
+                // Update status bar with selection
+                status_bar_for_grid.update(cx, |view, cx| {
+                    view.update_from_entries(&workspace.cached_entries, selected_index, cx);
                 });
             })
             .detach();
@@ -148,6 +214,18 @@ impl Workspace {
             })
             .detach();
 
+            // Observe status bar for actions
+            cx.observe(&status_bar, |workspace: &mut Workspace, status_bar, cx| {
+                let action = status_bar.update(cx, |view, _| view.take_pending_action());
+                if let Some(action) = action {
+                    match action {
+                        StatusBarAction::ToggleTerminal => workspace.toggle_terminal(cx),
+                        StatusBarAction::ToggleViewMode => workspace.toggle_view_mode(cx),
+                    }
+                }
+            })
+            .detach();
+
             Self {
                 file_system,
                 icon_cache,
@@ -157,14 +235,17 @@ impl Workspace {
                 sidebar,
                 search_input,
                 preview: None,
+                theme_picker,
+                status_bar,
                 focus_handle: cx.focus_handle(),
                 current_path: initial_path.clone(),
                 path_history: vec![initial_path],
                 is_terminal_open: true,
                 cached_entries,
-                view_mode: ViewMode::List,
+                view_mode,
                 dialog_state: DialogState::None,
-                show_hidden_files: false,
+                show_hidden_files,
+                current_theme_id,
             }
         })
     }
@@ -329,7 +410,13 @@ impl Workspace {
         
         // Update sidebar with current directory for tools context
         self.sidebar.update(cx, |view, _| {
-            view.set_current_directory(path);
+            view.set_current_directory(path.clone());
+        });
+        
+        // Update status bar with new entries and git branch
+        self.status_bar.update(cx, |view, cx| {
+            view.update_from_entries(&entries, None, cx);
+            view.set_current_directory(&path, cx);
         });
         
         cx.notify();
@@ -384,7 +471,13 @@ impl Workspace {
                 
                 // Update sidebar with current directory
                 self.sidebar.update(cx, |view, _| {
-                    view.set_current_directory(prev_path);
+                    view.set_current_directory(prev_path.clone());
+                });
+                
+                // Update status bar with new entries and git branch
+                self.status_bar.update(cx, |view, cx| {
+                    view.update_from_entries(&entries, None, cx);
+                    view.set_current_directory(&prev_path, cx);
                 });
                 
                 cx.notify();
@@ -400,6 +493,26 @@ impl Workspace {
 
     pub fn toggle_terminal(&mut self, cx: &mut Context<Self>) {
         self.is_terminal_open = !self.is_terminal_open;
+        // Update status bar terminal state
+        self.status_bar.update(cx, |view, cx| {
+            view.set_terminal_open(self.is_terminal_open, cx);
+        });
+        cx.notify();
+    }
+
+    pub fn toggle_theme_picker(&mut self, cx: &mut Context<Self>) {
+        self.theme_picker.update(cx, |picker, cx| {
+            picker.toggle(cx);
+        });
+        cx.notify();
+    }
+
+    pub fn set_theme(&mut self, theme_id: ThemeId, cx: &mut Context<Self>) {
+        self.current_theme_id = theme_id;
+        // Persist the theme selection
+        let mut settings = GlobalSettings::load();
+        settings.theme_id = theme_id;
+        let _ = settings.save();
         cx.notify();
     }
 
@@ -434,6 +547,14 @@ impl Workspace {
             }
         }
 
+        // Persist view mode setting
+        self.save_settings();
+
+        // Update status bar view mode
+        self.status_bar.update(cx, |view, cx| {
+            view.set_view_mode(self.view_mode, cx);
+        });
+
         cx.notify();
     }
 
@@ -444,8 +565,21 @@ impl Workspace {
     pub fn set_view_mode(&mut self, mode: ViewMode, cx: &mut Context<Self>) {
         if self.view_mode != mode {
             self.view_mode = mode;
+            // Persist view mode setting
+            self.save_settings();
+            // Update status bar view mode
+            self.status_bar.update(cx, |view, cx| {
+                view.set_view_mode(mode, cx);
+            });
             cx.notify();
         }
+    }
+
+    fn save_settings(&self) {
+        let mut settings = GlobalSettings::load();
+        settings.view_mode = self.view_mode;
+        settings.show_hidden_files = self.show_hidden_files;
+        let _ = settings.save();
     }
 
     fn render_breadcrumbs(&self) -> impl IntoElement {
@@ -595,11 +729,24 @@ impl Render for Workspace {
                             .items_center()
                             .gap_3()
                             .child(
-                                svg()
-                                    .path("assets/icons/sparkles.svg")
-                                    .size(px(14.0))
-                                    .text_color(text_gray)
-                                    .cursor_pointer(),
+                                div()
+                                    .id("theme-picker-btn")
+                                    .p_1()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .hover(|h| h.bg(hover_bg))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|view, _event, _window, cx| {
+                                            view.toggle_theme_picker(cx);
+                                        }),
+                                    )
+                                    .child(
+                                        svg()
+                                            .path("assets/icons/sparkles.svg")
+                                            .size(px(14.0))
+                                            .text_color(text_gray),
+                                    ),
                             )
                             .child(
                                 svg()
@@ -617,7 +764,7 @@ impl Render for Workspace {
                     .overflow_hidden()
                     .child(
                         div()
-                            .w(px(256.0))
+                            .w(px(crate::models::sidebar::WIDTH))
                             .bg(bg_dark)
                             .border_r_1()
                             .border_color(border_color)
@@ -912,10 +1059,14 @@ impl Render for Workspace {
                             .child(preview)
                     })),
             )
+            // Status bar at the bottom
+            .child(self.status_bar.clone())
             // Dialog overlay
             .when(!matches!(self.dialog_state, DialogState::None), |this| {
                 this.child(self.render_dialog_overlay(cx))
             })
+            // Theme picker overlay
+            .child(self.theme_picker.clone())
     }
 }
 

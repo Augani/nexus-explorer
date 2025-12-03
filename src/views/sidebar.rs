@@ -6,7 +6,7 @@ use gpui::{
     Styled, Window,
 };
 
-use crate::models::{Favorite, Favorites, theme_colors};
+use crate::models::{Favorite, Favorites, theme_colors, sidebar as sidebar_spacing};
 
 #[derive(Clone)]
 pub struct SidebarItem {
@@ -338,16 +338,23 @@ impl Focusable for SidebarView {
 
 impl Render for SidebarView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let bg_dark = gpui::rgb(0x0d1117);
-        let text_gray = gpui::rgb(0x8b949e);
-        let text_light = gpui::rgb(0xe6edf3);
-        let hover_bg = gpui::rgb(0x21262d);
-        let selected_bg = gpui::rgb(0x1f3a5f);
-        let label_color = gpui::rgb(0x6e7681);
-        let icon_blue = gpui::rgb(0x54aeff);
-        let drop_zone_bg = gpui::rgba(0x1f6feb33);
-        let drop_zone_border = gpui::rgb(0x1f6feb);
-        let warning_color = gpui::rgb(0xf0883e);
+        // Use theme colors for RPG styling
+        let theme = theme_colors();
+        let bg_dark = theme.bg_secondary;
+        let text_gray = theme.text_secondary;
+        let text_light = theme.text_primary;
+        let hover_bg = theme.bg_hover;
+        let selected_bg = theme.bg_selected;
+        let label_color = theme.text_muted;
+        let icon_blue = theme.accent_primary;
+        let drop_zone_bg = gpui::Rgba { 
+            r: theme.accent_primary.r, 
+            g: theme.accent_primary.g, 
+            b: theme.accent_primary.b, 
+            a: 0.2 
+        };
+        let drop_zone_border = theme.accent_primary;
+        let warning_color = theme.warning;
         let success_color = gpui::rgb(0x3fb950);
 
         let selected_path = self.sidebar.selected_path.clone();
@@ -359,6 +366,12 @@ impl Render for SidebarView {
         let is_tools_expanded = self.sidebar.is_tools_expanded();
         let show_hidden = self.sidebar.show_hidden_files();
         let has_selection = self.selected_file_count > 0;
+
+        // Use typography spacing constants
+        let section_gap = px(sidebar_spacing::SECTION_GAP);
+        let item_padding_x = px(sidebar_spacing::ITEM_PADDING_X);
+        let icon_size = px(sidebar_spacing::ICON_SIZE);
+        let icon_gap = px(sidebar_spacing::ICON_GAP);
 
         div()
             .id("sidebar-content")
@@ -372,7 +385,7 @@ impl Render for SidebarView {
                     // Tools Section
                     .child(
                         div()
-                            .mb_4()
+                            .mb(section_gap)
                             .child(
                                 div()
                                     .id("tools-header")
@@ -380,7 +393,7 @@ impl Render for SidebarView {
                                     .font_weight(gpui::FontWeight::BOLD)
                                     .text_color(label_color)
                                     .mb_2()
-                                    .px_2()
+                                    .px(item_padding_x)
                                     .flex()
                                     .items_center()
                                     .justify_between()

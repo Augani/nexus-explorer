@@ -397,6 +397,7 @@ mod tests {
     use super::*;
     use std::time::SystemTime;
     use crate::models::{FileType, IconKey};
+    use proptest::prelude::*;
 
     fn create_test_entry(name: &str, is_dir: bool, size: u64) -> FileEntry {
         FileEntry {
@@ -503,5 +504,195 @@ mod tests {
 
         state.set_terminal_open(false);
         assert!(!state.is_terminal_open);
+    }
+
+    #[test]
+    fn test_detect_git_branch_in_git_repo() {
+        // Test with current directory (which should be a git repo)
+        let current_dir = std::env::current_dir().unwrap();
+        let branch = detect_git_branch(&current_dir);
+        
+        // We expect to find a branch since we're in a git repo
+        // The branch name should be non-empty if found
+        if let Some(ref b) = branch {
+            assert!(!b.is_empty(), "Branch name should not be empty");
+        }
+        // Note: branch could be None if not in a git repo, which is also valid
+    }
+
+    #[test]
+    fn test_detect_git_branch_non_git_dir() {
+        // Test with a directory that's definitely not a git repo
+        let temp_dir = std::env::temp_dir();
+        let branch = detect_git_branch(&temp_dir);
+        
+        // Temp dir is unlikely to be a git repo (unless nested in one)
+        // This test mainly verifies the function doesn't panic
+        let _ = branch;
+    }
+
+    /// Generate arbitrary file entries for property testing
+    fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
+        (
+            "[a-zA-Z0-9_]{1,20}",  // name
+            prop::bool::ANY,       // is_dir
+            0u64..10_000_000_000,  // size (up to ~10GB)
+        )
+            .prop_map(|(name, is_dir, size)| {
+                let actual_size = if is_dir { 0 } else { size };
+                create_test_entry(&name, is_dir, actual_size)
+            })
+    }
+
+    /// Generate a vector of file entries
+    fn arb_entries() -> impl Strategy<Value = Vec<FileEntry>> {
+        prop::collection::vec(arb_file_entry(), 0..100)
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// **Feature: ui-enhancements, Property 31: Status Bar Item Count**
+        /// **Validates: Requirements 10.2**
+        ///
+        /// *For any* list of file entries, when the status bar state is updated,
+        /// the total_items count SHALL equal the number of entries in the list.
+        #[test]
+        fn prop_status_bar_item_count(entries in arb_entries()) {
+            let mut state = StatusBarState::new();
+            state.update_from_file_list(&entries, None);
+            
+            prop_assert_eq!(
+                state.total_items, 
+                entries.len(),
+                "Status bar total_items {} should equal entries count {}",
+                state.total_items, entries.len()
+            );
+        }
+
+        /// **Feature: ui-enhancements, Property 31b: Status Bar Selected Count**
+        /// **Validates: Requirements 10.2**
+        ///
+        /// *For any* list of file entries and valid selection index,
+        /// the selected_count SHALL be 1 when an item is selected, 0 otherwise.
+        #[test]
+        fn prop_status_bar_selected_count(
+            entries in arb_entries(),
+            selection_offset in 0usize..100,
+        ) {
+            let mut state = StatusBarState::new();
+            
+            // Test with no selection
+            state.update_from_file_list(&entries, None);
+            prop_assert_eq!(state.selected_count, 0, "No selection should have count 0");
+            
+            // Test with valid selection
+            if !entries.is_empty() {
+                let valid_index = selection_offset % entries.len();
+                state.update_from_file_list(&entries, Some(valid_index));
+                prop_assert_eq!(
+                    state.selected_count, 1,
+                    "Single selection should have count 1"
+                );
+            }
+        }
+
+        /// **Feature: ui-enhancements, Property 31c: Status Bar Multiple Selection Count**
+        /// **Validates: Requirements 10.2**
+        ///
+        /// *For any* list of file entries and selection indices,
+        /// the selected_count SHALL equal the number of valid selected indices.
+        #[test]
+        fn prop_status_bar_multiple_selection_count(
+            entries in arb_entries(),
+            selection_indices in prop::collection::vec(0usize..100, 0..20),
+        ) {
+            let mut state = StatusBarState::new();
+            
+            // Filter to valid indices and deduplicate
+            let valid_indices: Vec<usize> = selection_indices
+                .into_iter()
+                .filter(|&idx| idx < entries.len())
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect();
+            
+            state.update_from_entries(&entries, &valid_indices);
+            
+            prop_assert_eq!(
+                state.selected_count, 
+                valid_indices.len(),
+                "Selected count {} should equal valid indices count {}",
+                state.selected_count, valid_indices.len()
+            );
+        }
+
+        /// **Feature: ui-enhancements, Property 32: Status Bar Selection Size**
+        /// **Validates: Requirements 10.3**
+        ///
+        /// *For any* list of file entries and selection indices,
+        /// the selected_size SHALL equal the sum of sizes of all selected entries.
+        #[test]
+        fn prop_status_bar_selection_size(
+            entries in arb_entries(),
+            selection_indices in prop::collection::vec(0usize..100, 0..20),
+        ) {
+            let mut state = StatusBarState::new();
+            
+            // Filter to valid indices and deduplicate
+            let valid_indices: Vec<usize> = selection_indices
+                .into_iter()
+                .filter(|&idx| idx < entries.len())
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect();
+            
+            state.update_from_entries(&entries, &valid_indices);
+            
+            // Calculate expected size
+            let expected_size: u64 = valid_indices
+                .iter()
+                .filter_map(|&idx| entries.get(idx))
+                .map(|e| e.size)
+                .sum();
+            
+            prop_assert_eq!(
+                state.selected_size, 
+                expected_size,
+                "Selected size {} should equal sum of selected entry sizes {}",
+                state.selected_size, expected_size
+            );
+        }
+
+        /// **Feature: ui-enhancements, Property 32b: Status Bar Single Selection Size**
+        /// **Validates: Requirements 10.3**
+        ///
+        /// *For any* list of file entries and valid selection index,
+        /// the selected_size SHALL equal the size of the selected entry.
+        #[test]
+        fn prop_status_bar_single_selection_size(
+            entries in arb_entries(),
+            selection_offset in 0usize..100,
+        ) {
+            let mut state = StatusBarState::new();
+            
+            // Test with no selection
+            state.update_from_file_list(&entries, None);
+            prop_assert_eq!(state.selected_size, 0, "No selection should have size 0");
+            
+            // Test with valid selection
+            if !entries.is_empty() {
+                let valid_index = selection_offset % entries.len();
+                state.update_from_file_list(&entries, Some(valid_index));
+                
+                let expected_size = entries[valid_index].size;
+                prop_assert_eq!(
+                    state.selected_size, 
+                    expected_size,
+                    "Single selection size {} should equal entry size {}",
+                    state.selected_size, expected_size
+                );
+            }
+        }
     }
 }

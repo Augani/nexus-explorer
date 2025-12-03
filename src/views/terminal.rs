@@ -1,6 +1,6 @@
 use gpui::{
-    div, px, App, Context, Entity, FocusHandle, Focusable, InteractiveElement, IntoElement,
-    KeyDownEvent, MouseButton, MouseDownEvent, ParentElement, Render, Styled, Window,
+    div, px, App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement,
+    KeyDownEvent, ParentElement, Render, Styled, Window, ScrollHandle,
 };
 use std::path::PathBuf;
 
@@ -15,8 +15,12 @@ const LINE_HEIGHT: f32 = 20.0;
 const CHAR_WIDTH: f32 = 8.4;
 /// Terminal padding
 const TERMINAL_PADDING: f32 = 12.0;
+/// Terminal content height (excluding header and scrollbar)
+const TERMINAL_CONTENT_HEIGHT: f32 = 260.0;
+/// Number of lines to render above/below visible area for smooth scrolling
+const OVERSCAN_LINES: usize = 3;
 
-/// Terminal view component
+/// Terminal view component with virtualized rendering
 pub struct TerminalView {
     state: TerminalState,
     parser: AnsiParser,
@@ -26,6 +30,8 @@ pub struct TerminalView {
     cursor_blink: bool,
     selection_start: Option<(usize, usize)>,
     selection_end: Option<(usize, usize)>,
+    scroll_handle: ScrollHandle,
+    viewport_height: f32,
 }
 
 impl TerminalView {
@@ -39,6 +45,8 @@ impl TerminalView {
             cursor_blink: true,
             selection_start: None,
             selection_end: None,
+            scroll_handle: ScrollHandle::new(),
+            viewport_height: TERMINAL_CONTENT_HEIGHT,
         }
     }
 
@@ -214,6 +222,66 @@ impl TerminalView {
         self.state.total_lines()
     }
 
+    /// Calculate the visible line range for virtualized rendering
+    /// Returns (start_index, end_index) of lines to render
+    pub fn visible_line_range(&self) -> (usize, usize) {
+        let total_lines = self.state.total_lines();
+        let visible_rows = self.state.rows();
+        let scroll_offset = self.state.scroll_offset();
+        
+        // Calculate the start of the visible viewport in the line buffer
+        let viewport_start = total_lines.saturating_sub(visible_rows + scroll_offset);
+        let viewport_end = total_lines.saturating_sub(scroll_offset);
+        
+        // Add overscan for smooth scrolling
+        let render_start = viewport_start.saturating_sub(OVERSCAN_LINES);
+        let render_end = (viewport_end + OVERSCAN_LINES).min(total_lines);
+        
+        (render_start, render_end)
+    }
+
+    /// Get lines for virtualized rendering (only visible + overscan)
+    pub fn virtualized_lines(&self) -> impl Iterator<Item = (usize, &crate::models::TerminalLine)> {
+        let (start, end) = self.visible_line_range();
+        (start..end).filter_map(move |idx| {
+            self.state.line(idx).map(|line| (idx, line))
+        })
+    }
+
+    /// Calculate the number of visible lines based on viewport height
+    pub fn calculate_visible_rows(&self) -> usize {
+        ((self.viewport_height - TERMINAL_PADDING * 2.0) / LINE_HEIGHT).floor() as usize
+    }
+
+    /// Set viewport height and update terminal rows
+    pub fn set_viewport_height(&mut self, height: f32) {
+        self.viewport_height = height;
+        let rows = self.calculate_visible_rows();
+        if rows != self.state.rows() && rows > 0 {
+            self.resize(self.state.cols(), rows);
+        }
+    }
+
+    /// Get scroll progress (0.0 = bottom, 1.0 = top)
+    pub fn scroll_progress(&self) -> f32 {
+        let max_offset = self.state.max_scroll_offset();
+        if max_offset == 0 {
+            0.0
+        } else {
+            self.state.scroll_offset() as f32 / max_offset as f32
+        }
+    }
+
+    /// Get scrollbar thumb size as a fraction of the track
+    pub fn scrollbar_thumb_size(&self) -> f32 {
+        let total = self.state.total_lines();
+        let visible = self.state.rows();
+        if total == 0 {
+            1.0
+        } else {
+            (visible as f32 / total as f32).min(1.0)
+        }
+    }
 
     /// Handle key down events
     fn handle_key_down(&mut self, event: &KeyDownEvent, _cx: &mut Context<Self>) {
@@ -259,17 +327,58 @@ impl TerminalView {
         }
     }
 
-    /// Render a single terminal line
-    fn render_line(&self, _idx: usize, line: &crate::models::TerminalLine) -> impl IntoElement {
+    /// Render a single terminal line with proper styling
+    fn render_line(&self, idx: usize, line: &crate::models::TerminalLine, is_cursor_line: bool) -> impl IntoElement {
         let text: String = line.cells.iter().map(|c| c.char).collect();
         let text = text.trim_end().to_string();
+        let cursor_col = self.state.cursor().col;
+        
+        // Check if cursor should be shown on this line
+        let show_cursor = is_cursor_line && self.cursor_blink && self.state.cursor_visible();
         
         div()
+            .id(("terminal-line", idx))
             .h(px(LINE_HEIGHT))
+            .w_full()
+            .flex()
+            .items_center()
             .text_color(gpui::Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 })
             .font_family("JetBrains Mono")
             .text_size(px(13.0))
-            .child(if text.is_empty() { " ".to_string() } else { text })
+            .child(
+                if show_cursor && cursor_col <= text.len() {
+                    // Render text with cursor
+                    let (before, after) = if cursor_col < text.len() {
+                        let chars: Vec<char> = text.chars().collect();
+                        let before: String = chars[..cursor_col].iter().collect();
+                        let cursor_char = chars.get(cursor_col).copied().unwrap_or(' ');
+                        let after: String = chars[cursor_col + 1..].iter().collect();
+                        (before, format!("{}{}", cursor_char, after))
+                    } else {
+                        (text.clone(), String::new())
+                    };
+                    
+                    div()
+                        .flex()
+                        .child(before)
+                        .child(
+                            div()
+                                .bg(gpui::rgb(0xf4b842))
+                                .text_color(gpui::rgb(0x0d0a0a))
+                                .child(if after.is_empty() { " ".to_string() } else { after.chars().next().unwrap_or(' ').to_string() })
+                        )
+                        .child(if after.len() > 1 { after[1..].to_string() } else { String::new() })
+                } else {
+                    div().child(if text.is_empty() { " ".to_string() } else { text })
+                }
+            )
+    }
+
+    /// Calculate the absolute line index for the cursor
+    fn cursor_absolute_line(&self) -> usize {
+        let total = self.state.total_lines();
+        let rows = self.state.rows();
+        total.saturating_sub(rows) + self.state.cursor().row
     }
 }
 
@@ -281,7 +390,7 @@ impl Focusable for TerminalView {
 }
 
 impl Render for TerminalView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         // Process any pending output
         self.process_output();
 
@@ -295,8 +404,25 @@ impl Render for TerminalView {
             return div().id("terminal-hidden").size_0();
         }
 
-        let visible_lines: Vec<_> = self.state.visible_lines().collect();
-        let line_count = visible_lines.len();
+        // Get virtualized line range for efficient rendering
+        let (render_start, render_end) = self.visible_line_range();
+        let cursor_line = self.cursor_absolute_line();
+        let total_lines = self.state.total_lines();
+        let visible_rows = self.state.rows();
+        
+        // Calculate scrollbar metrics
+        let thumb_size = self.scrollbar_thumb_size();
+        let scroll_progress = self.scroll_progress();
+        let scrollbar_track_height = TERMINAL_CONTENT_HEIGHT - 8.0;
+        let thumb_height = (thumb_size * scrollbar_track_height).max(20.0);
+        let thumb_offset = scroll_progress * (scrollbar_track_height - thumb_height);
+
+        // Collect lines to render (virtualized)
+        let lines_to_render: Vec<_> = (render_start..render_end)
+            .filter_map(|idx| {
+                self.state.line(idx).map(|line| (idx, line.clone()))
+            })
+            .collect();
 
         div()
             .id("terminal-panel")
@@ -310,6 +436,7 @@ impl Render for TerminalView {
             // Header
             .child(
                 div()
+                    .id("terminal-header")
                     .h(px(36.0))
                     .bg(header_bg)
                     .border_b_1()
@@ -340,11 +467,28 @@ impl Render for TerminalView {
                                             .unwrap_or_else(|| self.state.working_directory().to_string_lossy().to_string())
                                     )
                             )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(text_muted)
+                                    .child(format!("({}/{})", visible_rows, total_lines))
+                            )
                     )
                     .child(
                         div()
                             .flex()
                             .gap_2()
+                            .items_center()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(text_muted)
+                                    .child(if self.state.scroll_offset() > 0 {
+                                        format!("↑{}", self.state.scroll_offset())
+                                    } else {
+                                        String::new()
+                                    })
+                            )
                             .child(
                                 div()
                                     .w(px(8.0))
@@ -358,47 +502,55 @@ impl Render for TerminalView {
                             )
                     )
             )
-            // Terminal content
+            // Terminal content with virtualized rendering
             .child(
                 div()
-                    .id("terminal-content")
+                    .id("terminal-content-wrapper")
                     .flex_1()
-                    .overflow_hidden()
-                    .p(px(TERMINAL_PADDING))
-                    .font_family("JetBrains Mono")
-                    .text_size(px(13.0))
-                    .children(
-                        visible_lines.iter().enumerate().map(|(idx, line)| {
-                            self.render_line(idx, line)
-                        }).collect::<Vec<_>>()
-                    )
-            )
-            // Scrollbar indicator
-            .child(
-                div()
-                    .h(px(4.0))
-                    .bg(header_bg)
                     .flex()
-                    .items_center()
-                    .px_2()
+                    .overflow_hidden()
+                    .child(
+                        // Main content area with virtualized lines
+                        div()
+                            .id("terminal-content")
+                            .flex_1()
+                            .overflow_hidden()
+                            .p(px(TERMINAL_PADDING))
+                            .font_family("JetBrains Mono")
+                            .text_size(px(13.0))
+                            .children(
+                                lines_to_render.iter().map(|(idx, line)| {
+                                    let is_cursor_line = *idx == cursor_line;
+                                    self.render_line(*idx, line, is_cursor_line)
+                                }).collect::<Vec<_>>()
+                            )
+                    )
+                    // Vertical scrollbar
                     .child(
                         div()
-                            .flex_1()
-                            .h(px(2.0))
-                            .bg(border_color)
-                            .rounded_full()
+                            .id("terminal-scrollbar")
+                            .w(px(8.0))
+                            .h_full()
+                            .bg(header_bg)
+                            .flex()
+                            .flex_col()
+                            .p(px(2.0))
                             .child(
                                 div()
-                                    .h_full()
-                                    .w(px(
-                                        if self.state.total_lines() > 0 {
-                                            (line_count as f32 / self.state.total_lines() as f32 * 100.0).min(100.0)
-                                        } else {
-                                            100.0
-                                        }
-                                    ))
-                                    .bg(accent_color)
-                                    .rounded_full()
+                                    .flex_1()
+                                    .bg(border_color)
+                                    .rounded(px(2.0))
+                                    .relative()
+                                    .child(
+                                        div()
+                                            .absolute()
+                                            .top(px(thumb_offset))
+                                            .left_0()
+                                            .right_0()
+                                            .h(px(thumb_height))
+                                            .bg(accent_color)
+                                            .rounded(px(2.0))
+                                    )
                             )
                     )
             )

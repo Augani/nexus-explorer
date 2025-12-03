@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [-] 1. Search Functionality
+- [x] 1. Search Functionality
   - [x] 1.1 Implement SearchInput component with focus handling
     - Create `SearchInput` struct with query state and focus tracking
     - Implement text input handling with real-time updates
@@ -25,30 +25,30 @@
     - Clear search on empty input or Escape key
     - Restore full file list when cleared
     - _Requirements: 1.5, 1.6_
-  - [-] 1.7 Write property test for empty search returns all
+  - [x] 1.7 Write property test for empty search returns all
     - **Property 3: Empty Search Returns All**
     - **Validates: Requirements 1.5**
 
-- [ ] 2. Breadcrumb Navigation
-  - [ ] 2.1 Implement Breadcrumb component with clickable segments
+- [x] 2. Breadcrumb Navigation
+  - [x] 2.1 Implement Breadcrumb component with clickable segments
     - Create `Breadcrumb` struct with path parsing
     - Render each segment as clickable element
     - Handle click to navigate to segment path
     - _Requirements: 2.1, 2.2_
-  - [ ] 2.2 Write property test for breadcrumb segment count
+  - [x] 2.2 Write property test for breadcrumb segment count
     - **Property 4: Breadcrumb Segment Count**
     - **Validates: Requirements 2.1**
-  - [ ] 2.3 Write property test for breadcrumb path reconstruction
+  - [x] 2.3 Write property test for breadcrumb path reconstruction
     - **Property 5: Breadcrumb Path Reconstruction**
     - **Validates: Requirements 2.2, 2.6**
-  - [ ] 2.4 Implement breadcrumb truncation with ellipsis
+  - [x] 2.4 Implement breadcrumb truncation with ellipsis
     - Truncate middle segments when path is long
     - Show ellipsis dropdown for hidden segments
     - _Requirements: 2.4, 2.5_
-  - [ ] 2.5 Write property test for breadcrumb truncation
+  - [x] 2.5 Write property test for breadcrumb truncation
     - **Property 6: Breadcrumb Truncation**
     - **Validates: Requirements 2.4**
-  - [ ] 2.6 Implement breadcrumb context menu
+  - [x] 2.6 Implement breadcrumb context menu
     - Right-click to show "Copy Path" option
     - Copy path to clipboard on selection
     - _Requirements: 2.7_
@@ -127,7 +127,7 @@
 - [x] 7. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 8. Grid View Mode
+- [x] 8. Grid View Mode
   - [x] 8.1 Implement ViewMode enum and GridConfig
     - Create `ViewMode` enum with List/Grid variants
     - Create `GridConfig` with icon size and spacing
@@ -145,25 +145,25 @@
     - Display file name below icon
     - Support selection and context menu
     - _Requirements: 5.2, 5.5_
-  - [ ] 8.5 Implement view mode switching
+  - [x] 8.5 Implement view mode switching
     - Toggle between List and Grid views
     - Preserve selection on switch
     - _Requirements: 5.1, 5.4, 5.7_
-  - [ ] 8.6 Write property test for selection preservation
+  - [x] 8.6 Write property test for selection preservation
     - **Property 18: View Mode Selection Preservation**
     - **Validates: Requirements 5.7**
-  - [ ] 8.7 Implement view mode persistence
+  - [x] 8.7 Implement view mode persistence
     - Save view mode to settings
     - Restore on application start
     - _Requirements: 5.8_
-  - [ ] 8.8 Write property test for view mode persistence
+  - [x] 8.8 Write property test for view mode persistence
     - **Property 19: View Mode Persistence**
     - **Validates: Requirements 5.8**
 
 - [x] 9. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 10. Theme System with RPG Aesthetics
+- [x] 10. Theme System with RPG Aesthetics
   - [x] 10.1 Implement Theme, ThemeColors, and ThemeDecorations structs
     - Define ThemeColors with all color fields (backgrounds, text, accents, semantic, borders, file colors, terminal)
     - Define ThemeDecorations with border styles, corner flourishes, divider styles, shadows, background effects
@@ -240,11 +240,11 @@
     - Handle stdin/stdout communication
     - Set working directory
     - _Requirements: 6.2, 6.5_
-  - [ ] 12.5 Implement Terminal view with virtualized rendering
+  - [x] 12.5 Implement Terminal view with virtualized rendering
     - Render visible lines only
     - Handle scrollback buffer
     - _Requirements: 6.8_
-  - [ ] 12.6 Write property test for terminal virtualization
+  - [x] 12.6 Write property test for terminal virtualization
     - **Property 21: Terminal Virtualization**
     - **Validates: Requirements 6.8**
   - [ ] 12.7 Implement terminal input handling
@@ -324,7 +324,7 @@
     - Toggle visibility of dotfiles
     - Persist setting
     - _Requirements: 8.8_
-  - [ ] 16.6 Write property test for hidden files toggle
+  - [x] 16.6 Write property test for hidden files toggle
     - **Property 27: Hidden Files Toggle**
     - **Validates: Requirements 8.8**
 
@@ -356,36 +356,36 @@
 - [x] 18. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 19. Status Bar
-  - [-] 19.1 Implement StatusBar component
+- [x] 19. Status Bar
+  - [x] 19.1 Implement StatusBar component
     - Display total items and selected count
     - _Requirements: 10.1, 10.2_
-  - [ ] 19.2 Write property test for status bar item count
+  - [x] 19.2 Write property test for status bar item count
     - **Property 31: Status Bar Item Count**
     - **Validates: Requirements 10.2**
-  - [ ] 19.3 Implement selection size display
+  - [x] 19.3 Implement selection size display
     - Calculate and show combined size
     - _Requirements: 10.3_
-  - [ ] 19.4 Write property test for status bar selection size
+  - [x] 19.4 Write property test for status bar selection size
     - **Property 32: Status Bar Selection Size**
     - **Validates: Requirements 10.3**
-  - [ ] 19.5 Implement status bar actions
+  - [x] 19.5 Implement status bar actions
     - Terminal toggle button
     - View mode toggle
     - _Requirements: 10.4, 10.5_
-  - [ ] 19.6 Implement git branch detection
+  - [x] 19.6 Implement git branch detection
     - Detect .git directory
     - Read current branch name
     - _Requirements: 10.7_
 
-- [ ] 20. Keyboard Navigation
-  - [ ] 20.1 Implement arrow key navigation in FileList
+- [-] 20. Keyboard Navigation
+  - [x] 20.1 Implement arrow key navigation in FileList
     - Move selection with Up/Down arrows
     - _Requirements: 13.1_
-  - [ ] 20.2 Write property test for keyboard selection movement
+  - [x] 20.2 Write property test for keyboard selection movement
     - **Property 33: Keyboard Selection Movement**
     - **Validates: Requirements 13.1**
-  - [ ] 20.3 Implement Enter and Backspace navigation
+  - [x] 20.3 Implement Enter and Backspace navigation
     - Enter to open directory
     - Backspace to go to parent
     - _Requirements: 13.2, 13.3_
@@ -399,26 +399,26 @@
     - Cmd+F for search focus
     - _Requirements: 13.4, 13.5, 13.6, 13.8_
 
-- [ ] 21. Checkpoint - Ensure all tests pass
+- [x] 21. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 22. UI Spacing, Typography and RPG Styling
-  - [ ] 22.1 Set up Google Fonts loading
+- [-] 22. UI Spacing, Typography and RPG Styling
+  - [x] 22.1 Set up Google Fonts loading
     - Load Crimson Pro (200, 400, 900 weights) for display text
     - Load IBM Plex Sans (400, 500, 600 weights) for body text
     - Load JetBrains Mono (400, 500 weights) for code/terminal
     - _Requirements: 11.1, 11.2, 11.3_
-  - [ ] 22.2 Define typography scale with extreme contrasts
+  - [x] 22.2 Define typography scale with extreme contrasts
     - Implement 3x+ size jumps (12px → 36px → 72px)
     - Implement weight extremes (200 thin vs 900 black)
     - Define letter spacing constants (tight, normal, wide, ultra)
     - _Requirements: 11.1, 11.4_
-  - [ ] 22.3 Define spacing constants
+  - [x] 22.3 Define spacing constants
     - Create spacing scale (4px, 8px, 12px, 16px, 24px, 32px, 48px)
     - Define component-specific spacing (sidebar, file list, toolbar, terminal)
     - _Requirements: 11.5, 11.6_
-  - [ ] 22.4 Apply RPG styling to Sidebar
+  - [x] 22.4 Apply RPG styling to Sidebar
     - 280px width with 16px item padding, 24px section gaps
     - Ornate section dividers with flourishes
     - Themed hover glow effects
@@ -444,7 +444,7 @@
     - Gold/themed trim on important elements
     - _Requirements: 11.8_
 
-- [ ] 23. Quick Look
+- [-] 23. Quick Look
   - [ ] 23.1 Implement QuickLook overlay component
     - Create full-screen overlay
     - Handle Space key to toggle
@@ -460,24 +460,24 @@
     - Arrow keys to preview next/previous
     - _Requirements: 15.7_
 
-- [ ] 24. Multi-Window Support
-  - [ ] 24.1 Implement WindowManager
+- [x] 24. Multi-Window Support
+  - [x] 24.1 Implement WindowManager
     - Track open windows
     - Handle new window creation
     - _Requirements: 16.1, 16.2_
-  - [ ] 24.2 Implement window state persistence
+  - [x] 24.2 Implement window state persistence
     - Save/restore window positions
     - _Requirements: 16.8_
-  - [ ] 24.3 Implement cross-window drag-and-drop
+  - [x] 24.3 Implement cross-window drag-and-drop
     - Allow file drag between windows
     - _Requirements: 16.3_
 
-- [ ] 25. File Operations with Progress
-  - [ ] 25.1 Implement FileOperationsManager
+- [-] 25. File Operations with Progress
+  - [x] 25.1 Implement FileOperationsManager
     - Create operation queue
     - Track progress for each operation
     - _Requirements: 17.1, 17.2, 17.3, 17.4_
-  - [ ] 25.2 Implement progress UI
+  - [x] 25.2 Implement progress UI
     - Show current file and progress bar
     - Display estimated time remaining
     - _Requirements: 17.2_
@@ -486,23 +486,23 @@
     - Graceful cancellation
     - _Requirements: 17.5, 17.6_
 
-- [ ] 26. Undo/Redo System
-  - [ ] 26.1 Implement undo stack
+- [x] 26. Undo/Redo System
+  - [x] 26.1 Implement undo stack
     - Track undoable operations
     - Store original and new paths
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5_
-  - [ ] 26.2 Write property test for undo operation reversal
+  - [x] 26.2 Write property test for undo operation reversal
     - **Property 38: Undo Operation Reversal**
     - **Validates: Requirements 18.1, 18.2**
-  - [ ] 26.3 Implement redo stack
+  - [x] 26.3 Implement redo stack
     - Track redoable operations
     - _Requirements: 18.6_
 
-- [ ] 27. Checkpoint - Ensure all tests pass
+- [x] 27. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 28. Batch Rename
-  - [ ] 28.1 Implement BatchRename dialog
+- [-] 28. Batch Rename
+  - [-] 28.1 Implement BatchRename dialog
     - Show file list with preview
     - Pattern input with tokens
     - _Requirements: 19.1, 19.2_

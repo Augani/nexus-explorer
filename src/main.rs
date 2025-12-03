@@ -11,7 +11,7 @@ use gpui::{px, size, Application, AssetSource, Bounds, Result, SharedString, Win
 use tokio::runtime::Runtime;
 
 use app::Workspace;
-use models::{GlobalSettings, IconCache, IconKey};
+use models::{GlobalSettings, IconCache, IconKey, WindowManager};
 
 struct Assets {
     base: PathBuf,
@@ -54,13 +54,44 @@ fn main() {
         // Register GlobalSettings as GPUI global state
         cx.set_global(GlobalSettings::default());
         
+        // Initialize WindowManager as global state
+        let mut window_manager = WindowManager::new();
+        
         // Spawn Tokio runtime on a dedicated thread for I/O operations
         let _tokio_runtime = spawn_tokio_runtime();
         
         // Pre-load default icons into IconCache
         let _icon_cache = preload_default_icons();
         
-        // Detect user's home directory
+        // Set up window close handler to save state and quit when last window closes
+        cx.on_window_closed(|cx| {
+            // Save window state before potentially quitting
+            if cx.has_global::<WindowManager>() {
+                let _ = cx.global::<WindowManager>().save_state();
+            }
+            
+            // Quit when all windows are closed
+            if cx.windows().is_empty() {
+                cx.quit();
+            }
+        })
+        .detach();
+        
+        // Check if we should restore previous windows
+        let settings = GlobalSettings::load();
+        let should_restore = settings.restore_windows_on_start();
+        
+        if should_restore {
+            if let Some(saved_state) = WindowManager::load_state() {
+                if !saved_state.windows.is_empty() {
+                    window_manager.restore_state(saved_state, cx);
+                    cx.set_global(window_manager);
+                    return;
+                }
+            }
+        }
+        
+        // Detect user's home directory for initial window
         let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
         
         // Create the main window
@@ -77,10 +108,15 @@ fn main() {
             ..Default::default()
         };
         
-        cx.open_window(window_options, |_window, cx| {
-            Workspace::build(home_dir, cx)
+        let path = home_dir.clone();
+        let handle = cx.open_window(window_options, |_window, cx| {
+            Workspace::build(path, cx)
         })
         .expect("Failed to open window");
+        
+        // Register the initial window with the WindowManager
+        window_manager.register_window(handle, home_dir);
+        cx.set_global(window_manager);
     });
 }
 

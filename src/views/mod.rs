@@ -1,6 +1,8 @@
 mod file_list;
 mod grid_view;
 mod preview;
+mod progress_panel;
+mod quick_look;
 mod search_input;
 mod sidebar;
 mod status_bar;
@@ -21,9 +23,11 @@ pub use preview::{
     calculate_directory_stats, format_hex_dump,
     format_size as preview_format_size, format_date as preview_format_date,
 };
+pub use progress_panel::{ProgressPanelView, ProgressPanelAction};
 pub use search_input::{SearchInput, SearchInputView};
 pub use sidebar::{Sidebar, SidebarView, SidebarItem, ToolAction};
 pub use status_bar::{StatusBarView, StatusBarState, StatusBarAction, detect_git_branch, format_size as status_bar_format_size};
+pub use quick_look::{QuickLook, QuickLookView, QuickLookContent, ToggleQuickLook, CloseQuickLook, QuickLookNext, QuickLookPrevious};
 pub use tab_bar::TabBarView;
 pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};

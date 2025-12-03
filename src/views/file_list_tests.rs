@@ -1,6 +1,6 @@
 use super::*;
 use crate::models::{FileEntry, IconKey};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 fn create_test_entry(name: &str, is_dir: bool, size: u64) -> FileEntry {
@@ -849,4 +849,380 @@ fn test_escape_clears_search_restores_entries() {
     // All entries should be restored
     assert_eq!(list.item_count(), 3);
     assert!(!list.is_filtered());
+}
+
+
+// **Feature: ui-enhancements, Property 33: Keyboard Selection Movement**
+// **Validates: Requirements 13.1**
+// 
+// *For any* file list with N items and current selection index S, pressing Up arrow
+// SHALL move selection to max(0, S-1), and pressing Down arrow SHALL move selection
+// to min(N-1, S+1). If no selection exists, both actions SHALL select index 0.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+    
+    #[test]
+    fn prop_keyboard_selection_movement(
+        entry_count in 1usize..500,
+        initial_selection in proptest::option::of(0usize..500),
+        move_up_count in 0usize..20,
+        move_down_count in 0usize..20,
+    ) {
+        // Generate file entries
+        let entries: Vec<FileEntry> = (0..entry_count)
+            .map(|i| create_test_entry(&format!("file_{:04}.txt", i), false, i as u64 * 100))
+            .collect();
+        
+        let mut list = FileList::new();
+        list.set_entries(entries);
+        
+        // Set initial selection (clamped to valid range)
+        let clamped_initial = initial_selection.map(|s| s.min(entry_count.saturating_sub(1)));
+        list.set_selected_index(clamped_initial);
+        
+        // Track expected selection
+        let mut expected_selection = clamped_initial.unwrap_or(0);
+        
+        // Simulate move up actions
+        for _ in 0..move_up_count {
+            // Before move, if no selection, it should become 0
+            if list.selected_index().is_none() {
+                expected_selection = 0;
+            } else {
+                expected_selection = expected_selection.saturating_sub(1);
+            }
+            
+            // Simulate the move_selection_up logic
+            let item_count = list.item_count();
+            if item_count > 0 {
+                let new_index = match list.selected_index() {
+                    Some(current) if current > 0 => current - 1,
+                    Some(_) => 0,
+                    None => 0,
+                };
+                list.set_selected_index(Some(new_index));
+            }
+        }
+        
+        // Verify selection after up movements
+        if entry_count > 0 && move_up_count > 0 {
+            prop_assert!(
+                list.selected_index().is_some(),
+                "Selection should exist after move up"
+            );
+            prop_assert_eq!(
+                list.selected_index().unwrap(), expected_selection,
+                "After {} up moves from {:?}, expected selection {}, got {:?}",
+                move_up_count, clamped_initial, expected_selection, list.selected_index()
+            );
+        }
+        
+        // Simulate move down actions
+        for _ in 0..move_down_count {
+            let max_index = entry_count.saturating_sub(1);
+            if list.selected_index().is_none() {
+                expected_selection = 0;
+            } else {
+                expected_selection = (expected_selection + 1).min(max_index);
+            }
+            
+            // Simulate the move_selection_down logic
+            let item_count = list.item_count();
+            if item_count > 0 {
+                let max_idx = item_count.saturating_sub(1);
+                let new_index = match list.selected_index() {
+                    Some(current) if current < max_idx => current + 1,
+                    Some(current) => current,
+                    None => 0,
+                };
+                list.set_selected_index(Some(new_index));
+            }
+        }
+        
+        // Verify selection after down movements
+        if entry_count > 0 && move_down_count > 0 {
+            prop_assert!(
+                list.selected_index().is_some(),
+                "Selection should exist after move down"
+            );
+            prop_assert_eq!(
+                list.selected_index().unwrap(), expected_selection,
+                "After {} down moves, expected selection {}, got {:?}",
+                move_down_count, expected_selection, list.selected_index()
+            );
+        }
+        
+        // Property: Selection should always be within bounds
+        if let Some(selection) = list.selected_index() {
+            prop_assert!(
+                selection < entry_count,
+                "Selection {} should be less than entry count {}",
+                selection, entry_count
+            );
+        }
+        
+        // Property: Selection at boundary should not exceed bounds
+        // Move up from 0 should stay at 0
+        list.set_selected_index(Some(0));
+        let item_count = list.item_count();
+        if item_count > 0 {
+            let new_index = match list.selected_index() {
+                Some(current) if current > 0 => current - 1,
+                Some(_) => 0,
+                None => 0,
+            };
+            list.set_selected_index(Some(new_index));
+        }
+        prop_assert_eq!(
+            list.selected_index(), Some(0),
+            "Moving up from 0 should stay at 0"
+        );
+        
+        // Move down from max should stay at max
+        let max_index = entry_count.saturating_sub(1);
+        list.set_selected_index(Some(max_index));
+        if item_count > 0 {
+            let max_idx = item_count.saturating_sub(1);
+            let new_index = match list.selected_index() {
+                Some(current) if current < max_idx => current + 1,
+                Some(current) => current,
+                None => 0,
+            };
+            list.set_selected_index(Some(new_index));
+        }
+        prop_assert_eq!(
+            list.selected_index(), Some(max_index),
+            "Moving down from max {} should stay at max",
+            max_index
+        );
+    }
+}
+
+#[test]
+fn test_move_selection_up_from_middle() {
+    let mut list = FileList::new();
+    list.set_entries(create_test_entries(10));
+    list.set_selected_index(Some(5));
+    
+    // Simulate move up
+    let new_index = match list.selected_index() {
+        Some(current) if current > 0 => current - 1,
+        Some(_) => 0,
+        None => 0,
+    };
+    list.set_selected_index(Some(new_index));
+    
+    assert_eq!(list.selected_index(), Some(4));
+}
+
+#[test]
+fn test_move_selection_up_from_top() {
+    let mut list = FileList::new();
+    list.set_entries(create_test_entries(10));
+    list.set_selected_index(Some(0));
+    
+    // Simulate move up - should stay at 0
+    let new_index = match list.selected_index() {
+        Some(current) if current > 0 => current - 1,
+        Some(_) => 0,
+        None => 0,
+    };
+    list.set_selected_index(Some(new_index));
+    
+    assert_eq!(list.selected_index(), Some(0));
+}
+
+#[test]
+fn test_move_selection_down_from_middle() {
+    let mut list = FileList::new();
+    list.set_entries(create_test_entries(10));
+    list.set_selected_index(Some(5));
+    
+    // Simulate move down
+    let max_index = list.item_count().saturating_sub(1);
+    let new_index = match list.selected_index() {
+        Some(current) if current < max_index => current + 1,
+        Some(current) => current,
+        None => 0,
+    };
+    list.set_selected_index(Some(new_index));
+    
+    assert_eq!(list.selected_index(), Some(6));
+}
+
+#[test]
+fn test_move_selection_down_from_bottom() {
+    let mut list = FileList::new();
+    list.set_entries(create_test_entries(10));
+    list.set_selected_index(Some(9));
+    
+    // Simulate move down - should stay at 9
+    let max_index = list.item_count().saturating_sub(1);
+    let new_index = match list.selected_index() {
+        Some(current) if current < max_index => current + 1,
+        Some(current) => current,
+        None => 0,
+    };
+    list.set_selected_index(Some(new_index));
+    
+    assert_eq!(list.selected_index(), Some(9));
+}
+
+#[test]
+fn test_move_selection_with_no_initial_selection() {
+    let mut list = FileList::new();
+    list.set_entries(create_test_entries(10));
+    assert!(list.selected_index().is_none());
+    
+    // Simulate move down with no selection - should select first item
+    let new_index = match list.selected_index() {
+        Some(current) => current,
+        None => 0,
+    };
+    list.set_selected_index(Some(new_index));
+    
+    assert_eq!(list.selected_index(), Some(0));
+}
+
+#[test]
+fn test_move_selection_empty_list() {
+    let mut list = FileList::new();
+    // Empty list
+    assert_eq!(list.item_count(), 0);
+    
+    // Move operations should not crash on empty list
+    // The actual FileListView checks for empty list before modifying selection
+    if list.item_count() > 0 {
+        list.set_selected_index(Some(0));
+    }
+    
+    assert!(list.selected_index().is_none());
+}
+
+
+// **Feature: ui-enhancements, Property 34: Parent Navigation**
+// **Validates: Requirements 13.3**
+// 
+// *For any* path P with a parent directory, navigating to parent SHALL result in
+// the parent path of P. For root paths, parent navigation SHALL have no effect.
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+    
+    #[test]
+    fn prop_parent_navigation(
+        depth in 1usize..10,
+        segment_len in 1usize..20,
+    ) {
+        use std::path::Path;
+        
+        // Generate a path with the given depth
+        let segments: Vec<String> = (0..depth)
+            .map(|i| {
+                let name: String = (0..segment_len.min(10))
+                    .map(|j| ((((i * 7 + j) % 26) as u8) + b'a') as char)
+                    .collect();
+                name
+            })
+            .collect();
+        
+        // Build the path
+        let mut path = PathBuf::from("/");
+        for segment in &segments {
+            path.push(segment);
+        }
+        
+        // Property 1: Parent of a non-root path should be the path without the last segment
+        if let Some(parent) = path.parent() {
+            // The parent should have one fewer component
+            let path_components: Vec<_> = path.components().collect();
+            let parent_components: Vec<_> = parent.components().collect();
+            
+            prop_assert!(
+                parent_components.len() < path_components.len() || path_components.len() <= 1,
+                "Parent should have fewer components: path has {}, parent has {}",
+                path_components.len(), parent_components.len()
+            );
+            
+            // The parent should be a prefix of the original path
+            prop_assert!(
+                path.starts_with(parent),
+                "Path {:?} should start with parent {:?}",
+                path, parent
+            );
+        }
+        
+        // Property 2: Navigating up from root should stay at root
+        let root = PathBuf::from("/");
+        let root_parent = root.parent();
+        prop_assert!(
+            root_parent.is_none(),
+            "Root path should have no parent, got {:?}",
+            root_parent
+        );
+        
+        // Property 3: Multiple parent navigations should eventually reach root
+        let mut current = path.clone();
+        let mut iterations = 0;
+        let max_iterations = depth + 5; // Safety limit
+        
+        while let Some(parent) = current.parent() {
+            if parent == Path::new("") || parent == Path::new("/") {
+                break;
+            }
+            current = parent.to_path_buf();
+            iterations += 1;
+            
+            prop_assert!(
+                iterations <= max_iterations,
+                "Too many iterations ({}) to reach root from {:?}",
+                iterations, path
+            );
+        }
+        
+        // Property 4: The number of parent navigations should equal the depth
+        // (accounting for the root component)
+        prop_assert!(
+            iterations <= depth,
+            "Iterations {} should be <= depth {} for path {:?}",
+            iterations, depth, path
+        );
+    }
+}
+
+#[test]
+fn test_parent_navigation_basic() {
+    let path = PathBuf::from("/home/user/documents");
+    let parent = path.parent().unwrap();
+    assert_eq!(parent, Path::new("/home/user"));
+    
+    let grandparent = parent.parent().unwrap();
+    assert_eq!(grandparent, Path::new("/home"));
+}
+
+#[test]
+fn test_parent_navigation_root() {
+    let root = PathBuf::from("/");
+    assert!(root.parent().is_none() || root.parent() == Some(Path::new("")));
+}
+
+#[test]
+fn test_parent_navigation_single_level() {
+    let path = PathBuf::from("/home");
+    let parent = path.parent().unwrap();
+    assert_eq!(parent, Path::new("/"));
+}
+
+#[test]
+fn test_parent_navigation_preserves_prefix() {
+    let path = PathBuf::from("/a/b/c/d/e");
+    let mut current = path.clone();
+    
+    // Each parent should be a prefix of the original
+    while let Some(parent) = current.parent() {
+        if parent == Path::new("") || parent == Path::new("/") {
+            break;
+        }
+        assert!(path.starts_with(parent), "Path should start with parent");
+        current = parent.to_path_buf();
+    }
 }

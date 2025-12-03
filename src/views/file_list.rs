@@ -2,14 +2,23 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use gpui::{
-    div, prelude::*, px, svg, uniform_list, App, Context, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, MouseButton, ParentElement, Point, Pixels, Render, 
-    SharedString, Styled, UniformListScrollHandle, Window, MouseDownEvent,
+    actions, div, prelude::*, px, svg, uniform_list, App, Context, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, KeyBinding, MouseButton, ParentElement, Point, Pixels, Render, 
+    ScrollStrategy, SharedString, Styled, UniformListScrollHandle, Window, MouseDownEvent,
 };
 
-use crate::models::{FileEntry, IconKey, SortColumn, SortDirection, SortState, theme_colors};
+use crate::models::{FileEntry, IconKey, SortColumn, SortDirection, SortState, theme_colors, file_list as file_list_spacing};
 
-pub const DEFAULT_ROW_HEIGHT: f32 = 36.0;
+// Define actions for keyboard navigation
+actions!(file_list, [
+    MoveSelectionUp,
+    MoveSelectionDown,
+    OpenSelected,
+    NavigateToParent,
+]);
+
+// Use typography constants for row height
+pub const DEFAULT_ROW_HEIGHT: f32 = file_list_spacing::ROW_HEIGHT;
 pub const DEFAULT_BUFFER_SIZE: usize = 5;
 
 pub struct FileList {
@@ -39,6 +48,7 @@ pub struct FileListView {
     focus_handle: FocusHandle,
     scroll_handle: UniformListScrollHandle,
     pending_navigation: Option<PathBuf>,
+    pending_parent_navigation: bool,
     context_menu_position: Option<Point<Pixels>>,
     context_menu_index: Option<usize>,
 }
@@ -50,6 +60,7 @@ impl FileListView {
             focus_handle: cx.focus_handle(),
             scroll_handle: UniformListScrollHandle::new(),
             pending_navigation: None,
+            pending_parent_navigation: false,
             context_menu_position: None,
             context_menu_index: None,
         }
@@ -61,6 +72,7 @@ impl FileListView {
             focus_handle: cx.focus_handle(),
             scroll_handle: UniformListScrollHandle::new(),
             pending_navigation: None,
+            pending_parent_navigation: false,
             context_menu_position: None,
             context_menu_index: None,
         }
@@ -83,6 +95,13 @@ impl FileListView {
         self.pending_navigation.take()
     }
 
+    /// Check and clear the pending parent navigation flag
+    pub fn take_pending_parent_navigation(&mut self) -> bool {
+        let result = self.pending_parent_navigation;
+        self.pending_parent_navigation = false;
+        result
+    }
+
     pub fn select_item(&mut self, index: usize, cx: &mut Context<Self>) {
         self.file_list.selected_index = Some(index);
         cx.notify();
@@ -95,6 +114,117 @@ impl FileListView {
                 cx.notify();
             }
         }
+    }
+
+    /// Register key bindings for file list navigation
+    pub fn register_key_bindings(cx: &mut App) {
+        cx.bind_keys([
+            KeyBinding::new("up", MoveSelectionUp, Some("FileList")),
+            KeyBinding::new("down", MoveSelectionDown, Some("FileList")),
+            KeyBinding::new("enter", OpenSelected, Some("FileList")),
+            KeyBinding::new("backspace", NavigateToParent, Some("FileList")),
+        ]);
+    }
+
+    /// Move selection up by one item
+    fn handle_move_up(&mut self, _: &MoveSelectionUp, _window: &mut Window, cx: &mut Context<Self>) {
+        let item_count = self.file_list.item_count();
+        if item_count == 0 {
+            return;
+        }
+
+        let new_index = match self.file_list.selected_index {
+            Some(current) if current > 0 => current - 1,
+            Some(_) => 0, // Already at top, stay there
+            None => 0, // No selection, select first item
+        };
+
+        self.file_list.selected_index = Some(new_index);
+        self.scroll_to_index(new_index);
+        cx.notify();
+    }
+
+    /// Move selection down by one item
+    fn handle_move_down(&mut self, _: &MoveSelectionDown, _window: &mut Window, cx: &mut Context<Self>) {
+        let item_count = self.file_list.item_count();
+        if item_count == 0 {
+            return;
+        }
+
+        let max_index = item_count.saturating_sub(1);
+        let new_index = match self.file_list.selected_index {
+            Some(current) if current < max_index => current + 1,
+            Some(current) => current, // Already at bottom, stay there
+            None => 0, // No selection, select first item
+        };
+
+        self.file_list.selected_index = Some(new_index);
+        self.scroll_to_index(new_index);
+        cx.notify();
+    }
+
+    /// Open the selected item (navigate into directory)
+    fn handle_open_selected(&mut self, _: &OpenSelected, _window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(index) = self.file_list.selected_index {
+            // Get entry from filtered or unfiltered list
+            let entry = if let Some(filtered) = &self.file_list.filtered_entries {
+                filtered.get(index).map(|f| &f.entry)
+            } else {
+                self.file_list.entries.get(index)
+            };
+
+            if let Some(entry) = entry {
+                if entry.is_dir {
+                    self.pending_navigation = Some(entry.path.clone());
+                    cx.notify();
+                }
+            }
+        }
+    }
+
+    /// Navigate to parent directory
+    fn handle_navigate_to_parent(&mut self, _: &NavigateToParent, _window: &mut Window, cx: &mut Context<Self>) {
+        // Signal to workspace to navigate to parent directory
+        self.pending_parent_navigation = true;
+        cx.notify();
+    }
+
+    /// Scroll to ensure the given index is visible
+    fn scroll_to_index(&self, index: usize) {
+        self.scroll_handle.scroll_to_item(index, ScrollStrategy::Center);
+    }
+
+    /// Move selection up by one item (public API for testing)
+    pub fn move_selection_up(&mut self) {
+        let item_count = self.file_list.item_count();
+        if item_count == 0 {
+            return;
+        }
+
+        let new_index = match self.file_list.selected_index {
+            Some(current) if current > 0 => current - 1,
+            Some(_) => 0,
+            None => 0,
+        };
+
+        self.file_list.selected_index = Some(new_index);
+    }
+
+    /// Move selection down by one item (public API for testing)
+    pub fn move_selection_down(&mut self) {
+        let item_count = self.file_list.item_count();
+        if item_count == 0 {
+            return;
+        }
+
+        let max_index = item_count.saturating_sub(1);
+        let new_index = match self.file_list.selected_index {
+            Some(current) if current < max_index => current + 1,
+            Some(current) => current,
+            None => 0,
+        };
+
+        self.file_list.selected_index = Some(new_index);
     }
 }
 
@@ -127,13 +257,20 @@ impl Render for FileListView {
 
         div()
             .id("file-list")
+            .key_context("FileList")
+            .track_focus(&self.focus_handle)
+            .on_action(cx.listener(Self::handle_move_up))
+            .on_action(cx.listener(Self::handle_move_down))
+            .on_action(cx.listener(Self::handle_open_selected))
+            .on_action(cx.listener(Self::handle_navigate_to_parent))
             .size_full()
             .bg(bg_darker)
             .flex()
             .flex_col()
             .relative()
-            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, window, cx| {
                 view.close_context_menu();
+                window.focus(&view.focus_handle);
                 cx.notify();
             }))
             .child({
