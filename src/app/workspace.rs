@@ -48,6 +48,8 @@ pub struct Workspace {
     is_terminal_open: bool,
     terminal_height: f32,
     is_resizing_terminal: bool,
+    preview_width: f32,
+    is_resizing_preview: bool,
     cached_entries: Vec<crate::models::FileEntry>,
     view_mode: ViewMode,
     dialog_state: DialogState,
@@ -301,6 +303,8 @@ impl Workspace {
                 is_terminal_open: false,
                 terminal_height: 300.0,
                 is_resizing_terminal: false,
+                preview_width: 320.0,
+                is_resizing_preview: false,
                 cached_entries,
                 view_mode,
                 dialog_state: DialogState::None,
@@ -672,11 +676,13 @@ impl Workspace {
     fn update_preview_for_selection(&mut self, cx: &mut Context<Self>) {
         let selected_entry = match self.view_mode {
             ViewMode::List | ViewMode::Details => {
-                let idx = self.file_list.read(cx).inner().selected_index();
-                idx.and_then(|i| self.cached_entries.get(i).cloned())
+                let file_list = self.file_list.read(cx);
+                let idx = file_list.inner().selected_index();
+                idx.and_then(|i| file_list.inner().get_display_entry(i).cloned())
             }
             ViewMode::Grid => {
-                let idx = self.grid_view.read(cx).inner().selected_index();
+                let grid_view = self.grid_view.read(cx);
+                let idx = grid_view.inner().selected_index();
                 idx.and_then(|i| self.cached_entries.get(i).cloned())
             }
         };
@@ -880,6 +886,10 @@ impl Render for Workspace {
                     view.is_resizing_terminal = false;
                     cx.notify();
                 }
+                if view.is_resizing_preview {
+                    view.is_resizing_preview = false;
+                    cx.notify();
+                }
             }))
             .on_mouse_move(cx.listener(|view, event: &gpui::MouseMoveEvent, window, cx| {
                 if view.is_resizing_terminal {
@@ -888,6 +898,15 @@ impl Render for Workspace {
                     let window_height = bounds.size.height;
                     let new_height = f32::from(window_height) - f32::from(mouse_y) - 30.0;
                     view.terminal_height = new_height.clamp(150.0, 600.0);
+                    cx.notify();
+                }
+                if view.is_resizing_preview {
+                    let bounds = window.bounds();
+                    let mouse_x = event.position.x;
+                    let window_width = bounds.size.width;
+                    // Preview is on the right, so width = window_width - mouse_x
+                    let new_width = f32::from(window_width) - f32::from(mouse_x);
+                    view.preview_width = new_width.clamp(200.0, 600.0);
                     cx.notify();
                 }
             }))
@@ -1244,14 +1263,49 @@ impl Render for Workspace {
                             }),
                     )
                     .children(self.preview.clone().map(|preview| {
+                        let preview_width = self.preview_width;
+                        let handle_color = border_color;
                         div()
-                            .w(px(320.0))
-                            .bg(bg_dark)
-                            .border_l_1()
-                            .border_color(border_color)
                             .flex()
-                            .flex_col()
-                            .child(preview)
+                            .h_full()
+                            // Resize handle
+                            .child(
+                                div()
+                                    .id("preview-resize-handle")
+                                    .w(px(6.0))
+                                    .h_full()
+                                    .cursor_col_resize()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .bg(bg_dark)
+                                    .border_l_1()
+                                    .border_color(handle_color)
+                                    .hover(|h| h.bg(theme.bg_hover))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                        view.is_resizing_preview = true;
+                                        cx.notify();
+                                    }))
+                                    .child(
+                                        div()
+                                            .w(px(3.0))
+                                            .h(px(40.0))
+                                            .rounded_full()
+                                            .bg(handle_color),
+                                    ),
+                            )
+                            // Preview content
+                            .child(
+                                div()
+                                    .w(px(preview_width))
+                                    .min_w(px(200.0))
+                                    .max_w(px(600.0))
+                                    .h_full()
+                                    .bg(bg_dark)
+                                    .flex()
+                                    .flex_col()
+                                    .child(preview),
+                            )
                     })),
             )
             // Status bar at the bottom
