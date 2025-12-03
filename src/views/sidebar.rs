@@ -6,7 +6,7 @@ use gpui::{
     Styled, Window,
 };
 
-use crate::models::{Bookmark, BookmarkId, BookmarkManager, Favorite, Favorites, theme_colors, sidebar as sidebar_spacing};
+use crate::models::{Bookmark, BookmarkId, BookmarkManager, Favorite, Favorites, SmartFolder, SmartFolderId, SmartFolderManager, theme_colors, sidebar as sidebar_spacing};
 
 #[derive(Clone)]
 pub struct SidebarItem {

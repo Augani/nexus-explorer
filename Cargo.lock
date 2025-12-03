@@ -1665,6 +1665,7 @@ dependencies = [
  "gpui",
  "image",
  "jwalk",
+ "libc",
  "lru",
  "notify",
  "nucleo",
@@ -1675,6 +1676,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
+ "windows-sys 0.52.0",
  "xattr 1.6.1",
 ]
 

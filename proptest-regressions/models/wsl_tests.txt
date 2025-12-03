@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3b0edb81accc4c40686519d1e0c4a784f3fa416694f41007f0044520cf6e7522 # shrinks to distro = "Ubuntu", components = ["A"]

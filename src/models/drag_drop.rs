@@ -3,6 +3,24 @@ use std::path::PathBuf;
 use gpui::{prelude::*, px, Context, Window};
 use serde::{Deserialize, Serialize};
 
+/// Payload for drag-and-drop operations containing file paths
+#[derive(Clone, Debug)]
+pub struct DragPayload {
+    pub paths: Vec<PathBuf>,
+}
+
+impl DragPayload {
+    /// Creates a new drag payload with the given paths
+    pub fn new(paths: Vec<PathBuf>) -> Self {
+        Self { paths }
+    }
+
+    /// Creates a drag payload for a single path
+    pub fn single(path: PathBuf) -> Self {
+        Self { paths: vec![path] }
+    }
+}
+
 /// Data transferred during file drag operations
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FileDragData {

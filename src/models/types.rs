@@ -15,6 +15,54 @@ pub struct FileEntry {
     pub modified: SystemTime,
     pub file_type: FileType,
     pub icon_key: IconKey,
+    /// Linux permissions (for WSL paths on Windows)
+    #[serde(default)]
+    pub linux_permissions: Option<LinuxFilePermissions>,
+}
+
+/// Linux file permissions for WSL integration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LinuxFilePermissions {
+    /// Permission mode (e.g., 0o755)
+    pub mode: u32,
+    /// Owner username
+    pub owner: String,
+    /// Group name
+    pub group: String,
+}
+
+impl LinuxFilePermissions {
+    pub fn new(mode: u32, owner: String, group: String) -> Self {
+        Self { mode, owner, group }
+    }
+
+    /// Format permissions as rwxrwxrwx string
+    pub fn format_mode(&self) -> String {
+        let mut result = String::with_capacity(9);
+        
+        // Owner permissions
+        result.push(if self.mode & 0o400 != 0 { 'r' } else { '-' });
+        result.push(if self.mode & 0o200 != 0 { 'w' } else { '-' });
+        result.push(if self.mode & 0o100 != 0 { 'x' } else { '-' });
+        
+        // Group permissions
+        result.push(if self.mode & 0o040 != 0 { 'r' } else { '-' });
+        result.push(if self.mode & 0o020 != 0 { 'w' } else { '-' });
+        result.push(if self.mode & 0o010 != 0 { 'x' } else { '-' });
+        
+        // Other permissions
+        result.push(if self.mode & 0o004 != 0 { 'r' } else { '-' });
+        result.push(if self.mode & 0o002 != 0 { 'w' } else { '-' });
+        result.push(if self.mode & 0o001 != 0 { 'x' } else { '-' });
+        
+        result
+    }
+
+    /// Format as full permission string like "-rwxr-xr-x owner group"
+    pub fn format_full(&self) -> String {
+        let type_char = '-'; // Regular file, could be 'd' for directory
+        format!("{}{} {} {}", type_char, self.format_mode(), self.owner, self.group)
+    }
 }
 
 /// Detected file type for icon selection
@@ -140,7 +188,14 @@ impl FileEntry {
             modified,
             file_type,
             icon_key,
+            linux_permissions: None,
         }
+    }
+
+    /// Create a FileEntry with Linux permissions (for WSL paths)
+    pub fn with_linux_permissions(mut self, permissions: LinuxFilePermissions) -> Self {
+        self.linux_permissions = Some(permissions);
+        self
     }
 }
 

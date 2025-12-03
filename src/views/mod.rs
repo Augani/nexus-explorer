@@ -1,3 +1,5 @@
+mod column_view;
+mod dual_pane;
 mod file_list;
 mod go_to_folder;
 mod grid_view;
@@ -14,6 +16,8 @@ mod theme_picker;
 
 pub mod breadcrumb;
 
+pub use column_view::{ColumnViewComponent, NavigateToPath, SelectColumnEntry, NavigateUp, NavigateDown, NavigateLeft, NavigateRight};
+pub use dual_pane::{DualPaneView, DualPaneAction, ToggleDualPane, SwitchPane, CopyToOther, MoveToOther};
 pub use file_list::{
     FileList, FileListView, RenderedEntry, VisibleRange,
     format_date, format_size, get_file_icon, get_file_icon_color,

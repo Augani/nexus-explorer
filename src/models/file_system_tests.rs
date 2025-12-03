@@ -30,6 +30,7 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
                 modified,
                 file_type: if is_dir { FileType::Directory } else { FileType::RegularFile },
                 icon_key: if is_dir { IconKey::Directory } else { IconKey::GenericFile },
+                linux_permissions: None,
             }
         })
 }

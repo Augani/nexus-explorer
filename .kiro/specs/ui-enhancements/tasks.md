@@ -559,14 +559,14 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 - [-] 32. Dual Pane Mode
-  - [-] 32.1 Implement DualPane state
+  - [x] 32.1 Implement DualPane state
     - Left and right pane states
     - Active pane tracking
     - _Requirements: 22.1, 22.2_
-  - [ ] 32.2 Write property test for dual pane independence
+  - [x] 32.2 Write property test for dual pane independence
     - **Property 42: Dual Pane Independence**
     - **Validates: Requirements 22.2**
-  - [ ] 32.3 Implement dual pane UI
+  - [x] 32.3 Implement dual pane UI
     - Side-by-side file lists
     - Tab to switch focus
     - _Requirements: 22.2, 22.3_
@@ -575,28 +575,28 @@
     - Drag between panes
     - _Requirements: 22.4, 22.5, 22.6_
 
-- [ ] 33. Column View (Miller Columns)
-  - [ ] 33.1 Implement ColumnView state
+- [x] 33. Column View (Miller Columns)
+  - [x] 33.1 Implement ColumnView state
     - Track columns and selections
     - Handle navigation
     - _Requirements: 23.1, 23.2_
-  - [ ] 33.2 Write property test for column view hierarchy
+  - [x] 33.2 Write property test for column view hierarchy
     - **Property 43: Column View Hierarchy**
     - **Validates: Requirements 23.1, 23.2**
-  - [ ] 33.3 Implement column view rendering
+  - [x] 33.3 Implement column view rendering
     - Cascading columns layout
     - Horizontal scrolling
     - _Requirements: 23.3, 23.5_
-  - [ ] 33.4 Implement column view navigation
+  - [x] 33.4 Implement column view navigation
     - Arrow keys for navigation
     - _Requirements: 23.7, 23.8_
 
-- [ ] 34. Smart Folders
-  - [ ] 34.1 Implement SmartFolderManager
+- [-] 34. Smart Folders
+  - [x] 34.1 Implement SmartFolderManager
     - Create/edit/delete smart folders
     - Execute queries
     - _Requirements: 24.1, 24.2, 24.5, 24.6_
-  - [ ] 34.2 Write property test for smart folder query consistency
+  - [x] 34.2 Write property test for smart folder query consistency
     - **Property 44: Smart Folder Query Consistency**
     - **Validates: Requirements 24.3**
   - [ ] 34.3 Implement smart folders UI
@@ -604,52 +604,52 @@
     - Query builder dialog
     - _Requirements: 24.7_
 
-- [ ] 35. Checkpoint - Ensure all tests pass
+- [x] 35. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 36. Device Monitor
-  - [ ] 36.1 Implement DeviceMonitor core
+- [x] 36. Device Monitor
+  - [x] 36.1 Implement DeviceMonitor core
     - Device enumeration
     - Event subscription
     - _Requirements: 26.1, 26.2, 26.3, 28.1_
-  - [ ] 36.2 Write property test for device detection completeness
+  - [x] 36.2 Write property test for device detection completeness
     - **Property 45: Device Detection Completeness**
     - **Validates: Requirements 26.1, 26.2, 26.3**
-  - [ ] 36.3 Write property test for device event ordering
+  - [x] 36.3 Write property test for device event ordering
     - **Property 46: Device Event Ordering**
     - **Validates: Requirements 26.1, 26.7, 28.2, 28.3**
-  - [ ] 36.4 Implement Windows device monitoring
+  - [x] 36.4 Implement Windows device monitoring
     - Drive letter enumeration
     - WMI for device events
     - _Requirements: 26.4_
-  - [ ] 36.5 Implement macOS device monitoring
+  - [x] 36.5 Implement macOS device monitoring
     - DiskArbitration framework
     - /Volumes enumeration
     - _Requirements: 26.5_
-  - [ ] 36.6 Implement Linux device monitoring
+  - [x] 36.6 Implement Linux device monitoring
     - udev for device events
     - /media and /mnt enumeration
     - _Requirements: 26.6_
-  - [ ] 36.7 Implement eject/unmount
+  - [x] 36.7 Implement eject/unmount
     - Platform-specific unmount APIs
     - _Requirements: 26.8_
-  - [ ] 36.8 Write property test for device space accuracy
+  - [x] 36.8 Write property test for device space accuracy
     - **Property 48: Device Space Accuracy**
     - **Validates: Requirements 26.2**
 
-- [ ] 37. WSL Integration (Windows)
-  - [ ] 37.1 Implement WSL distribution detection
+- [-] 37. WSL Integration (Windows)
+  - [x] 37.1 Implement WSL distribution detection
     - Query installed distributions
     - Check running status
     - _Requirements: 27.1, 27.5_
-  - [ ] 37.2 Implement WSL filesystem browsing
+  - [x] 37.2 Implement WSL filesystem browsing
     - Path translation (\\wsl$\)
     - Linux permissions display
     - _Requirements: 27.2, 27.3_
-  - [ ] 37.3 Write property test for WSL path translation
+  - [x] 37.3 Write property test for WSL path translation
     - **Property 47: WSL Path Translation**
     - **Validates: Requirements 27.4**
-  - [ ] 37.4 Implement WSL context menu
+  - [x] 37.4 Implement WSL context menu
     - Open Terminal Here for WSL
     - _Requirements: 27.6_
 

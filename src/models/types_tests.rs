@@ -50,6 +50,7 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
                 modified,
                 file_type,
                 icon_key,
+                linux_permissions: None,
             }
         })
 }
