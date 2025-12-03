@@ -71,6 +71,7 @@ pub enum ToolAction {
     Refresh,
     OpenTerminalHere,
     ToggleHiddenFiles,
+    SetAsDefault,
     Copy,
     Move,
     Paste,
@@ -497,6 +498,18 @@ impl SidebarView {
         cx.notify();
     }
 
+    /// Toggle default browser setting
+    pub fn toggle_default_browser(&mut self, cx: &mut Context<Self>) {
+        let is_default = crate::models::is_default_file_browser();
+        if is_default {
+            let _ = crate::models::restore_default_file_browser();
+        } else {
+            let _ = crate::models::set_as_default_file_browser();
+        }
+        self.pending_action = Some(ToolAction::SetAsDefault);
+        cx.notify();
+    }
+
     /// Toggle network section
     fn toggle_network_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_network_expanded();
@@ -668,6 +681,9 @@ impl SidebarView {
             }
             ToolAction::ToggleHiddenFiles => {
                 self.sidebar.toggle_hidden_files();
+            }
+            ToolAction::SetAsDefault => {
+                // Handled by toggle_default_browser
             }
             _ => {
                 // Other actions are handled by workspace
@@ -1024,6 +1040,45 @@ impl Render for SidebarView {
                                                     )
                                                 })
                                         )
+                                        // Set as Default File Browser toggle
+                                        .child({
+                                            let is_default = crate::models::is_default_file_browser();
+                                            div()
+                                                .id("set-as-default")
+                                                .flex()
+                                                .items_center()
+                                                .gap_3()
+                                                .px_2()
+                                                .py_1p5()
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .text_sm()
+                                                .text_color(text_gray)
+                                                .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+                                                    view.toggle_default_browser(cx);
+                                                }))
+                                                .child(
+                                                    svg()
+                                                        .path("assets/icons/layout-grid.svg")
+                                                        .size(px(14.0))
+                                                        .text_color(if is_default { success_color } else { icon_blue }),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .flex_1()
+                                                        .child(if is_default { "Default Browser ✓" } else { "Set as Default Browser" })
+                                                )
+                                                .when(is_default, |s| {
+                                                    s.child(
+                                                        div()
+                                                            .w(px(6.0))
+                                                            .h(px(6.0))
+                                                            .rounded_full()
+                                                            .bg(success_color)
+                                                    )
+                                                })
+                                        })
                                 )
                             })
                     )

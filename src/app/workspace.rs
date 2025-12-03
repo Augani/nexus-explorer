@@ -451,6 +451,9 @@ impl Workspace {
                     }
                 }
             }
+            ToolAction::SetAsDefault => {
+                // Handled by sidebar
+            }
         }
     }
     
