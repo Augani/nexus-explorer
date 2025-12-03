@@ -202,6 +202,27 @@ impl FileSystem {
     ) -> LoadOperation {
         let request_id = self.begin_load(path.clone());
 
+        // Check if this is the trash folder - use special handling
+        if super::is_trash_path(&path) {
+            let batch_config = BatchConfig::default();
+            let (entry_tx, batch_rx, _batch_handle) = create_batch_pipeline(batch_config);
+            
+            let traversal_handle = std::thread::spawn(move || -> crate::models::Result<usize> {
+                let entries = super::list_trash_items();
+                let count = entries.len();
+                for entry in entries {
+                    let _ = entry_tx.send(entry);
+                }
+                Ok(count)
+            });
+            
+            return LoadOperation {
+                request_id,
+                batch_receiver: batch_rx,
+                traversal_handle,
+            };
+        }
+
         let config = TraversalConfig {
             sort_key,
             sort_order,

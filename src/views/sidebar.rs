@@ -45,7 +45,7 @@ pub struct DraggedFolder {
 
 /// View for rendering dragged folder
 pub struct DraggedFolderView {
-    name: String,
+    pub name: String,
 }
 
 impl Render for DraggedFolderView {

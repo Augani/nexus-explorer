@@ -551,7 +551,8 @@ impl Workspace {
 
     fn load_destination_entries(&mut self, cx: &mut Context<Self>) {
         let path = self.dest_path.clone();
-        let show_hidden = self.show_hidden_files;
+        // Always show all files in destination pane for copy/move operations
+        let show_hidden = true;
         
         cx.spawn(async move |this, cx| {
             let entries = std::thread::spawn(move || {
@@ -1145,40 +1146,45 @@ impl Workspace {
         }
     }
 
-    fn render_breadcrumbs(&self) -> impl IntoElement {
+    fn render_breadcrumbs(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = theme_colors();
-        let text_gray = theme.text_muted;
         let text_light = theme.text_primary;
         let accent_primary = theme.accent_primary;
         let accent_secondary = theme.accent_secondary;
         let hover_bg = theme.bg_hover;
 
-        let mut parts: Vec<String> = Vec::new();
+        let mut parts: Vec<(String, PathBuf)> = Vec::new();
         let mut current = Some(self.current_path.as_path());
 
         while let Some(path) = current {
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                parts.push(name.to_string());
+            let name = if path.parent().is_none() {
+                "/".to_string()
+            } else {
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string()
+            };
+            if !name.is_empty() {
+                parts.push((name, path.to_path_buf()));
             }
             current = path.parent();
-            if parts.len() >= 4 {
+            if parts.len() >= 5 {
                 break;
             }
         }
 
         parts.reverse();
 
-        // RPG-styled breadcrumbs with themed separators and hover effects
         div()
             .flex()
             .items_center()
             .text_sm()
             .font_weight(gpui::FontWeight::MEDIUM)
-            .children(parts.into_iter().enumerate().map(|(i, part)| {
+            .children(parts.into_iter().enumerate().map(|(i, (name, path))| {
                 div()
                     .flex()
                     .items_center()
-                    // Themed separator with accent color
                     .when(i > 0, |s| {
                         s.child(
                             svg()
@@ -1188,16 +1194,22 @@ impl Workspace {
                                 .mx_1(),
                         )
                     })
-                    // Breadcrumb segment with RPG hover effect
                     .child(
                         div()
+                            .id(SharedString::from(format!("breadcrumb-{}", i)))
                             .px(px(crate::models::toolbar::BREADCRUMB_PADDING))
                             .py_0p5()
                             .rounded_sm()
                             .text_color(text_light)
                             .cursor_pointer()
                             .hover(|s| s.text_color(accent_primary).bg(hover_bg))
-                            .child(part)
+                            .on_mouse_down(MouseButton::Left, {
+                                let nav_path = path.clone();
+                                cx.listener(move |view, _, _, cx| {
+                                    view.navigate_to(nav_path.clone(), cx);
+                                })
+                            })
+                            .child(name)
                     )
             }))
     }
@@ -1430,7 +1442,7 @@ impl Render for Workspace {
                                                     .bg(theme.border_subtle)
                                                     .mx(px(crate::models::toolbar::BUTTON_GAP)),
                                             )
-                                            .child(self.render_breadcrumbs()),
+                                            .child(self.render_breadcrumbs(cx)),
                                     )
                                     // Right side toolbar buttons with RPG styling
                                     .child(
@@ -1693,61 +1705,73 @@ impl Workspace {
         let border_color = theme.border_default;
         let text_primary = theme.text_primary;
         let text_muted = theme.text_muted;
-        let preview_width = self.preview_width;
+        let hover_bg = theme.bg_hover;
+        let folder_color = theme.accent_primary;
         
         div()
             .flex()
+            .flex_1()
             .h_full()
+            .border_l_1()
+            .border_color(border_color)
             .child(
                 div()
-                    .id("dest-resize-handle")
-                    .w(px(6.0))
+                    .flex_1()
                     .h_full()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .bg(bg_dark)
-                    .border_l_1()
-                    .border_color(border_color)
-                    .child(
-                        div()
-                            .w(px(3.0))
-                            .h(px(40.0))
-                            .rounded_full()
-                            .bg(border_color),
-                    ),
-            )
-            .child(
-                div()
-                    .w(px(preview_width.max(350.0)))
-                    .h_full()
-                    .bg(bg_dark)
+                    .bg(bg_darker)
                     .flex()
                     .flex_col()
-                    // Header with title and actions
+                    // Toolbar matching main pane
                     .child(
                         div()
-                            .h(px(52.0))
-                            .bg(theme.bg_tertiary)
+                            .h(px(crate::models::toolbar::HEIGHT))
+                            .bg(bg_dark)
                             .border_b_1()
                             .border_color(border_color)
                             .flex()
                             .items_center()
                             .justify_between()
-                            .px_4()
+                            .px(px(crate::models::toolbar::PADDING_X))
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap_2()
+                                    .gap(px(crate::models::toolbar::BUTTON_GAP))
+                                    // Up button
                                     .child(
                                         div()
-                                            .text_xs()
-                                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                                            .text_color(theme.accent_primary)
-                                            .child("SELECT DESTINATION"),
+                                            .id("dest-up-btn")
+                                            .size(px(crate::models::toolbar::BUTTON_SIZE))
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .rounded_md()
+                                            .cursor_pointer()
+                                            .hover(|h| h.bg(hover_bg))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                if let Some(parent) = view.dest_path.parent() {
+                                                    let parent_path = parent.to_path_buf();
+                                                    view.navigate_dest_to(parent_path, cx);
+                                                }
+                                            }))
+                                            .child(
+                                                svg()
+                                                    .path("assets/icons/arrow-up.svg")
+                                                    .size(px(18.0))
+                                                    .text_color(text_muted),
+                                            ),
                                     )
+                                    .child(
+                                        div()
+                                            .h(px(20.0))
+                                            .w(px(1.0))
+                                            .bg(theme.border_subtle)
+                                            .mx(px(crate::models::toolbar::BUTTON_GAP)),
+                                    )
+                                    // Breadcrumb navigation
+                                    .child(self.render_dest_breadcrumbs(cx))
                             )
+                            // Right side - action buttons
                             .child(
                                 div()
                                     .flex()
@@ -1787,48 +1811,6 @@ impl Workspace {
                                     )
                             )
                     )
-                    // Path breadcrumb
-                    .child(
-                        div()
-                            .h(px(36.0))
-                            .bg(bg_darker)
-                            .border_b_1()
-                            .border_color(border_color)
-                            .flex()
-                            .items_center()
-                            .px_3()
-                            .gap_1()
-                            .overflow_x_hidden()
-                            .child(
-                                div()
-                                    .id("dest-go-up")
-                                    .px_2()
-                                    .py_1()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .hover(|h| h.bg(theme.bg_hover))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
-                                        if let Some(parent) = view.dest_path.parent() {
-                                            let parent_path = parent.to_path_buf();
-                                            view.navigate_dest_to(parent_path, cx);
-                                        }
-                                    }))
-                                    .child(
-                                        svg()
-                                            .path("assets/icons/arrow-up.svg")
-                                            .size(px(14.0))
-                                            .text_color(text_muted),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(text_muted)
-                                    .overflow_x_hidden()
-                                    .text_ellipsis()
-                                    .child(self.dest_path.to_string_lossy().to_string()),
-                            )
-                    )
                     // File list
                     .child(
                         div()
@@ -1842,13 +1824,16 @@ impl Workspace {
                                 
                                 div()
                                     .id(SharedString::from(format!("dest-{}", entry.name)))
-                                    .h(px(32.0))
-                                    .px_3()
+                                    .h(px(40.0))
+                                    .w_full()
+                                    .px(px(16.0))
                                     .flex()
                                     .items_center()
-                                    .gap_2()
+                                    .gap(px(12.0))
                                     .cursor_pointer()
-                                    .hover(|h| h.bg(theme.bg_hover))
+                                    .border_b_1()
+                                    .border_color(theme.border_subtle)
+                                    .hover(|h| h.bg(hover_bg))
                                     .when(is_dir, |d| {
                                         d.on_mouse_down(MouseButton::Left, cx.listener(move |view, _, _, cx| {
                                             view.navigate_dest_to(entry_path.clone(), cx);
@@ -1857,8 +1842,8 @@ impl Workspace {
                                     .child(
                                         svg()
                                             .path(if is_dir { "assets/icons/folder.svg" } else { "assets/icons/file.svg" })
-                                            .size(px(16.0))
-                                            .text_color(if is_dir { theme.accent_primary } else { text_muted }),
+                                            .size(px(20.0))
+                                            .text_color(if is_dir { folder_color } else { text_muted }),
                                     )
                                     .child(
                                         div()
@@ -1869,6 +1854,70 @@ impl Workspace {
                             }))
                     )
             )
+    }
+
+    fn render_dest_breadcrumbs(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let text_muted = theme.text_muted;
+        let text_primary = theme.text_primary;
+        
+        let mut parts: Vec<(String, PathBuf)> = Vec::new();
+        let mut current = Some(self.dest_path.as_path());
+        
+        while let Some(p) = current {
+            let name = if p.parent().is_none() {
+                "/".to_string()
+            } else {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string()
+            };
+            if !name.is_empty() {
+                parts.push((name, p.to_path_buf()));
+            }
+            current = p.parent();
+        }
+        parts.reverse();
+        
+        div()
+            .flex()
+            .items_center()
+            .gap_1()
+            .overflow_x_hidden()
+            .children(parts.into_iter().enumerate().map(|(i, (name, path))| {
+                let is_last = i == 0; // After reverse, check differently
+                div()
+                    .flex()
+                    .items_center()
+                    .when(i > 0, |d| {
+                        d.child(
+                            svg()
+                                .path("assets/icons/chevron-right.svg")
+                                .size(px(12.0))
+                                .text_color(text_muted)
+                                .mx_1()
+                        )
+                    })
+                    .child(
+                        div()
+                            .id(SharedString::from(format!("dest-crumb-{}", i)))
+                            .px(px(crate::models::toolbar::BREADCRUMB_PADDING))
+                            .py_0p5()
+                            .rounded_sm()
+                            .cursor_pointer()
+                            .text_sm()
+                            .text_color(text_muted)
+                            .hover(|h| h.bg(theme.bg_hover).text_color(text_primary))
+                            .on_mouse_down(MouseButton::Left, {
+                                let nav_path = path.clone();
+                                cx.listener(move |view, _, _, cx| {
+                                    view.navigate_dest_to(nav_path.clone(), cx);
+                                })
+                            })
+                            .child(name)
+                    )
+            }))
     }
 }
 

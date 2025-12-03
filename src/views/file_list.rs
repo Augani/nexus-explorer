@@ -8,6 +8,7 @@ use gpui::{
 };
 
 use crate::models::{CloudSyncStatus, FileEntry, IconKey, SortColumn, SortDirection, SortState, theme_colors, file_list as file_list_spacing};
+use crate::views::sidebar::{DraggedFolder, DraggedFolderView};
 
 // Define actions for keyboard navigation
 actions!(file_list, [
@@ -503,6 +504,13 @@ impl Render for FileListView {
                                                                 cx.notify();
                                                             });
                                                         }
+                                                    })
+                                                    .when(is_dir, |d| {
+                                                        let drag_path = entry_path.clone();
+                                                        let drag_name = name.clone();
+                                                        d.on_drag(DraggedFolder { path: drag_path, name: drag_name }, |folder, _, _, cx| {
+                                                            cx.new(|_| DraggedFolderView { name: folder.name.clone() })
+                                                        })
                                                     })
                                                     .child(
                                                         div()
