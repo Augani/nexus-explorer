@@ -403,7 +403,7 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [-] 22. UI Spacing, Typography and RPG Styling
+- [x] 22. UI Spacing, Typography and RPG Styling
   - [x] 22.1 Set up Google Fonts loading
     - Load Crimson Pro (200, 400, 900 weights) for display text
     - Load IBM Plex Sans (400, 500, 600 weights) for body text
@@ -433,12 +433,12 @@
     - Decorative corner flourishes on toolbar
     - Themed dividers between toolbar sections
     - _Requirements: 11.7_
-  - [ ] 22.7 Implement background effects
+  - [x] 22.7 Implement background effects
     - Layered gradients for depth
     - Subtle noise texture overlay (2-5% opacity)
     - Theme-specific patterns (volcanic, crystalline, parchment)
     - _Requirements: 11.9_
-  - [ ] 22.8 Implement ornate borders and frames
+  - [x] 22.8 Implement ornate borders and frames
     - Corner flourish SVG decorations
     - Double-line medieval borders for panels
     - Gold/themed trim on important elements
@@ -591,7 +591,7 @@
     - Arrow keys for navigation
     - _Requirements: 23.7, 23.8_
 
-- [ ] 34. Smart Folders
+- [-] 34. Smart Folders
   - [x] 34.1 Implement SmartFolderManager
     - Create/edit/delete smart folders
     - Execute queries

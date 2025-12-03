@@ -8,7 +8,7 @@ use gpui::{
 };
 
 use crate::io::{SortKey, SortOrder};
-use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors};
+use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors, current_theme};
 use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView};
 
 // Define global keyboard shortcut actions
@@ -800,6 +800,10 @@ impl Render for Workspace {
         let is_terminal_open = self.is_terminal_open;
         let can_go_back = self.path_history.len() > 1;
 
+        // Get current theme for background effects
+        let current = current_theme();
+        let content_bg = current.content_background();
+        
         div()
             .id("workspace")
             .key_context("Workspace")
@@ -813,7 +817,8 @@ impl Render for Workspace {
             .size_full()
             .flex()
             .flex_col()
-            .bg(bg_dark)
+            // Apply layered background with gradient effect
+            .bg(content_bg.base_color)
             .text_color(theme.text_primary)
             .font_family(".SystemUIFont")
             .child(

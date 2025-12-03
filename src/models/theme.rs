@@ -1057,6 +1057,575 @@ mod tests {
 }
 
 
+// ============================================================================
+// Background Effects Rendering
+// ============================================================================
+
+/// Configuration for layered gradient backgrounds
+#[derive(Clone, Debug)]
+pub struct GradientConfig {
+    pub gradient_type: GradientType,
+    pub stops: Vec<(f32, Rgba)>,
+    pub angle: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GradientType {
+    Linear,
+    Radial,
+    Conic,
+}
+
+impl GradientConfig {
+    /// Create a vertical gradient from top to bottom
+    pub fn vertical(top: Rgba, bottom: Rgba) -> Self {
+        Self {
+            gradient_type: GradientType::Linear,
+            stops: vec![(0.0, top), (1.0, bottom)],
+            angle: 180.0,
+        }
+    }
+
+    /// Create a radial gradient from center
+    pub fn radial(center: Rgba, edge: Rgba) -> Self {
+        Self {
+            gradient_type: GradientType::Radial,
+            stops: vec![(0.0, center), (1.0, edge)],
+            angle: 0.0,
+        }
+    }
+
+    /// Create a three-stop gradient for depth effect
+    pub fn depth(top: Rgba, middle: Rgba, bottom: Rgba) -> Self {
+        Self {
+            gradient_type: GradientType::Linear,
+            stops: vec![(0.0, top), (0.5, middle), (1.0, bottom)],
+            angle: 180.0,
+        }
+    }
+}
+
+/// Background effect configuration for themed panels
+#[derive(Clone, Debug)]
+pub struct BackgroundEffect {
+    /// Base solid color
+    pub base_color: Rgba,
+    /// Optional gradient overlay
+    pub gradient: Option<GradientConfig>,
+    /// Pattern type for texture
+    pub pattern: Option<BackgroundPattern>,
+    /// Noise texture opacity (0.0 - 1.0)
+    pub noise_opacity: f32,
+    /// Glow effect color and intensity
+    pub glow: Option<(Rgba, f32)>,
+}
+
+impl BackgroundEffect {
+    /// Create a simple solid background
+    pub fn solid(color: Rgba) -> Self {
+        Self {
+            base_color: color,
+            gradient: None,
+            pattern: None,
+            noise_opacity: 0.0,
+            glow: None,
+        }
+    }
+
+    /// Create a background with gradient overlay
+    pub fn with_gradient(mut self, gradient: GradientConfig) -> Self {
+        self.gradient = Some(gradient);
+        self
+    }
+
+    /// Add pattern texture
+    pub fn with_pattern(mut self, pattern: BackgroundPattern) -> Self {
+        self.pattern = Some(pattern);
+        self
+    }
+
+    /// Add noise texture overlay
+    pub fn with_noise(mut self, opacity: f32) -> Self {
+        self.noise_opacity = opacity.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Add glow effect
+    pub fn with_glow(mut self, color: Rgba, intensity: f32) -> Self {
+        self.glow = Some((color, intensity.clamp(0.0, 1.0)));
+        self
+    }
+}
+
+impl Theme {
+    /// Get the background effect for the main content area
+    pub fn content_background(&self) -> BackgroundEffect {
+        let base = self.colors.bg_primary;
+        let void = self.colors.bg_void;
+        
+        let mut effect = BackgroundEffect::solid(base)
+            .with_gradient(GradientConfig::vertical(
+                rgba_from_hex_alpha(rgba_to_hex(&void), 0.3),
+                rgba_from_hex_alpha(rgba_to_hex(&base), 1.0),
+            ))
+            .with_noise(self.decorations.bg_noise_opacity);
+        
+        if let Some(pattern) = self.decorations.bg_pattern {
+            effect = effect.with_pattern(pattern);
+        }
+        
+        effect
+    }
+
+    /// Get the background effect for sidebar panels
+    pub fn sidebar_background(&self) -> BackgroundEffect {
+        let base = self.colors.bg_secondary;
+        
+        let mut effect = BackgroundEffect::solid(base)
+            .with_noise(self.decorations.bg_noise_opacity * 0.5);
+        
+        if let Some(pattern) = self.decorations.bg_pattern {
+            effect = effect.with_pattern(pattern);
+        }
+        
+        effect
+    }
+
+    /// Get the background effect for toolbar/header areas
+    pub fn toolbar_background(&self) -> BackgroundEffect {
+        let base = self.colors.bg_secondary;
+        let tertiary = self.colors.bg_tertiary;
+        
+        BackgroundEffect::solid(base)
+            .with_gradient(GradientConfig::vertical(tertiary, base))
+            .with_noise(self.decorations.bg_noise_opacity * 0.3)
+    }
+
+    /// Get the background effect for cards and elevated surfaces
+    pub fn card_background(&self) -> BackgroundEffect {
+        let base = self.colors.bg_tertiary;
+        
+        let mut effect = BackgroundEffect::solid(base)
+            .with_noise(self.decorations.bg_noise_opacity * 0.5);
+        
+        // Add subtle glow for RPG effect
+        if self.decorations.use_ornate_borders {
+            effect = effect.with_glow(self.colors.accent_glow, 0.1);
+        }
+        
+        effect
+    }
+
+    /// Get the background effect for terminal area
+    pub fn terminal_background(&self) -> BackgroundEffect {
+        BackgroundEffect::solid(self.colors.terminal_bg)
+            .with_noise(self.decorations.bg_noise_opacity * 0.2)
+    }
+}
+
+/// Helper to convert Rgba to hex for gradient calculations
+fn rgba_to_hex(color: &Rgba) -> u32 {
+    let r = (color.r * 255.0) as u32;
+    let g = (color.g * 255.0) as u32;
+    let b = (color.b * 255.0) as u32;
+    (r << 16) | (g << 8) | b
+}
+
+/// Get pattern-specific colors for rendering
+impl BackgroundPattern {
+    /// Get the pattern overlay color based on theme
+    pub fn overlay_color(&self, theme: &Theme) -> Rgba {
+        match self {
+            BackgroundPattern::None => rgba_from_hex_alpha(0x000000, 0.0),
+            BackgroundPattern::Dots => rgba_from_hex_alpha(rgba_to_hex(&theme.colors.text_muted), 0.05),
+            BackgroundPattern::Grid => rgba_from_hex_alpha(rgba_to_hex(&theme.colors.border_subtle), 0.08),
+            BackgroundPattern::Noise => rgba_from_hex_alpha(0x808080, 0.03),
+            BackgroundPattern::Parchment => rgba_from_hex_alpha(0xd4c4a8, 0.05),
+            BackgroundPattern::Leather => rgba_from_hex_alpha(0x8b4513, 0.04),
+            BackgroundPattern::Volcanic => rgba_from_hex_alpha(0xd43f3f, 0.03),
+            BackgroundPattern::Crystalline => rgba_from_hex_alpha(0x6bd4ff, 0.04),
+            BackgroundPattern::Mystical => rgba_from_hex_alpha(0x9966ff, 0.05),
+            BackgroundPattern::Organic => rgba_from_hex_alpha(0x228b22, 0.03),
+        }
+    }
+
+    /// Get the pattern scale factor
+    pub fn scale(&self) -> f32 {
+        match self {
+            BackgroundPattern::None => 1.0,
+            BackgroundPattern::Dots => 8.0,
+            BackgroundPattern::Grid => 16.0,
+            BackgroundPattern::Noise => 1.0,
+            BackgroundPattern::Parchment => 32.0,
+            BackgroundPattern::Leather => 24.0,
+            BackgroundPattern::Volcanic => 48.0,
+            BackgroundPattern::Crystalline => 32.0,
+            BackgroundPattern::Mystical => 64.0,
+            BackgroundPattern::Organic => 40.0,
+        }
+    }
+}
+
+// ============================================================================
+// Ornate Border and Frame Rendering
+// ============================================================================
+
+/// Configuration for ornate borders
+#[derive(Clone, Debug)]
+pub struct OrnateBorderConfig {
+    pub width: f32,
+    pub color: Rgba,
+    pub style: FrameStyle,
+    pub corner_flourish: Option<CornerFlourish>,
+    pub glow_color: Option<Rgba>,
+    pub glow_blur: f32,
+}
+
+impl OrnateBorderConfig {
+    /// Create a simple border
+    pub fn simple(width: f32, color: Rgba) -> Self {
+        Self {
+            width,
+            color,
+            style: FrameStyle::Simple,
+            corner_flourish: None,
+            glow_color: None,
+            glow_blur: 0.0,
+        }
+    }
+
+    /// Create an ornate border with flourishes
+    pub fn ornate(width: f32, color: Rgba, flourish: CornerFlourish) -> Self {
+        Self {
+            width,
+            color,
+            style: FrameStyle::Ornate,
+            corner_flourish: Some(flourish),
+            glow_color: None,
+            glow_blur: 0.0,
+        }
+    }
+
+    /// Add glow effect to border
+    pub fn with_glow(mut self, color: Rgba, blur: f32) -> Self {
+        self.glow_color = Some(color);
+        self.glow_blur = blur;
+        self
+    }
+
+    /// Get the inner border color for double-line borders
+    pub fn inner_border_color(&self) -> Rgba {
+        rgba_from_hex_alpha(rgba_to_hex(&self.color), 0.5)
+    }
+
+    /// Check if this border has a glow effect
+    pub fn has_glow(&self) -> bool {
+        self.glow_color.is_some() && self.glow_blur > 0.0
+    }
+}
+
+/// Predefined corner flourish SVG paths for RPG aesthetics
+pub mod flourish_paths {
+    /// Simple curved corner flourish
+    pub const CURVED: &str = "M0,0 Q8,0 8,8 L8,16 Q8,8 16,8 L24,8";
+    
+    /// Diamond-shaped corner accent
+    pub const DIAMOND: &str = "M0,8 L8,0 L16,8 L8,16 Z";
+    
+    /// Elegant scroll flourish
+    pub const SCROLL: &str = "M0,0 C4,0 8,4 8,8 C8,4 12,0 16,0";
+    
+    /// Mystical swirl pattern
+    pub const SWIRL: &str = "M0,12 Q6,6 12,0 Q6,6 0,12";
+    
+    /// Organic vine-like flourish
+    pub const VINE: &str = "M0,16 C8,16 16,8 16,0 C16,8 24,16 32,16";
+    
+    /// Celtic knot corner
+    pub const CELTIC: &str = "M0,0 L8,8 L0,16 M8,0 L0,8 L8,16";
+    
+    /// Simple bracket corner
+    pub const BRACKET: &str = "M0,12 L0,4 Q0,0 4,0 L12,0";
+    
+    /// Ornate medieval corner
+    pub const MEDIEVAL: &str = "M0,0 Q4,4 0,8 Q4,4 8,8 Q4,4 8,0 Q4,4 0,0";
+}
+
+/// Helper to create corner flourishes for different themes
+impl CornerFlourish {
+    /// Dragon Forge theme flourish - curved with gold accent
+    pub fn dragon_forge() -> Self {
+        Self {
+            svg_path: flourish_paths::CURVED,
+            size: 24.0,
+            color_mode: FlourishColorMode::Accent,
+        }
+    }
+
+    /// Frost Haven theme flourish - diamond crystalline
+    pub fn frost_haven() -> Self {
+        Self {
+            svg_path: flourish_paths::DIAMOND,
+            size: 16.0,
+            color_mode: FlourishColorMode::Gradient,
+        }
+    }
+
+    /// Ancient Tome theme flourish - scroll pattern
+    pub fn ancient_tome() -> Self {
+        Self {
+            svg_path: flourish_paths::SCROLL,
+            size: 20.0,
+            color_mode: FlourishColorMode::Border,
+        }
+    }
+
+    /// Shadow Realm theme flourish - mystical swirl
+    pub fn shadow_realm() -> Self {
+        Self {
+            svg_path: flourish_paths::SWIRL,
+            size: 18.0,
+            color_mode: FlourishColorMode::Gradient,
+        }
+    }
+
+    /// Elven Glade theme flourish - organic vine
+    pub fn elven_glade() -> Self {
+        Self {
+            svg_path: flourish_paths::VINE,
+            size: 32.0,
+            color_mode: FlourishColorMode::Accent,
+        }
+    }
+}
+
+/// Divider rendering configuration
+#[derive(Clone, Debug)]
+pub struct DividerConfig {
+    pub style: DividerStyle,
+    pub color: Rgba,
+    pub thickness: f32,
+    pub ornament_color: Option<Rgba>,
+}
+
+impl DividerConfig {
+    /// Create a simple line divider
+    pub fn simple(color: Rgba, thickness: f32) -> Self {
+        Self {
+            style: DividerStyle::Simple,
+            color,
+            thickness,
+            ornament_color: None,
+        }
+    }
+
+    /// Create an ornate divider with center ornament
+    pub fn ornate(color: Rgba, ornament_color: Rgba) -> Self {
+        Self {
+            style: DividerStyle::Ornate,
+            color,
+            thickness: 1.0,
+            ornament_color: Some(ornament_color),
+        }
+    }
+
+    /// Get the ornament character for ornate dividers
+    pub fn ornament_char(&self) -> &'static str {
+        match self.style {
+            DividerStyle::Simple => "",
+            DividerStyle::Ornate => "❖",
+            DividerStyle::Gradient => "◆",
+            DividerStyle::Dashed => "─",
+            DividerStyle::Embossed => "═",
+            DividerStyle::Runic => "᛭",
+        }
+    }
+}
+
+impl Theme {
+    /// Get divider configuration for section separators
+    pub fn section_divider(&self) -> DividerConfig {
+        match self.decorations.divider_style {
+            DividerStyle::Simple => DividerConfig::simple(
+                self.colors.border_subtle,
+                1.0,
+            ),
+            DividerStyle::Ornate => DividerConfig::ornate(
+                self.colors.border_default,
+                self.colors.accent_secondary,
+            ),
+            DividerStyle::Gradient => DividerConfig {
+                style: DividerStyle::Gradient,
+                color: self.colors.accent_primary,
+                thickness: 1.0,
+                ornament_color: None,
+            },
+            DividerStyle::Dashed => DividerConfig::simple(
+                self.colors.border_default,
+                1.0,
+            ),
+            DividerStyle::Embossed => DividerConfig {
+                style: DividerStyle::Embossed,
+                color: self.colors.border_emphasis,
+                thickness: 2.0,
+                ornament_color: Some(self.colors.bg_tertiary),
+            },
+            DividerStyle::Runic => DividerConfig::ornate(
+                self.colors.accent_primary,
+                self.colors.accent_glow,
+            ),
+        }
+    }
+}
+
+/// Frame rendering utilities for panels and cards
+#[derive(Clone, Debug)]
+pub struct FrameConfig {
+    pub style: FrameStyle,
+    pub border_width: f32,
+    pub border_color: Rgba,
+    pub inner_border_color: Option<Rgba>,
+    pub corner_radius: f32,
+    pub shadow: Option<ShadowConfig>,
+}
+
+impl FrameConfig {
+    /// Create a simple frame
+    pub fn simple(border_width: f32, border_color: Rgba, corner_radius: f32) -> Self {
+        Self {
+            style: FrameStyle::Simple,
+            border_width,
+            border_color,
+            inner_border_color: None,
+            corner_radius,
+            shadow: None,
+        }
+    }
+
+    /// Create a double-line medieval frame
+    pub fn double(border_width: f32, outer_color: Rgba, inner_color: Rgba, corner_radius: f32) -> Self {
+        Self {
+            style: FrameStyle::Double,
+            border_width,
+            border_color: outer_color,
+            inner_border_color: Some(inner_color),
+            corner_radius,
+            shadow: None,
+        }
+    }
+
+    /// Add shadow to frame
+    pub fn with_shadow(mut self, shadow: ShadowConfig) -> Self {
+        self.shadow = Some(shadow);
+        self
+    }
+}
+
+impl Theme {
+    /// Get frame configuration for panels
+    pub fn panel_frame(&self) -> FrameConfig {
+        let base = FrameConfig::simple(
+            self.decorations.border_width,
+            self.colors.border_default,
+            self.decorations.border_radius_md,
+        );
+
+        match self.decorations.frame_style {
+            FrameStyle::None => base,
+            FrameStyle::Simple => base,
+            FrameStyle::Double => FrameConfig::double(
+                self.decorations.border_width,
+                self.colors.border_default,
+                self.colors.border_subtle,
+                self.decorations.border_radius_md,
+            ).with_shadow(self.decorations.shadow_md.clone()),
+            FrameStyle::Ornate => base.with_shadow(self.decorations.shadow_glow.clone()),
+            FrameStyle::Beveled => FrameConfig {
+                style: FrameStyle::Beveled,
+                border_width: self.decorations.border_width * 2.0,
+                border_color: self.colors.border_emphasis,
+                inner_border_color: Some(self.colors.bg_tertiary),
+                corner_radius: self.decorations.border_radius_sm,
+                shadow: Some(self.decorations.shadow_inner.clone()),
+            },
+            FrameStyle::Inset => FrameConfig {
+                style: FrameStyle::Inset,
+                border_width: self.decorations.border_width,
+                border_color: self.colors.bg_void,
+                inner_border_color: Some(self.colors.border_subtle),
+                corner_radius: self.decorations.border_radius_sm,
+                shadow: Some(self.decorations.shadow_inner.clone()),
+            },
+        }
+    }
+
+    /// Get frame configuration for cards
+    pub fn card_frame(&self) -> FrameConfig {
+        FrameConfig::simple(
+            self.decorations.border_width,
+            self.colors.border_subtle,
+            self.decorations.border_radius_md,
+        ).with_shadow(self.decorations.shadow_sm.clone())
+    }
+
+    /// Get frame configuration for modals/dialogs
+    pub fn modal_frame(&self) -> FrameConfig {
+        FrameConfig::simple(
+            self.decorations.border_width,
+            self.colors.border_emphasis,
+            self.decorations.border_radius_lg,
+        ).with_shadow(self.decorations.shadow_lg.clone())
+    }
+}
+
+impl Theme {
+    /// Get border configuration for panels
+    pub fn panel_border(&self) -> OrnateBorderConfig {
+        let mut config = OrnateBorderConfig::simple(
+            self.decorations.border_width,
+            self.colors.border_default,
+        );
+
+        if self.decorations.use_ornate_borders {
+            config.style = self.decorations.frame_style;
+            config.corner_flourish = self.decorations.corner_flourish.clone();
+            
+            // Add subtle glow for ornate borders
+            config = config.with_glow(self.colors.accent_glow, 8.0);
+        }
+
+        config
+    }
+
+    /// Get border configuration for emphasized elements
+    pub fn emphasis_border(&self) -> OrnateBorderConfig {
+        let mut config = OrnateBorderConfig::simple(
+            self.decorations.border_width * 2.0,
+            self.colors.border_emphasis,
+        );
+
+        if self.decorations.use_ornate_borders {
+            config.style = FrameStyle::Double;
+            config.corner_flourish = self.decorations.corner_flourish.clone();
+            config = config.with_glow(self.colors.accent_primary, 12.0);
+        }
+
+        config
+    }
+
+    /// Get divider style for sections
+    pub fn section_divider_color(&self) -> Rgba {
+        match self.decorations.divider_style {
+            DividerStyle::Simple => self.colors.border_subtle,
+            DividerStyle::Ornate => self.colors.border_ornate,
+            DividerStyle::Gradient => self.colors.accent_secondary,
+            DividerStyle::Dashed => self.colors.border_default,
+            DividerStyle::Embossed => self.colors.border_emphasis,
+            DividerStyle::Runic => self.colors.accent_primary,
+        }
+    }
+}
+
 /// Helper trait for getting theme colors as gpui::Rgba
 impl ThemeColors {
     /// Get background color for void/deepest areas
