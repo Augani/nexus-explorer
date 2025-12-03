@@ -88,14 +88,9 @@ impl FileSystem {
         self.request_id = self.request_id.wrapping_add(1);
         self.current_path = path.clone();
         
-        // Check cache for immediate display
-        if let Some(cached) = self.cache.get(&path) {
-            self.entries = cached.entries.clone();
-            self.state = LoadState::Cached { stale: false };
-        } else {
-            self.entries.clear();
-            self.state = LoadState::Loading { request_id: self.request_id };
-        }
+        // Always clear entries before loading - fresh data will replace cached
+        self.entries.clear();
+        self.state = LoadState::Loading { request_id: self.request_id };
         
         self.request_id
     }

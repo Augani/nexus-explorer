@@ -412,7 +412,7 @@ impl TerminalView {
                         _ => {}
                     }
                 } else if event.keystroke.modifiers.control {
-                    // Ctrl+key combinations (Ctrl+A = 0x01, Ctrl+B = 0x02, etc.)
+                    // Ctrl+key combinations
                     let c = key_char.chars().next().unwrap_or('\0');
                     if c.is_ascii_alphabetic() {
                         let ctrl_code = (c.to_ascii_lowercase() as u8) - b'a' + 1;
@@ -424,7 +424,7 @@ impl TerminalView {
                     data.extend(key_char.as_bytes());
                     self.send_input(&data);
                 } else {
-                    // Regular character input
+                    // Regular character input (including space)
                     self.send_str(key_char);
                     self.clear_selection();
                 }
@@ -432,8 +432,11 @@ impl TerminalView {
                 && !event.keystroke.modifiers.control 
                 && !event.keystroke.modifiers.alt 
             {
-                // No key_char but also no modifiers - might be a single character key
-                if key.len() == 1 {
+                // No key_char but also no modifiers - single character key or space
+                if key == "space" {
+                    self.send_input(b" ");
+                    self.clear_selection();
+                } else if key.len() == 1 {
                     self.send_str(key);
                     self.clear_selection();
                 }
@@ -809,8 +812,13 @@ impl Render for TerminalView {
 
         div()
             .id("terminal-panel")
+            .key_context("Terminal")
             .track_focus(&self.focus_handle)
-            .on_key_down(cx.listener(Self::handle_key_down))
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                this.handle_key_down(event, window, cx);
+                // Prevent event from bubbling
+                cx.stop_propagation();
+            }))
             .on_scroll_wheel(cx.listener(Self::handle_scroll))
             .on_mouse_down(MouseButton::Left, cx.listener(Self::handle_mouse_down))
             .on_mouse_move(cx.listener(Self::handle_mouse_move))
@@ -905,6 +913,8 @@ impl Render for TerminalView {
                             .p(px(TERMINAL_PADDING))
                             .font_family("JetBrains Mono")
                             .text_size(px(13.0))
+                            // Prevent scroll area from capturing key events
+                            .on_key_down(cx.listener(Self::handle_key_down))
                             .child(
                                 // Render all lines - GPUI handles virtualization
                                 div()

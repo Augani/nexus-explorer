@@ -90,8 +90,8 @@ impl Workspace {
             KeyBinding::new("cmd-f", FocusSearch, Some("Workspace")),
             // Cmd+N for new window
             KeyBinding::new("cmd-n", NewWindow, Some("Workspace")),
-            // Space for Quick Look toggle
-            KeyBinding::new("space", QuickLookToggle, Some("Workspace")),
+            // Space for Quick Look toggle (only in FileList context, not Terminal)
+            KeyBinding::new("space", QuickLookToggle, Some("FileList")),
         ]);
     }
 
