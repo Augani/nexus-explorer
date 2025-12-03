@@ -1862,13 +1862,51 @@ impl ThemeColors {
     }
 }
 
+use std::sync::atomic::{AtomicU8, Ordering};
+
+/// Global storage for current theme ID (atomic for thread safety)
+static CURRENT_THEME_ID: AtomicU8 = AtomicU8::new(1); // 1 = Dark (default)
+
+/// Convert ThemeId to u8 for atomic storage
+fn theme_id_to_u8(id: ThemeId) -> u8 {
+    match id {
+        ThemeId::Light => 0,
+        ThemeId::Dark => 1,
+        ThemeId::DragonForge => 2,
+        ThemeId::FrostHaven => 3,
+        ThemeId::AncientTome => 4,
+        ThemeId::ShadowRealm => 5,
+        ThemeId::ElvenGlade => 6,
+    }
+}
+
+/// Convert u8 back to ThemeId
+fn u8_to_theme_id(val: u8) -> ThemeId {
+    match val {
+        0 => ThemeId::Light,
+        1 => ThemeId::Dark,
+        2 => ThemeId::DragonForge,
+        3 => ThemeId::FrostHaven,
+        4 => ThemeId::AncientTome,
+        5 => ThemeId::ShadowRealm,
+        6 => ThemeId::ElvenGlade,
+        _ => ThemeId::Dark,
+    }
+}
+
+/// Set the current global theme
+pub fn set_current_theme(id: ThemeId) {
+    CURRENT_THEME_ID.store(theme_id_to_u8(id), Ordering::SeqCst);
+}
+
+/// Get the current theme ID
+pub fn current_theme_id() -> ThemeId {
+    u8_to_theme_id(CURRENT_THEME_ID.load(Ordering::SeqCst))
+}
+
 /// Current theme accessor - provides the active theme for UI components
-/// This is a simple static accessor that returns the default theme.
-/// In a full implementation, this would read from a global state.
 pub fn current_theme() -> Theme {
-    // For now, return the default Dragon Forge theme
-    // In production, this would read from ThemeManager global state
-    Theme::dragon_forge()
+    Theme::from_id(current_theme_id())
 }
 
 /// Get the current theme colors

@@ -112,6 +112,8 @@ impl ThemePickerView {
                 TransitionState::new(id).with_from(self.selected_theme)
             );
             self.selected_theme = id;
+            // Update the global theme
+            crate::models::set_current_theme(id);
             cx.notify();
         }
     }

@@ -207,6 +207,9 @@ impl Workspace {
                 status_bar_for_file_list.update(cx, |view, cx| {
                     view.update_from_entries(&workspace.cached_entries, selected_index, cx);
                 });
+                
+                // Update preview panel when a file is selected
+                workspace.update_preview_for_selection(cx);
             })
             .detach();
             
@@ -230,6 +233,9 @@ impl Workspace {
                 status_bar_for_grid.update(cx, |view, cx| {
                     view.update_from_entries(&workspace.cached_entries, selected_index, cx);
                 });
+                
+                // Update preview panel when a file is selected
+                workspace.update_preview_for_selection(cx);
             })
             .detach();
             
@@ -263,6 +269,15 @@ impl Workspace {
                         StatusBarAction::ToggleTerminal => workspace.toggle_terminal(cx),
                         StatusBarAction::ToggleViewMode => workspace.toggle_view_mode(cx),
                     }
+                }
+            })
+            .detach();
+
+            // Observe theme picker for theme changes
+            cx.observe(&theme_picker, |workspace: &mut Workspace, theme_picker, cx| {
+                let selected = theme_picker.read(cx).selected_theme();
+                if workspace.current_theme_id != selected {
+                    workspace.set_theme(selected, cx);
                 }
             })
             .detach();
@@ -653,6 +668,42 @@ impl Workspace {
         }
     }
 
+    /// Update preview panel based on current selection
+    fn update_preview_for_selection(&mut self, cx: &mut Context<Self>) {
+        let selected_entry = match self.view_mode {
+            ViewMode::List | ViewMode::Details => {
+                let idx = self.file_list.read(cx).inner().selected_index();
+                idx.and_then(|i| self.cached_entries.get(i).cloned())
+            }
+            ViewMode::Grid => {
+                let idx = self.grid_view.read(cx).inner().selected_index();
+                idx.and_then(|i| self.cached_entries.get(i).cloned())
+            }
+        };
+
+        match selected_entry {
+            Some(entry) if !entry.is_dir => {
+                // Show preview for files
+                if self.preview.is_none() {
+                    self.preview = Some(cx.new(|cx| PreviewView::new(cx)));
+                }
+                if let Some(ref preview) = self.preview {
+                    preview.update(cx, |view, _| {
+                        view.load_file(&entry.path);
+                    });
+                }
+                cx.notify();
+            }
+            _ => {
+                // Hide preview for directories or no selection
+                if self.preview.is_some() {
+                    self.preview = None;
+                    cx.notify();
+                }
+            }
+        }
+    }
+
     fn save_settings(&self) {
         let mut settings = GlobalSettings::load();
         settings.view_mode = self.view_mode;
@@ -847,8 +898,10 @@ impl Render for Workspace {
             .bg(content_bg.base_color)
             .text_color(theme.text_primary)
             .font_family(".SystemUIFont")
+            // Titlebar - draggable for window movement and double-click to zoom
             .child(
                 div()
+                    .id("titlebar")
                     .h(px(52.0))
                     .bg(bg_darker)
                     .flex()
@@ -858,6 +911,11 @@ impl Render for Workspace {
                     .py_2()
                     .border_b_1()
                     .border_color(border_color)
+                    .on_click(|event, window, _cx| {
+                        if event.click_count() == 2 {
+                            window.titlebar_double_click();
+                        }
+                    })
                     // Left side - leave space for traffic lights on macOS
                     .child(
                         div()
@@ -1082,15 +1140,14 @@ impl Render for Workspace {
                                                 div()
                                                     .h(px(16.0))
                                                     .w(px(1.0))
-                                                    .bg(gpui::rgb(0x30363d))
+                                                    .bg(theme.border_subtle)
                                                     .mx_2(),
                                             )
                                             .child({
                                                 let is_grid = matches!(self.view_mode, ViewMode::Grid);
-                                                let white_color = gpui::rgb(0xffffff);
                                                 div()
                                                     .flex()
-                                                    .bg(gpui::rgb(0x21262d))
+                                                    .bg(theme.bg_tertiary)
                                                     .rounded_lg()
                                                     .p_0p5()
                                                     .child(
@@ -1099,7 +1156,7 @@ impl Render for Workspace {
                                                             .p_1()
                                                             .rounded_md()
                                                             .cursor_pointer()
-                                                            .when(is_grid, |s| s.bg(gpui::rgb(0x30363d)))
+                                                            .when(is_grid, |s| s.bg(theme.bg_hover))
                                                             .on_mouse_down(
                                                                 MouseButton::Left,
                                                                 cx.listener(|view, _event, _window, cx| {
@@ -1110,7 +1167,7 @@ impl Render for Workspace {
                                                                 svg()
                                                                     .path("assets/icons/grid-2x2.svg")
                                                                     .size(px(14.0))
-                                                                    .text_color(if is_grid { white_color } else { text_gray }),
+                                                                    .text_color(if is_grid { theme.text_primary } else { text_gray }),
                                                             ),
                                                     )
                                                     .child(
@@ -1119,7 +1176,7 @@ impl Render for Workspace {
                                                             .p_1()
                                                             .rounded_md()
                                                             .cursor_pointer()
-                                                            .when(!is_grid, |s| s.bg(gpui::rgb(0x30363d)))
+                                                            .when(!is_grid, |s| s.bg(theme.bg_hover))
                                                             .on_mouse_down(
                                                                 MouseButton::Left,
                                                                 cx.listener(|view, _event, _window, cx| {
@@ -1130,7 +1187,7 @@ impl Render for Workspace {
                                                                 svg()
                                                                     .path("assets/icons/list.svg")
                                                                     .size(px(14.0))
-                                                                    .text_color(if !is_grid { white_color } else { text_gray }),
+                                                                    .text_color(if !is_grid { theme.text_primary } else { text_gray }),
                                                             ),
                                                     )
                                             }),

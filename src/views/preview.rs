@@ -532,10 +532,10 @@ impl Render for PreviewView {
             .bg(bg_dark)
             .flex()
             .flex_col()
-            // Header toolbar
+            // Header toolbar - matches main toolbar height (52px)
             .child(
                 div()
-                    .h(px(40.0))
+                    .h(px(52.0))
                     .bg(bg_dark)
                     .border_b_1()
                     .border_color(border_color)

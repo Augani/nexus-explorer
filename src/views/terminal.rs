@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use crate::models::{
     AnsiParser, ClearMode, ParsedSegment, PtyService, TerminalState,
-    key_codes,
+    key_codes, theme_colors,
 };
 
 /// Terminal line height in pixels
@@ -637,10 +637,11 @@ impl TerminalView {
         let cursor_col = self.state.cursor().col;
         let show_cursor = is_cursor_line && self.cursor_blink && self.cursor_blink_state && self.state.cursor_visible();
         
-        let default_fg = gpui::Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 };
-        let cursor_bg = gpui::rgb(0xf4b842);
-        let cursor_fg = gpui::rgb(0x0d0a0a);
-        let selection_bg = gpui::rgb(0x264f78);
+        let theme = theme_colors();
+        let default_fg = theme.terminal_fg;
+        let cursor_bg = theme.terminal_cursor;
+        let cursor_fg = theme.terminal_bg;
+        let selection_bg = theme.terminal_selection;
         
         // Check if this line has any selection
         let has_selection = self.has_selection() && {
@@ -777,11 +778,12 @@ impl Render for TerminalView {
             window.focus(&self.focus_handle);
         }
 
-        let bg_color = gpui::rgb(0x0d0a0a);
-        let border_color = gpui::rgb(0x3d2d2d);
-        let header_bg = gpui::rgb(0x1a1414);
-        let text_muted = gpui::rgb(0x8b7b6b);
-        let accent_color = gpui::rgb(0xf4b842);
+        let theme = theme_colors();
+        let bg_color = theme.terminal_bg;
+        let border_color = theme.border_default;
+        let header_bg = theme.bg_tertiary;
+        let text_muted = theme.text_muted;
+        let accent_color = theme.accent_primary;
 
         if !self.is_visible {
             return div().id("terminal-hidden").size_0();

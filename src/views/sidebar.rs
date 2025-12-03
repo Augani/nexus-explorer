@@ -764,6 +764,7 @@ impl Render for SidebarView {
                     .flex()
                     .flex_col()
                     .flex_shrink_0()
+                    .min_h_full()
                     // Tools Section
                     .child(
                         div()
@@ -1178,9 +1179,8 @@ impl Render for SidebarView {
             )
             .child(
                 div()
-                    .flex_1()
                     .overflow_hidden()
-                    .pb_4()
+                    .pb(px(100.0)) // Extra bottom padding for scrolling
                     .child(self.render_workspace_tree(cx)),
             )
     }
