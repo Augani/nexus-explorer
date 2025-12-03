@@ -702,6 +702,34 @@ impl Workspace {
         self.clipboard = None;
         cx.notify();
     }
+
+    fn empty_trash(&mut self, cx: &mut Context<Self>) {
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info("Emptying trash...".to_string(), cx);
+        });
+        
+        cx.spawn(async move |this, cx| {
+            let result = std::thread::spawn(|| {
+                crate::models::empty_trash()
+            }).join().unwrap_or_else(|_| Err("Thread panic".to_string()));
+            
+            let _ = this.update(cx, |workspace, cx| {
+                match result {
+                    Ok(()) => {
+                        workspace.toast_manager.update(cx, |toast, cx| {
+                            toast.show_success("Trash emptied".to_string(), cx);
+                        });
+                        workspace.refresh_current_directory(cx);
+                    }
+                    Err(e) => {
+                        workspace.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed: {}", e), cx);
+                        });
+                    }
+                }
+            });
+        }).detach();
+    }
     
     fn create_new_file(&mut self, name: &str, cx: &mut Context<Self>) {
         if name.is_empty() {
@@ -1523,6 +1551,26 @@ impl Render for Workspace {
                                                             .text_color(text_gray),
                                                     ),
                                             )
+                                            // Empty Trash button - only shown when in Trash folder
+                                            .when(crate::models::is_trash_path(&self.current_path), |toolbar| {
+                                                toolbar.child(
+                                                    div()
+                                                        .id("empty-trash-btn")
+                                                        .px_3()
+                                                        .py(px(6.0))
+                                                        .bg(gpui::rgb(0xda3633))
+                                                        .text_color(gpui::rgb(0xffffff))
+                                                        .rounded_md()
+                                                        .text_xs()
+                                                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                        .cursor_pointer()
+                                                        .hover(|h| h.bg(gpui::rgb(0xb62324)))
+                                                        .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                            view.empty_trash(cx);
+                                                        }))
+                                                        .child("Empty Trash")
+                                                )
+                                            })
                                             .child(
                                                 div()
                                                     .h(px(16.0))
@@ -1811,12 +1859,13 @@ impl Workspace {
                                     )
                             )
                     )
-                    // File list
+                    // File list with scroll
                     .child(
                         div()
+                            .id("dest-file-list")
                             .flex_1()
                             .bg(bg_darker)
-                            .overflow_hidden()
+                            .overflow_y_scroll()
                             .children(self.dest_entries.iter().map(|entry| {
                                 let entry_path = entry.path.clone();
                                 let is_dir = entry.is_dir;
