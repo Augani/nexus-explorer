@@ -1,7 +1,7 @@
 use gpui::{
     div, px, App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement,
     KeyDownEvent, ParentElement, Render, Styled, Window, ScrollHandle, ScrollWheelEvent,
-    ClipboardItem, MouseDownEvent, MouseMoveEvent, MouseUpEvent, MouseButton,
+    ClipboardItem, MouseDownEvent, MouseMoveEvent, MouseUpEvent, MouseButton, Timer,
 };
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -40,6 +40,7 @@ pub struct TerminalView {
     is_selecting: bool,
     scroll_handle: ScrollHandle,
     viewport_height: f32,
+    polling_started: bool,
 }
 
 impl TerminalView {
@@ -58,6 +59,7 @@ impl TerminalView {
             is_selecting: false,
             scroll_handle: ScrollHandle::new(),
             viewport_height: TERMINAL_CONTENT_HEIGHT,
+            polling_started: false,
         }
     }
 
@@ -77,6 +79,14 @@ impl TerminalView {
     pub fn toggle_visible(&mut self) {
         self.is_visible = !self.is_visible;
     }
+    
+    pub fn focus(&self, window: &mut Window) {
+        window.focus(&self.focus_handle);
+    }
+    
+    pub fn should_focus(&self) -> bool {
+        self.is_visible && self.is_running()
+    }
 
     pub fn is_running(&self) -> bool {
         self.pty.as_ref().map(|p| p.is_running()).unwrap_or(false)
@@ -94,7 +104,50 @@ impl TerminalView {
     }
 
 
-    /// Start the terminal
+    /// Start the terminal with output polling
+    pub fn start_with_polling(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Result<(), String> {
+        if self.is_running() {
+            return Ok(());
+        }
+
+        let mut pty = PtyService::new()
+            .with_working_directory(self.state.working_directory().clone())
+            .with_size(self.state.cols() as u16, self.state.rows() as u16);
+
+        pty.start().map_err(|e| e.to_string())?;
+        self.pty = Some(pty);
+        self.state.set_running(true);
+        self.is_visible = true;
+
+        // Start polling task for PTY output
+        self.polling_started = true;
+        cx.spawn_in(window, async move |this, cx| {
+            loop {
+                Timer::after(Duration::from_millis(16)).await;
+                
+                let should_continue = this.update(cx, |view, cx| {
+                    if !view.is_running() {
+                        view.polling_started = false;
+                        return false;
+                    }
+                    view.process_output();
+                    cx.notify();
+                    true
+                }).unwrap_or(false);
+                
+                if !should_continue {
+                    break;
+                }
+            }
+        }).detach();
+
+        // Focus the terminal
+        window.focus(&self.focus_handle);
+
+        Ok(())
+    }
+    
+    /// Start the terminal (legacy, no polling)
     pub fn start(&mut self) -> Result<(), String> {
         if self.is_running() {
             return Ok(());
@@ -403,8 +456,11 @@ impl TerminalView {
         }
     }
 
-    /// Handle mouse down for text selection
-    pub fn handle_mouse_down(&mut self, event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    /// Handle mouse down for text selection and focus
+    pub fn handle_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        // Focus the terminal on click
+        window.focus(&self.focus_handle);
+        
         if event.button == MouseButton::Left {
             let (line, col) = self.position_from_mouse(event.position);
             self.selection_start = Some((line, col));
@@ -655,9 +711,36 @@ impl Focusable for TerminalView {
 }
 
 impl Render for TerminalView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Process any pending output
         self.process_output();
+
+        // Start polling task if terminal is running and polling hasn't started
+        if self.is_visible && self.is_running() && !self.polling_started {
+            self.polling_started = true;
+            cx.spawn_in(window, async move |this, cx| {
+                loop {
+                    Timer::after(Duration::from_millis(16)).await;
+                    
+                    let should_continue = this.update(cx, |view, cx| {
+                        if !view.is_running() || !view.is_visible {
+                            view.polling_started = false;
+                            return false;
+                        }
+                        view.process_output();
+                        cx.notify();
+                        true
+                    }).unwrap_or(false);
+                    
+                    if !should_continue {
+                        break;
+                    }
+                }
+            }).detach();
+            
+            // Focus the terminal when it becomes visible
+            window.focus(&self.focus_handle);
+        }
 
         let bg_color = gpui::rgb(0x0d0a0a);
         let border_color = gpui::rgb(0x3d2d2d);
@@ -701,9 +784,8 @@ impl Render for TerminalView {
             .on_mouse_move(cx.listener(Self::handle_mouse_move))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::handle_mouse_up))
             .w_full()
-            .h(px(300.0))
+            .h_full()
             .bg(bg_color)
-            .border_t_1()
             .border_color(border_color)
             .flex()
             .flex_col()

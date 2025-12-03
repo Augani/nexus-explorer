@@ -98,7 +98,11 @@ fn main() {
         let bounds = Bounds::centered(None, size(px(1200.0), px(800.0)), cx);
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
-            titlebar: None,
+            titlebar: Some(gpui::TitlebarOptions {
+                title: Some("Nexus Explorer".into()),
+                appears_transparent: true,
+                traffic_light_position: Some(gpui::point(px(9.0), px(9.0))),
+            }),
             focus: true,
             show: true,
             kind: gpui::WindowKind::Normal,

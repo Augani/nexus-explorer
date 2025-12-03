@@ -470,6 +470,8 @@ impl Render for ThemePickerView {
             }))
             .child(
                 div()
+                    .id("theme-picker-dialog")
+                    .occlude()
                     .w(px(780.0))
                     .max_h(px(620.0))
                     .bg(current_theme.bg_secondary)
@@ -477,7 +479,6 @@ impl Render for ThemePickerView {
                     .border_1()
                     .border_color(current_theme.border_default)
                     .overflow_hidden()
-                    .on_mouse_down(MouseButton::Left, |_, _, _| {})
                     // Apply crossfade animation to the entire dialog
                     .when(is_transitioning, |s| {
                         s.opacity(0.95 + 0.05 * crossfade_opacity)

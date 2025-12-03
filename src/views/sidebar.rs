@@ -757,9 +757,13 @@ impl Render for SidebarView {
             .bg(bg_dark)
             .flex()
             .flex_col()
+            .overflow_y_scroll()
             .child(
                 div()
                     .p_3()
+                    .flex()
+                    .flex_col()
+                    .flex_shrink_0()
                     // Tools Section
                     .child(
                         div()

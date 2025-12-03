@@ -46,6 +46,8 @@ pub struct Workspace {
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
     is_terminal_open: bool,
+    terminal_height: f32,
+    is_resizing_terminal: bool,
     cached_entries: Vec<crate::models::FileEntry>,
     view_mode: ViewMode,
     dialog_state: DialogState,
@@ -282,6 +284,8 @@ impl Workspace {
                 current_path: initial_path.clone(),
                 path_history: vec![initial_path],
                 is_terminal_open: false,
+                terminal_height: 300.0,
+                is_resizing_terminal: false,
                 cached_entries,
                 view_mode,
                 dialog_state: DialogState::None,
@@ -820,6 +824,22 @@ impl Render for Workspace {
             .on_action(cx.listener(Self::handle_focus_search))
             .on_action(cx.listener(Self::handle_new_window))
             .on_action(cx.listener(Self::handle_quick_look_toggle))
+            .on_mouse_up(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                if view.is_resizing_terminal {
+                    view.is_resizing_terminal = false;
+                    cx.notify();
+                }
+            }))
+            .on_mouse_move(cx.listener(|view, event: &gpui::MouseMoveEvent, window, cx| {
+                if view.is_resizing_terminal {
+                    let bounds = window.bounds();
+                    let mouse_y = event.position.y;
+                    let window_height = bounds.size.height;
+                    let new_height = f32::from(window_height) - f32::from(mouse_y) - 30.0;
+                    view.terminal_height = new_height.clamp(150.0, 600.0);
+                    cx.notify();
+                }
+            }))
             .size_full()
             .flex()
             .flex_col()
@@ -829,66 +849,42 @@ impl Render for Workspace {
             .font_family(".SystemUIFont")
             .child(
                 div()
-                    .h(px(40.0))
+                    .h(px(52.0))
                     .bg(bg_darker)
                     .flex()
                     .items_center()
                     .justify_between()
-                    .px_4()
+                    .px_5()
+                    .py_2()
                     .border_b_1()
                     .border_color(border_color)
+                    // Left side - leave space for traffic lights on macOS
                     .child(
                         div()
                             .flex()
                             .items_center()
-                            .gap_3()
+                            .gap_2()
+                            .pl(px(70.0)) // Space for macOS traffic lights
                             .child(
-                                div().flex().gap_1p5().mr_4().children(vec![
-                                    div()
-                                        .w(px(12.0))
-                                        .h(px(12.0))
-                                        .rounded_full()
-                                        .bg(gpui::rgb(0xff5f56))
-                                        .border_1()
-                                        .border_color(gpui::rgb(0xe0443e)),
-                                    div()
-                                        .w(px(12.0))
-                                        .h(px(12.0))
-                                        .rounded_full()
-                                        .bg(gpui::rgb(0xffbd2e))
-                                        .border_1()
-                                        .border_color(gpui::rgb(0xdea123)),
-                                    div()
-                                        .w(px(12.0))
-                                        .h(px(12.0))
-                                        .rounded_full()
-                                        .bg(gpui::rgb(0x27c93f))
-                                        .border_1()
-                                        .border_color(gpui::rgb(0x1aab29)),
-                                ]),
+                                svg()
+                                    .path("assets/icons/hard-drive.svg")
+                                    .size(px(16.0))
+                                    .text_color(theme.accent_primary),
                             )
                             .child(
                                 div()
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::MEDIUM)
-                                    .text_color(text_gray)
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        svg()
-                                            .path("assets/icons/hard-drive.svg")
-                                            .size(px(12.0))
-                                            .text_color(text_gray),
-                                    )
+                                    .text_sm()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(theme.text_primary)
                                     .child("Nexus Explorer"),
                             ),
                     )
+                    // Center - search input
                     .child(
                         div()
                             .relative()
                             .w_1_3()
-                            .max_w(px(450.0))
+                            .max_w(px(500.0))
                             .child(self.search_input.clone()),
                     )
                     .child(
@@ -899,9 +895,13 @@ impl Render for Workspace {
                             .child(
                                 div()
                                     .id("theme-picker-btn")
-                                    .p_1()
+                                    .px_2()
+                                    .py_1()
                                     .rounded_md()
                                     .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .gap_1p5()
                                     .hover(|h| h.bg(hover_bg))
                                     .on_mouse_down(
                                         MouseButton::Left,
@@ -913,15 +913,14 @@ impl Render for Workspace {
                                         svg()
                                             .path("assets/icons/sparkles.svg")
                                             .size(px(14.0))
-                                            .text_color(text_gray),
+                                            .text_color(theme.accent_primary),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme.text_secondary)
+                                            .child("Themes"),
                                     ),
-                            )
-                            .child(
-                                svg()
-                                    .path("assets/icons/monitor.svg")
-                                    .size(px(14.0))
-                                    .text_color(text_gray)
-                                    .cursor_pointer(),
                             ),
                     ),
             )
@@ -1143,11 +1142,48 @@ impl Render for Workspace {
                                     .flex_1()
                                     .bg(bg_darker)
                                     .overflow_hidden()
+                                    .min_h(px(100.0))
                                     .when(is_grid, |this| this.child(self.grid_view.clone()))
                                     .when(!is_grid, |this| this.child(self.file_list.clone()))
                             })
                             .when(is_terminal_open, |this| {
-                                this.child(self.terminal.clone())
+                                let terminal_height = self.terminal_height;
+                                let handle_color = theme.border_default;
+                                this
+                                    // Resize handle
+                                    .child(
+                                        div()
+                                            .id("terminal-resize-handle")
+                                            .w_full()
+                                            .h(px(6.0))
+                                            .cursor_row_resize()
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .bg(bg_dark)
+                                            .border_t_1()
+                                            .border_color(handle_color)
+                                            .hover(|h| h.bg(theme.bg_hover))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                view.is_resizing_terminal = true;
+                                                cx.notify();
+                                            }))
+                                            .child(
+                                                div()
+                                                    .w(px(40.0))
+                                                    .h(px(3.0))
+                                                    .rounded_full()
+                                                    .bg(handle_color),
+                                            ),
+                                    )
+                                    // Terminal panel
+                                    .child(
+                                        div()
+                                            .h(px(terminal_height))
+                                            .min_h(px(150.0))
+                                            .max_h(px(600.0))
+                                            .child(self.terminal.clone()),
+                                    )
                             }),
                     )
                     .children(self.preview.clone().map(|preview| {
@@ -1207,13 +1243,13 @@ impl Workspace {
             .child(
                 div()
                     .id("dialog-content")
+                    .occlude()
                     .w(px(400.0))
                     .bg(dialog_bg)
                     .rounded_lg()
                     .border_1()
                     .border_color(border_color)
                     .shadow_lg()
-
                     .child(
                         div()
                             .p_4()
