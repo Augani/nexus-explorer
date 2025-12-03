@@ -73,6 +73,7 @@ pub enum ToolAction {
     ToggleHiddenFiles,
     Copy,
     Move,
+    Paste,
     Delete,
 }
 
@@ -373,6 +374,7 @@ pub struct SidebarView {
     pending_navigation: Option<PathBuf>,
     pending_action: Option<ToolAction>,
     selected_file_count: usize,
+    has_clipboard: bool,
     context_menu_bookmark_id: Option<BookmarkId>,
     show_network_dialog: bool,
     show_smart_folder_dialog: bool,
@@ -390,12 +392,50 @@ impl SidebarView {
             pending_navigation: None,
             pending_action: None,
             selected_file_count: 0,
+            has_clipboard: false,
             context_menu_bookmark_id: None,
             show_network_dialog: false,
             show_smart_folder_dialog: false,
             editing_smart_folder: None,
             pending_smart_folder_click: None,
         }
+    }
+
+    fn get_trash_path() -> PathBuf {
+        #[cfg(target_os = "macos")]
+        {
+            dirs::home_dir()
+                .map(|h| h.join(".Trash"))
+                .unwrap_or_else(|| PathBuf::from("/.Trash"))
+        }
+        #[cfg(target_os = "linux")]
+        {
+            dirs::data_local_dir()
+                .map(|d| d.join("Trash/files"))
+                .unwrap_or_else(|| {
+                    dirs::home_dir()
+                        .map(|h| h.join(".local/share/Trash/files"))
+                        .unwrap_or_else(|| PathBuf::from("/tmp"))
+                })
+        }
+        #[cfg(target_os = "windows")]
+        {
+            PathBuf::from("C:\\$Recycle.Bin")
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        {
+            PathBuf::from("/tmp")
+        }
+    }
+
+    /// Set whether there's content in the clipboard for paste
+    pub fn set_has_clipboard(&mut self, has_clipboard: bool) {
+        self.has_clipboard = has_clipboard;
+    }
+
+    /// Check if there's content in the clipboard
+    pub fn has_clipboard(&self) -> bool {
+        self.has_clipboard
     }
 
     /// Add a bookmark for the current directory
@@ -744,6 +784,7 @@ impl Render for SidebarView {
         let is_tools_expanded = self.sidebar.is_tools_expanded();
         let show_hidden = self.sidebar.show_hidden_files();
         let has_selection = self.selected_file_count > 0;
+        let has_clipboard = self.has_clipboard;
 
         // Use typography spacing constants
         let section_gap = px(sidebar_spacing::SECTION_GAP);
@@ -860,6 +901,19 @@ impl Render for SidebarView {
                                             text_light,
                                             hover_bg,
                                             icon_blue,
+                                            cx,
+                                        ))
+                                        // Paste button (enabled when clipboard has content)
+                                        .child(self.render_tool_button(
+                                            "paste-files",
+                                            "clipboard-check",
+                                            "Paste",
+                                            ToolAction::Paste,
+                                            has_clipboard,
+                                            text_gray,
+                                            text_light,
+                                            hover_bg,
+                                            gpui::rgb(0x3fb950),
                                             cx,
                                         ))
                                         // Delete button (batch operation)
@@ -1158,12 +1212,47 @@ impl Render for SidebarView {
                                 )
                             }),
                     )
+                    // Trash item
+                    .child({
+                        let trash_path = Self::get_trash_path();
+                        let is_trash_selected = selected_path.as_ref() == Some(&trash_path);
+                        div()
+                            .id("trash-item")
+                            .px_2()
+                            .py_1p5()
+                            .mx_1()
+                            .rounded_md()
+                            .text_sm()
+                            .cursor_pointer()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .when(is_trash_selected, |s| s.bg(theme.bg_hover).text_color(text_light))
+                            .when(!is_trash_selected, |s| s.text_color(text_gray))
+                            .hover(|h| h.bg(theme.bg_hover))
+                            .on_mouse_down(MouseButton::Left, {
+                                let path = trash_path.clone();
+                                cx.listener(move |view, _event, _window, cx| {
+                                    view.sidebar.selected_path = Some(path.clone());
+                                    view.pending_navigation = Some(path.clone());
+                                    cx.notify();
+                                })
+                            })
+                            .child(
+                                svg()
+                                    .path("assets/icons/trash-2.svg")
+                                    .size(px(14.0))
+                                    .text_color(if is_trash_selected { text_light } else { text_gray }),
+                            )
+                            .child("Trash")
+                    })
                     .child(
                         div()
                             .text_xs()
                             .font_weight(gpui::FontWeight::BOLD)
                             .text_color(label_color)
                             .mb_2()
+                            .mt_3()
                             .px_2()
                             .flex()
                             .items_center()
@@ -1200,7 +1289,8 @@ impl SidebarView {
         icon_color: gpui::Rgba,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        div()
+        let action_clone = action.clone();
+        let base = div()
             .id(SharedString::from(id))
             .flex()
             .items_center()
@@ -1209,21 +1299,6 @@ impl SidebarView {
             .py_1p5()
             .rounded_md()
             .text_sm()
-            .when(enabled, |s| {
-                s.cursor_pointer()
-                    .text_color(text_gray)
-                    .hover(|h| h.bg(hover_bg).text_color(text_light))
-            })
-            .when(!enabled, |s| {
-                s.opacity(0.4)
-                    .cursor_not_allowed()
-                    .text_color(text_gray)
-            })
-            .when(enabled, |s| {
-                s.on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
-                    view.handle_tool_action(action.clone(), window, cx);
-                }))
-            })
             .child(
                 svg()
                     .path(SharedString::from(format!("assets/icons/{}.svg", icon)))
@@ -1234,7 +1309,20 @@ impl SidebarView {
                 div()
                     .flex_1()
                     .child(label)
-            )
+            );
+
+        if enabled {
+            base.cursor_pointer()
+                .text_color(text_gray)
+                .hover(|h| h.bg(hover_bg).text_color(text_light))
+                .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                    view.handle_tool_action(action_clone.clone(), window, cx);
+                }))
+        } else {
+            base.opacity(0.4)
+                .cursor_not_allowed()
+                .text_color(text_gray)
+        }
     }
 
     fn render_smart_folders_section(

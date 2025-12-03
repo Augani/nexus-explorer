@@ -15,6 +15,7 @@ mod tab_bar;
 mod tag_ui;
 mod terminal;
 mod theme_picker;
+mod toast;
 
 pub mod breadcrumb;
 
@@ -43,3 +44,4 @@ pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};
 pub use network_dialog::{NetworkConnectionDialog, NetworkDialogAction};
 pub use smart_folder_dialog::{SmartFolderDialog, SmartFolderDialogAction, QueryBuilderState};
+pub use toast::{Toast, ToastManager, ToastVariant};

@@ -9,7 +9,7 @@ use gpui::{
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors, current_theme};
-use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView};
+use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView, ToastManager};
 
 // Define global keyboard shortcut actions
 actions!(workspace, [
@@ -21,12 +21,35 @@ actions!(workspace, [
     QuickLookToggle,
 ]);
 
+/// Recursively copy a directory (standalone function for background thread)
+fn copy_dir_recursive_async(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            copy_dir_recursive_async(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 /// Dialog state for creating new files/folders
 #[derive(Clone)]
 pub enum DialogState {
     None,
     NewFile { name: String },
     NewFolder { name: String },
+}
+
+/// Clipboard operation type
+#[derive(Clone, Debug, PartialEq)]
+pub enum ClipboardOperation {
+    Copy(PathBuf),
+    Cut(PathBuf),
 }
 
 pub struct Workspace {
@@ -42,6 +65,7 @@ pub struct Workspace {
     status_bar: Entity<StatusBarView>,
     terminal: Entity<TerminalView>,
     quick_look: Entity<QuickLookView>,
+    toast_manager: Entity<ToastManager>,
     focus_handle: FocusHandle,
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
@@ -55,6 +79,15 @@ pub struct Workspace {
     dialog_state: DialogState,
     show_hidden_files: bool,
     current_theme_id: ThemeId,
+    clipboard: Option<ClipboardOperation>,
+    /// Copy/Move mode - shows destination pane
+    copy_move_mode: bool,
+    /// Destination file list for copy/move operations
+    dest_file_list: Entity<FileListView>,
+    /// Current path in destination pane
+    dest_path: PathBuf,
+    /// Cached entries for destination pane
+    dest_entries: Vec<crate::models::FileEntry>,
 }
 
 impl Workspace {
@@ -182,6 +215,9 @@ impl Workspace {
             // Create Quick Look view
             let quick_look = cx.new(|cx| QuickLookView::new(cx));
 
+            // Create Toast Manager for notifications
+            let toast_manager = cx.new(|cx| ToastManager::new(cx));
+
             // Observe file list for navigation requests and selection changes
             let sidebar_for_file_list = sidebar.clone();
             let status_bar_for_file_list = status_bar.clone();
@@ -297,9 +333,10 @@ impl Workspace {
                 status_bar,
                 terminal,
                 quick_look,
+                toast_manager,
                 focus_handle: cx.focus_handle(),
                 current_path: initial_path.clone(),
-                path_history: vec![initial_path],
+                path_history: vec![initial_path.clone()],
                 is_terminal_open: false,
                 terminal_height: 300.0,
                 is_resizing_terminal: false,
@@ -310,6 +347,11 @@ impl Workspace {
                 dialog_state: DialogState::None,
                 show_hidden_files,
                 current_theme_id,
+                clipboard: None,
+                copy_move_mode: false,
+                dest_file_list: cx.new(|cx| FileListView::with_file_list(FileList::new(), cx)),
+                dest_path: initial_path,
+                dest_entries: Vec::new(),
             }
         })
     }
@@ -340,8 +382,74 @@ impl Workspace {
             ToolAction::CopyPath => {
                 // Already handled in sidebar
             }
-            ToolAction::Copy | ToolAction::Move | ToolAction::Delete => {
-                // TODO: Implement batch operations
+            ToolAction::Copy => {
+                if let Some(entry) = self.get_selected_entry(cx) {
+                    let name = entry.path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("item")
+                        .to_string();
+                    self.clipboard = Some(ClipboardOperation::Copy(entry.path.clone()));
+                    self.copy_move_mode = true;
+                    self.dest_path = self.current_path.clone();
+                    self.load_destination_entries(cx);
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_info(format!("Select destination for: {}", name), cx);
+                    });
+                    cx.notify();
+                }
+            }
+            ToolAction::Move => {
+                if let Some(entry) = self.get_selected_entry(cx) {
+                    let name = entry.path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("item")
+                        .to_string();
+                    self.clipboard = Some(ClipboardOperation::Cut(entry.path.clone()));
+                    self.copy_move_mode = true;
+                    self.dest_path = self.current_path.clone();
+                    self.load_destination_entries(cx);
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_info(format!("Select destination for: {}", name), cx);
+                    });
+                    cx.notify();
+                }
+            }
+            ToolAction::Paste => {
+                self.paste_from_clipboard(cx);
+            }
+            ToolAction::Delete => {
+                if let Some(entry) = self.get_selected_entry(cx) {
+                    let name = entry.path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("item")
+                        .to_string();
+                    let path = entry.path.clone();
+                    let is_dir = entry.is_dir;
+                    
+                    let result = if is_dir {
+                        fs::remove_dir_all(&path)
+                    } else {
+                        fs::remove_file(&path)
+                    };
+                    
+                    match result {
+                        Ok(()) => {
+                            self.file_list.update(cx, |view, _| {
+                                view.inner_mut().set_selected_index(None);
+                            });
+                            self.preview = None;
+                            self.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Deleted: {}", name), cx);
+                            });
+                            self.refresh_current_directory(cx);
+                        }
+                        Err(e) => {
+                            self.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error(format!("Failed to delete: {}", e), cx);
+                            });
+                        }
+                    }
+                }
             }
         }
     }
@@ -349,6 +457,249 @@ impl Workspace {
     fn refresh_current_directory(&mut self, cx: &mut Context<Self>) {
         let path = self.current_path.clone();
         self.navigate_to(path, cx);
+    }
+
+    fn paste_from_clipboard(&mut self, cx: &mut Context<Self>) {
+        let Some(clipboard_op) = self.clipboard.take() else {
+            return;
+        };
+
+        let (source_path, is_move) = match clipboard_op {
+            ClipboardOperation::Copy(path) => (path, false),
+            ClipboardOperation::Cut(path) => (path, true),
+        };
+
+        let file_name = source_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let dest_path = self.current_path.join(&file_name);
+
+        // Don't paste into the same location
+        if source_path.parent() == Some(&self.current_path) && !is_move {
+            self.clipboard = Some(ClipboardOperation::Copy(source_path));
+            return;
+        }
+
+        // Show "in progress" toast
+        let action = if is_move { "Moving" } else { "Copying" };
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("{}: {}...", action, file_name), cx);
+        });
+
+        // Clear clipboard UI immediately
+        self.sidebar.update(cx, |view, _| {
+            view.set_has_clipboard(false);
+        });
+
+        // Run file operation in background
+        let source = source_path.clone();
+        let dest = dest_path.clone();
+        let name = file_name.clone();
+        
+        cx.spawn(async move |this, cx| {
+            // Perform the copy/move in background
+            let result = std::thread::spawn(move || {
+                if source.is_dir() {
+                    copy_dir_recursive_async(&source, &dest)
+                } else {
+                    fs::copy(&source, &dest).map(|_| ())
+                }
+            }).join().unwrap_or_else(|_| Err(std::io::Error::new(std::io::ErrorKind::Other, "Thread panic")));
+
+            // Handle result on main thread
+            let _ = this.update(cx, |workspace, cx| {
+                match result {
+                    Ok(()) => {
+                        if is_move {
+                            // Delete source after successful copy
+                            let _ = if source_path.is_dir() {
+                                fs::remove_dir_all(&source_path)
+                            } else {
+                                fs::remove_file(&source_path)
+                            };
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Moved: {}", name), cx);
+                            });
+                        } else {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Copied: {}", name), cx);
+                            });
+                        }
+                        workspace.refresh_current_directory(cx);
+                    }
+                    Err(e) => {
+                        workspace.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed: {}", e), cx);
+                        });
+                        // Restore clipboard on failure
+                        if is_move {
+                            workspace.clipboard = Some(ClipboardOperation::Cut(source_path.clone()));
+                        } else {
+                            workspace.clipboard = Some(ClipboardOperation::Copy(source_path.clone()));
+                        }
+                        workspace.sidebar.update(cx, |view, _| {
+                            view.set_has_clipboard(true);
+                        });
+                    }
+                }
+            });
+        }).detach();
+    }
+
+    fn load_destination_entries(&mut self, cx: &mut Context<Self>) {
+        let path = self.dest_path.clone();
+        let show_hidden = self.show_hidden_files;
+        
+        cx.spawn(async move |this, cx| {
+            let entries = std::thread::spawn(move || {
+                let mut entries = Vec::new();
+                if let Ok(read_dir) = fs::read_dir(&path) {
+                    for entry in read_dir.flatten() {
+                        let entry_path = entry.path();
+                        let name = entry_path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("")
+                            .to_string();
+                        
+                        if !show_hidden && name.starts_with('.') {
+                            continue;
+                        }
+                        
+                        let is_dir = entry_path.is_dir();
+                        let metadata = entry_path.metadata().ok();
+                        let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
+                        let modified = metadata.as_ref()
+                            .and_then(|m| m.modified().ok())
+                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                        
+                        let file_type = if is_dir {
+                            crate::models::FileType::Directory
+                        } else {
+                            crate::models::FileType::RegularFile
+                        };
+                        
+                        let icon_key = if is_dir {
+                            crate::models::IconKey::Directory
+                        } else {
+                            entry_path.extension()
+                                .and_then(|ext| ext.to_str())
+                                .map(|ext| crate::models::IconKey::Extension(ext.to_lowercase()))
+                                .unwrap_or(crate::models::IconKey::GenericFile)
+                        };
+                        
+                        entries.push(crate::models::FileEntry {
+                            name,
+                            path: entry_path,
+                            is_dir,
+                            size,
+                            modified,
+                            file_type,
+                            icon_key,
+                            linux_permissions: None,
+                            sync_status: crate::models::CloudSyncStatus::None,
+                        });
+                    }
+                }
+                entries.sort_by(|a, b| {
+                    match (a.is_dir, b.is_dir) {
+                        (true, false) => std::cmp::Ordering::Less,
+                        (false, true) => std::cmp::Ordering::Greater,
+                        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                    }
+                });
+                entries
+            }).join().unwrap_or_default();
+            
+            let _ = this.update(cx, |workspace, cx| {
+                workspace.dest_entries = entries;
+                cx.notify();
+            });
+        }).detach();
+    }
+
+    fn navigate_dest_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        self.dest_path = path;
+        self.load_destination_entries(cx);
+    }
+
+    fn paste_to_destination(&mut self, cx: &mut Context<Self>) {
+        let Some(clipboard_op) = self.clipboard.take() else {
+            return;
+        };
+
+        let (source_path, is_move) = match clipboard_op {
+            ClipboardOperation::Copy(path) => (path, false),
+            ClipboardOperation::Cut(path) => (path, true),
+        };
+
+        let file_name = source_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let dest_path = self.dest_path.join(&file_name);
+
+        // Exit copy/move mode
+        self.copy_move_mode = false;
+
+        // Show "in progress" toast
+        let action = if is_move { "Moving" } else { "Copying" };
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("{}: {}...", action, file_name), cx);
+        });
+
+        cx.notify();
+
+        let source = source_path.clone();
+        let dest = dest_path.clone();
+        let name = file_name.clone();
+        
+        cx.spawn(async move |this, cx| {
+            let result = std::thread::spawn(move || {
+                if source.is_dir() {
+                    copy_dir_recursive_async(&source, &dest)
+                } else {
+                    fs::copy(&source, &dest).map(|_| ())
+                }
+            }).join().unwrap_or_else(|_| Err(std::io::Error::new(std::io::ErrorKind::Other, "Thread panic")));
+
+            let _ = this.update(cx, |workspace, cx| {
+                match result {
+                    Ok(()) => {
+                        if is_move {
+                            let _ = if source_path.is_dir() {
+                                fs::remove_dir_all(&source_path)
+                            } else {
+                                fs::remove_file(&source_path)
+                            };
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Moved: {}", name), cx);
+                            });
+                        } else {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Copied: {}", name), cx);
+                            });
+                        }
+                        workspace.refresh_current_directory(cx);
+                    }
+                    Err(e) => {
+                        workspace.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed: {}", e), cx);
+                        });
+                    }
+                }
+            });
+        }).detach();
+    }
+
+    fn cancel_copy_move_mode(&mut self, cx: &mut Context<Self>) {
+        self.copy_move_mode = false;
+        self.clipboard = None;
+        cx.notify();
     }
     
     fn create_new_file(&mut self, name: &str, cx: &mut Context<Self>) {
@@ -672,9 +1023,9 @@ impl Workspace {
         }
     }
 
-    /// Update preview panel based on current selection
-    fn update_preview_for_selection(&mut self, cx: &mut Context<Self>) {
-        let selected_entry = match self.view_mode {
+    /// Get the currently selected file entry
+    fn get_selected_entry(&self, cx: &mut Context<Self>) -> Option<crate::models::FileEntry> {
+        match self.view_mode {
             ViewMode::List | ViewMode::Details => {
                 let file_list = self.file_list.read(cx);
                 let idx = file_list.inner().selected_index();
@@ -685,7 +1036,12 @@ impl Workspace {
                 let idx = grid_view.inner().selected_index();
                 idx.and_then(|i| self.cached_entries.get(i).cloned())
             }
-        };
+        }
+    }
+
+    /// Update preview panel based on current selection
+    fn update_preview_for_selection(&mut self, cx: &mut Context<Self>) {
+        let selected_entry = self.get_selected_entry(cx);
 
         match selected_entry {
             Some(entry) if !entry.is_dir => {
@@ -1219,6 +1575,7 @@ impl Render for Workspace {
                                     .bg(bg_darker)
                                     .overflow_hidden()
                                     .min_h(px(100.0))
+                                    .when(self.copy_move_mode, |d| d.opacity(0.5))
                                     .when(is_grid, |this| this.child(self.grid_view.clone()))
                                     .when(!is_grid, |this| this.child(self.file_list.clone()))
                             })
@@ -1262,51 +1619,56 @@ impl Render for Workspace {
                                     )
                             }),
                     )
-                    .children(self.preview.clone().map(|preview| {
-                        let preview_width = self.preview_width;
-                        let handle_color = border_color;
-                        div()
-                            .flex()
-                            .h_full()
-                            // Resize handle
-                            .child(
-                                div()
-                                    .id("preview-resize-handle")
-                                    .w(px(6.0))
-                                    .h_full()
-                                    .cursor_col_resize()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .bg(bg_dark)
-                                    .border_l_1()
-                                    .border_color(handle_color)
-                                    .hover(|h| h.bg(theme.bg_hover))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
-                                        view.is_resizing_preview = true;
-                                        cx.notify();
-                                    }))
-                                    .child(
-                                        div()
-                                            .w(px(3.0))
-                                            .h(px(40.0))
-                                            .rounded_full()
-                                            .bg(handle_color),
-                                    ),
-                            )
-                            // Preview content
-                            .child(
-                                div()
-                                    .w(px(preview_width))
-                                    .min_w(px(200.0))
-                                    .max_w(px(600.0))
-                                    .h_full()
-                                    .bg(bg_dark)
-                                    .flex()
-                                    .flex_col()
-                                    .child(preview),
-                            )
-                    })),
+                    .when(self.copy_move_mode, |this| {
+                        this.child(self.render_destination_pane(cx))
+                    })
+                    .when(!self.copy_move_mode, |this| {
+                        this.children(self.preview.clone().map(|preview| {
+                            let preview_width = self.preview_width;
+                            let handle_color = border_color;
+                            div()
+                                .flex()
+                                .h_full()
+                                // Resize handle
+                                .child(
+                                    div()
+                                        .id("preview-resize-handle")
+                                        .w(px(6.0))
+                                        .h_full()
+                                        .cursor_col_resize()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .bg(bg_dark)
+                                        .border_l_1()
+                                        .border_color(handle_color)
+                                        .hover(|h| h.bg(theme.bg_hover))
+                                        .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                            view.is_resizing_preview = true;
+                                            cx.notify();
+                                        }))
+                                        .child(
+                                            div()
+                                                .w(px(3.0))
+                                                .h(px(40.0))
+                                                .rounded_full()
+                                                .bg(handle_color),
+                                        ),
+                                )
+                                // Preview content
+                                .child(
+                                    div()
+                                        .w(px(preview_width))
+                                        .min_w(px(200.0))
+                                        .max_w(px(600.0))
+                                        .h_full()
+                                        .bg(bg_dark)
+                                        .flex()
+                                        .flex_col()
+                                        .child(preview),
+                                )
+                        }))
+                    }),
             )
             // Status bar at the bottom
             .child(self.status_bar.clone())
@@ -1318,6 +1680,195 @@ impl Render for Workspace {
             .child(self.theme_picker.clone())
             // Quick Look overlay
             .child(self.quick_look.clone())
+            // Toast notifications
+            .child(self.toast_manager.clone())
+    }
+}
+
+impl Workspace {
+    fn render_destination_pane(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let bg_dark = theme.bg_secondary;
+        let bg_darker = theme.bg_primary;
+        let border_color = theme.border_default;
+        let text_primary = theme.text_primary;
+        let text_muted = theme.text_muted;
+        let preview_width = self.preview_width;
+        
+        div()
+            .flex()
+            .h_full()
+            .child(
+                div()
+                    .id("dest-resize-handle")
+                    .w(px(6.0))
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(bg_dark)
+                    .border_l_1()
+                    .border_color(border_color)
+                    .child(
+                        div()
+                            .w(px(3.0))
+                            .h(px(40.0))
+                            .rounded_full()
+                            .bg(border_color),
+                    ),
+            )
+            .child(
+                div()
+                    .w(px(preview_width.max(350.0)))
+                    .h_full()
+                    .bg(bg_dark)
+                    .flex()
+                    .flex_col()
+                    // Header with title and actions
+                    .child(
+                        div()
+                            .h(px(52.0))
+                            .bg(theme.bg_tertiary)
+                            .border_b_1()
+                            .border_color(border_color)
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .px_4()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .text_color(theme.accent_primary)
+                                            .child("SELECT DESTINATION"),
+                                    )
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .id("paste-here-btn")
+                                            .px_3()
+                                            .py(px(6.0))
+                                            .bg(theme.accent_primary)
+                                            .text_color(theme.bg_primary)
+                                            .rounded_md()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .cursor_pointer()
+                                            .hover(|h| h.bg(theme.accent_secondary))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                view.paste_to_destination(cx);
+                                            }))
+                                            .child("PASTE HERE"),
+                                    )
+                                    .child(
+                                        div()
+                                            .id("cancel-copy-btn")
+                                            .px_3()
+                                            .py(px(6.0))
+                                            .text_color(text_muted)
+                                            .rounded_md()
+                                            .text_xs()
+                                            .cursor_pointer()
+                                            .hover(|h| h.bg(theme.bg_hover).text_color(text_primary))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                view.cancel_copy_move_mode(cx);
+                                            }))
+                                            .child("CANCEL"),
+                                    )
+                            )
+                    )
+                    // Path breadcrumb
+                    .child(
+                        div()
+                            .h(px(36.0))
+                            .bg(bg_darker)
+                            .border_b_1()
+                            .border_color(border_color)
+                            .flex()
+                            .items_center()
+                            .px_3()
+                            .gap_1()
+                            .overflow_x_hidden()
+                            .child(
+                                div()
+                                    .id("dest-go-up")
+                                    .px_2()
+                                    .py_1()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .hover(|h| h.bg(theme.bg_hover))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                        if let Some(parent) = view.dest_path.parent() {
+                                            let parent_path = parent.to_path_buf();
+                                            view.navigate_dest_to(parent_path, cx);
+                                        }
+                                    }))
+                                    .child(
+                                        svg()
+                                            .path("assets/icons/arrow-up.svg")
+                                            .size(px(14.0))
+                                            .text_color(text_muted),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(text_muted)
+                                    .overflow_x_hidden()
+                                    .text_ellipsis()
+                                    .child(self.dest_path.to_string_lossy().to_string()),
+                            )
+                    )
+                    // File list
+                    .child(
+                        div()
+                            .flex_1()
+                            .bg(bg_darker)
+                            .overflow_hidden()
+                            .children(self.dest_entries.iter().map(|entry| {
+                                let entry_path = entry.path.clone();
+                                let is_dir = entry.is_dir;
+                                let name = entry.name.clone();
+                                
+                                div()
+                                    .id(SharedString::from(format!("dest-{}", entry.name)))
+                                    .h(px(32.0))
+                                    .px_3()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .cursor_pointer()
+                                    .hover(|h| h.bg(theme.bg_hover))
+                                    .when(is_dir, |d| {
+                                        d.on_mouse_down(MouseButton::Left, cx.listener(move |view, _, _, cx| {
+                                            view.navigate_dest_to(entry_path.clone(), cx);
+                                        }))
+                                    })
+                                    .child(
+                                        svg()
+                                            .path(if is_dir { "assets/icons/folder.svg" } else { "assets/icons/file.svg" })
+                                            .size(px(16.0))
+                                            .text_color(if is_dir { theme.accent_primary } else { text_muted }),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(text_primary)
+                                            .child(name),
+                                    )
+                            }))
+                    )
+            )
     }
 }
 

@@ -396,14 +396,16 @@ impl Focusable for SearchInputView {
 
 impl Render for SearchInputView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let bg_input = gpui::rgb(0x161b22);
-        let border_color = gpui::rgb(0x30363d);
-        let border_focus = gpui::rgb(0x1f6feb);
-        let text_gray = gpui::rgb(0x6e7681);
-        let text_light = gpui::rgb(0xc9d1d9);
-        let icon_color = gpui::rgb(0x6e7681);
+        use crate::models::theme_colors;
+        let theme = theme_colors();
+        let bg_input = theme.bg_secondary;
+        let border_color = theme.border_default;
+        let border_focus = theme.accent_primary;
+        let text_gray = theme.text_muted;
+        let text_light = theme.text_primary;
+        let icon_color = theme.text_muted;
         let selection_bg = gpui::rgba(0x1f6feb40);
-        let cursor_color = gpui::rgb(0x58a6ff);
+        let cursor_color = theme.accent_primary;
 
         let is_focused = self.focus_handle.is_focused(window);
         let query = self.search_input.query.clone();
@@ -483,7 +485,7 @@ impl Render for SearchInputView {
                                 .p_0p5()
                                 .rounded_sm()
                                 .cursor_pointer()
-                                .hover(|h| h.bg(gpui::rgb(0x21262d)))
+                                .hover(|h| h.bg(theme.bg_hover))
                                 .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
                                     entity.update(cx, |view, cx| {
                                         view.clear(cx);
