@@ -5,6 +5,8 @@ use std::collections::HashMap;
 /// Unique identifier for themes
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum ThemeId {
+    Light,
+    Dark,
     DragonForge,
     FrostHaven,
     AncientTome,
@@ -14,7 +16,7 @@ pub enum ThemeId {
 
 impl Default for ThemeId {
     fn default() -> Self {
-        Self::DragonForge
+        Self::Dark
     }
 }
 
@@ -302,7 +304,159 @@ impl ThemeColors {
 
 
 impl Theme {
-    /// Dragon Forge theme - Deep crimson and molten gold (Default)
+    /// Light theme - Clean, minimal light mode
+    pub fn light() -> Self {
+        Self {
+            id: ThemeId::Light,
+            name: "Light",
+            description: "Clean and minimal light theme",
+            colors: ThemeColors {
+                bg_void: rgba_from_hex(0xf5f5f5),
+                bg_primary: rgba_from_hex(0xffffff),
+                bg_secondary: rgba_from_hex(0xf8f8f8),
+                bg_tertiary: rgba_from_hex(0xf0f0f0),
+                bg_hover: rgba_from_hex(0xe8e8e8),
+                bg_selected: rgba_from_hex_alpha(0x0066cc, 0.1),
+                bg_active: rgba_from_hex_alpha(0x0066cc, 0.15),
+
+                text_primary: rgba_from_hex(0x1a1a1a),
+                text_secondary: rgba_from_hex(0x4a4a4a),
+                text_muted: rgba_from_hex(0x8a8a8a),
+                text_inverse: rgba_from_hex(0xffffff),
+
+                accent_primary: rgba_from_hex(0x0066cc),
+                accent_secondary: rgba_from_hex(0x0088ff),
+                accent_glow: rgba_from_hex_alpha(0x0066cc, 0.2),
+
+                success: rgba_from_hex(0x22c55e),
+                warning: rgba_from_hex(0xf59e0b),
+                error: rgba_from_hex(0xef4444),
+                info: rgba_from_hex(0x3b82f6),
+
+                border_subtle: rgba_from_hex(0xe5e5e5),
+                border_default: rgba_from_hex(0xd4d4d4),
+                border_emphasis: rgba_from_hex(0x0066cc),
+                border_ornate: rgba_from_hex(0x0066cc),
+
+                folder_color: rgba_from_hex(0x0066cc),
+                folder_open_color: rgba_from_hex(0x0088ff),
+                file_code: rgba_from_hex(0x7c3aed),
+                file_data: rgba_from_hex(0x22c55e),
+                file_media: rgba_from_hex(0xec4899),
+                file_archive: rgba_from_hex(0xf59e0b),
+                file_document: rgba_from_hex(0x3b82f6),
+
+                terminal_bg: rgba_from_hex(0xffffff),
+                terminal_fg: rgba_from_hex(0x1a1a1a),
+                terminal_cursor: rgba_from_hex(0x0066cc),
+                terminal_selection: rgba_from_hex_alpha(0x0066cc, 0.2),
+                terminal_black: rgba_from_hex(0x1a1a1a),
+                terminal_red: rgba_from_hex(0xdc2626),
+                terminal_green: rgba_from_hex(0x16a34a),
+                terminal_yellow: rgba_from_hex(0xca8a04),
+                terminal_blue: rgba_from_hex(0x2563eb),
+                terminal_magenta: rgba_from_hex(0x9333ea),
+                terminal_cyan: rgba_from_hex(0x0891b2),
+                terminal_white: rgba_from_hex(0xf5f5f5),
+            },
+            typography: ThemeTypography::default(),
+            decorations: ThemeDecorations {
+                border_radius_sm: 4.0,
+                border_radius_md: 6.0,
+                border_radius_lg: 8.0,
+                border_width: 1.0,
+                use_ornate_borders: false,
+                corner_flourish: None,
+                divider_style: DividerStyle::Simple,
+                frame_style: FrameStyle::Simple,
+                shadow_sm: ShadowConfig::new(0.0, 1.0, 2.0, 0.0, rgba_from_hex_alpha(0x000000, 0.05)),
+                shadow_md: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.1)),
+                shadow_lg: ShadowConfig::new(0.0, 4.0, 8.0, 0.0, rgba_from_hex_alpha(0x000000, 0.15)),
+                shadow_glow: ShadowConfig::none(),
+                shadow_inner: ShadowConfig::none(),
+                bg_pattern: None,
+                bg_noise_opacity: 0.0,
+            },
+        }
+    }
+
+    /// Dark theme - Clean, minimal dark mode
+    pub fn dark() -> Self {
+        Self {
+            id: ThemeId::Dark,
+            name: "Dark",
+            description: "Clean and minimal dark theme",
+            colors: ThemeColors {
+                bg_void: rgba_from_hex(0x0a0a0a),
+                bg_primary: rgba_from_hex(0x141414),
+                bg_secondary: rgba_from_hex(0x1e1e1e),
+                bg_tertiary: rgba_from_hex(0x282828),
+                bg_hover: rgba_from_hex(0x323232),
+                bg_selected: rgba_from_hex_alpha(0x3b82f6, 0.2),
+                bg_active: rgba_from_hex_alpha(0x3b82f6, 0.3),
+
+                text_primary: rgba_from_hex(0xf5f5f5),
+                text_secondary: rgba_from_hex(0xb4b4b4),
+                text_muted: rgba_from_hex(0x737373),
+                text_inverse: rgba_from_hex(0x141414),
+
+                accent_primary: rgba_from_hex(0x3b82f6),
+                accent_secondary: rgba_from_hex(0x60a5fa),
+                accent_glow: rgba_from_hex_alpha(0x3b82f6, 0.3),
+
+                success: rgba_from_hex(0x22c55e),
+                warning: rgba_from_hex(0xf59e0b),
+                error: rgba_from_hex(0xef4444),
+                info: rgba_from_hex(0x3b82f6),
+
+                border_subtle: rgba_from_hex(0x282828),
+                border_default: rgba_from_hex(0x3f3f3f),
+                border_emphasis: rgba_from_hex(0x3b82f6),
+                border_ornate: rgba_from_hex(0x3b82f6),
+
+                folder_color: rgba_from_hex(0x60a5fa),
+                folder_open_color: rgba_from_hex(0x93c5fd),
+                file_code: rgba_from_hex(0xa78bfa),
+                file_data: rgba_from_hex(0x4ade80),
+                file_media: rgba_from_hex(0xf472b6),
+                file_archive: rgba_from_hex(0xfbbf24),
+                file_document: rgba_from_hex(0x60a5fa),
+
+                terminal_bg: rgba_from_hex(0x141414),
+                terminal_fg: rgba_from_hex(0xf5f5f5),
+                terminal_cursor: rgba_from_hex(0x3b82f6),
+                terminal_selection: rgba_from_hex_alpha(0x3b82f6, 0.3),
+                terminal_black: rgba_from_hex(0x1e1e1e),
+                terminal_red: rgba_from_hex(0xef4444),
+                terminal_green: rgba_from_hex(0x22c55e),
+                terminal_yellow: rgba_from_hex(0xfbbf24),
+                terminal_blue: rgba_from_hex(0x3b82f6),
+                terminal_magenta: rgba_from_hex(0xa855f7),
+                terminal_cyan: rgba_from_hex(0x22d3ee),
+                terminal_white: rgba_from_hex(0xf5f5f5),
+            },
+            typography: ThemeTypography::default(),
+            decorations: ThemeDecorations {
+                border_radius_sm: 4.0,
+                border_radius_md: 6.0,
+                border_radius_lg: 8.0,
+                border_width: 1.0,
+                use_ornate_borders: false,
+                corner_flourish: None,
+                divider_style: DividerStyle::Simple,
+                frame_style: FrameStyle::Simple,
+                shadow_sm: ShadowConfig::new(0.0, 1.0, 2.0, 0.0, rgba_from_hex_alpha(0x000000, 0.2)),
+                shadow_md: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.3)),
+                shadow_lg: ShadowConfig::new(0.0, 4.0, 8.0, 0.0, rgba_from_hex_alpha(0x000000, 0.4)),
+                shadow_glow: ShadowConfig::none(),
+                shadow_inner: ShadowConfig::none(),
+                bg_pattern: None,
+                bg_noise_opacity: 0.0,
+            },
+        }
+    }
+
+    /// Dragon Forge theme - Deep crimson and molten gold
     pub fn dragon_forge() -> Self {
         Self {
             id: ThemeId::DragonForge,
@@ -762,6 +916,8 @@ impl Theme {
     /// Get theme by ID
     pub fn from_id(id: ThemeId) -> Self {
         match id {
+            ThemeId::Light => Self::light(),
+            ThemeId::Dark => Self::dark(),
             ThemeId::DragonForge => Self::dragon_forge(),
             ThemeId::FrostHaven => Self::frost_haven(),
             ThemeId::AncientTome => Self::ancient_tome(),
@@ -773,6 +929,8 @@ impl Theme {
     /// Get all available themes
     pub fn all_themes() -> Vec<Self> {
         vec![
+            Self::light(),
+            Self::dark(),
             Self::dragon_forge(),
             Self::frost_haven(),
             Self::ancient_tome(),

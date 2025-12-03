@@ -2,6 +2,7 @@ use gpui::{
     div, px, App, Context, FocusHandle, Focusable, InteractiveElement, IntoElement,
     KeyDownEvent, ParentElement, Render, Styled, Window, ScrollHandle, ScrollWheelEvent,
     ClipboardItem, MouseDownEvent, MouseMoveEvent, MouseUpEvent, MouseButton, Timer,
+    StatefulInteractiveElement,
 };
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -889,7 +890,7 @@ impl Render for TerminalView {
                             )
                     )
             )
-            // Terminal content with virtualized rendering
+            // Terminal content - render all lines and let container scroll
             .child(
                 div()
                     .id("terminal-content-wrapper")
@@ -897,22 +898,32 @@ impl Render for TerminalView {
                     .flex()
                     .overflow_hidden()
                     .child(
-                        // Main content area with virtualized lines
                         div()
                             .id("terminal-content")
                             .flex_1()
-                            .overflow_hidden()
+                            .overflow_y_scroll()
                             .p(px(TERMINAL_PADDING))
                             .font_family("JetBrains Mono")
                             .text_size(px(13.0))
-                            .children(
-                                lines_to_render.iter().map(|(idx, line)| {
-                                    let is_cursor_line = *idx == cursor_line;
-                                    self.render_line(*idx, line, is_cursor_line)
-                                }).collect::<Vec<_>>()
+                            .child(
+                                // Render all lines - GPUI handles virtualization
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .children(
+                                        (0..total_lines).map(|idx| {
+                                            let line = self.state.line(idx).cloned();
+                                            let is_cursor_line = idx == cursor_line;
+                                            if let Some(line) = line {
+                                                self.render_line(idx, &line, is_cursor_line).into_any_element()
+                                            } else {
+                                                div().h(px(LINE_HEIGHT)).into_any_element()
+                                            }
+                                        }).collect::<Vec<_>>()
+                                    )
                             )
                     )
-                    // Vertical scrollbar
+                    // Vertical scrollbar indicator
                     .child(
                         div()
                             .id("terminal-scrollbar")
