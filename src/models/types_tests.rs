@@ -1,7 +1,7 @@
 /// Property-based tests for core types
 /// **Feature: file-explorer-core**
 
-use super::{FileEntry, FileType, IconKey, SortColumn, SortDirection, SortState};
+use super::{CloudSyncStatus, FileEntry, FileType, IconKey, SortColumn, SortDirection, SortState};
 use proptest::prelude::*;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -51,6 +51,7 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
                 file_type,
                 icon_key,
                 linux_permissions: None,
+                sync_status: CloudSyncStatus::None,
             }
         })
 }

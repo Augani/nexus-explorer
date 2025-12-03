@@ -1,5 +1,5 @@
 use crate::models::{
-    DateFilter, FileEntry, FileType, IconKey, SearchQuery, SizeFilter, SmartFolder,
+    CloudSyncStatus, DateFilter, FileEntry, FileType, IconKey, SearchQuery, SizeFilter, SmartFolder,
     SmartFolderManager, SmartFolderId, TagId,
 };
 use proptest::prelude::*;
@@ -27,6 +27,7 @@ fn create_test_entry(name: &str, is_dir: bool, size: u64) -> FileEntry {
         file_type,
         icon_key,
         linux_permissions: None,
+        sync_status: CloudSyncStatus::None,
     }
 }
 
@@ -43,6 +44,7 @@ fn create_entry_with_extension(name: &str, ext: &str, size: u64) -> FileEntry {
         file_type,
         icon_key,
         linux_permissions: None,
+        sync_status: CloudSyncStatus::None,
     }
 }
 

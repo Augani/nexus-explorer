@@ -10,6 +10,7 @@ use crate::models::{
     Bookmark, BookmarkId, BookmarkManager, CloudStorageManager, Device, DeviceMonitor,
     DeviceType, Favorite, Favorites, NetworkLocationId, NetworkSidebarState, NetworkStorageManager,
     WslDistribution, theme_colors, sidebar as sidebar_spacing,
+    SmartFolder, SmartFolderId, SmartFolderManager, SearchQuery,
 };
 
 #[derive(Clone)]
@@ -78,6 +79,7 @@ pub enum ToolAction {
 pub struct Sidebar {
     favorites: Favorites,
     bookmarks: BookmarkManager,
+    smart_folders: SmartFolderManager,
     workspace_root: Option<SidebarItem>,
     selected_path: Option<PathBuf>,
     is_drop_target: bool,
@@ -85,6 +87,7 @@ pub struct Sidebar {
     is_bookmarks_expanded: bool,
     is_network_expanded: bool,
     is_devices_expanded: bool,
+    is_smart_folders_expanded: bool,
     show_hidden_files: bool,
     current_directory: Option<PathBuf>,
     network_manager: NetworkStorageManager,
@@ -120,9 +123,13 @@ impl Sidebar {
         let mut device_monitor = DeviceMonitor::new();
         device_monitor.start_monitoring();
 
+        // Load smart folders
+        let smart_folders = SmartFolderManager::load().unwrap_or_else(|_| SmartFolderManager::new());
+
         Self {
             favorites,
             bookmarks,
+            smart_folders,
             workspace_root: None,
             selected_path: None,
             is_drop_target: false,
@@ -130,6 +137,7 @@ impl Sidebar {
             is_bookmarks_expanded: true,
             is_network_expanded: true,
             is_devices_expanded: true,
+            is_smart_folders_expanded: true,
             show_hidden_files: false,
             current_directory: None,
             network_manager,
@@ -315,6 +323,46 @@ impl Sidebar {
     pub fn wsl_distributions(&self) -> &[WslDistribution] {
         self.device_monitor.wsl_distributions()
     }
+
+    pub fn is_smart_folders_expanded(&self) -> bool {
+        self.is_smart_folders_expanded
+    }
+
+    pub fn toggle_smart_folders_expanded(&mut self) {
+        self.is_smart_folders_expanded = !self.is_smart_folders_expanded;
+    }
+
+    pub fn smart_folders(&self) -> &SmartFolderManager {
+        &self.smart_folders
+    }
+
+    pub fn smart_folders_mut(&mut self) -> &mut SmartFolderManager {
+        &mut self.smart_folders
+    }
+
+    pub fn create_smart_folder(&mut self, name: String, query: SearchQuery) -> Result<SmartFolderId, crate::models::SmartFolderError> {
+        let result = self.smart_folders.create(name, query);
+        if result.is_ok() {
+            let _ = self.smart_folders.save();
+        }
+        result
+    }
+
+    pub fn delete_smart_folder(&mut self, id: SmartFolderId) -> Result<SmartFolder, crate::models::SmartFolderError> {
+        let result = self.smart_folders.delete(id);
+        if result.is_ok() {
+            let _ = self.smart_folders.save();
+        }
+        result
+    }
+
+    pub fn update_smart_folder(&mut self, id: SmartFolderId, query: SearchQuery) -> Result<(), crate::models::SmartFolderError> {
+        let result = self.smart_folders.update(id, query);
+        if result.is_ok() {
+            let _ = self.smart_folders.save();
+        }
+        result
+    }
 }
 
 pub struct SidebarView {
@@ -327,6 +375,9 @@ pub struct SidebarView {
     selected_file_count: usize,
     context_menu_bookmark_id: Option<BookmarkId>,
     show_network_dialog: bool,
+    show_smart_folder_dialog: bool,
+    editing_smart_folder: Option<SmartFolderId>,
+    pending_smart_folder_click: Option<SmartFolderId>,
 }
 
 impl SidebarView {
@@ -341,6 +392,9 @@ impl SidebarView {
             selected_file_count: 0,
             context_menu_bookmark_id: None,
             show_network_dialog: false,
+            show_smart_folder_dialog: false,
+            editing_smart_folder: None,
+            pending_smart_folder_click: None,
         }
     }
 
@@ -448,6 +502,79 @@ impl SidebarView {
     /// Check if network dialog is visible
     pub fn is_network_dialog_visible(&self) -> bool {
         self.show_network_dialog
+    }
+
+    /// Toggle smart folders section
+    fn toggle_smart_folders_section(&mut self, cx: &mut Context<Self>) {
+        self.sidebar.toggle_smart_folders_expanded();
+        cx.notify();
+    }
+
+    /// Show the smart folder dialog for creating a new smart folder
+    pub fn show_smart_folder_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_smart_folder_dialog = true;
+        self.editing_smart_folder = None;
+        cx.notify();
+    }
+
+    /// Show the smart folder dialog for editing an existing smart folder
+    pub fn edit_smart_folder(&mut self, id: SmartFolderId, cx: &mut Context<Self>) {
+        self.show_smart_folder_dialog = true;
+        self.editing_smart_folder = Some(id);
+        cx.notify();
+    }
+
+    /// Hide the smart folder dialog
+    pub fn hide_smart_folder_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_smart_folder_dialog = false;
+        self.editing_smart_folder = None;
+        cx.notify();
+    }
+
+    /// Check if smart folder dialog is visible
+    pub fn is_smart_folder_dialog_visible(&self) -> bool {
+        self.show_smart_folder_dialog
+    }
+
+    /// Get the smart folder being edited (if any)
+    pub fn editing_smart_folder(&self) -> Option<&SmartFolder> {
+        self.editing_smart_folder.and_then(|id| self.sidebar.smart_folders.get(id))
+    }
+
+    /// Handle smart folder click for executing the query
+    fn handle_smart_folder_click(&mut self, id: SmartFolderId, _window: &mut Window, cx: &mut Context<Self>) {
+        self.pending_smart_folder_click = Some(id);
+        cx.notify();
+    }
+
+    /// Take the pending smart folder click (if any)
+    pub fn take_pending_smart_folder_click(&mut self) -> Option<SmartFolderId> {
+        self.pending_smart_folder_click.take()
+    }
+
+    /// Handle smart folder removal
+    fn handle_smart_folder_remove(&mut self, id: SmartFolderId, cx: &mut Context<Self>) {
+        let _ = self.sidebar.delete_smart_folder(id);
+        cx.notify();
+    }
+
+    /// Create a new smart folder
+    pub fn create_smart_folder(&mut self, name: String, query: SearchQuery, cx: &mut Context<Self>) -> Result<SmartFolderId, crate::models::SmartFolderError> {
+        let result = self.sidebar.create_smart_folder(name, query);
+        cx.notify();
+        result
+    }
+
+    /// Update an existing smart folder
+    pub fn update_smart_folder(&mut self, id: SmartFolderId, query: SearchQuery, cx: &mut Context<Self>) -> Result<(), crate::models::SmartFolderError> {
+        let result = self.sidebar.update_smart_folder(id, query);
+        cx.notify();
+        result
+    }
+
+    /// Get all smart folders
+    pub fn smart_folders(&self) -> &[SmartFolder] {
+        self.sidebar.smart_folders.folders()
     }
 
     /// Refresh cloud storage providers
@@ -862,6 +989,16 @@ impl Render for SidebarView {
                         icon_blue,
                         cx,
                     ))
+                    // Smart Folders Section
+                    .child(self.render_smart_folders_section(
+                        label_color,
+                        text_gray,
+                        text_light,
+                        hover_bg,
+                        selected_bg,
+                        icon_blue,
+                        cx,
+                    ))
                     // Bookmarks Section (above Favorites per Requirements 20.2)
                     .child(self.render_bookmarks_section(
                         label_color,
@@ -1094,6 +1231,156 @@ impl SidebarView {
                     .flex_1()
                     .child(label)
             )
+    }
+
+    fn render_smart_folders_section(
+        &self,
+        label_color: gpui::Rgba,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        _selected_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_expanded = self.sidebar.is_smart_folders_expanded();
+        let smart_folders = self.sidebar.smart_folders.folders().to_vec();
+
+        div()
+            .mb_4()
+            .child(
+                div()
+                    .id("smart-folders-header")
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(label_color)
+                    .mb_2()
+                    .px_2()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .cursor_pointer()
+                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+                        view.toggle_smart_folders_section(cx);
+                    }))
+                    .child("SMART FOLDERS")
+                    .child(
+                        svg()
+                            .path(if is_expanded {
+                                "assets/icons/chevron-down.svg"
+                            } else {
+                                "assets/icons/chevron-right.svg"
+                            })
+                            .size(px(12.0))
+                            .text_color(label_color),
+                    ),
+            )
+            .when(is_expanded, |s| {
+                s.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_0p5()
+                        .p_1()
+                        .when(smart_folders.is_empty(), |s| {
+                            s.child(
+                                div()
+                                    .px_2()
+                                    .py_1p5()
+                                    .text_sm()
+                                    .text_color(text_gray)
+                                    .opacity(0.7)
+                                    .child("No smart folders yet")
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(text_gray)
+                                            .opacity(0.5)
+                                            .mt_1()
+                                            .child("Create saved searches")
+                                    )
+                            )
+                        })
+                        .children(
+                            smart_folders.into_iter().map(|folder| {
+                                let folder_id = folder.id;
+                                let display_name = folder.name.clone();
+                                let description = folder.query.description();
+
+                                div()
+                                    .id(SharedString::from(format!("smart-folder-{}", folder.id.0)))
+                                    .flex()
+                                    .flex_col()
+                                    .px_2()
+                                    .py_1p5()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .text_color(text_gray)
+                                    .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                                        view.handle_smart_folder_click(folder_id, window, cx);
+                                    }))
+                                    .on_mouse_down(MouseButton::Right, cx.listener(move |view, _event, _window, cx| {
+                                        view.handle_smart_folder_remove(folder_id, cx);
+                                    }))
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap_3()
+                                            .child(
+                                                svg()
+                                                    .path("assets/icons/sparkles.svg")
+                                                    .size(px(14.0))
+                                                    .text_color(icon_blue),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .overflow_hidden()
+                                                    .text_sm()
+                                                    .child(display_name)
+                                            )
+                                    )
+                                    .child(
+                                        div()
+                                            .pl(px(26.0))
+                                            .text_xs()
+                                            .text_color(text_gray)
+                                            .opacity(0.6)
+                                            .overflow_hidden()
+                                            .child(description)
+                                    )
+                            }),
+                        )
+                        // Create Smart Folder button
+                        .child(
+                            div()
+                                .id("create-smart-folder-btn")
+                                .flex()
+                                .items_center()
+                                .gap_3()
+                                .px_2()
+                                .py_1p5()
+                                .mt_1()
+                                .rounded_md()
+                                .cursor_pointer()
+                                .text_sm()
+                                .text_color(text_gray)
+                                .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+                                    view.show_smart_folder_dialog(cx);
+                                }))
+                                .child(
+                                    svg()
+                                        .path("assets/icons/folder-plus.svg")
+                                        .size(px(14.0))
+                                        .text_color(icon_blue),
+                                )
+                                .child("New Smart Folder...")
+                        )
+                )
+            })
     }
 
     fn render_bookmarks_section(

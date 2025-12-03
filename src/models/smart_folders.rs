@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use thiserror::Error;
 
-use crate::models::{FileEntry, TagId};
+use crate::models::{CloudSyncStatus, FileEntry, TagId};
 
 /// Unique identifier for a smart folder
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -616,6 +616,7 @@ mod tests {
             file_type,
             icon_key,
             linux_permissions: None,
+            sync_status: CloudSyncStatus::None,
         }
     }
 

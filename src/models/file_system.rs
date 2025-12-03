@@ -5,7 +5,7 @@ use flume::Receiver;
 use lru::LruCache;
 use std::num::NonZeroUsize;
 
-use super::{CachedDirectory, FileEntry, LoadState};
+use super::{CachedDirectory, CloudSyncStatus, FileEntry, LoadState, SyncStatus, CloudStorageManager};
 use crate::io::{
     create_batch_pipeline, traverse_directory_sorted, BatchConfig, SortKey, SortOrder,
     TraversalConfig,
@@ -265,6 +265,31 @@ impl FileSystem {
 
         self.state = LoadState::Loaded { count, duration };
         true
+    }
+
+    /// Updates sync status for all entries based on cloud storage manager
+    /// Call this after loading entries when the current path is in a cloud storage location
+    pub fn update_sync_status(&mut self, cloud_manager: &super::CloudStorageManager) {
+        // Check if current path is within a cloud storage location
+        if cloud_manager.is_cloud_path(&self.current_path).is_some() {
+            for entry in &mut self.entries {
+                if let Some(status) = cloud_manager.get_file_sync_status(&entry.path) {
+                    entry.sync_status = match status {
+                        super::SyncStatus::Synced => super::CloudSyncStatus::Synced,
+                        super::SyncStatus::Syncing => super::CloudSyncStatus::Syncing,
+                        super::SyncStatus::Pending => super::CloudSyncStatus::Pending,
+                        super::SyncStatus::Error => super::CloudSyncStatus::Error,
+                        super::SyncStatus::CloudOnly => super::CloudSyncStatus::CloudOnly,
+                        super::SyncStatus::LocalOnly => super::CloudSyncStatus::LocalOnly,
+                    };
+                }
+            }
+        }
+    }
+
+    /// Get mutable access to entries for external sync status updates
+    pub fn entries_mut(&mut self) -> &mut Vec<FileEntry> {
+        &mut self.entries
     }
 }
 

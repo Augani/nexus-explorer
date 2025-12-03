@@ -450,6 +450,10 @@ pub enum ProgressUpdate {
     Cancelled { id: OperationId },
 }
 
+/// Channel for sending error responses from UI to executor
+pub type ErrorResponseSender = Sender<ErrorResponse>;
+pub type ErrorResponseReceiver = Receiver<ErrorResponse>;
+
 /// Response to an error from the UI
 #[derive(Debug, Clone)]
 pub struct ErrorResponse {
@@ -545,6 +549,7 @@ const MAX_UNDO_HISTORY: usize = 50;
 pub struct FileOperationsManager {
     operations: Vec<FileOperation>,
     cancellation_tokens: std::collections::HashMap<OperationId, CancellationToken>,
+    error_response_channels: std::collections::HashMap<OperationId, (ErrorResponseSender, ErrorResponseReceiver)>,
     next_id: AtomicU64,
     progress_sender: Sender<ProgressUpdate>,
     progress_receiver: Receiver<ProgressUpdate>,
@@ -560,6 +565,7 @@ impl FileOperationsManager {
         Self {
             operations: Vec::new(),
             cancellation_tokens: std::collections::HashMap::new(),
+            error_response_channels: std::collections::HashMap::new(),
             next_id: AtomicU64::new(1),
             progress_sender: tx,
             progress_receiver: rx,
@@ -873,6 +879,8 @@ impl FileOperationsManager {
         let operation = FileOperation::new(id, OperationType::Copy, sources, Some(dest));
         self.operations.push(operation);
         self.cancellation_tokens.insert(id, CancellationToken::new());
+        let (tx, rx) = flume::unbounded();
+        self.error_response_channels.insert(id, (tx, rx));
         id
     }
 
@@ -882,6 +890,8 @@ impl FileOperationsManager {
         let operation = FileOperation::new(id, OperationType::Move, sources, Some(dest));
         self.operations.push(operation);
         self.cancellation_tokens.insert(id, CancellationToken::new());
+        let (tx, rx) = flume::unbounded();
+        self.error_response_channels.insert(id, (tx, rx));
         id
     }
 
@@ -891,7 +901,21 @@ impl FileOperationsManager {
         let operation = FileOperation::new(id, OperationType::Delete, sources, None);
         self.operations.push(operation);
         self.cancellation_tokens.insert(id, CancellationToken::new());
+        let (tx, rx) = flume::unbounded();
+        self.error_response_channels.insert(id, (tx, rx));
         id
+    }
+
+    /// Get the error response receiver for an operation (for executor to wait on)
+    pub fn get_error_response_receiver(&self, id: OperationId) -> Option<ErrorResponseReceiver> {
+        self.error_response_channels.get(&id).map(|(_, rx)| rx.clone())
+    }
+
+    /// Send an error response to a waiting operation
+    pub fn send_error_response(&self, id: OperationId, action: ErrorAction) {
+        if let Some((tx, _)) = self.error_response_channels.get(&id) {
+            let _ = tx.send(ErrorResponse { id, action });
+        }
     }
 
     /// Cancel an operation
@@ -913,6 +937,9 @@ impl FileOperationsManager {
 
     /// Handle error response from UI - this resumes the paused operation
     pub fn handle_error_response(&mut self, id: OperationId, action: ErrorAction) {
+        // Send response through channel to unblock the executor
+        self.send_error_response(id, action);
+        
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == id) {
             match action {
                 ErrorAction::Skip => {
@@ -988,10 +1015,11 @@ impl FileOperationsManager {
             }
         });
         
-        // Clean up cancellation tokens for removed operations
+        // Clean up cancellation tokens and error response channels for removed operations
         let active_ids: std::collections::HashSet<_> = 
             self.operations.iter().map(|o| o.id).collect();
         self.cancellation_tokens.retain(|id, _| active_ids.contains(id));
+        self.error_response_channels.retain(|id, _| active_ids.contains(id));
     }
 
     /// Process pending progress updates
@@ -1076,6 +1104,19 @@ pub enum FileOpResult {
     Success,
     Skipped,
     Cancelled,
+    /// Error occurred, waiting for user response
+    WaitingForResponse,
+}
+
+/// Configuration for error handling behavior
+#[derive(Debug, Clone)]
+pub struct ErrorHandlingConfig {
+    /// Whether to wait for user response on errors (interactive mode)
+    pub interactive: bool,
+    /// Default action when not in interactive mode
+    pub default_action: ErrorAction,
+    /// Receiver for error responses (only used in interactive mode)
+    pub response_receiver: Option<ErrorResponseReceiver>,
 }
 
 impl FileOperationExecutor {
@@ -1122,6 +1163,18 @@ impl FileOperationExecutor {
         cancel_token: CancellationToken,
         id: OperationId,
     ) -> std::io::Result<()> {
+        Self::execute_copy_interactive(sources, dest, progress_tx, cancel_token, id, None)
+    }
+
+    /// Execute a copy operation with interactive error handling
+    pub fn execute_copy_interactive(
+        sources: Vec<PathBuf>,
+        dest: PathBuf,
+        progress_tx: Sender<ProgressUpdate>,
+        cancel_token: CancellationToken,
+        id: OperationId,
+        error_response_rx: Option<ErrorResponseReceiver>,
+    ) -> std::io::Result<()> {
         progress_tx.send(ProgressUpdate::Started { id }).ok();
 
         for source in &sources {
@@ -1133,12 +1186,12 @@ impl FileOperationExecutor {
             let dest_path = dest.join(source.file_name().unwrap_or_default());
             
             let result = if source.is_dir() {
-                Self::copy_dir_recursive_with_error_handling(
-                    source, &dest_path, &progress_tx, &cancel_token, id
+                Self::copy_dir_recursive_interactive(
+                    source, &dest_path, &progress_tx, &cancel_token, id, &error_response_rx
                 )
             } else {
-                Self::copy_file_with_error_handling(
-                    source, &dest_path, &progress_tx, &cancel_token, id
+                Self::copy_file_interactive(
+                    source, &dest_path, &progress_tx, &cancel_token, id, &error_response_rx
                 )
             };
 
@@ -1153,6 +1206,10 @@ impl FileOperationExecutor {
                 }
                 Ok(FileOpResult::Success) => {
                     // Continue to next file
+                }
+                Ok(FileOpResult::WaitingForResponse) => {
+                    // Should not happen at this level
+                    continue;
                 }
                 Err(e) => {
                     // Unrecoverable error - fail the operation
@@ -1173,7 +1230,33 @@ impl FileOperationExecutor {
         cancel_token: CancellationToken,
         id: OperationId,
     ) -> std::io::Result<()> {
+        Self::execute_move_interactive(sources, dest, progress_tx, cancel_token, id, None)
+    }
+
+    /// Execute a move operation with interactive error handling
+    pub fn execute_move_interactive(
+        sources: Vec<PathBuf>,
+        dest: PathBuf,
+        progress_tx: Sender<ProgressUpdate>,
+        cancel_token: CancellationToken,
+        id: OperationId,
+        error_response_rx: Option<ErrorResponseReceiver>,
+    ) -> std::io::Result<()> {
         progress_tx.send(ProgressUpdate::Started { id }).ok();
+
+        // Helper to handle errors with optional user interaction
+        let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
+            progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
+            
+            if let Some(rx) = error_response_rx {
+                match rx.recv_timeout(std::time::Duration::from_secs(300)) {
+                    Ok(response) => response.action,
+                    Err(_) => ErrorAction::Skip,
+                }
+            } else {
+                ErrorAction::Skip
+            }
+        };
 
         for source in &sources {
             if cancel_token.is_cancelled() {
@@ -1201,8 +1284,8 @@ impl FileOperationExecutor {
                        rename_err.to_string().contains("cross-device") {
                         // Fall back to copy + delete for cross-filesystem moves
                         let result = if source.is_dir() {
-                            match Self::copy_dir_recursive_with_error_handling(
-                                source, &dest_path, &progress_tx, &cancel_token, id
+                            match Self::copy_dir_recursive_interactive(
+                                source, &dest_path, &progress_tx, &cancel_token, id, &error_response_rx
                             ) {
                                 Ok(FileOpResult::Success) => {
                                     std::fs::remove_dir_all(source).map(|_| FileOpResult::Success)
@@ -1210,8 +1293,8 @@ impl FileOperationExecutor {
                                 other => other,
                             }
                         } else {
-                            match Self::copy_file_with_error_handling(
-                                source, &dest_path, &progress_tx, &cancel_token, id
+                            match Self::copy_file_interactive(
+                                source, &dest_path, &progress_tx, &cancel_token, id, &error_response_rx
                             ) {
                                 Ok(FileOpResult::Success) => {
                                     std::fs::remove_file(source).map(|_| FileOpResult::Success)
@@ -1225,20 +1308,35 @@ impl FileOperationExecutor {
                                 progress_tx.send(ProgressUpdate::Cancelled { id }).ok();
                                 return Ok(());
                             }
-                            Ok(FileOpResult::Skipped) => continue,
+                            Ok(FileOpResult::Skipped) | Ok(FileOpResult::WaitingForResponse) => continue,
                             Ok(FileOpResult::Success) => {}
                             Err(e) => {
-                                // Send error and let UI decide
                                 let error = OperationError::from_io_error(source.clone(), &e);
-                                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                                let action = handle_error(error, &progress_tx, &error_response_rx);
+                                match action {
+                                    ErrorAction::Cancel => {
+                                        progress_tx.send(ProgressUpdate::Cancelled { id }).ok();
+                                        return Ok(());
+                                    }
+                                    _ => {
+                                        progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                                    }
+                                }
                             }
                         }
                     } else {
                         // Other rename error - report it
                         let error = OperationError::from_io_error(source.clone(), &rename_err);
-                        progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                        progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                        let action = handle_error(error, &progress_tx, &error_response_rx);
+                        match action {
+                            ErrorAction::Cancel => {
+                                progress_tx.send(ProgressUpdate::Cancelled { id }).ok();
+                                return Ok(());
+                            }
+                            _ => {
+                                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                            }
+                        }
                     }
                 }
             }
@@ -1255,7 +1353,32 @@ impl FileOperationExecutor {
         cancel_token: CancellationToken,
         id: OperationId,
     ) -> std::io::Result<()> {
+        Self::execute_delete_interactive(sources, progress_tx, cancel_token, id, None)
+    }
+
+    /// Execute a delete operation with interactive error handling
+    pub fn execute_delete_interactive(
+        sources: Vec<PathBuf>,
+        progress_tx: Sender<ProgressUpdate>,
+        cancel_token: CancellationToken,
+        id: OperationId,
+        error_response_rx: Option<ErrorResponseReceiver>,
+    ) -> std::io::Result<()> {
         progress_tx.send(ProgressUpdate::Started { id }).ok();
+
+        // Helper to handle errors with optional user interaction
+        let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
+            progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
+            
+            if let Some(rx) = error_response_rx {
+                match rx.recv_timeout(std::time::Duration::from_secs(300)) {
+                    Ok(response) => response.action,
+                    Err(_) => ErrorAction::Skip,
+                }
+            } else {
+                ErrorAction::Skip
+            }
+        };
 
         for source in &sources {
             if cancel_token.is_cancelled() {
@@ -1282,9 +1405,32 @@ impl FileOperationExecutor {
                 }
                 Err(e) => {
                     let error = OperationError::from_io_error(source.clone(), &e);
-                    progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                    // For delete, we skip on error and continue
-                    progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                    let action = handle_error(error, &progress_tx, &error_response_rx);
+                    match action {
+                        ErrorAction::Skip => {
+                            progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                        }
+                        ErrorAction::Retry => {
+                            // Retry the delete
+                            let retry_result = if source.is_dir() {
+                                std::fs::remove_dir_all(source)
+                            } else {
+                                std::fs::remove_file(source)
+                            };
+                            match retry_result {
+                                Ok(()) => {
+                                    progress_tx.send(ProgressUpdate::FileCompleted { id }).ok();
+                                }
+                                Err(_) => {
+                                    progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                                }
+                            }
+                        }
+                        ErrorAction::Cancel => {
+                            progress_tx.send(ProgressUpdate::Cancelled { id }).ok();
+                            return Ok(());
+                        }
+                    }
                 }
             }
         }
@@ -1301,6 +1447,18 @@ impl FileOperationExecutor {
         cancel_token: &CancellationToken,
         id: OperationId,
     ) -> std::io::Result<FileOpResult> {
+        Self::copy_file_interactive(source, dest, progress_tx, cancel_token, id, &None)
+    }
+
+    /// Copy a single file with interactive error handling
+    fn copy_file_interactive(
+        source: &PathBuf,
+        dest: &PathBuf,
+        progress_tx: &Sender<ProgressUpdate>,
+        cancel_token: &CancellationToken,
+        id: OperationId,
+        error_response_rx: &Option<ErrorResponseReceiver>,
+    ) -> std::io::Result<FileOpResult> {
         use std::io::{Read, Write};
 
         let file_name = source.file_name()
@@ -1310,14 +1468,41 @@ impl FileOperationExecutor {
 
         progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name.clone() }).ok();
 
+        // Helper to handle errors with optional user interaction
+        let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
+            progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
+            
+            if let Some(rx) = error_response_rx {
+                // Wait for user response with timeout
+                match rx.recv_timeout(std::time::Duration::from_secs(300)) {
+                    Ok(response) => response.action,
+                    Err(_) => ErrorAction::Skip, // Timeout - default to skip
+                }
+            } else {
+                // Non-interactive mode - auto-skip
+                ErrorAction::Skip
+            }
+        };
+
         // Open source file
         let mut src_file = match std::fs::File::open(source) {
             Ok(f) => f,
             Err(e) => {
                 let error = OperationError::from_io_error(source.clone(), &e);
-                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
-                return Ok(FileOpResult::Skipped);
+                let action = handle_error(error, progress_tx, error_response_rx);
+                match action {
+                    ErrorAction::Skip => {
+                        progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                        return Ok(FileOpResult::Skipped);
+                    }
+                    ErrorAction::Retry => {
+                        // Recursive retry
+                        return Self::copy_file_interactive(source, dest, progress_tx, cancel_token, id, error_response_rx);
+                    }
+                    ErrorAction::Cancel => {
+                        return Ok(FileOpResult::Cancelled);
+                    }
+                }
             }
         };
 
@@ -1326,9 +1511,19 @@ impl FileOperationExecutor {
             Ok(f) => f,
             Err(e) => {
                 let error = OperationError::from_io_error(dest.clone(), &e);
-                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
-                return Ok(FileOpResult::Skipped);
+                let action = handle_error(error, progress_tx, error_response_rx);
+                match action {
+                    ErrorAction::Skip => {
+                        progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                        return Ok(FileOpResult::Skipped);
+                    }
+                    ErrorAction::Retry => {
+                        return Self::copy_file_interactive(source, dest, progress_tx, cancel_token, id, error_response_rx);
+                    }
+                    ErrorAction::Cancel => {
+                        return Ok(FileOpResult::Cancelled);
+                    }
+                }
             }
         };
 
@@ -1350,9 +1545,19 @@ impl FileOperationExecutor {
                     drop(dst_file);
                     let _ = std::fs::remove_file(dest);
                     let error = OperationError::from_io_error(source.clone(), &e);
-                    progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                    progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
-                    return Ok(FileOpResult::Skipped);
+                    let action = handle_error(error, progress_tx, error_response_rx);
+                    match action {
+                        ErrorAction::Skip => {
+                            progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                            return Ok(FileOpResult::Skipped);
+                        }
+                        ErrorAction::Retry => {
+                            return Self::copy_file_interactive(source, dest, progress_tx, cancel_token, id, error_response_rx);
+                        }
+                        ErrorAction::Cancel => {
+                            return Ok(FileOpResult::Cancelled);
+                        }
+                    }
                 }
             };
 
@@ -1361,9 +1566,19 @@ impl FileOperationExecutor {
                 drop(dst_file);
                 let _ = std::fs::remove_file(dest);
                 let error = OperationError::from_io_error(dest.clone(), &e);
-                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
-                return Ok(FileOpResult::Skipped);
+                let action = handle_error(error, progress_tx, error_response_rx);
+                match action {
+                    ErrorAction::Skip => {
+                        progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                        return Ok(FileOpResult::Skipped);
+                    }
+                    ErrorAction::Retry => {
+                        return Self::copy_file_interactive(source, dest, progress_tx, cancel_token, id, error_response_rx);
+                    }
+                    ErrorAction::Cancel => {
+                        return Ok(FileOpResult::Cancelled);
+                    }
+                }
             }
 
             progress_tx.send(ProgressUpdate::BytesTransferred { id, bytes: bytes_read as u64 }).ok();
@@ -1381,29 +1596,72 @@ impl FileOperationExecutor {
         cancel_token: &CancellationToken,
         id: OperationId,
     ) -> std::io::Result<FileOpResult> {
+        Self::copy_dir_recursive_interactive(source, dest, progress_tx, cancel_token, id, &None)
+    }
+
+    /// Copy a directory recursively with interactive error handling
+    fn copy_dir_recursive_interactive(
+        source: &PathBuf,
+        dest: &PathBuf,
+        progress_tx: &Sender<ProgressUpdate>,
+        cancel_token: &CancellationToken,
+        id: OperationId,
+        error_response_rx: &Option<ErrorResponseReceiver>,
+    ) -> std::io::Result<FileOpResult> {
+        let file_name = source.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        // Helper to handle errors with optional user interaction
+        let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
+            progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
+            
+            if let Some(rx) = error_response_rx {
+                match rx.recv_timeout(std::time::Duration::from_secs(300)) {
+                    Ok(response) => response.action,
+                    Err(_) => ErrorAction::Skip,
+                }
+            } else {
+                ErrorAction::Skip
+            }
+        };
+
         // Create destination directory
         if let Err(e) = std::fs::create_dir_all(dest) {
             let error = OperationError::from_io_error(dest.clone(), &e);
-            progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-            let file_name = source.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .to_string();
-            progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
-            return Ok(FileOpResult::Skipped);
+            let action = handle_error(error, progress_tx, error_response_rx);
+            match action {
+                ErrorAction::Skip => {
+                    progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                    return Ok(FileOpResult::Skipped);
+                }
+                ErrorAction::Retry => {
+                    return Self::copy_dir_recursive_interactive(source, dest, progress_tx, cancel_token, id, error_response_rx);
+                }
+                ErrorAction::Cancel => {
+                    return Ok(FileOpResult::Cancelled);
+                }
+            }
         }
 
         let entries = match std::fs::read_dir(source) {
             Ok(e) => e,
             Err(e) => {
                 let error = OperationError::from_io_error(source.clone(), &e);
-                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
-                let file_name = source.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
-                return Ok(FileOpResult::Skipped);
+                let action = handle_error(error, progress_tx, error_response_rx);
+                match action {
+                    ErrorAction::Skip => {
+                        progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                        return Ok(FileOpResult::Skipped);
+                    }
+                    ErrorAction::Retry => {
+                        return Self::copy_dir_recursive_interactive(source, dest, progress_tx, cancel_token, id, error_response_rx);
+                    }
+                    ErrorAction::Cancel => {
+                        return Ok(FileOpResult::Cancelled);
+                    }
+                }
             }
         };
 
@@ -1421,12 +1679,12 @@ impl FileOperationExecutor {
             let dst_path = dest.join(entry.file_name());
 
             let result = if src_path.is_dir() {
-                Self::copy_dir_recursive_with_error_handling(
-                    &src_path, &dst_path, progress_tx, cancel_token, id
+                Self::copy_dir_recursive_interactive(
+                    &src_path, &dst_path, progress_tx, cancel_token, id, error_response_rx
                 )?
             } else {
-                Self::copy_file_with_error_handling(
-                    &src_path, &dst_path, progress_tx, cancel_token, id
+                Self::copy_file_interactive(
+                    &src_path, &dst_path, progress_tx, cancel_token, id, error_response_rx
                 )?
             };
 

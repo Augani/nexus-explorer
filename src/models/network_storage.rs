@@ -594,6 +594,7 @@ impl CloudLocation {
 }
 
 /// Manager for cloud storage detection and status
+#[derive(Clone)]
 pub struct CloudStorageManager {
     locations: Vec<CloudLocation>,
 }

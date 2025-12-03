@@ -472,7 +472,7 @@
     - Allow file drag between windows
     - _Requirements: 16.3_
 
-- [ ] 25. File Operations with Progress
+- [-] 25. File Operations with Progress
   - [x] 25.1 Implement FileOperationsManager
     - Create operation queue
     - Track progress for each operation
@@ -481,7 +481,7 @@
     - Show current file and progress bar
     - Display estimated time remaining
     - _Requirements: 17.2_
-  - [ ] 25.3 Implement error handling and cancel
+  - [x] 25.3 Implement error handling and cancel
     - Skip/Retry/Cancel options on error
     - Graceful cancellation
     - _Requirements: 17.5, 17.6_
@@ -591,7 +591,7 @@
     - Arrow keys for navigation
     - _Requirements: 23.7, 23.8_
 
-- [-] 34. Smart Folders
+- [x] 34. Smart Folders
   - [x] 34.1 Implement SmartFolderManager
     - Create/edit/delete smart folders
     - Execute queries
@@ -599,7 +599,7 @@
   - [x] 34.2 Write property test for smart folder query consistency
     - **Property 44: Smart Folder Query Consistency**
     - **Validates: Requirements 24.3**
-  - [ ] 34.3 Implement smart folders UI
+  - [x] 34.3 Implement smart folders UI
     - Sidebar section
     - Query builder dialog
     - _Requirements: 24.7_
@@ -653,7 +653,7 @@
     - Open Terminal Here for WSL
     - _Requirements: 27.6_
 
-- [ ] 38. Network and Cloud Storage
+- [x] 38. Network and Cloud Storage
   - [x] 38.1 Implement network location browser
     - SMB/FTP/SFTP connection dialog
     - _Requirements: 25.1, 25.2_
@@ -661,7 +661,7 @@
     - Remote file listing
     - Loading indicators
     - _Requirements: 25.3, 25.5_
-  - [ ] 38.3 Implement cloud storage integration
+  - [x] 38.3 Implement cloud storage integration
     - Detect cloud providers
     - Show sync status
     - _Requirements: 25.6, 25.7_

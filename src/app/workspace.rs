@@ -421,6 +421,12 @@ impl Workspace {
             fs.finalize_load(request_id, start.elapsed());
         });
 
+        // Update sync status for cloud storage paths
+        let cloud_manager = self.sidebar.read(cx).sidebar().cloud_manager().clone();
+        self.file_system.update(cx, |fs, _| {
+            fs.update_sync_status(&cloud_manager);
+        });
+
         let entries = self.file_system.read(cx).entries().to_vec();
         self.cached_entries = entries.clone();
         

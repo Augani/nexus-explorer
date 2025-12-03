@@ -2,7 +2,7 @@
 /// **Feature: file-explorer-core**
 
 use super::*;
-use crate::models::{FileEntry, FileType, IconKey, LoadState};
+use crate::models::{CloudSyncStatus, FileEntry, FileType, IconKey, LoadState};
 use proptest::prelude::*;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -31,6 +31,7 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
                 file_type: if is_dir { FileType::Directory } else { FileType::RegularFile },
                 icon_key: if is_dir { IconKey::Directory } else { IconKey::GenericFile },
                 linux_permissions: None,
+                sync_status: CloudSyncStatus::None,
             }
         })
 }

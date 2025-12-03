@@ -9,6 +9,7 @@ mod progress_panel;
 mod quick_look;
 mod search_input;
 mod sidebar;
+mod smart_folder_dialog;
 mod status_bar;
 mod tab_bar;
 mod tag_ui;
@@ -41,3 +42,4 @@ pub use tag_ui::{render_tag_dot, render_tag_dots, render_file_tag_dots, render_t
 pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};
 pub use network_dialog::{NetworkConnectionDialog, NetworkDialogAction};
+pub use smart_folder_dialog::{SmartFolderDialog, SmartFolderDialogAction, QueryBuilderState};

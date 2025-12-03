@@ -4,6 +4,57 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 use thiserror::Error;
 
+/// Cloud sync status for files in cloud storage locations
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum CloudSyncStatus {
+    #[default]
+    None,
+    Synced,
+    Syncing,
+    Pending,
+    Error,
+    CloudOnly,
+    LocalOnly,
+}
+
+impl CloudSyncStatus {
+    pub fn icon_name(&self) -> Option<&'static str> {
+        match self {
+            CloudSyncStatus::None => None,
+            CloudSyncStatus::Synced => Some("check"),
+            CloudSyncStatus::Syncing => Some("refresh-cw"),
+            CloudSyncStatus::Pending => Some("clock"),
+            CloudSyncStatus::Error => Some("triangle-alert"),
+            CloudSyncStatus::CloudOnly => Some("cloud"),
+            CloudSyncStatus::LocalOnly => Some("hard-drive"),
+        }
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self {
+            CloudSyncStatus::None => "",
+            CloudSyncStatus::Synced => "Synced",
+            CloudSyncStatus::Syncing => "Syncing...",
+            CloudSyncStatus::Pending => "Pending sync",
+            CloudSyncStatus::Error => "Sync error",
+            CloudSyncStatus::CloudOnly => "Available online only",
+            CloudSyncStatus::LocalOnly => "Local only",
+        }
+    }
+
+    pub fn color(&self) -> Option<u32> {
+        match self {
+            CloudSyncStatus::None => None,
+            CloudSyncStatus::Synced => Some(0x3fb950),    // Green
+            CloudSyncStatus::Syncing => Some(0x58a6ff),   // Blue
+            CloudSyncStatus::Pending => Some(0xd29922),   // Yellow
+            CloudSyncStatus::Error => Some(0xf85149),     // Red
+            CloudSyncStatus::CloudOnly => Some(0x8b949e), // Gray
+            CloudSyncStatus::LocalOnly => Some(0x8b949e), // Gray
+        }
+    }
+}
+
 /// Single file or directory entry with metadata
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FileEntry {
@@ -18,6 +69,9 @@ pub struct FileEntry {
     /// Linux permissions (for WSL paths on Windows)
     #[serde(default)]
     pub linux_permissions: Option<LinuxFilePermissions>,
+    /// Cloud sync status (for files in cloud storage locations)
+    #[serde(default)]
+    pub sync_status: CloudSyncStatus,
 }
 
 /// Linux file permissions for WSL integration
@@ -189,6 +243,7 @@ impl FileEntry {
             file_type,
             icon_key,
             linux_permissions: None,
+            sync_status: CloudSyncStatus::None,
         }
     }
 
@@ -196,6 +251,17 @@ impl FileEntry {
     pub fn with_linux_permissions(mut self, permissions: LinuxFilePermissions) -> Self {
         self.linux_permissions = Some(permissions);
         self
+    }
+
+    /// Set the cloud sync status for this entry
+    pub fn with_sync_status(mut self, status: CloudSyncStatus) -> Self {
+        self.sync_status = status;
+        self
+    }
+
+    /// Update the sync status
+    pub fn set_sync_status(&mut self, status: CloudSyncStatus) {
+        self.sync_status = status;
     }
 }
 

@@ -409,6 +409,7 @@ mod tests {
             file_type: if is_dir { FileType::Directory } else { FileType::RegularFile },
             icon_key: if is_dir { IconKey::Directory } else { IconKey::GenericFile },
             linux_permissions: None,
+            sync_status: crate::models::CloudSyncStatus::None,
         }
     }
 

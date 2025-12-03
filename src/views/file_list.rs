@@ -7,7 +7,7 @@ use gpui::{
     ScrollStrategy, SharedString, Styled, UniformListScrollHandle, Window, MouseDownEvent,
 };
 
-use crate::models::{FileEntry, IconKey, SortColumn, SortDirection, SortState, theme_colors, file_list as file_list_spacing};
+use crate::models::{CloudSyncStatus, FileEntry, IconKey, SortColumn, SortDirection, SortState, theme_colors, file_list as file_list_spacing};
 
 // Define actions for keyboard navigation
 actions!(file_list, [
@@ -451,6 +451,7 @@ impl Render for FileListView {
                                         } else { 
                                             get_file_icon_color(&name) 
                                         };
+                                        let sync_status = entry.sync_status;
                                         let entry_path = entry.path.clone();
                                         let entity = entity.clone();
                                         let entity_for_ctx = entity.clone();
@@ -530,7 +531,24 @@ impl Render for FileListView {
                                                                             text_light,
                                                                             accent_primary,
                                                                         ),
-                                                                    ),
+                                                                    )
+                                                                    // Cloud sync status indicator
+                                                                    .when(sync_status.icon_name().is_some(), |s| {
+                                                                        let icon = sync_status.icon_name().unwrap_or("check");
+                                                                        let color = sync_status.color().unwrap_or(0x8b949e);
+                                                                        s.child(
+                                                                            div()
+                                                                                .ml_2()
+                                                                                .flex()
+                                                                                .items_center()
+                                                                                .child(
+                                                                                    svg()
+                                                                                        .path(SharedString::from(format!("assets/icons/{}.svg", icon)))
+                                                                                        .size(px(12.0))
+                                                                                        .text_color(gpui::rgb(color))
+                                                                                )
+                                                                        )
+                                                                    }),
                                                             ),
                                                     )
                                                     .child(
