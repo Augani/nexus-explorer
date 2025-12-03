@@ -67,7 +67,7 @@ impl PtyService {
     }
 
     pub fn is_running(&self) -> bool {
-        *self.is_running.lock().unwrap()
+        self.is_running.lock().map(|guard| *guard).unwrap_or(false)
     }
 
     pub fn output_receiver(&self) -> &flume::Receiver<Vec<u8>> {

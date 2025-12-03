@@ -88,7 +88,20 @@ impl FileSystem {
         self.request_id = self.request_id.wrapping_add(1);
         self.current_path = path.clone();
         
-        // Always clear entries before loading - fresh data will replace cached
+        // Check cache first
+        if let Some(cached) = self.cache.get(&path) {
+            // Check if cache is still valid (not stale based on mtime)
+            let is_stale = std::fs::metadata(&path)
+                .and_then(|m| m.modified())
+                .map(|mtime| mtime > cached.mtime)
+                .unwrap_or(true);
+            
+            self.entries = cached.entries.clone();
+            self.state = LoadState::Cached { stale: is_stale };
+            return self.request_id;
+        }
+        
+        // No cache hit - clear entries and start loading
         self.entries.clear();
         self.state = LoadState::Loading { request_id: self.request_id };
         

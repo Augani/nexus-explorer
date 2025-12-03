@@ -1046,7 +1046,7 @@ mod tests {
     #[test]
     fn test_theme_manager_default() {
         let manager = ThemeManager::new();
-        assert_eq!(manager.current_id(), ThemeId::DragonForge);
+        assert_eq!(manager.current_id(), ThemeId::Dark);
     }
 
     #[test]
@@ -1060,7 +1060,7 @@ mod tests {
     fn test_all_themes_available() {
         let manager = ThemeManager::new();
         let themes = manager.available_themes();
-        assert_eq!(themes.len(), 5);
+        assert_eq!(themes.len(), 7);
     }
 
     #[test]

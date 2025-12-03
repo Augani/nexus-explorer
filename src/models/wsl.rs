@@ -217,9 +217,10 @@ impl WslManager {
         
         // Handle regular Windows paths like C:\Users\...
         if path_str.len() >= 2 && path_str.chars().nth(1) == Some(':') {
-            let drive_letter = path_str.chars().next().unwrap().to_ascii_lowercase();
-            let rest = &path_str[2..].replace('\\', "/");
-            return Ok(format!("/mnt/{}{}", drive_letter, rest));
+            if let Some(drive_letter) = path_str.chars().next() {
+                let rest = &path_str[2..].replace('\\', "/");
+                return Ok(format!("/mnt/{}{}", drive_letter.to_ascii_lowercase(), rest));
+            }
         }
         
         Err(WslError::PathTranslationFailed(format!(
@@ -232,10 +233,11 @@ impl WslManager {
     pub fn wsl_to_windows_path(distro_name: &str, wsl_path: &str) -> WslResult<PathBuf> {
         // Handle /mnt/c/... style paths
         if wsl_path.starts_with("/mnt/") && wsl_path.len() >= 6 {
-            let drive_letter = wsl_path.chars().nth(5).unwrap().to_ascii_uppercase();
-            let rest = &wsl_path[6..];
-            let windows_path = format!("{}:{}", drive_letter, rest.replace('/', "\\"));
-            return Ok(PathBuf::from(windows_path));
+            if let Some(drive_letter) = wsl_path.chars().nth(5) {
+                let rest = &wsl_path[6..];
+                let windows_path = format!("{}:{}", drive_letter.to_ascii_uppercase(), rest.replace('/', "\\"));
+                return Ok(PathBuf::from(windows_path));
+            }
         }
         
         // Handle regular Linux paths - convert to UNC path
