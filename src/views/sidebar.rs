@@ -6,7 +6,7 @@ use gpui::{
     Styled, Window,
 };
 
-use crate::models::{Favorite, Favorites, theme_colors, sidebar as sidebar_spacing};
+use crate::models::{Bookmark, BookmarkId, BookmarkManager, Favorite, Favorites, theme_colors, sidebar as sidebar_spacing};
 
 #[derive(Clone)]
 pub struct SidebarItem {
@@ -73,10 +73,12 @@ pub enum ToolAction {
 
 pub struct Sidebar {
     favorites: Favorites,
+    bookmarks: BookmarkManager,
     workspace_root: Option<SidebarItem>,
     selected_path: Option<PathBuf>,
     is_drop_target: bool,
     is_tools_expanded: bool,
+    is_bookmarks_expanded: bool,
     show_hidden_files: bool,
     current_directory: Option<PathBuf>,
 }
@@ -95,12 +97,17 @@ impl Sidebar {
             favs
         });
 
+        // Try to load bookmarks from disk
+        let bookmarks = BookmarkManager::load().unwrap_or_else(|_| BookmarkManager::new());
+
         Self {
             favorites,
+            bookmarks,
             workspace_root: None,
             selected_path: None,
             is_drop_target: false,
             is_tools_expanded: true,
+            is_bookmarks_expanded: true,
             show_hidden_files: false,
             current_directory: None,
         }
@@ -112,6 +119,46 @@ impl Sidebar {
 
     pub fn toggle_tools_expanded(&mut self) {
         self.is_tools_expanded = !self.is_tools_expanded;
+    }
+
+    pub fn is_bookmarks_expanded(&self) -> bool {
+        self.is_bookmarks_expanded
+    }
+
+    pub fn toggle_bookmarks_expanded(&mut self) {
+        self.is_bookmarks_expanded = !self.is_bookmarks_expanded;
+    }
+
+    pub fn bookmarks(&self) -> &BookmarkManager {
+        &self.bookmarks
+    }
+
+    pub fn bookmarks_mut(&mut self) -> &mut BookmarkManager {
+        &mut self.bookmarks
+    }
+
+    pub fn add_bookmark(&mut self, path: PathBuf) -> Result<BookmarkId, crate::models::BookmarkError> {
+        let result = self.bookmarks.add(path);
+        if result.is_ok() {
+            let _ = self.bookmarks.save();
+        }
+        result
+    }
+
+    pub fn remove_bookmark(&mut self, id: BookmarkId) -> Result<Bookmark, crate::models::BookmarkError> {
+        let result = self.bookmarks.remove(id);
+        if result.is_ok() {
+            let _ = self.bookmarks.save();
+        }
+        result
+    }
+
+    pub fn rename_bookmark(&mut self, id: BookmarkId, name: String) -> Result<(), crate::models::BookmarkError> {
+        let result = self.bookmarks.rename(id, name);
+        if result.is_ok() {
+            let _ = self.bookmarks.save();
+        }
+        result
     }
 
     pub fn show_hidden_files(&self) -> bool {
@@ -192,6 +239,7 @@ pub struct SidebarView {
     pending_navigation: Option<PathBuf>,
     pending_action: Option<ToolAction>,
     selected_file_count: usize,
+    context_menu_bookmark_id: Option<BookmarkId>,
 }
 
 impl SidebarView {
@@ -204,7 +252,35 @@ impl SidebarView {
             pending_navigation: None,
             pending_action: None,
             selected_file_count: 0,
+            context_menu_bookmark_id: None,
         }
+    }
+
+    /// Add a bookmark for the current directory
+    pub fn add_bookmark_for_current(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = self.sidebar.current_directory.clone() {
+            let _ = self.sidebar.add_bookmark(path);
+            cx.notify();
+        }
+    }
+
+    /// Handle bookmark click for navigation
+    fn handle_bookmark_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
+        self.sidebar.selected_path = Some(path.clone());
+        self.pending_navigation = Some(path);
+        cx.notify();
+    }
+
+    /// Handle bookmark removal
+    fn handle_bookmark_remove(&mut self, id: BookmarkId, cx: &mut Context<Self>) {
+        let _ = self.sidebar.remove_bookmark(id);
+        cx.notify();
+    }
+
+    /// Toggle bookmarks section
+    fn toggle_bookmarks_section(&mut self, cx: &mut Context<Self>) {
+        self.sidebar.toggle_bookmarks_expanded();
+        cx.notify();
     }
 
     /// Take the pending navigation path (if any)
@@ -590,6 +666,17 @@ impl Render for SidebarView {
                                 )
                             })
                     )
+                    // Bookmarks Section (above Favorites per Requirements 20.2)
+                    .child(self.render_bookmarks_section(
+                        label_color,
+                        text_gray,
+                        text_light,
+                        hover_bg,
+                        selected_bg,
+                        icon_blue,
+                        warning_color,
+                        cx,
+                    ))
                     // Favorites Section
                     .child(
                         div()
@@ -811,6 +898,151 @@ impl SidebarView {
                     .flex_1()
                     .child(label)
             )
+    }
+
+    fn render_bookmarks_section(
+        &self,
+        label_color: gpui::Rgba,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        selected_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        warning_color: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_expanded = self.sidebar.is_bookmarks_expanded();
+        let bookmarks = self.sidebar.bookmarks.bookmarks().to_vec();
+        let selected_path = self.sidebar.selected_path.clone();
+
+        div()
+            .mb_4()
+            .child(
+                div()
+                    .id("bookmarks-header")
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(label_color)
+                    .mb_2()
+                    .px_2()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .cursor_pointer()
+                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
+                        view.toggle_bookmarks_section(cx);
+                    }))
+                    .child("BOOKMARKS")
+                    .child(
+                        svg()
+                            .path(if is_expanded {
+                                "assets/icons/chevron-down.svg"
+                            } else {
+                                "assets/icons/chevron-right.svg"
+                            })
+                            .size(px(12.0))
+                            .text_color(label_color),
+                    ),
+            )
+            .when(is_expanded, |s| {
+                s.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_0p5()
+                        .p_1()
+                        .when(bookmarks.is_empty(), |s| {
+                            s.child(
+                                div()
+                                    .px_2()
+                                    .py_1p5()
+                                    .text_sm()
+                                    .text_color(text_gray)
+                                    .opacity(0.7)
+                                    .child("No bookmarks yet")
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(text_gray)
+                                            .opacity(0.5)
+                                            .mt_1()
+                                            .child("Press ⌘D to bookmark current folder")
+                                    )
+                            )
+                        })
+                        .children(
+                            bookmarks.into_iter().map(|bookmark| {
+                                let is_selected = selected_path.as_ref() == Some(&bookmark.path);
+                                let path_clone = bookmark.path.clone();
+                                let is_valid = bookmark.is_valid;
+                                let bookmark_id = bookmark.id;
+                                let shortcut_display = bookmark.shortcut.as_ref().map(|s| s.display());
+
+                                div()
+                                    .id(SharedString::from(format!("bookmark-{}", bookmark.id.0)))
+                                    .flex()
+                                    .items_center()
+                                    .gap_3()
+                                    .px_2()
+                                    .py_1p5()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .text_sm()
+                                    .when(is_selected, |s| {
+                                        s.bg(selected_bg).text_color(text_light)
+                                    })
+                                    .when(!is_selected && is_valid, |s| {
+                                        s.text_color(text_gray)
+                                            .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                    })
+                                    .when(!is_valid, |s| {
+                                        s.text_color(warning_color).opacity(0.7)
+                                    })
+                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                                        view.handle_bookmark_click(path_clone.clone(), window, cx);
+                                    }))
+                                    .on_mouse_down(MouseButton::Right, cx.listener(move |view, _event, _window, cx| {
+                                        view.handle_bookmark_remove(bookmark_id, cx);
+                                    }))
+                                    .child(
+                                        svg()
+                                            .path("assets/icons/folder-heart.svg")
+                                            .size(px(14.0))
+                                            .text_color(if !is_valid {
+                                                warning_color
+                                            } else if is_selected {
+                                                text_light
+                                            } else {
+                                                icon_blue
+                                            }),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .overflow_hidden()
+                                            .child(bookmark.name.clone())
+                                    )
+                                    .when(shortcut_display.is_some(), |s| {
+                                        s.child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(text_gray)
+                                                .opacity(0.6)
+                                                .child(shortcut_display.unwrap_or_default())
+                                        )
+                                    })
+                                    .when(!is_valid, |s| {
+                                        s.child(
+                                            svg()
+                                                .path("assets/icons/triangle-alert.svg")
+                                                .size(px(12.0))
+                                                .text_color(warning_color)
+                                        )
+                                    })
+                            }),
+                        )
+                )
+            })
     }
 
     fn render_workspace_tree(&self, _cx: &mut Context<Self>) -> impl IntoElement {

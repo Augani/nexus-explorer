@@ -501,65 +501,65 @@
 - [x] 27. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 28. Batch Rename
-  - [-] 28.1 Implement BatchRename dialog
+- [x] 28. Batch Rename
+  - [x] 28.1 Implement BatchRename dialog
     - Show file list with preview
     - Pattern input with tokens
     - _Requirements: 19.1, 19.2_
-  - [ ] 28.2 Write property test for batch rename preview accuracy
+  - [x] 28.2 Write property test for batch rename preview accuracy
     - **Property 39: Batch Rename Preview Accuracy**
     - **Validates: Requirements 19.2**
-  - [ ] 28.3 Implement rename patterns
+  - [x] 28.3 Implement rename patterns
     - Sequential numbers {n}
     - Date {date}
     - Extension {ext}
     - Find/Replace
     - _Requirements: 19.3, 19.4, 19.5, 19.6_
-  - [ ] 28.4 Write property test for sequential numbers
+  - [x] 28.4 Write property test for sequential numbers
     - **Property 40: Batch Rename Sequential Numbers**
     - **Validates: Requirements 19.3**
-  - [ ] 28.5 Implement conflict detection
+  - [x] 28.5 Implement conflict detection
     - Highlight conflicting names
     - Prevent apply with conflicts
     - _Requirements: 19.8_
 
-- [ ] 29. Bookmarks and Quick Access
-  - [ ] 29.1 Implement BookmarkManager
+- [x] 29. Bookmarks and Quick Access
+  - [x] 29.1 Implement BookmarkManager
     - Add/remove/rename bookmarks
     - Keyboard shortcut assignment
     - _Requirements: 20.1, 20.4, 20.5_
-  - [ ] 29.2 Implement bookmarks UI in Sidebar
+  - [x] 29.2 Implement bookmarks UI in Sidebar
     - Display bookmarks section
     - Context menu for management
     - _Requirements: 20.2, 20.3_
-  - [ ] 29.3 Implement Go to Folder dialog
+  - [x] 29.3 Implement Go to Folder dialog
     - Direct path entry
     - Recent locations list
     - _Requirements: 20.7, 20.8_
 
 - [ ] 30. File Tags and Labels
-  - [ ] 30.1 Implement TagManager
+  - [x] 30.1 Implement TagManager
     - Create/delete tags
     - Apply/remove tags from files
     - _Requirements: 21.1, 21.2, 21.6_
-  - [ ] 30.2 Write property test for tag persistence
+  - [x] 30.2 Write property test for tag persistence
     - **Property 41: Tag Persistence**
     - **Validates: Requirements 21.7**
-  - [ ] 30.3 Implement tag storage
+  - [x] 30.3 Implement tag storage
     - Use xattr where supported
     - Fallback to local database
     - _Requirements: 21.7, 21.8_
-  - [ ] 30.4 Implement tag UI
+  - [x] 30.4 Implement tag UI
     - Color dots in FileList
     - Tag filter in Sidebar
     - Search by tag syntax
     - _Requirements: 21.2, 21.4, 21.5_
 
-- [ ] 31. Checkpoint - Ensure all tests pass
+- [x] 31. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 32. Dual Pane Mode
-  - [ ] 32.1 Implement DualPane state
+- [-] 32. Dual Pane Mode
+  - [-] 32.1 Implement DualPane state
     - Left and right pane states
     - Active pane tracking
     - _Requirements: 22.1, 22.2_

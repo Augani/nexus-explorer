@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 use chrono::{DateTime, Local};
 
 /// Preview of a single file rename operation
@@ -439,4 +438,5 @@ impl BatchRename {
 }
 
 #[cfg(test)]
-mod batch_rename_tests;
+#[path = "batch_rename_tests.rs"]
+mod tests;
