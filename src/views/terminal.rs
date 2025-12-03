@@ -356,78 +356,85 @@ impl TerminalView {
         // Auto-scroll to bottom on input
         self.scroll_to_bottom();
 
-        // Handle special keys using the key string representation
-        let key_str = format!("{:?}", event.keystroke.key);
+        // Get the key name (lowercase in GPUI)
+        let key = event.keystroke.key.as_str();
         
-        match key_str.as_str() {
-            "Enter" => self.send_input(key_codes::ENTER),
-            "Tab" => self.send_input(key_codes::TAB),
-            "Backspace" => self.send_input(key_codes::BACKSPACE),
-            "Escape" => self.send_input(key_codes::ESCAPE),
-            "Delete" => self.send_input(key_codes::DELETE),
-            "Up" => self.send_input(key_codes::UP),
-            "Down" => self.send_input(key_codes::DOWN),
-            "Left" => self.send_input(key_codes::LEFT),
-            "Right" => self.send_input(key_codes::RIGHT),
-            "Home" => self.send_input(key_codes::HOME),
-            "End" => self.send_input(key_codes::END),
-            "PageUp" => self.send_input(key_codes::PAGE_UP),
-            "PageDown" => self.send_input(key_codes::PAGE_DOWN),
-            "Insert" => self.send_input(b"\x1b[2~"),
-            "F1" => self.send_input(b"\x1bOP"),
-            "F2" => self.send_input(b"\x1bOQ"),
-            "F3" => self.send_input(b"\x1bOR"),
-            "F4" => self.send_input(b"\x1bOS"),
-            "F5" => self.send_input(b"\x1b[15~"),
-            "F6" => self.send_input(b"\x1b[17~"),
-            "F7" => self.send_input(b"\x1b[18~"),
-            "F8" => self.send_input(b"\x1b[19~"),
-            "F9" => self.send_input(b"\x1b[20~"),
-            "F10" => self.send_input(b"\x1b[21~"),
-            "F11" => self.send_input(b"\x1b[23~"),
-            "F12" => self.send_input(b"\x1b[24~"),
-            _ => {
-                // Handle regular characters and ctrl combinations
-                if let Some(key_char) = &event.keystroke.key_char {
-                    if event.keystroke.modifiers.platform {
-                        // Platform modifier (Cmd on macOS, Ctrl on Windows/Linux)
-                        let c = key_char.chars().next().unwrap_or('\0').to_ascii_lowercase();
-                        match c {
-                            'c' => {
-                                // Copy selection if there is one
-                                if self.has_selection() {
-                                    self.copy_selection(_cx);
-                                } else {
-                                    // Send Ctrl+C to terminal
-                                    self.send_input(&[0x03]);
-                                }
-                            }
-                            'v' => {
-                                // Paste from clipboard
-                                self.paste_from_clipboard(_cx);
-                            }
-                            _ => {}
-                        }
-                    } else if event.keystroke.modifiers.control {
-                        // Ctrl+key combinations (Ctrl+A = 0x01, Ctrl+B = 0x02, etc.)
-                        if key_char.len() == 1 {
-                            let c = key_char.chars().next().unwrap();
-                            if c.is_ascii_alphabetic() {
-                                let ctrl_code = (c.to_ascii_lowercase() as u8) - b'a' + 1;
-                                self.send_input(&[ctrl_code]);
+        // Handle special keys first
+        let handled = match key {
+            "enter" => { self.send_input(key_codes::ENTER); true }
+            "tab" => { self.send_input(key_codes::TAB); true }
+            "backspace" => { self.send_input(key_codes::BACKSPACE); true }
+            "escape" => { self.send_input(key_codes::ESCAPE); true }
+            "delete" => { self.send_input(key_codes::DELETE); true }
+            "up" => { self.send_input(key_codes::UP); true }
+            "down" => { self.send_input(key_codes::DOWN); true }
+            "left" => { self.send_input(key_codes::LEFT); true }
+            "right" => { self.send_input(key_codes::RIGHT); true }
+            "home" => { self.send_input(key_codes::HOME); true }
+            "end" => { self.send_input(key_codes::END); true }
+            "pageup" => { self.send_input(key_codes::PAGE_UP); true }
+            "pagedown" => { self.send_input(key_codes::PAGE_DOWN); true }
+            "insert" => { self.send_input(b"\x1b[2~"); true }
+            "f1" => { self.send_input(b"\x1bOP"); true }
+            "f2" => { self.send_input(b"\x1bOQ"); true }
+            "f3" => { self.send_input(b"\x1bOR"); true }
+            "f4" => { self.send_input(b"\x1bOS"); true }
+            "f5" => { self.send_input(b"\x1b[15~"); true }
+            "f6" => { self.send_input(b"\x1b[17~"); true }
+            "f7" => { self.send_input(b"\x1b[18~"); true }
+            "f8" => { self.send_input(b"\x1b[19~"); true }
+            "f9" => { self.send_input(b"\x1b[20~"); true }
+            "f10" => { self.send_input(b"\x1b[21~"); true }
+            "f11" => { self.send_input(b"\x1b[23~"); true }
+            "f12" => { self.send_input(b"\x1b[24~"); true }
+            "space" => { self.send_input(b" "); true }
+            _ => false
+        };
+        
+        if !handled {
+            // Handle regular characters and modifier combinations
+            if let Some(key_char) = &event.keystroke.key_char {
+                if event.keystroke.modifiers.platform {
+                    // Platform modifier (Cmd on macOS, Ctrl on Windows/Linux)
+                    let c = key_char.chars().next().unwrap_or('\0').to_ascii_lowercase();
+                    match c {
+                        'c' => {
+                            if self.has_selection() {
+                                self.copy_selection(_cx);
+                            } else {
+                                self.send_input(&[0x03]);
                             }
                         }
-                    } else if event.keystroke.modifiers.alt {
-                        // Alt+key combinations (send ESC prefix)
-                        let mut data = vec![0x1b]; // ESC
-                        data.extend(key_char.as_bytes());
-                        self.send_input(&data);
-                    } else {
-                        // Regular character input
-                        self.send_str(key_char);
-                        // Clear selection on input
-                        self.clear_selection();
+                        'v' => {
+                            self.paste_from_clipboard(_cx);
+                        }
+                        _ => {}
                     }
+                } else if event.keystroke.modifiers.control {
+                    // Ctrl+key combinations (Ctrl+A = 0x01, Ctrl+B = 0x02, etc.)
+                    let c = key_char.chars().next().unwrap_or('\0');
+                    if c.is_ascii_alphabetic() {
+                        let ctrl_code = (c.to_ascii_lowercase() as u8) - b'a' + 1;
+                        self.send_input(&[ctrl_code]);
+                    }
+                } else if event.keystroke.modifiers.alt {
+                    // Alt+key combinations (send ESC prefix)
+                    let mut data = vec![0x1b];
+                    data.extend(key_char.as_bytes());
+                    self.send_input(&data);
+                } else {
+                    // Regular character input
+                    self.send_str(key_char);
+                    self.clear_selection();
+                }
+            } else if !event.keystroke.modifiers.platform 
+                && !event.keystroke.modifiers.control 
+                && !event.keystroke.modifiers.alt 
+            {
+                // No key_char but also no modifiers - might be a single character key
+                if key.len() == 1 {
+                    self.send_str(key);
+                    self.clear_selection();
                 }
             }
         }
@@ -444,14 +451,13 @@ impl TerminalView {
             gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y) / LINE_HEIGHT,
         };
         
-        let lines = delta_y.abs() as usize;
-        let lines = lines.max(1); // At least 1 line
+        let lines = delta_y.abs().ceil() as usize;
+        let lines = lines.max(1);
         
-        if delta_y > 0.0 {
-            // Scroll up (view older content)
+        // Natural scrolling: positive delta = scroll content up (view older), negative = scroll down
+        if delta_y < 0.0 {
             self.scroll_up(lines);
         } else {
-            // Scroll down (view newer content)
             self.scroll_down(lines);
         }
     }
@@ -621,67 +627,92 @@ impl TerminalView {
         self.last_blink_time = Instant::now();
     }
 
-    /// Render a single terminal line with proper styling, selection, and blinking cursor
+    /// Render a single terminal line - optimized for performance
     fn render_line(&self, idx: usize, line: &crate::models::TerminalLine, is_cursor_line: bool) -> impl IntoElement {
-        let chars: Vec<char> = line.cells.iter().map(|c| c.char).collect();
+        let line_text: String = line.cells.iter().map(|c| c.char).collect();
         let cursor_col = self.state.cursor().col;
-        
-        // Check if cursor should be shown on this line (with blink state)
         let show_cursor = is_cursor_line && self.cursor_blink && self.cursor_blink_state && self.state.cursor_visible();
         
-        // Selection colors
-        let selection_bg = gpui::rgb(0x264f78);
-        let selection_fg = gpui::rgb(0xffffff);
+        let default_fg = gpui::Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 };
         let cursor_bg = gpui::rgb(0xf4b842);
         let cursor_fg = gpui::rgb(0x0d0a0a);
-        let default_fg = gpui::Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 };
+        let selection_bg = gpui::rgb(0x264f78);
         
-        // Build character spans with selection and cursor highlighting
-        let mut spans: Vec<gpui::AnyElement> = Vec::new();
-        let line_len = chars.len().max(1);
+        // Check if this line has any selection
+        let has_selection = self.has_selection() && {
+            let (start, end) = (self.selection_start.unwrap(), self.selection_end.unwrap());
+            let (s_line, e_line) = if start.0 <= end.0 { (start.0, end.0) } else { (end.0, start.0) };
+            idx >= s_line && idx <= e_line
+        };
         
-        for col in 0..line_len {
-            let c = chars.get(col).copied().unwrap_or(' ');
-            let is_selected = self.is_position_selected(idx, col);
-            let is_cursor = show_cursor && col == cursor_col;
-            
-            let (bg, fg) = if is_cursor {
-                (Some(cursor_bg), cursor_fg)
-            } else if is_selected {
-                (Some(selection_bg), selection_fg)
-            } else {
-                (None, default_fg.into())
-            };
-            
-            let mut char_div = div()
-                .w(px(CHAR_WIDTH))
+        // Fast path: no cursor, no selection - just render the text
+        if !show_cursor && !has_selection {
+            return div()
+                .id(("terminal-line", idx))
                 .h(px(LINE_HEIGHT))
+                .w_full()
                 .flex()
                 .items_center()
-                .justify_center()
-                .text_color(fg);
-            
-            if let Some(bg_color) = bg {
-                char_div = char_div.bg(bg_color);
-            }
-            
-            let char_div = char_div.child(c.to_string());
-            
-            spans.push(char_div.into_any_element());
+                .font_family("JetBrains Mono")
+                .text_size(px(13.0))
+                .text_color(default_fg)
+                .child(line_text);
         }
         
-        // Add cursor at end of line if needed
+        // Need to handle cursor or selection - build spans
+        let chars: Vec<char> = line_text.chars().collect();
+        let line_len = chars.len();
+        let mut spans: Vec<gpui::AnyElement> = Vec::new();
+        let mut current_text = String::new();
+        let mut current_selected = false;
+        
+        let flush_span = |spans: &mut Vec<gpui::AnyElement>, text: &mut String, selected: bool| {
+            if !text.is_empty() {
+                let span = if selected {
+                    div().bg(selection_bg).text_color(gpui::rgb(0xffffff)).child(std::mem::take(text))
+                } else {
+                    div().text_color(default_fg).child(std::mem::take(text))
+                };
+                spans.push(span.into_any_element());
+            }
+        };
+        
+        for col in 0..=line_len {
+            let is_cursor_pos = show_cursor && col == cursor_col;
+            let is_selected = has_selection && self.is_position_selected(idx, col);
+            
+            if is_cursor_pos {
+                // Flush any pending text
+                flush_span(&mut spans, &mut current_text, current_selected);
+                
+                // Render cursor
+                let cursor_char = chars.get(col).copied().unwrap_or(' ');
+                let cursor_span = div()
+                    .bg(cursor_bg)
+                    .text_color(cursor_fg)
+                    .child(cursor_char.to_string());
+                spans.push(cursor_span.into_any_element());
+                current_selected = is_selected;
+            } else if col < line_len {
+                // Check if selection state changed
+                if is_selected != current_selected && !current_text.is_empty() {
+                    flush_span(&mut spans, &mut current_text, current_selected);
+                }
+                current_selected = is_selected;
+                current_text.push(chars[col]);
+            }
+        }
+        
+        // Flush remaining text
+        flush_span(&mut spans, &mut current_text, current_selected);
+        
+        // Add cursor at end if needed
         if show_cursor && cursor_col >= line_len {
-            let cursor_div = div()
-                .w(px(CHAR_WIDTH))
-                .h(px(LINE_HEIGHT))
-                .flex()
-                .items_center()
-                .justify_center()
+            let cursor_span = div()
                 .bg(cursor_bg)
                 .text_color(cursor_fg)
                 .child(" ");
-            spans.push(cursor_div.into_any_element());
+            spans.push(cursor_span.into_any_element());
         }
         
         div()

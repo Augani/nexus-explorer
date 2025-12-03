@@ -36,6 +36,7 @@ enum ParserState {
     CsiEntry,
     CsiParam,
     CsiIntermediate,
+    CsiPrivate,
     OscString,
 }
 
@@ -93,6 +94,8 @@ pub struct AnsiParser {
     current_style: CellStyle,
     default_fg: Rgba,
     default_bg: Rgba,
+    utf8_buffer: Vec<u8>,
+    utf8_remaining: usize,
 }
 
 impl Default for AnsiParser {
@@ -111,6 +114,8 @@ impl AnsiParser {
             current_style: CellStyle::default(),
             default_fg: DEFAULT_FG,
             default_bg: DEFAULT_BG,
+            utf8_buffer: Vec::with_capacity(4),
+            utf8_remaining: 0,
         }
     }
 
@@ -131,6 +136,8 @@ impl AnsiParser {
         self.params.clear();
         self.intermediate.clear();
         self.osc_string.clear();
+        self.utf8_buffer.clear();
+        self.utf8_remaining = 0;
         self.current_style = CellStyle {
             foreground: self.default_fg,
             background: self.default_bg,
@@ -157,6 +164,9 @@ impl AnsiParser {
                 ParserState::CsiIntermediate => {
                     self.handle_csi_intermediate(byte, &mut text_buffer, &mut segments);
                 }
+                ParserState::CsiPrivate => {
+                    self.handle_csi_private(byte, &mut text_buffer, &mut segments);
+                }
                 ParserState::OscString => {
                     self.handle_osc(byte, &mut segments);
                 }
@@ -181,6 +191,27 @@ impl AnsiParser {
         text_buffer: &mut String,
         segments: &mut Vec<ParsedSegment>,
     ) {
+        // Handle UTF-8 continuation bytes
+        if self.utf8_remaining > 0 {
+            if (byte & 0xC0) == 0x80 {
+                // Valid continuation byte
+                self.utf8_buffer.push(byte);
+                self.utf8_remaining -= 1;
+                if self.utf8_remaining == 0 {
+                    // Complete UTF-8 sequence
+                    if let Ok(s) = std::str::from_utf8(&self.utf8_buffer) {
+                        text_buffer.push_str(s);
+                    }
+                    self.utf8_buffer.clear();
+                }
+                return;
+            } else {
+                // Invalid continuation - discard buffer and process this byte
+                self.utf8_buffer.clear();
+                self.utf8_remaining = 0;
+            }
+        }
+
         match byte {
             0x1B => {
                 // ESC - start escape sequence
@@ -245,11 +276,30 @@ impl AnsiParser {
             0x00..=0x1F => {
                 // Other control characters - ignore
             }
+            0x20..=0x7F => {
+                // ASCII printable character
+                text_buffer.push(byte as char);
+            }
+            0xC0..=0xDF => {
+                // Start of 2-byte UTF-8 sequence
+                self.utf8_buffer.clear();
+                self.utf8_buffer.push(byte);
+                self.utf8_remaining = 1;
+            }
+            0xE0..=0xEF => {
+                // Start of 3-byte UTF-8 sequence
+                self.utf8_buffer.clear();
+                self.utf8_buffer.push(byte);
+                self.utf8_remaining = 2;
+            }
+            0xF0..=0xF7 => {
+                // Start of 4-byte UTF-8 sequence
+                self.utf8_buffer.clear();
+                self.utf8_buffer.push(byte);
+                self.utf8_remaining = 3;
+            }
             _ => {
-                // Regular character
-                if let Some(c) = char::from_u32(byte as u32) {
-                    text_buffer.push(c);
-                }
+                // Invalid byte - ignore
             }
         }
     }
@@ -316,6 +366,14 @@ impl AnsiParser {
         segments: &mut Vec<ParsedSegment>,
     ) {
         match byte {
+            b'?' => {
+                // DEC private mode - switch to private mode parsing
+                self.state = ParserState::CsiPrivate;
+            }
+            b'>' | b'=' | b'!' => {
+                // Other CSI modifiers - switch to private mode (ignore these sequences)
+                self.state = ParserState::CsiPrivate;
+            }
             b'0'..=b'9' => {
                 // Parameter digit
                 self.state = ParserState::CsiParam;
@@ -345,15 +403,30 @@ impl AnsiParser {
                 self.state = ParserState::Ground;
             }
             _ => {
-                // Invalid - abort and output
-                text_buffer.push_str("\x1B[");
-                for &p in &self.params {
-                    text_buffer.push_str(&p.to_string());
-                    text_buffer.push(';');
-                }
-                if let Some(c) = char::from_u32(byte as u32) {
-                    text_buffer.push(c);
-                }
+                // Invalid - abort silently (don't output garbage)
+                self.state = ParserState::Ground;
+            }
+        }
+    }
+
+    fn handle_csi_private(
+        &mut self,
+        byte: u8,
+        _text_buffer: &mut String,
+        _segments: &mut Vec<ParsedSegment>,
+    ) {
+        // Handle DEC private mode sequences like ?2004h (bracketed paste)
+        // We just consume these silently - they're terminal mode settings
+        match byte {
+            b'0'..=b'9' | b';' => {
+                // Continue consuming parameters
+            }
+            b'@'..=b'~' => {
+                // Final byte - sequence complete, ignore it
+                self.state = ParserState::Ground;
+            }
+            _ => {
+                // Invalid - abort
                 self.state = ParserState::Ground;
             }
         }
@@ -394,10 +467,12 @@ impl AnsiParser {
                 self.execute_osc(segments);
                 self.state = ParserState::Ground;
             }
+            0x20..=0x7E => {
+                // Printable ASCII
+                self.osc_string.push(byte as char);
+            }
             _ => {
-                if let Some(c) = char::from_u32(byte as u32) {
-                    self.osc_string.push(c);
-                }
+                // For non-ASCII in OSC, just skip (titles should be ASCII anyway)
             }
         }
     }
