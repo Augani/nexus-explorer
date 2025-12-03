@@ -250,6 +250,21 @@ pub struct OperationError {
     pub file_path: PathBuf,
     pub message: String,
     pub is_recoverable: bool,
+    pub error_kind: OperationErrorKind,
+}
+
+/// Categorized error types for better user feedback
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OperationErrorKind {
+    PermissionDenied,
+    FileNotFound,
+    AlreadyExists,
+    DiskFull,
+    NetworkError,
+    ReadOnly,
+    InUse,
+    InvalidPath,
+    Unknown,
 }
 
 impl OperationError {
@@ -258,20 +273,76 @@ impl OperationError {
             file_path,
             message,
             is_recoverable,
+            error_kind: OperationErrorKind::Unknown,
+        }
+    }
+
+    pub fn with_kind(file_path: PathBuf, message: String, is_recoverable: bool, kind: OperationErrorKind) -> Self {
+        Self {
+            file_path,
+            message,
+            is_recoverable,
+            error_kind: kind,
         }
     }
 
     pub fn from_io_error(file_path: PathBuf, error: &std::io::Error) -> Self {
-        let is_recoverable = matches!(
-            error.kind(),
-            std::io::ErrorKind::PermissionDenied
-                | std::io::ErrorKind::AlreadyExists
-                | std::io::ErrorKind::NotFound
-        );
+        let (is_recoverable, kind) = match error.kind() {
+            std::io::ErrorKind::PermissionDenied => (true, OperationErrorKind::PermissionDenied),
+            std::io::ErrorKind::AlreadyExists => (true, OperationErrorKind::AlreadyExists),
+            std::io::ErrorKind::NotFound => (true, OperationErrorKind::FileNotFound),
+            std::io::ErrorKind::InvalidInput => (false, OperationErrorKind::InvalidPath),
+            _ => {
+                let msg = error.to_string().to_lowercase();
+                if msg.contains("no space") || msg.contains("disk full") {
+                    (false, OperationErrorKind::DiskFull)
+                } else if msg.contains("network") || msg.contains("connection") {
+                    (true, OperationErrorKind::NetworkError)
+                } else if msg.contains("read-only") || msg.contains("readonly") {
+                    (false, OperationErrorKind::ReadOnly)
+                } else if msg.contains("in use") || msg.contains("locked") || msg.contains("busy") {
+                    (true, OperationErrorKind::InUse)
+                } else {
+                    (false, OperationErrorKind::Unknown)
+                }
+            }
+        };
         Self {
             file_path,
             message: error.to_string(),
             is_recoverable,
+            error_kind: kind,
+        }
+    }
+
+    /// Get a user-friendly description of the error
+    pub fn user_message(&self) -> String {
+        match self.error_kind {
+            OperationErrorKind::PermissionDenied => {
+                format!("Permission denied: {}", self.file_path.display())
+            }
+            OperationErrorKind::FileNotFound => {
+                format!("File not found: {}", self.file_path.display())
+            }
+            OperationErrorKind::AlreadyExists => {
+                format!("File already exists: {}", self.file_path.display())
+            }
+            OperationErrorKind::DiskFull => {
+                "Not enough disk space to complete the operation".to_string()
+            }
+            OperationErrorKind::NetworkError => {
+                format!("Network error accessing: {}", self.file_path.display())
+            }
+            OperationErrorKind::ReadOnly => {
+                format!("Destination is read-only: {}", self.file_path.display())
+            }
+            OperationErrorKind::InUse => {
+                format!("File is in use: {}", self.file_path.display())
+            }
+            OperationErrorKind::InvalidPath => {
+                format!("Invalid path: {}", self.file_path.display())
+            }
+            OperationErrorKind::Unknown => self.message.clone(),
         }
     }
 }
@@ -288,6 +359,7 @@ pub struct FileOperation {
     pub started_at: Option<Instant>,
     pub completed_at: Option<Instant>,
     pub current_error: Option<OperationError>,
+    pub error_state: ErrorHandlingState,
 }
 
 impl FileOperation {
@@ -307,6 +379,7 @@ impl FileOperation {
             started_at: None,
             completed_at: None,
             current_error: None,
+            error_state: ErrorHandlingState::new(),
         }
     }
 
@@ -330,6 +403,28 @@ impl FileOperation {
         self.completed_at = Some(Instant::now());
     }
 
+    pub fn pause_for_error(&mut self, error: OperationError) {
+        self.current_error = Some(error);
+        self.error_state.set_paused(true);
+        self.status = OperationStatus::Paused;
+    }
+
+    pub fn resume_from_error(&mut self, action: ErrorAction) {
+        self.error_state.set_response(action);
+        if action != ErrorAction::Cancel {
+            self.status = OperationStatus::Running;
+        }
+        self.current_error = None;
+    }
+
+    pub fn is_paused_for_error(&self) -> bool {
+        self.error_state.is_paused_for_error
+    }
+
+    pub fn skipped_count(&self) -> usize {
+        self.error_state.skipped_count
+    }
+
     pub fn elapsed(&self) -> Duration {
         match (self.started_at, self.completed_at) {
             (Some(start), Some(end)) => end.duration_since(start),
@@ -347,9 +442,72 @@ pub enum ProgressUpdate {
     FileStarted { id: OperationId, file: String },
     BytesTransferred { id: OperationId, bytes: u64 },
     FileCompleted { id: OperationId },
+    /// Error occurred - operation is paused waiting for user response
     Error { id: OperationId, error: OperationError },
+    /// File was skipped due to error
+    FileSkipped { id: OperationId, file: String },
     Completed { id: OperationId },
     Cancelled { id: OperationId },
+}
+
+/// Response to an error from the UI
+#[derive(Debug, Clone)]
+pub struct ErrorResponse {
+    pub id: OperationId,
+    pub action: ErrorAction,
+}
+
+/// State for tracking error handling in operations
+#[derive(Debug, Clone)]
+pub struct ErrorHandlingState {
+    /// Whether the operation is currently paused waiting for error response
+    pub is_paused_for_error: bool,
+    /// The pending error action response
+    pub pending_response: Option<ErrorAction>,
+    /// Count of skipped files
+    pub skipped_count: usize,
+    /// List of skipped file paths
+    pub skipped_files: Vec<PathBuf>,
+}
+
+impl Default for ErrorHandlingState {
+    fn default() -> Self {
+        Self {
+            is_paused_for_error: false,
+            pending_response: None,
+            skipped_count: 0,
+            skipped_files: Vec::new(),
+        }
+    }
+}
+
+impl ErrorHandlingState {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set_paused(&mut self, paused: bool) {
+        self.is_paused_for_error = paused;
+    }
+
+    pub fn set_response(&mut self, action: ErrorAction) {
+        self.pending_response = Some(action);
+        self.is_paused_for_error = false;
+    }
+
+    pub fn take_response(&mut self) -> Option<ErrorAction> {
+        self.pending_response.take()
+    }
+
+    pub fn add_skipped(&mut self, path: PathBuf) {
+        self.skipped_count += 1;
+        self.skipped_files.push(path);
+    }
+
+    pub fn reset(&mut self) {
+        self.is_paused_for_error = false;
+        self.pending_response = None;
+    }
 }
 
 /// Cancellation token for operations
@@ -753,21 +911,46 @@ impl FileOperationsManager {
         }
     }
 
-    /// Handle error response from UI
+    /// Handle error response from UI - this resumes the paused operation
     pub fn handle_error_response(&mut self, id: OperationId, action: ErrorAction) {
-        match action {
-            ErrorAction::Skip => {
-                self.clear_error(id);
-                // The operation continues with the next file
-            }
-            ErrorAction::Retry => {
-                self.clear_error(id);
-                // The operation will retry the current file
-            }
-            ErrorAction::Cancel => {
-                self.cancel(id);
+        if let Some(op) = self.operations.iter_mut().find(|o| o.id == id) {
+            match action {
+                ErrorAction::Skip => {
+                    // Record the skipped file
+                    if let Some(ref error) = op.current_error {
+                        op.error_state.add_skipped(error.file_path.clone());
+                    }
+                    op.resume_from_error(action);
+                }
+                ErrorAction::Retry => {
+                    op.resume_from_error(action);
+                }
+                ErrorAction::Cancel => {
+                    // Cancel the entire operation
+                    if let Some(token) = self.cancellation_tokens.get(&id) {
+                        token.cancel();
+                    }
+                    op.cancel();
+                }
             }
         }
+    }
+
+    /// Check if an operation is paused waiting for error response
+    pub fn is_paused_for_error(&self, id: OperationId) -> bool {
+        self.operations
+            .iter()
+            .find(|o| o.id == id)
+            .map(|o| o.is_paused_for_error())
+            .unwrap_or(false)
+    }
+
+    /// Get the pending error response for an operation (if any)
+    pub fn get_error_response(&mut self, id: OperationId) -> Option<ErrorAction> {
+        self.operations
+            .iter_mut()
+            .find(|o| o.id == id)
+            .and_then(|o| o.error_state.take_response())
     }
 
     /// Get cancellation token for an operation
@@ -842,9 +1025,15 @@ impl FileOperationsManager {
                     op.progress.current_file = None;
                 }
             }
+            ProgressUpdate::FileSkipped { id, file } => {
+                if let Some(op) = self.get_operation_mut(id) {
+                    op.error_state.add_skipped(PathBuf::from(&file));
+                    op.progress.current_file = None;
+                }
+            }
             ProgressUpdate::Error { id, error } => {
                 if let Some(op) = self.get_operation_mut(id) {
-                    op.current_error = Some(error);
+                    op.pause_for_error(error);
                 }
             }
             ProgressUpdate::Completed { id } => {
@@ -880,6 +1069,14 @@ impl Default for FileOperationsManager {
 
 /// Executor for file operations - runs in background thread
 pub struct FileOperationExecutor;
+
+/// Result of a file operation that may need error handling
+#[derive(Debug)]
+pub enum FileOpResult {
+    Success,
+    Skipped,
+    Cancelled,
+}
 
 impl FileOperationExecutor {
     /// Calculate total size of files to be operated on
@@ -917,7 +1114,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /// Execute a copy operation
+    /// Execute a copy operation with error handling
     pub fn execute_copy(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -935,10 +1132,32 @@ impl FileOperationExecutor {
 
             let dest_path = dest.join(source.file_name().unwrap_or_default());
             
-            if source.is_dir() {
-                Self::copy_dir_recursive(source, &dest_path, &progress_tx, &cancel_token, id)?;
+            let result = if source.is_dir() {
+                Self::copy_dir_recursive_with_error_handling(
+                    source, &dest_path, &progress_tx, &cancel_token, id
+                )
             } else {
-                Self::copy_file_with_progress(source, &dest_path, &progress_tx, &cancel_token, id)?;
+                Self::copy_file_with_error_handling(
+                    source, &dest_path, &progress_tx, &cancel_token, id
+                )
+            };
+
+            match result {
+                Ok(FileOpResult::Cancelled) => {
+                    progress_tx.send(ProgressUpdate::Cancelled { id }).ok();
+                    return Ok(());
+                }
+                Ok(FileOpResult::Skipped) => {
+                    // File was skipped, continue with next
+                    continue;
+                }
+                Ok(FileOpResult::Success) => {
+                    // Continue to next file
+                }
+                Err(e) => {
+                    // Unrecoverable error - fail the operation
+                    return Err(e);
+                }
             }
         }
 
@@ -946,7 +1165,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /// Execute a move operation
+    /// Execute a move operation with error handling
     pub fn execute_move(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -968,21 +1187,58 @@ impl FileOperationExecutor {
                 .unwrap_or("unknown")
                 .to_string();
 
-            progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name }).ok();
+            progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name.clone() }).ok();
 
             // Try rename first (fast path for same filesystem)
             match std::fs::rename(source, &dest_path) {
                 Ok(()) => {
                     progress_tx.send(ProgressUpdate::FileCompleted { id }).ok();
                 }
-                Err(_) => {
-                    // Fall back to copy + delete for cross-filesystem moves
-                    if source.is_dir() {
-                        Self::copy_dir_recursive(source, &dest_path, &progress_tx, &cancel_token, id)?;
-                        std::fs::remove_dir_all(source)?;
+                Err(rename_err) => {
+                    // Check if it's a cross-device error (need copy+delete)
+                    if rename_err.raw_os_error() == Some(18) || // EXDEV on Unix
+                       rename_err.kind() == std::io::ErrorKind::CrossesDevices ||
+                       rename_err.to_string().contains("cross-device") {
+                        // Fall back to copy + delete for cross-filesystem moves
+                        let result = if source.is_dir() {
+                            match Self::copy_dir_recursive_with_error_handling(
+                                source, &dest_path, &progress_tx, &cancel_token, id
+                            ) {
+                                Ok(FileOpResult::Success) => {
+                                    std::fs::remove_dir_all(source).map(|_| FileOpResult::Success)
+                                }
+                                other => other,
+                            }
+                        } else {
+                            match Self::copy_file_with_error_handling(
+                                source, &dest_path, &progress_tx, &cancel_token, id
+                            ) {
+                                Ok(FileOpResult::Success) => {
+                                    std::fs::remove_file(source).map(|_| FileOpResult::Success)
+                                }
+                                other => other,
+                            }
+                        };
+
+                        match result {
+                            Ok(FileOpResult::Cancelled) => {
+                                progress_tx.send(ProgressUpdate::Cancelled { id }).ok();
+                                return Ok(());
+                            }
+                            Ok(FileOpResult::Skipped) => continue,
+                            Ok(FileOpResult::Success) => {}
+                            Err(e) => {
+                                // Send error and let UI decide
+                                let error = OperationError::from_io_error(source.clone(), &e);
+                                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                            }
+                        }
                     } else {
-                        Self::copy_file_with_progress(source, &dest_path, &progress_tx, &cancel_token, id)?;
-                        std::fs::remove_file(source)?;
+                        // Other rename error - report it
+                        let error = OperationError::from_io_error(source.clone(), &rename_err);
+                        progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                        progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
                     }
                 }
             }
@@ -992,7 +1248,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /// Execute a delete operation
+    /// Execute a delete operation with error handling
     pub fn execute_delete(
         sources: Vec<PathBuf>,
         progress_tx: Sender<ProgressUpdate>,
@@ -1012,28 +1268,39 @@ impl FileOperationExecutor {
                 .unwrap_or("unknown")
                 .to_string();
 
-            progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name }).ok();
+            progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name.clone() }).ok();
 
-            if source.is_dir() {
-                std::fs::remove_dir_all(source)?;
+            let result = if source.is_dir() {
+                std::fs::remove_dir_all(source)
             } else {
-                std::fs::remove_file(source)?;
-            }
+                std::fs::remove_file(source)
+            };
 
-            progress_tx.send(ProgressUpdate::FileCompleted { id }).ok();
+            match result {
+                Ok(()) => {
+                    progress_tx.send(ProgressUpdate::FileCompleted { id }).ok();
+                }
+                Err(e) => {
+                    let error = OperationError::from_io_error(source.clone(), &e);
+                    progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                    // For delete, we skip on error and continue
+                    progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                }
+            }
         }
 
         progress_tx.send(ProgressUpdate::Completed { id }).ok();
         Ok(())
     }
 
-    fn copy_file_with_progress(
+    /// Copy a single file with progress tracking and error handling
+    fn copy_file_with_error_handling(
         source: &PathBuf,
         dest: &PathBuf,
         progress_tx: &Sender<ProgressUpdate>,
         cancel_token: &CancellationToken,
         id: OperationId,
-    ) -> std::io::Result<()> {
+    ) -> std::io::Result<FileOpResult> {
         use std::io::{Read, Write};
 
         let file_name = source.file_name()
@@ -1041,31 +1308,146 @@ impl FileOperationExecutor {
             .unwrap_or("unknown")
             .to_string();
 
-        progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name }).ok();
+        progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name.clone() }).ok();
 
-        let mut src_file = std::fs::File::open(source)?;
-        let mut dst_file = std::fs::File::create(dest)?;
+        // Open source file
+        let mut src_file = match std::fs::File::open(source) {
+            Ok(f) => f,
+            Err(e) => {
+                let error = OperationError::from_io_error(source.clone(), &e);
+                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                return Ok(FileOpResult::Skipped);
+            }
+        };
+
+        // Create destination file
+        let mut dst_file = match std::fs::File::create(dest) {
+            Ok(f) => f,
+            Err(e) => {
+                let error = OperationError::from_io_error(dest.clone(), &e);
+                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                return Ok(FileOpResult::Skipped);
+            }
+        };
 
         let mut buffer = vec![0u8; 64 * 1024]; // 64KB buffer
         
         loop {
             if cancel_token.is_cancelled() {
-                // Clean up partial file
+                // Clean up partial file on cancellation
                 drop(dst_file);
                 let _ = std::fs::remove_file(dest);
-                return Ok(());
+                return Ok(FileOpResult::Cancelled);
             }
 
-            let bytes_read = src_file.read(&mut buffer)?;
-            if bytes_read == 0 {
-                break;
+            let bytes_read = match src_file.read(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(n) => n,
+                Err(e) => {
+                    // Read error - clean up and report
+                    drop(dst_file);
+                    let _ = std::fs::remove_file(dest);
+                    let error = OperationError::from_io_error(source.clone(), &e);
+                    progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                    progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                    return Ok(FileOpResult::Skipped);
+                }
+            };
+
+            if let Err(e) = dst_file.write_all(&buffer[..bytes_read]) {
+                // Write error - clean up and report
+                drop(dst_file);
+                let _ = std::fs::remove_file(dest);
+                let error = OperationError::from_io_error(dest.clone(), &e);
+                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                return Ok(FileOpResult::Skipped);
             }
 
-            dst_file.write_all(&buffer[..bytes_read])?;
             progress_tx.send(ProgressUpdate::BytesTransferred { id, bytes: bytes_read as u64 }).ok();
         }
 
         progress_tx.send(ProgressUpdate::FileCompleted { id }).ok();
+        Ok(FileOpResult::Success)
+    }
+
+    /// Copy a directory recursively with error handling
+    fn copy_dir_recursive_with_error_handling(
+        source: &PathBuf,
+        dest: &PathBuf,
+        progress_tx: &Sender<ProgressUpdate>,
+        cancel_token: &CancellationToken,
+        id: OperationId,
+    ) -> std::io::Result<FileOpResult> {
+        // Create destination directory
+        if let Err(e) = std::fs::create_dir_all(dest) {
+            let error = OperationError::from_io_error(dest.clone(), &e);
+            progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+            let file_name = source.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+            return Ok(FileOpResult::Skipped);
+        }
+
+        let entries = match std::fs::read_dir(source) {
+            Ok(e) => e,
+            Err(e) => {
+                let error = OperationError::from_io_error(source.clone(), &e);
+                progress_tx.send(ProgressUpdate::Error { id, error }).ok();
+                let file_name = source.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                progress_tx.send(ProgressUpdate::FileSkipped { id, file: file_name }).ok();
+                return Ok(FileOpResult::Skipped);
+            }
+        };
+
+        for entry in entries {
+            if cancel_token.is_cancelled() {
+                return Ok(FileOpResult::Cancelled);
+            }
+
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue, // Skip unreadable entries
+            };
+
+            let src_path = entry.path();
+            let dst_path = dest.join(entry.file_name());
+
+            let result = if src_path.is_dir() {
+                Self::copy_dir_recursive_with_error_handling(
+                    &src_path, &dst_path, progress_tx, cancel_token, id
+                )?
+            } else {
+                Self::copy_file_with_error_handling(
+                    &src_path, &dst_path, progress_tx, cancel_token, id
+                )?
+            };
+
+            if matches!(result, FileOpResult::Cancelled) {
+                return Ok(FileOpResult::Cancelled);
+            }
+            // Continue on skip or success
+        }
+
+        Ok(FileOpResult::Success)
+    }
+
+    // Legacy methods for backward compatibility
+    fn copy_file_with_progress(
+        source: &PathBuf,
+        dest: &PathBuf,
+        progress_tx: &Sender<ProgressUpdate>,
+        cancel_token: &CancellationToken,
+        id: OperationId,
+    ) -> std::io::Result<()> {
+        Self::copy_file_with_error_handling(source, dest, progress_tx, cancel_token, id)?;
         Ok(())
     }
 
@@ -1076,24 +1458,7 @@ impl FileOperationExecutor {
         cancel_token: &CancellationToken,
         id: OperationId,
     ) -> std::io::Result<()> {
-        std::fs::create_dir_all(dest)?;
-
-        for entry in std::fs::read_dir(source)? {
-            if cancel_token.is_cancelled() {
-                return Ok(());
-            }
-
-            let entry = entry?;
-            let src_path = entry.path();
-            let dst_path = dest.join(entry.file_name());
-
-            if src_path.is_dir() {
-                Self::copy_dir_recursive(&src_path, &dst_path, progress_tx, cancel_token, id)?;
-            } else {
-                Self::copy_file_with_progress(&src_path, &dst_path, progress_tx, cancel_token, id)?;
-            }
-        }
-
+        Self::copy_dir_recursive_with_error_handling(source, dest, progress_tx, cancel_token, id)?;
         Ok(())
     }
 }
@@ -1376,6 +1741,205 @@ mod tests {
         
         // Stack should be trimmed to MAX_UNDO_HISTORY
         assert_eq!(manager.undo_stack().len(), MAX_UNDO_HISTORY);
+    }
+
+    // Error handling tests
+
+    #[test]
+    fn test_operation_error_from_io_permission_denied() {
+        let error = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "access denied");
+        let op_error = OperationError::from_io_error(PathBuf::from("/test/file.txt"), &error);
+        
+        assert!(op_error.is_recoverable);
+        assert_eq!(op_error.error_kind, OperationErrorKind::PermissionDenied);
+        assert!(op_error.user_message().contains("Permission denied"));
+    }
+
+    #[test]
+    fn test_operation_error_from_io_not_found() {
+        let error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let op_error = OperationError::from_io_error(PathBuf::from("/test/file.txt"), &error);
+        
+        assert!(op_error.is_recoverable);
+        assert_eq!(op_error.error_kind, OperationErrorKind::FileNotFound);
+        assert!(op_error.user_message().contains("not found"));
+    }
+
+    #[test]
+    fn test_operation_error_from_io_already_exists() {
+        let error = std::io::Error::new(std::io::ErrorKind::AlreadyExists, "file exists");
+        let op_error = OperationError::from_io_error(PathBuf::from("/test/file.txt"), &error);
+        
+        assert!(op_error.is_recoverable);
+        assert_eq!(op_error.error_kind, OperationErrorKind::AlreadyExists);
+        assert!(op_error.user_message().contains("already exists"));
+    }
+
+    #[test]
+    fn test_error_handling_state_default() {
+        let state = ErrorHandlingState::default();
+        
+        assert!(!state.is_paused_for_error);
+        assert!(state.pending_response.is_none());
+        assert_eq!(state.skipped_count, 0);
+        assert!(state.skipped_files.is_empty());
+    }
+
+    #[test]
+    fn test_error_handling_state_add_skipped() {
+        let mut state = ErrorHandlingState::new();
+        
+        state.add_skipped(PathBuf::from("/test/file1.txt"));
+        state.add_skipped(PathBuf::from("/test/file2.txt"));
+        
+        assert_eq!(state.skipped_count, 2);
+        assert_eq!(state.skipped_files.len(), 2);
+    }
+
+    #[test]
+    fn test_error_handling_state_response() {
+        let mut state = ErrorHandlingState::new();
+        
+        state.set_paused(true);
+        assert!(state.is_paused_for_error);
+        
+        state.set_response(ErrorAction::Skip);
+        assert!(!state.is_paused_for_error);
+        assert_eq!(state.pending_response, Some(ErrorAction::Skip));
+        
+        let response = state.take_response();
+        assert_eq!(response, Some(ErrorAction::Skip));
+        assert!(state.pending_response.is_none());
+    }
+
+    #[test]
+    fn test_file_operation_pause_for_error() {
+        let mut op = FileOperation::new(
+            OperationId::new(1),
+            OperationType::Copy,
+            vec![PathBuf::from("/src")],
+            Some(PathBuf::from("/dst")),
+        );
+        
+        op.start();
+        assert_eq!(op.status, OperationStatus::Running);
+        
+        let error = OperationError::new(
+            PathBuf::from("/src/file.txt"),
+            "Test error".to_string(),
+            true,
+        );
+        op.pause_for_error(error);
+        
+        assert_eq!(op.status, OperationStatus::Paused);
+        assert!(op.is_paused_for_error());
+        assert!(op.current_error.is_some());
+    }
+
+    #[test]
+    fn test_file_operation_resume_from_error_skip() {
+        let mut op = FileOperation::new(
+            OperationId::new(1),
+            OperationType::Copy,
+            vec![PathBuf::from("/src")],
+            Some(PathBuf::from("/dst")),
+        );
+        
+        op.start();
+        let error = OperationError::new(
+            PathBuf::from("/src/file.txt"),
+            "Test error".to_string(),
+            true,
+        );
+        op.pause_for_error(error);
+        
+        op.resume_from_error(ErrorAction::Skip);
+        
+        assert_eq!(op.status, OperationStatus::Running);
+        assert!(!op.is_paused_for_error());
+        assert!(op.current_error.is_none());
+    }
+
+    #[test]
+    fn test_file_operation_resume_from_error_cancel() {
+        let mut op = FileOperation::new(
+            OperationId::new(1),
+            OperationType::Copy,
+            vec![PathBuf::from("/src")],
+            Some(PathBuf::from("/dst")),
+        );
+        
+        op.start();
+        let error = OperationError::new(
+            PathBuf::from("/src/file.txt"),
+            "Test error".to_string(),
+            true,
+        );
+        op.pause_for_error(error);
+        
+        op.resume_from_error(ErrorAction::Cancel);
+        
+        // Cancel doesn't change status to Running
+        assert!(!op.is_paused_for_error());
+    }
+
+    #[test]
+    fn test_manager_handle_error_response_skip() {
+        let mut manager = FileOperationsManager::new();
+        let id = manager.copy(vec![PathBuf::from("/a")], PathBuf::from("/b"));
+        
+        // Simulate an error
+        if let Some(op) = manager.get_operation_mut(id) {
+            op.start();
+            let error = OperationError::new(
+                PathBuf::from("/a/file.txt"),
+                "Test error".to_string(),
+                true,
+            );
+            op.pause_for_error(error);
+        }
+        
+        manager.handle_error_response(id, ErrorAction::Skip);
+        
+        let op = manager.get_operation(id).unwrap();
+        assert_eq!(op.status, OperationStatus::Running);
+        assert_eq!(op.skipped_count(), 1);
+    }
+
+    #[test]
+    fn test_manager_handle_error_response_cancel() {
+        let mut manager = FileOperationsManager::new();
+        let id = manager.copy(vec![PathBuf::from("/a")], PathBuf::from("/b"));
+        
+        // Simulate an error
+        if let Some(op) = manager.get_operation_mut(id) {
+            op.start();
+            let error = OperationError::new(
+                PathBuf::from("/a/file.txt"),
+                "Test error".to_string(),
+                true,
+            );
+            op.pause_for_error(error);
+        }
+        
+        manager.handle_error_response(id, ErrorAction::Cancel);
+        
+        let op = manager.get_operation(id).unwrap();
+        assert_eq!(op.status, OperationStatus::Cancelled);
+    }
+
+    #[test]
+    fn test_error_action_equality() {
+        assert_eq!(ErrorAction::Skip, ErrorAction::Skip);
+        assert_eq!(ErrorAction::Retry, ErrorAction::Retry);
+        assert_eq!(ErrorAction::Cancel, ErrorAction::Cancel);
+        assert_ne!(ErrorAction::Skip, ErrorAction::Retry);
+    }
+
+    #[test]
+    fn test_operation_error_kind_variants() {
+        assert_eq!(OperationErrorKind::PermissionDenied, OperationErrorKind::PermissionDenied);
+        assert_ne!(OperationErrorKind::PermissionDenied, OperationErrorKind::FileNotFound);
     }
 }
 

@@ -423,12 +423,12 @@
     - Ornate section dividers with flourishes
     - Themed hover glow effects
     - _Requirements: 11.5, 11.8, 11.9_
-  - [-] 22.5 Apply RPG styling to FileList
+  - [x] 22.5 Apply RPG styling to FileList
     - 40px row height with 20px icons, 12px icon-to-text gap
     - Subtle hover glow effects matching theme
     - Selection with themed accent colors
     - _Requirements: 11.6_
-  - [ ] 22.6 Apply RPG styling to toolbar and breadcrumbs
+  - [x] 22.6 Apply RPG styling to toolbar and breadcrumbs
     - 52px toolbar height with 36px buttons
     - Decorative corner flourishes on toolbar
     - Themed dividers between toolbar sections
@@ -444,19 +444,19 @@
     - Gold/themed trim on important elements
     - _Requirements: 11.8_
 
-- [ ] 23. Quick Look
-  - [ ] 23.1 Implement QuickLook overlay component
+- [x] 23. Quick Look
+  - [x] 23.1 Implement QuickLook overlay component
     - Create full-screen overlay
     - Handle Space key to toggle
     - _Requirements: 15.1, 15.3_
-  - [ ] 23.2 Implement image Quick Look
+  - [x] 23.2 Implement image Quick Look
     - Display full-resolution image
     - Add zoom controls
     - _Requirements: 15.4_
-  - [ ] 23.3 Implement text/document Quick Look
+  - [x] 23.3 Implement text/document Quick Look
     - Render document content
     - _Requirements: 15.6_
-  - [ ] 23.4 Implement Quick Look navigation
+  - [x] 23.4 Implement Quick Look navigation
     - Arrow keys to preview next/previous
     - _Requirements: 15.7_
 
@@ -537,7 +537,7 @@
     - Recent locations list
     - _Requirements: 20.7, 20.8_
 
-- [ ] 30. File Tags and Labels
+- [x] 30. File Tags and Labels
   - [x] 30.1 Implement TagManager
     - Create/delete tags
     - Apply/remove tags from files
@@ -558,7 +558,7 @@
 - [x] 31. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 32. Dual Pane Mode
+- [x] 32. Dual Pane Mode
   - [x] 32.1 Implement DualPane state
     - Left and right pane states
     - Active pane tracking
@@ -570,7 +570,7 @@
     - Side-by-side file lists
     - Tab to switch focus
     - _Requirements: 22.2, 22.3_
-  - [ ] 32.4 Implement cross-pane operations
+  - [x] 32.4 Implement cross-pane operations
     - F5 to copy, F6 to move
     - Drag between panes
     - _Requirements: 22.4, 22.5, 22.6_
@@ -591,7 +591,7 @@
     - Arrow keys for navigation
     - _Requirements: 23.7, 23.8_
 
-- [-] 34. Smart Folders
+- [ ] 34. Smart Folders
   - [x] 34.1 Implement SmartFolderManager
     - Create/edit/delete smart folders
     - Execute queries
@@ -653,7 +653,7 @@
     - Open Terminal Here for WSL
     - _Requirements: 27.6_
 
-- [-] 38. Network and Cloud Storage
+- [ ] 38. Network and Cloud Storage
   - [x] 38.1 Implement network location browser
     - SMB/FTP/SFTP connection dialog
     - _Requirements: 25.1, 25.2_

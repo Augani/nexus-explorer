@@ -9,7 +9,7 @@ use gpui::{
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors};
-use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView};
+use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView};
 
 // Define global keyboard shortcut actions
 actions!(workspace, [
@@ -18,6 +18,7 @@ actions!(workspace, [
     ToggleTerminal,
     FocusSearch,
     NewWindow,
+    QuickLookToggle,
 ]);
 
 /// Dialog state for creating new files/folders
@@ -40,6 +41,7 @@ pub struct Workspace {
     theme_picker: Entity<ThemePickerView>,
     status_bar: Entity<StatusBarView>,
     terminal: Entity<TerminalView>,
+    quick_look: Entity<QuickLookView>,
     focus_handle: FocusHandle,
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
@@ -86,6 +88,8 @@ impl Workspace {
             KeyBinding::new("cmd-f", FocusSearch, Some("Workspace")),
             // Cmd+N for new window
             KeyBinding::new("cmd-n", NewWindow, Some("Workspace")),
+            // Space for Quick Look toggle
+            KeyBinding::new("space", QuickLookToggle, Some("Workspace")),
         ]);
     }
 
@@ -170,6 +174,9 @@ impl Workspace {
             let terminal = cx.new(|cx| {
                 TerminalView::new(cx).with_working_directory(initial_path.clone())
             });
+
+            // Create Quick Look view
+            let quick_look = cx.new(|cx| QuickLookView::new(cx));
 
             // Observe file list for navigation requests and selection changes
             let sidebar_for_file_list = sidebar.clone();
@@ -270,6 +277,7 @@ impl Workspace {
                 theme_picker,
                 status_bar,
                 terminal,
+                quick_look,
                 focus_handle: cx.focus_handle(),
                 current_path: initial_path.clone(),
                 path_history: vec![initial_path],
@@ -687,10 +695,40 @@ impl Workspace {
         });
     }
 
+    /// Handle Space - Toggle Quick Look
+    fn handle_quick_look_toggle(&mut self, _: &QuickLookToggle, _window: &mut Window, cx: &mut Context<Self>) {
+        // Get the currently selected file from the active view
+        let selected_entry = match self.view_mode {
+            ViewMode::List | ViewMode::Details => {
+                let idx = self.file_list.read(cx).inner().selected_index();
+                idx.and_then(|i| self.cached_entries.get(i).cloned())
+            }
+            ViewMode::Grid => {
+                let idx = self.grid_view.read(cx).inner().selected_index();
+                idx.and_then(|i| self.cached_entries.get(i).cloned())
+            }
+        };
+
+        if let Some(entry) = selected_entry {
+            // Don't show Quick Look for directories
+            if !entry.is_dir {
+                let entries = self.cached_entries.clone();
+                let index = self.cached_entries.iter().position(|e| e.path == entry.path).unwrap_or(0);
+                self.quick_look.update(cx, |view, _| {
+                    view.toggle(entry.path, entries, index);
+                });
+                cx.notify();
+            }
+        }
+    }
+
     fn render_breadcrumbs(&self) -> impl IntoElement {
         let theme = theme_colors();
         let text_gray = theme.text_muted;
         let text_light = theme.text_primary;
+        let accent_primary = theme.accent_primary;
+        let accent_secondary = theme.accent_secondary;
+        let hover_bg = theme.bg_hover;
 
         let mut parts: Vec<String> = Vec::new();
         let mut current = Some(self.current_path.as_path());
@@ -707,6 +745,7 @@ impl Workspace {
 
         parts.reverse();
 
+        // RPG-styled breadcrumbs with themed separators and hover effects
         div()
             .flex()
             .items_center()
@@ -716,20 +755,25 @@ impl Workspace {
                 div()
                     .flex()
                     .items_center()
+                    // Themed separator with accent color
                     .when(i > 0, |s| {
                         s.child(
                             svg()
                                 .path("assets/icons/chevron-right.svg")
                                 .size(px(14.0))
-                                .text_color(text_gray)
+                                .text_color(accent_secondary)
                                 .mx_1(),
                         )
                     })
+                    // Breadcrumb segment with RPG hover effect
                     .child(
                         div()
+                            .px(px(crate::models::toolbar::BREADCRUMB_PADDING))
+                            .py_0p5()
+                            .rounded_sm()
                             .text_color(text_light)
                             .cursor_pointer()
-                            .hover(|s| s.text_color(gpui::rgb(0x58a6ff)))
+                            .hover(|s| s.text_color(accent_primary).bg(hover_bg))
                             .child(part)
                     )
             }))
@@ -765,6 +809,7 @@ impl Render for Workspace {
             .on_action(cx.listener(Self::handle_toggle_terminal))
             .on_action(cx.listener(Self::handle_focus_search))
             .on_action(cx.listener(Self::handle_new_window))
+            .on_action(cx.listener(Self::handle_quick_look_toggle))
             .size_full()
             .flex()
             .flex_col()
@@ -891,25 +936,30 @@ impl Render for Workspace {
                             .flex_col()
                             .bg(bg_darker)
                             .min_w_0()
+                            // Toolbar with RPG styling - 52px height, themed dividers
                             .child(
                                 div()
-                                    .h(px(48.0))
+                                    .h(px(crate::models::toolbar::HEIGHT))  // 52px
                                     .bg(bg_dark)
                                     .border_b_1()
                                     .border_color(border_color)
                                     .flex()
                                     .items_center()
                                     .justify_between()
-                                    .px_4()
+                                    .px(px(crate::models::toolbar::PADDING_X))  // 16px
                                     .child(
                                         div()
                                             .flex()
                                             .items_center()
-                                            .gap_2()
+                                            .gap(px(crate::models::toolbar::BUTTON_GAP))  // 8px
                                             .child(
+                                                // Back button with 36px size
                                                 div()
                                                     .id("back-btn")
-                                                    .p_1p5()
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
                                                     .rounded_md()
                                                     .cursor_pointer()
                                                     .when(can_go_back, |s| {
@@ -925,32 +975,38 @@ impl Render for Workspace {
                                                     .child(
                                                         svg()
                                                             .path("assets/icons/arrow-left.svg")
-                                                            .size(px(16.0))
+                                                            .size(px(18.0))
                                                             .text_color(text_gray),
                                                     ),
                                             )
+                                            // Themed divider between toolbar sections
                                             .child(
                                                 div()
-                                                    .h(px(16.0))
+                                                    .h(px(20.0))
                                                     .w(px(1.0))
-                                                    .bg(gpui::rgb(0x30363d))
-                                                    .mx_1(),
+                                                    .bg(theme.border_subtle)
+                                                    .mx(px(crate::models::toolbar::BUTTON_GAP)),
                                             )
                                             .child(self.render_breadcrumbs()),
                                     )
+                                    // Right side toolbar buttons with RPG styling
                                     .child(
                                         div()
                                             .flex()
                                             .items_center()
-                                            .gap_1()
+                                            .gap(px(crate::models::toolbar::BUTTON_GAP))  // 8px
                                             .child(
+                                                // Terminal toggle button - 36px
                                                 div()
                                                     .id("terminal-btn")
-                                                    .p_1p5()
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
                                                     .rounded_md()
                                                     .cursor_pointer()
                                                     .when(is_terminal_open, |s| {
-                                                        s.bg(gpui::rgb(0x1f3a5f))
+                                                        s.bg(theme.bg_selected)
                                                     })
                                                     .when(!is_terminal_open, |s| {
                                                         s.hover(|h| h.bg(hover_bg))
@@ -964,35 +1020,44 @@ impl Render for Workspace {
                                                     .child(
                                                         svg()
                                                             .path("assets/icons/terminal.svg")
-                                                            .size(px(16.0))
-                                                            .text_color(if is_terminal_open { gpui::rgb(0x54aeff) } else { text_gray }),
+                                                            .size(px(18.0))
+                                                            .text_color(if is_terminal_open { theme.accent_primary } else { text_gray }),
                                                     ),
                                             )
+                                            // Themed divider
                                             .child(
                                                 div()
-                                                    .h(px(16.0))
+                                                    .h(px(20.0))
                                                     .w(px(1.0))
-                                                    .bg(gpui::rgb(0x30363d))
-                                                    .mx_2(),
+                                                    .bg(theme.border_subtle)
+                                                    .mx(px(crate::models::toolbar::BUTTON_GAP)),
                                             )
                                             .child(
+                                                // Copy button - 36px
                                                 div()
                                                     .id("copy-btn")
-                                                    .p_1p5()
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
                                                     .rounded_md()
                                                     .cursor_pointer()
                                                     .hover(|h| h.bg(hover_bg))
                                                     .child(
                                                         svg()
                                                             .path("assets/icons/copy.svg")
-                                                            .size(px(16.0))
+                                                            .size(px(18.0))
                                                             .text_color(text_gray),
                                                     ),
                                             )
                                             .child(
+                                                // Trash button - 36px
                                                 div()
                                                     .id("trash-btn")
-                                                    .p_1p5()
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
                                                     .rounded_md()
                                                     .cursor_pointer()
                                                     .hover(|h| h.bg(hover_bg))
@@ -1093,6 +1158,8 @@ impl Render for Workspace {
             })
             // Theme picker overlay
             .child(self.theme_picker.clone())
+            // Quick Look overlay
+            .child(self.quick_look.clone())
     }
 }
 

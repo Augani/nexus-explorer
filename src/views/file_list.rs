@@ -17,9 +17,16 @@ actions!(file_list, [
     NavigateToParent,
 ]);
 
-// Use typography constants for row height
+// Use typography constants for row height (40px as per design spec)
 pub const DEFAULT_ROW_HEIGHT: f32 = file_list_spacing::ROW_HEIGHT;
 pub const DEFAULT_BUFFER_SIZE: usize = 5;
+
+// RPG styling constants
+const ICON_SIZE: f32 = file_list_spacing::ICON_SIZE;  // 20px
+const ICON_GAP: f32 = file_list_spacing::ICON_GAP;    // 12px
+const ROW_PADDING_X: f32 = file_list_spacing::ROW_PADDING_X;  // 16px
+const HEADER_HEIGHT: f32 = file_list_spacing::HEADER_HEIGHT;  // 36px
+const FOOTER_HEIGHT: f32 = file_list_spacing::FOOTER_HEIGHT;  // 28px
 
 pub struct FileList {
     entries: Vec<FileEntry>,
@@ -242,18 +249,26 @@ impl Render for FileListView {
         let context_menu_pos = self.context_menu_position;
         let context_menu_idx = self.context_menu_index;
 
-        let bg_darker = gpui::rgb(0x010409);
-        let bg_dark = gpui::rgb(0x0d1117);
-        let border_color = gpui::rgb(0x30363d);
-        let border_subtle = gpui::rgb(0x21262d);
-        let text_gray = gpui::rgb(0x8b949e);
-        let text_light = gpui::rgb(0xc9d1d9);
-        let hover_bg = gpui::rgb(0x161b22);
-        let selected_bg = gpui::rgb(0x1f3a5f);
-        let folder_color = gpui::rgb(0x54aeff);
-        let folder_open_color = gpui::rgb(0x79c0ff);
-        let file_color = gpui::rgb(0x8b949e);
-        let menu_bg = gpui::rgb(0x161b22);
+        // Get theme colors for RPG styling
+        let colors = theme_colors();
+        
+        // Background colors from theme
+        let bg_darker = colors.bg_void;
+        let bg_dark = colors.bg_primary;
+        let border_color = colors.border_default;
+        let border_subtle = colors.border_subtle;
+        let text_gray = colors.text_secondary;
+        let text_light = colors.text_primary;
+        let hover_bg = colors.bg_hover;
+        let selected_bg = colors.bg_selected;
+        let folder_color = colors.folder_color;
+        let folder_open_color = colors.folder_open_color;
+        let _file_color = colors.text_muted;
+        let menu_bg = colors.bg_tertiary;
+        
+        // Accent colors for glow effects and selection
+        let _accent_glow = colors.accent_glow;
+        let accent_primary = colors.accent_primary;
 
         div()
             .id("file-list")
@@ -281,9 +296,10 @@ impl Render for FileListView {
                 let entity_type = entity.clone();
                 let entity_size = entity.clone();
                 
+                // Header row with RPG styling
                 div()
                     .flex()
-                    .h(px(36.0))
+                    .h(px(HEADER_HEIGHT))
                     .bg(bg_dark)
                     .border_b_1()
                     .border_color(border_color)
@@ -439,6 +455,7 @@ impl Render for FileListView {
                                         let entity = entity.clone();
                                         let entity_for_ctx = entity.clone();
 
+                                        // RPG-styled file row with 40px height, hover glow, themed selection
                                         items.push(
                                                 div()
                                                     .id(SharedString::from(format!("file-{}", ix)))
@@ -450,8 +467,16 @@ impl Render for FileListView {
                                                     .cursor_pointer()
                                                     .border_b_1()
                                                     .border_color(border_subtle)
-                                                    .when(is_selected, |s| s.bg(selected_bg))
-                                                    .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
+                                                    // Selected state with themed accent color
+                                                    .when(is_selected, |s| s
+                                                        .bg(selected_bg)
+                                                        .border_l_2()
+                                                        .border_color(accent_primary)
+                                                    )
+                                                    // Hover state with subtle glow effect
+                                                    .when(!is_selected, |s| s.hover(|h| h
+                                                        .bg(hover_bg)
+                                                    ))
                                                     .on_click({
                                                         let entry_path = entry_path.clone();
                                                         let entity = entity.clone();
@@ -481,7 +506,7 @@ impl Render for FileListView {
                                                     .child(
                                                         div()
                                                             .flex_1()
-                                                            .px_4()
+                                                            .px(px(ROW_PADDING_X))
                                                             .flex()
                                                             .items_center()
                                                             .overflow_hidden()
@@ -489,11 +514,11 @@ impl Render for FileListView {
                                                                 div()
                                                                     .flex()
                                                                     .items_center()
-                                                                    .gap_3()
+                                                                    .gap(px(ICON_GAP))  // 12px icon-to-text gap
                                                                     .child(
                                                                         svg()
                                                                             .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                                                            .size(px(16.0))
+                                                                            .size(px(ICON_SIZE))  // 20px icon size
                                                                             .text_color(icon_color)
                                                                             .flex_shrink_0(),
                                                                     )
@@ -503,6 +528,7 @@ impl Render for FileListView {
                                                                             match_positions.as_ref(),
                                                                             is_selected,
                                                                             text_light,
+                                                                            accent_primary,
                                                                         ),
                                                                     ),
                                                             ),
@@ -545,16 +571,17 @@ impl Render for FileListView {
                         )
                     }),
             )
+            // Footer/status bar with RPG styling
             .child(
                 div()
-                    .h(px(28.0))
+                    .h(px(FOOTER_HEIGHT))
                     .bg(bg_dark)
                     .border_t_1()
                     .border_color(border_color)
                     .flex()
                     .items_center()
                     .justify_between()
-                    .px_4()
+                    .px(px(ROW_PADDING_X))
                     .text_xs()
                     .text_color(text_gray)
                     .child(
@@ -690,8 +717,10 @@ fn render_highlighted_name(
     match_positions: Option<&Vec<usize>>,
     is_selected: bool,
     text_light: gpui::Rgba,
+    accent_color: gpui::Rgba,
 ) -> impl IntoElement {
-    let highlight_color = gpui::rgb(0xf0c674); // Yellow highlight for matches
+    // Use theme accent color for search highlights
+    let highlight_color = accent_color;
     let text_color = if is_selected { gpui::rgb(0xffffff) } else { text_light };
     let font_weight = if is_selected { gpui::FontWeight::MEDIUM } else { gpui::FontWeight::NORMAL };
 

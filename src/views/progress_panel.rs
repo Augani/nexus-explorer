@@ -137,12 +137,14 @@ impl ProgressPanelView {
         let current_file = progress.current_file.clone();
         let has_error = op.current_error.is_some();
         let error_msg = op.current_error.as_ref().map(|e| e.message.clone());
+        let skipped_count = op.error_state.skipped_count;
 
         let percentage = progress.percentage();
         let is_active = status.is_active();
         let is_completed = matches!(status, OperationStatus::Completed);
         let is_failed = matches!(status, OperationStatus::Failed(_));
         let is_cancelled = matches!(status, OperationStatus::Cancelled);
+        let is_paused = matches!(status, OperationStatus::Paused);
 
         div()
             .id(SharedString::from(format!("operation-{}", op_id.0)))
@@ -196,6 +198,15 @@ impl ProgressPanelView {
                                         progress.total_files
                                     ))
                             )
+                            // Skipped count (if any)
+                            .when(skipped_count > 0, |el| {
+                                el.child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(theme.warning)
+                                        .child(format!("({} skipped)", skipped_count))
+                                )
+                            })
                     )
                     // Status indicator and actions
                     .child(
@@ -211,12 +222,13 @@ impl ProgressPanelView {
                                         OperationStatus::Completed => success,
                                         OperationStatus::Failed(_) => error,
                                         OperationStatus::Cancelled => text_muted,
+                                        OperationStatus::Paused => theme.warning,
                                         _ => text_muted,
                                     })
                                     .child(match &status {
                                         OperationStatus::Pending => "Pending".to_string(),
                                         OperationStatus::Running => format!("{:.0}%", percentage),
-                                        OperationStatus::Paused => "Paused".to_string(),
+                                        OperationStatus::Paused => "Error - Action Required".to_string(),
                                         OperationStatus::Completed => "Completed".to_string(),
                                         OperationStatus::Failed(_) => "Failed".to_string(),
                                         OperationStatus::Cancelled => "Cancelled".to_string(),
@@ -340,38 +352,63 @@ impl ProgressPanelView {
                         .child(msg)
                 )
             })
-            // Error with retry/skip options
-            .when(has_error && is_active, |el| {
+            // Error with retry/skip options (when operation is paused for error)
+            .when(has_error, |el| {
+                let is_recoverable = op.current_error.as_ref().map(|e| e.is_recoverable).unwrap_or(false);
+                let user_msg = op.current_error.as_ref()
+                    .map(|e| e.user_message())
+                    .unwrap_or_else(|| error_msg.clone().unwrap_or_else(|| "An error occurred".to_string()));
+                
                 el.child(
                     div()
                         .w_full()
                         .p_2()
                         .bg(with_alpha(error, 0.1))
+                        .border_1()
+                        .border_color(with_alpha(error, 0.3))
                         .rounded_sm()
                         .flex()
                         .flex_col()
                         .gap_2()
+                        // Error icon and message
                         .child(
                             div()
-                                .text_xs()
-                                .text_color(error)
-                                .child(error_msg.unwrap_or_else(|| "An error occurred".to_string()))
+                                .flex()
+                                .items_start()
+                                .gap_2()
+                                .child(
+                                    svg()
+                                        .path("assets/icons/triangle-alert.svg")
+                                        .size(px(14.0))
+                                        .text_color(error)
+                                        .flex_shrink_0()
+                                )
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(error)
+                                        .child(user_msg)
+                                )
                         )
+                        // Action buttons
                         .child(
                             div()
                                 .flex()
                                 .items_center()
                                 .gap_2()
+                                .justify_end()
+                                // Skip button - always available
                                 .child(
                                     div()
                                         .id(SharedString::from(format!("skip-{}", op_id.0)))
-                                        .px_2()
+                                        .px_3()
                                         .py_1()
                                         .rounded_sm()
                                         .cursor_pointer()
                                         .bg(hover_bg)
                                         .hover(|s| s.bg(border_color))
                                         .text_xs()
+                                        .font_weight(gpui::FontWeight::MEDIUM)
                                         .text_color(text_primary)
                                         .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
                                             view.pending_action = Some(ProgressPanelAction::Skip(op_id));
@@ -379,38 +416,45 @@ impl ProgressPanelView {
                                         }))
                                         .child("Skip")
                                 )
-                                .child(
-                                    div()
-                                        .id(SharedString::from(format!("retry-{}", op_id.0)))
-                                        .px_2()
-                                        .py_1()
-                                        .rounded_sm()
-                                        .cursor_pointer()
-                                        .bg(with_alpha(accent, 0.2))
-                                        .hover(|s| s.bg(with_alpha(accent, 0.3)))
-                                        .text_xs()
-                                        .text_color(accent)
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                            view.pending_action = Some(ProgressPanelAction::Retry(op_id));
-                                            cx.notify();
-                                        }))
-                                        .child("Retry")
-                                )
+                                // Retry button - only for recoverable errors
+                                .when(is_recoverable, |el| {
+                                    el.child(
+                                        div()
+                                            .id(SharedString::from(format!("retry-{}", op_id.0)))
+                                            .px_3()
+                                            .py_1()
+                                            .rounded_sm()
+                                            .cursor_pointer()
+                                            .bg(with_alpha(accent, 0.2))
+                                            .hover(|s| s.bg(with_alpha(accent, 0.3)))
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(accent)
+                                            .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
+                                                view.pending_action = Some(ProgressPanelAction::Retry(op_id));
+                                                cx.notify();
+                                            }))
+                                            .child("Retry")
+                                    )
+                                })
+                                // Cancel button
                                 .child(
                                     div()
                                         .id(SharedString::from(format!("cancel-err-{}", op_id.0)))
-                                        .px_2()
+                                        .px_3()
                                         .py_1()
                                         .rounded_sm()
                                         .cursor_pointer()
-                                        .hover(|s| s.bg(hover_bg))
+                                        .bg(with_alpha(error, 0.15))
+                                        .hover(|s| s.bg(with_alpha(error, 0.25)))
                                         .text_xs()
+                                        .font_weight(gpui::FontWeight::MEDIUM)
                                         .text_color(error)
                                         .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
                                             view.pending_action = Some(ProgressPanelAction::Cancel(op_id));
                                             cx.notify();
                                         }))
-                                        .child("Cancel")
+                                        .child("Cancel All")
                                 )
                         )
                 )

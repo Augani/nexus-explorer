@@ -5,6 +5,8 @@ use gpui::{
     IntoElement, MouseButton, ParentElement, Render, SharedString, Styled, Window,
 };
 
+use crate::models::{theme_colors, toolbar as toolbar_spacing};
+
 /// Represents a single segment in the breadcrumb path
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathSegment {
@@ -225,16 +227,26 @@ impl Focusable for BreadcrumbView {
 
 impl Render for BreadcrumbView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let text_gray = gpui::rgb(0x8b949e);
-        let text_light = gpui::rgb(0xc9d1d9);
-        let hover_color = gpui::rgb(0x58a6ff);
-        let hover_bg = gpui::rgb(0x21262d);
+        // Get theme colors for RPG styling
+        let colors = theme_colors();
+        
+        let text_gray = colors.text_secondary;
+        let text_light = colors.text_primary;
+        let hover_color = colors.accent_primary;
+        let hover_bg = colors.bg_hover;
+        let menu_bg = colors.bg_tertiary;
+        let border_color = colors.border_default;
+        let accent_secondary = colors.accent_secondary;
 
         let needs_truncation = self.breadcrumb.needs_truncation();
         let visible_segments = self.breadcrumb.visible_segments();
         let hidden_segments = self.breadcrumb.hidden_segments();
         let show_ellipsis_menu = self.breadcrumb.show_ellipsis_menu;
+        
+        // Breadcrumb segment padding from toolbar spacing
+        let segment_padding = px(toolbar_spacing::BREADCRUMB_PADDING);
 
+        // RPG-styled breadcrumb with themed colors and decorative separators
         div()
             .id("breadcrumb")
             .flex()
@@ -250,12 +262,13 @@ impl Render for BreadcrumbView {
                 div()
                     .flex()
                     .items_center()
+                    // Themed separator with accent color
                     .when(!is_first, |s| {
                         s.child(
                             svg()
                                 .path("assets/icons/chevron-right.svg")
                                 .size(px(14.0))
-                                .text_color(text_gray)
+                                .text_color(accent_secondary)
                                 .mx_1(),
                         )
                     })
@@ -268,12 +281,12 @@ impl Render for BreadcrumbView {
                                 .items_center()
                                 .child(
                                     div()
-                                        .px_1()
+                                        .px(segment_padding)
                                         .py_0p5()
                                         .rounded_sm()
                                         .cursor_pointer()
                                         .text_color(text_gray)
-                                        .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                        .hover(|h| h.bg(hover_bg).text_color(hover_color))
                                         .on_mouse_down(
                                             MouseButton::Left,
                                             cx.listener(|view, _event, _window, cx| {
@@ -287,18 +300,19 @@ impl Render for BreadcrumbView {
                                     svg()
                                         .path("assets/icons/chevron-right.svg")
                                         .size(px(14.0))
-                                        .text_color(text_gray)
+                                        .text_color(accent_secondary)
                                         .mx_1(),
                                 )
+                                // Dropdown menu with RPG styling
                                 .when(show_ellipsis_menu, |s| {
                                     s.child(
                                         div()
                                             .absolute()
-                                            .top(px(24.0))
+                                            .top(px(28.0))
                                             .left_0()
-                                            .bg(gpui::rgb(0x161b22))
+                                            .bg(menu_bg)
                                             .border_1()
-                                            .border_color(gpui::rgb(0x30363d))
+                                            .border_color(border_color)
                                             .rounded_md()
                                             .shadow_lg()
                                             .py_1()
@@ -312,7 +326,7 @@ impl Render for BreadcrumbView {
                                                     .text_sm()
                                                     .text_color(text_light)
                                                     .cursor_pointer()
-                                                    .hover(|h| h.bg(hover_bg))
+                                                    .hover(|h| h.bg(hover_bg).text_color(hover_color))
                                                     .on_mouse_down(
                                                         MouseButton::Left,
                                                         cx.listener(move |view, _event, window, cx| {
@@ -326,12 +340,16 @@ impl Render for BreadcrumbView {
                                 })
                         )
                     })
+                    // Segment with RPG hover effect
                     .child(
                         div()
                             .id(SharedString::from(format!("segment-{}", i)))
+                            .px(segment_padding)
+                            .py_0p5()
+                            .rounded_sm()
                             .text_color(text_light)
                             .cursor_pointer()
-                            .hover(|s| s.text_color(hover_color))
+                            .hover(|s| s.text_color(hover_color).bg(hover_bg))
                             .on_mouse_down(
                                 MouseButton::Left,
                                 cx.listener(move |view, _event, window, cx| {
@@ -347,15 +365,16 @@ impl Render for BreadcrumbView {
                             .child(segment.name.clone())
                     )
             }))
+            // Context menu with RPG styling
             .when(self.context_menu_path.is_some(), |s| {
                 let menu_path = self.context_menu_path.clone().unwrap();
                 s.child(
                     div()
                         .absolute()
-                        .top(px(24.0))
-                        .bg(gpui::rgb(0x161b22))
+                        .top(px(28.0))
+                        .bg(menu_bg)
                         .border_1()
-                        .border_color(gpui::rgb(0x30363d))
+                        .border_color(border_color)
                         .rounded_md()
                         .shadow_lg()
                         .py_1()
@@ -368,7 +387,7 @@ impl Render for BreadcrumbView {
                                 .text_sm()
                                 .text_color(text_light)
                                 .cursor_pointer()
-                                .hover(|h| h.bg(hover_bg))
+                                .hover(|h| h.bg(hover_bg).text_color(hover_color))
                                 .on_mouse_down(
                                     MouseButton::Left,
                                     cx.listener(move |view, _event, window, cx| {
