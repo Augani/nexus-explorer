@@ -2,6 +2,9 @@ use crate::models::{CloudSyncStatus, FileEntry, FileType, IconKey};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+#[cfg(target_os = "macos")]
+use std::process::Command;
+
 /// Get the list of items in the system trash
 pub fn list_trash_items() -> Vec<FileEntry> {
     #[cfg(target_os = "macos")]
