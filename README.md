@@ -34,6 +34,10 @@ Nexus Explorer is a next-generation file manager designed for speed. Built on th
 ### Dark Mode
 ![Nexus Explorer - Dark Mode](assets/screenshots/2.png)
 
+### Integrated Terminal
+![Nexus Explorer - Integrated Terminal](assets/screenshots/color_terminal.png)
+
+Each tab maintains its own terminal instance with full state preservation. The terminal automatically follows your folder navigation, eliminating the need to manually `cd` when browsing directories.
 
 ## Installation
 
