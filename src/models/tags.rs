@@ -405,42 +405,31 @@ impl TagManager {
     }
 }
 
-/// Extended attribute storage for file tags
-/// 
-/// This module provides xattr-based storage for tags on supported platforms.
-/// Falls back to the local database when xattr is not available.
+/// Extended attribute storage for file tags (Unix only)
+#[cfg(unix)]
 pub mod xattr_storage {
     use super::*;
     
-    /// The xattr name used to store tags
     const XATTR_NAME: &str = "user.nexus-explorer.tags";
     
-    /// Error codes for "operation not supported" on different platforms
     #[cfg(target_os = "macos")]
     const ENOTSUP: i32 = 45;
     #[cfg(target_os = "linux")]
     const ENOTSUP: i32 = 95;
-    #[cfg(target_os = "windows")]
-    const ENOTSUP: i32 = 129;
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     const ENOTSUP: i32 = 95;
     
-    /// Checks if an error indicates xattr is not supported
     fn is_not_supported_error(e: &std::io::Error) -> bool {
         matches!(e.raw_os_error(), Some(code) if code == ENOTSUP || code == 95 || code == 45)
     }
     
-    /// Checks if extended attributes are supported for the given path
     pub fn is_supported(path: &Path) -> bool {
-        // Try to list xattrs - if it works, xattr is supported
         xattr::list(path).is_ok()
     }
     
-    /// Reads tag IDs from a file's extended attributes
     pub fn read_tags(path: &Path) -> TagResult<Vec<u64>> {
         match xattr::get(path, XATTR_NAME) {
             Ok(Some(data)) => {
-                // Parse comma-separated tag IDs
                 let s = String::from_utf8_lossy(&data);
                 let ids: Vec<u64> = s
                     .split(',')
@@ -459,10 +448,8 @@ pub mod xattr_storage {
         }
     }
     
-    /// Writes tag IDs to a file's extended attributes
     pub fn write_tags(path: &Path, tag_ids: &[u64]) -> TagResult<()> {
         if tag_ids.is_empty() {
-            // Remove the xattr if no tags
             match xattr::remove(path, XATTR_NAME) {
                 Ok(()) => Ok(()),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -475,7 +462,6 @@ pub mod xattr_storage {
                 }
             }
         } else {
-            // Write comma-separated tag IDs
             let data = tag_ids
                 .iter()
                 .map(|id| id.to_string())
@@ -492,9 +478,30 @@ pub mod xattr_storage {
         }
     }
     
-    /// Removes all tags from a file's extended attributes
     pub fn clear_tags(path: &Path) -> TagResult<()> {
         write_tags(path, &[])
+    }
+}
+
+/// Stub xattr_storage for Windows (xattr not supported)
+#[cfg(not(unix))]
+pub mod xattr_storage {
+    use super::*;
+    
+    pub fn is_supported(_path: &Path) -> bool {
+        false
+    }
+    
+    pub fn read_tags(_path: &Path) -> TagResult<Vec<u64>> {
+        Err(TagError::XattrNotSupported)
+    }
+    
+    pub fn write_tags(_path: &Path, _tag_ids: &[u64]) -> TagResult<()> {
+        Err(TagError::XattrNotSupported)
+    }
+    
+    pub fn clear_tags(_path: &Path) -> TagResult<()> {
+        Err(TagError::XattrNotSupported)
     }
 }
 

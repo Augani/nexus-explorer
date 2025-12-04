@@ -274,12 +274,11 @@ fn is_linux_removable(device: &str) -> bool {
 fn is_mount_point(path: &PathBuf) -> bool {
     use std::os::unix::fs::MetadataExt;
     
-    if let (Ok(path_meta), Ok(parent_meta)) = (
+    if let (Ok(path_meta), Some(parent_meta)) = (
         std::fs::metadata(path),
         path.parent().and_then(|p| std::fs::metadata(p).ok()),
     ) {
-        // Different device IDs indicate a mount point
-        return path_meta.dev() != parent_meta.as_ref().map(|m| m.dev()).unwrap_or(0);
+        return path_meta.dev() != parent_meta.dev();
     }
     false
 }
