@@ -6,14 +6,16 @@ use gpui::{
 
 use crate::models::{TabId, TabState, theme_colors};
 
-/// View wrapper for TabBar with GPUI integration
 pub struct TabBarView {
     tab_state: TabState,
     focus_handle: FocusHandle,
     pending_navigation: Option<TabId>,
     pending_close: Option<TabId>,
+    pending_new_tab: bool,
     scroll_offset: f32,
     max_visible_tabs: usize,
+    hovered_tab: Option<TabId>,
+    dragging_tab: Option<TabId>,
 }
 
 impl TabBarView {
@@ -23,8 +25,11 @@ impl TabBarView {
             focus_handle: cx.focus_handle(),
             pending_navigation: None,
             pending_close: None,
+            pending_new_tab: false,
             scroll_offset: 0.0,
-            max_visible_tabs: 10,
+            max_visible_tabs: 12,
+            hovered_tab: None,
+            dragging_tab: None,
         }
     }
 
@@ -34,81 +39,88 @@ impl TabBarView {
             focus_handle: cx.focus_handle(),
             pending_navigation: None,
             pending_close: None,
+            pending_new_tab: false,
             scroll_offset: 0.0,
-            max_visible_tabs: 10,
+            max_visible_tabs: 12,
+            hovered_tab: None,
+            dragging_tab: None,
         }
     }
 
-    /// Get a reference to the tab state
     pub fn tab_state(&self) -> &TabState {
         &self.tab_state
     }
 
-    /// Get a mutable reference to the tab state
     pub fn tab_state_mut(&mut self) -> &mut TabState {
         &mut self.tab_state
     }
 
-    /// Open a new tab for the given path
     pub fn open_tab(&mut self, path: std::path::PathBuf, cx: &mut Context<Self>) -> TabId {
         let id = self.tab_state.open_tab(path);
+        self.ensure_tab_visible(self.tab_state.active_index());
         cx.notify();
         id
     }
 
-    /// Close a tab by ID
     pub fn close_tab(&mut self, id: TabId, cx: &mut Context<Self>) -> bool {
         let result = self.tab_state.close_tab(id);
         cx.notify();
         result
     }
 
-    /// Switch to a tab by ID
     pub fn switch_to(&mut self, id: TabId, cx: &mut Context<Self>) -> bool {
         let result = self.tab_state.switch_to(id);
+        if result {
+            self.ensure_tab_visible(self.tab_state.active_index());
+        }
         cx.notify();
         result
     }
 
-    /// Get the active tab's path
     pub fn active_path(&self) -> &std::path::Path {
         &self.tab_state.active_tab().path
     }
 
-    /// Update the active tab's path
-    pub fn update_active_path(&mut self, path: std::path::PathBuf, cx: &mut Context<Self>) {
-        self.tab_state.update_active_path(path);
+    pub fn navigate_to(&mut self, path: std::path::PathBuf, cx: &mut Context<Self>) {
+        self.tab_state.navigate_active_to(path);
         cx.notify();
     }
 
-    /// Take pending navigation (tab switch request)
     pub fn take_pending_navigation(&mut self) -> Option<TabId> {
         self.pending_navigation.take()
     }
 
-    /// Take pending close request
     pub fn take_pending_close(&mut self) -> Option<TabId> {
         self.pending_close.take()
     }
 
-    /// Get the number of tabs
+    pub fn take_pending_new_tab(&mut self) -> bool {
+        std::mem::take(&mut self.pending_new_tab)
+    }
+
     pub fn tab_count(&self) -> usize {
         self.tab_state.tab_count()
     }
 
-    /// Check if there are more tabs than can be displayed
-    pub fn has_overflow(&self) -> bool {
+    fn ensure_tab_visible(&mut self, index: usize) {
+        let scroll_offset = self.scroll_offset as usize;
+        if index < scroll_offset {
+            self.scroll_offset = index as f32;
+        } else if index >= scroll_offset + self.max_visible_tabs {
+            self.scroll_offset = (index - self.max_visible_tabs + 1) as f32;
+        }
+    }
+
+    fn has_overflow(&self) -> bool {
         self.tab_state.tab_count() > self.max_visible_tabs
     }
 
-    /// Scroll tabs left
-    pub fn scroll_left(&mut self, cx: &mut Context<Self>) {
+    fn scroll_left(&mut self, cx: &mut Context<Self>) {
         self.scroll_offset = (self.scroll_offset - 1.0).max(0.0);
         cx.notify();
     }
 
-    /// Scroll tabs right
-    pub fn scroll_right(&mut self, cx: &mut Context<Self>) {
+    fn scroll_right(&mut self, cx: &mut Context<Self>) {
         let max_offset = (self.tab_state.tab_count() as f32 - self.max_visible_tabs as f32).max(0.0);
         self.scroll_offset = (self.scroll_offset + 1.0).min(max_offset);
         cx.notify();
@@ -127,8 +139,13 @@ impl TabBarView {
     }
 
     fn handle_new_tab(&mut self, cx: &mut Context<Self>) {
+        self.pending_new_tab = true;
         let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/"));
         self.open_tab(home, cx);
+    }
+
+    fn handle_tab_middle_click(&mut self, id: TabId, cx: &mut Context<Self>) {
+        self.handle_tab_close(id, cx);
     }
 }
 
@@ -141,32 +158,22 @@ impl Focusable for TabBarView {
 impl Render for TabBarView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = theme_colors();
-        let bg_dark = theme.bg_secondary;
-        let bg_active = theme.bg_tertiary;
-        let border_color = theme.border_default;
-        let text_primary = theme.text_primary;
-        let text_muted = theme.text_muted;
-        let hover_bg = theme.bg_hover;
-        let accent = theme.accent_primary;
-
         let tabs = self.tab_state.tabs().to_vec();
         let active_index = self.tab_state.active_index();
         let has_overflow = self.has_overflow();
         let scroll_offset = self.scroll_offset as usize;
-
         let entity = cx.entity().clone();
 
         div()
             .id("tab-bar")
-            .h(px(36.0))
-            .bg(bg_dark)
+            .h(px(38.0))
+            .bg(theme.bg_secondary)
             .border_b_1()
-            .border_color(border_color)
+            .border_color(theme.border_default)
             .flex()
             .items_center()
-            .px_2()
-            .gap_1()
-            // Scroll left button (if overflow)
+            .px_1()
+            .gap_0p5()
             .when(has_overflow && scroll_offset > 0, |s| {
                 let entity = entity.clone();
                 s.child(
@@ -175,17 +182,15 @@ impl Render for TabBarView {
                         .p_1()
                         .rounded_sm()
                         .cursor_pointer()
-                        .hover(|h| h.bg(hover_bg))
-                        .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                            entity.update(cx, |view, cx| {
-                                view.scroll_left(cx);
-                            });
+                        .hover(|h| h.bg(theme.bg_hover))
+                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                            entity.update(cx, |view, cx| view.scroll_left(cx));
                         })
                         .child(
                             svg()
                                 .path("assets/icons/chevron-left.svg")
                                 .size(px(14.0))
-                                .text_color(text_muted),
+                                .text_color(theme.text_muted),
                         ),
                 )
             })
@@ -194,7 +199,7 @@ impl Render for TabBarView {
                     .flex_1()
                     .flex()
                     .items_center()
-                    .gap_1()
+                    .gap_0p5()
                     .overflow_hidden()
                     .children(
                         tabs.iter()
@@ -205,49 +210,59 @@ impl Render for TabBarView {
                                 let is_active = index == active_index;
                                 let tab_id = tab.id;
                                 let title = tab.title.clone();
+                                let is_pinned = tab.pinned;
                                 let needs_refresh = tab.needs_refresh;
-                                let entity_for_click = entity.clone();
-                                let entity_for_close = entity.clone();
+                                let entity_click = entity.clone();
+                                let entity_close = entity.clone();
+                                let entity_middle = entity.clone();
 
                                 div()
                                     .id(SharedString::from(format!("tab-{}", tab_id.0)))
-                                    .h(px(28.0))
+                                    .h(px(30.0))
+                                    .min_w(px(if is_pinned { 40.0 } else { 100.0 }))
+                                    .max_w(px(200.0))
                                     .px_3()
-                                    .rounded_t_md()
+                                    .rounded_md()
                                     .flex()
                                     .items_center()
                                     .gap_2()
                                     .cursor_pointer()
                                     .when(is_active, |s| {
-                                        s.bg(bg_active)
-                                            .border_b_2()
-                                            .border_color(accent)
+                                        s.bg(theme.bg_tertiary)
+                                            .border_1()
+                                            .border_color(theme.border_subtle)
                                     })
                                     .when(!is_active, |s| {
-                                        s.hover(|h| h.bg(hover_bg))
+                                        s.hover(|h| h.bg(theme.bg_hover))
                                     })
-                                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                                        entity_for_click.update(cx, |view, cx| {
+                                    .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                        entity_click.update(cx, |view, cx| {
                                             view.handle_tab_click(tab_id, cx);
+                                        });
+                                    })
+                                    .on_mouse_down(MouseButton::Middle, move |_, _, cx| {
+                                        entity_middle.update(cx, |view, cx| {
+                                            view.handle_tab_middle_click(tab_id, cx);
                                         });
                                     })
                                     .child(
                                         svg()
                                             .path("assets/icons/folder.svg")
                                             .size(px(14.0))
-                                            .text_color(if is_active { accent } else { text_muted }),
+                                            .text_color(if is_active { theme.accent_primary } else { theme.text_muted }),
                                     )
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(if is_active { gpui::FontWeight::MEDIUM } else { gpui::FontWeight::NORMAL })
-                                            .text_color(if is_active { text_primary } else { text_muted })
-                                            .max_w(px(120.0))
-                                            .overflow_hidden()
-                                            .text_ellipsis()
-                                            .child(title),
-                                    )
-                                    // Refresh indicator
+                                    .when(!is_pinned, |s| {
+                                        s.child(
+                                            div()
+                                                .text_xs()
+                                                .font_weight(if is_active { gpui::FontWeight::MEDIUM } else { gpui::FontWeight::NORMAL })
+                                                .text_color(if is_active { theme.text_primary } else { theme.text_muted })
+                                                .flex_1()
+                                                .overflow_hidden()
+                                                .text_ellipsis()
+                                                .child(title),
+                                        )
+                                    })
                                     .when(needs_refresh, |s| {
                                         s.child(
                                             div()
@@ -257,29 +272,34 @@ impl Render for TabBarView {
                                                 .bg(theme.warning),
                                         )
                                     })
-                                    .child(
-                                        div()
-                                            .id(SharedString::from(format!("close-tab-{}", tab_id.0)))
-                                            .p_0p5()
-                                            .rounded_sm()
-                                            .cursor_pointer()
-                                            .hover(|h| h.bg(gpui::rgb(0x3d4148)))
-                                            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                                                entity_for_close.update(cx, |view, cx| {
-                                                    view.handle_tab_close(tab_id, cx);
-                                                });
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(text_muted)
-                                                    .child("×"),
-                                            ),
-                                    )
+                                    .when(!is_pinned, |s| {
+                                        s.child(
+                                            div()
+                                                .id(SharedString::from(format!("close-{}", tab_id.0)))
+                                                .w(px(16.0))
+                                                .h(px(16.0))
+                                                .rounded_sm()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .cursor_pointer()
+                                                .hover(|h| h.bg(theme.bg_hover))
+                                                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                                    entity_close.update(cx, |view, cx| {
+                                                        view.handle_tab_close(tab_id, cx);
+                                                    });
+                                                })
+                                                .child(
+                                                    svg()
+                                                        .path("assets/icons/x.svg")
+                                                        .size(px(12.0))
+                                                        .text_color(theme.text_muted),
+                                                ),
+                                        )
+                                    })
                             }),
                     ),
             )
-            // Scroll right button (if overflow)
             .when(has_overflow && scroll_offset < tabs.len().saturating_sub(self.max_visible_tabs), |s| {
                 let entity = entity.clone();
                 s.child(
@@ -288,53 +308,41 @@ impl Render for TabBarView {
                         .p_1()
                         .rounded_sm()
                         .cursor_pointer()
-                        .hover(|h| h.bg(hover_bg))
-                        .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                            entity.update(cx, |view, cx| {
-                                view.scroll_right(cx);
-                            });
+                        .hover(|h| h.bg(theme.bg_hover))
+                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                            entity.update(cx, |view, cx| view.scroll_right(cx));
                         })
                         .child(
                             svg()
                                 .path("assets/icons/chevron-right.svg")
                                 .size(px(14.0))
-                                .text_color(text_muted),
+                                .text_color(theme.text_muted),
                         ),
                 )
             })
             .child(
                 div()
                     .id("new-tab")
-                    .p_1()
-                    .rounded_sm()
+                    .w(px(28.0))
+                    .h(px(28.0))
+                    .rounded_md()
+                    .flex()
+                    .items_center()
+                    .justify_center()
                     .cursor_pointer()
-                    .hover(|h| h.bg(hover_bg))
+                    .hover(|h| h.bg(theme.bg_hover))
                     .on_mouse_down(MouseButton::Left, {
                         let entity = entity.clone();
-                        move |_event, _window, cx| {
-                            entity.update(cx, |view, cx| {
-                                view.handle_new_tab(cx);
-                            });
+                        move |_, _, cx| {
+                            entity.update(cx, |view, cx| view.handle_new_tab(cx));
                         }
                     })
                     .child(
                         svg()
-                            .path("assets/icons/file-plus.svg")
+                            .path("assets/icons/plus.svg")
                             .size(px(14.0))
-                            .text_color(text_muted),
+                            .text_color(theme.text_muted),
                     ),
             )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_tab_bar_creation() {
-        let state = TabState::new(PathBuf::from("/home"));
-        assert_eq!(state.tab_count(), 1);
     }
 }

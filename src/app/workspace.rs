@@ -12,10 +12,11 @@ use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEng
 use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView, ToastManager, ContextMenuAction};
 use adabraka_ui::components::input::{Input, InputState, InputEvent};
 
-// Define global keyboard shortcut actions
 actions!(workspace, [
     NewTab,
     CloseTab,
+    NextTab,
+    PrevTab,
     ToggleTerminal,
     FocusSearch,
     NewWindow,
@@ -68,6 +69,7 @@ pub struct Workspace {
     terminal: Entity<TerminalView>,
     quick_look: Entity<QuickLookView>,
     toast_manager: Entity<ToastManager>,
+    tab_bar: Entity<crate::views::TabBarView>,
     focus_handle: FocusHandle,
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
@@ -82,18 +84,13 @@ pub struct Workspace {
     show_hidden_files: bool,
     current_theme_id: ThemeId,
     clipboard: Option<ClipboardOperation>,
-    /// Copy/Move mode - shows destination pane
     copy_move_mode: bool,
-    /// Destination file list for copy/move operations
     dest_file_list: Entity<FileListView>,
-    /// Current path in destination pane
     dest_path: PathBuf,
-    /// Cached entries for destination pane
     dest_entries: Vec<crate::models::FileEntry>,
-    /// Input state for new file/folder dialog
     dialog_input: Option<Entity<InputState>>,
-    /// Flag to focus dialog input on next render
     should_focus_dialog_input: bool,
+    tabs_enabled: bool,
 }
 
 impl Workspace {
@@ -123,6 +120,8 @@ impl Workspace {
         cx.bind_keys([
             KeyBinding::new("cmd-t", NewTab, Some("Workspace")),
             KeyBinding::new("cmd-w", CloseTab, Some("Workspace")),
+            KeyBinding::new("cmd-shift-]", NextTab, Some("Workspace")),
+            KeyBinding::new("cmd-shift-[", PrevTab, Some("Workspace")),
             KeyBinding::new("cmd-`", ToggleTerminal, Some("Workspace")),
             KeyBinding::new("cmd-f", FocusSearch, Some("Workspace")),
             KeyBinding::new("cmd-n", NewWindow, Some("Workspace")),
@@ -315,6 +314,25 @@ impl Workspace {
             })
             .detach();
 
+            let tab_bar = cx.new(|cx| crate::views::TabBarView::new(initial_path.clone(), cx));
+
+            // Observe tab bar for tab changes
+            cx.observe(&tab_bar, |workspace: &mut Workspace, tab_bar, cx| {
+                if let Some(tab_id) = tab_bar.update(cx, |view, _| view.take_pending_navigation()) {
+                    if let Some(tab) = workspace.tab_bar.read(cx).tab_state().get_tab(tab_id) {
+                        let path = tab.path.clone();
+                        workspace.load_directory(path, cx);
+                    }
+                }
+                
+                if tab_bar.update(cx, |view, _| view.take_pending_new_tab()) {
+                    // New tab was created, load its directory
+                    let path = workspace.tab_bar.read(cx).active_path().to_path_buf();
+                    workspace.load_directory(path, cx);
+                }
+            })
+            .detach();
+
             Self {
                 file_system,
                 icon_cache,
@@ -329,6 +347,7 @@ impl Workspace {
                 terminal,
                 quick_look,
                 toast_manager,
+                tab_bar,
                 focus_handle: cx.focus_handle(),
                 current_path: initial_path.clone(),
                 path_history: vec![initial_path.clone()],
@@ -349,6 +368,7 @@ impl Workspace {
                 dest_entries: Vec::new(),
                 dialog_input: None,
                 should_focus_dialog_input: false,
+                tabs_enabled: true,
             }
         })
     }
@@ -1171,6 +1191,52 @@ impl Workspace {
         cx.notify();
     }
 
+    /// Load a directory without updating navigation history (used for tab switching)
+    fn load_directory(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let start = Instant::now();
+        let show_hidden = self.show_hidden_files;
+
+        self.file_system.update(cx, |fs, _| {
+            let op = fs.load_path(path.clone(), SortKey::Name, SortOrder::Ascending, show_hidden);
+            let request_id = op.request_id;
+            while let Ok(batch) = op.batch_receiver.recv() {
+                fs.process_batch(request_id, batch);
+            }
+            let _ = op.traversal_handle.join();
+            fs.finalize_load(request_id, start.elapsed());
+        });
+
+        let entries = self.file_system.read(cx).entries().to_vec();
+        self.cached_entries = entries.clone();
+        self.current_path = path.clone();
+        
+        self.file_list.update(cx, |view, _| {
+            view.inner_mut().set_entries(entries.clone());
+        });
+        
+        self.grid_view.update(cx, |view, _| {
+            view.inner_mut().set_entries(entries.clone());
+        });
+        
+        self.search_engine.update(cx, |engine, _| {
+            engine.clear();
+            for entry in &entries {
+                engine.inject(entry.path.clone());
+            }
+        });
+        
+        self.sidebar.update(cx, |view, _| {
+            view.set_current_directory(path.clone());
+        });
+        
+        self.status_bar.update(cx, |view, cx| {
+            view.update_from_entries(&entries, None, cx);
+            view.set_current_directory(&path, cx);
+        });
+        
+        cx.notify();
+    }
+
     pub fn navigate_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         let start = Instant::now();
         let show_hidden = self.show_hidden_files;
@@ -1217,6 +1283,12 @@ impl Workspace {
 
         self.path_history.push(path.clone());
         self.current_path = path.clone();
+        
+        if self.tabs_enabled {
+            self.tab_bar.update(cx, |view, cx| {
+                view.navigate_to(path.clone(), cx);
+            });
+        }
         
         self.sidebar.update(cx, |view, _| {
             view.set_current_directory(path.clone());
@@ -1453,23 +1525,40 @@ impl Workspace {
     }
 
     
-    /// Handle Cmd+T - New Tab (opens new window for now)
     fn handle_new_tab(&mut self, _: &NewTab, _window: &mut Window, cx: &mut Context<Self>) {
-        // For now, open a new window since full tab support isn't implemented
-        let path = self.current_path.clone();
-        cx.defer(move |cx| {
-            if cx.has_global::<WindowManager>() {
-                cx.update_global::<WindowManager, _>(|manager, cx| {
-                    manager.open_window(path, cx);
-                });
-            }
-        });
+        if self.tabs_enabled {
+            let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
+            self.tab_bar.update(cx, |view, cx| {
+                view.open_tab(home, cx);
+            });
+        } else {
+            let path = self.current_path.clone();
+            cx.defer(move |cx| {
+                if cx.has_global::<WindowManager>() {
+                    cx.update_global::<WindowManager, _>(|manager, cx| {
+                        manager.open_window(path, cx);
+                    });
+                }
+            });
+        }
     }
 
-    /// Handle Cmd+W - Close Tab/Window
-    fn handle_close_tab(&mut self, _: &CloseTab, window: &mut Window, _cx: &mut Context<Self>) {
-        // Close the current window
-        window.remove_window();
+    fn handle_close_tab(&mut self, _: &CloseTab, window: &mut Window, cx: &mut Context<Self>) {
+        if self.tabs_enabled {
+            let tab_count = self.tab_bar.read(cx).tab_count();
+            if tab_count > 1 {
+                self.tab_bar.update(cx, |view, cx| {
+                    view.tab_state_mut().close_active_tab();
+                    cx.notify();
+                });
+                let path = self.tab_bar.read(cx).active_path().to_path_buf();
+                self.load_directory(path, cx);
+            } else {
+                window.remove_window();
+            }
+        } else {
+            window.remove_window();
+        }
     }
 
     /// Handle Cmd+` - Toggle Terminal
@@ -1484,7 +1573,6 @@ impl Workspace {
         });
     }
 
-    /// Handle Cmd+N - New Window
     fn handle_new_window(&mut self, _: &NewWindow, _window: &mut Window, cx: &mut Context<Self>) {
         let path = self.current_path.clone();
         cx.defer(move |cx| {
@@ -1496,7 +1584,28 @@ impl Workspace {
         });
     }
 
-    /// Handle Space - Toggle Quick Look
+    fn handle_next_tab(&mut self, _: &NextTab, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.tabs_enabled {
+            self.tab_bar.update(cx, |view, cx| {
+                view.tab_state_mut().next_tab();
+                cx.notify();
+            });
+            let path = self.tab_bar.read(cx).active_path().to_path_buf();
+            self.load_directory(path, cx);
+        }
+    }
+
+    fn handle_prev_tab(&mut self, _: &PrevTab, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.tabs_enabled {
+            self.tab_bar.update(cx, |view, cx| {
+                view.tab_state_mut().prev_tab();
+                cx.notify();
+            });
+            let path = self.tab_bar.read(cx).active_path().to_path_buf();
+            self.load_directory(path, cx);
+        }
+    }
+
     fn handle_quick_look_toggle(&mut self, _: &QuickLookToggle, _window: &mut Window, cx: &mut Context<Self>) {
         let selected_entry = match self.view_mode {
             ViewMode::List | ViewMode::Details => {
@@ -1625,6 +1734,8 @@ impl Render for Workspace {
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(Self::handle_new_tab))
             .on_action(cx.listener(Self::handle_close_tab))
+            .on_action(cx.listener(Self::handle_next_tab))
+            .on_action(cx.listener(Self::handle_prev_tab))
             .on_action(cx.listener(Self::handle_toggle_terminal))
             .on_action(cx.listener(Self::handle_focus_search))
             .on_action(cx.listener(Self::handle_new_window))
@@ -1749,6 +1860,9 @@ impl Render for Workspace {
                             ),
                     ),
             )
+            .when(self.tabs_enabled, |this| {
+                this.child(self.tab_bar.clone())
+            })
             .child(
                 div()
                     .flex()
@@ -1771,7 +1885,6 @@ impl Render for Workspace {
                             .flex_col()
                             .bg(bg_darker)
                             .min_w_0()
-                            // Toolbar with RPG styling - 52px height, themed dividers
                             .child(
                                 div()
                                     .h(px(crate::models::toolbar::HEIGHT))
