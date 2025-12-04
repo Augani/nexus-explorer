@@ -16,6 +16,8 @@ use crate::views::sidebar::{DraggedFolder, DraggedFolderView};
 pub enum ContextMenuAction {
     Open(PathBuf),
     OpenWith(PathBuf),
+    OpenWithApp { file_path: PathBuf, app_path: PathBuf, app_name: String },
+    OpenWithOther(PathBuf),
     OpenInNewWindow(PathBuf),
     GetInfo(PathBuf),
     Rename(PathBuf),
@@ -84,6 +86,7 @@ pub struct FileListView {
     context_menu_position: Option<Point<Pixels>>,
     context_menu_index: Option<usize>,
     pending_context_action: Option<ContextMenuAction>,
+    show_open_with_submenu: bool,
 }
 
 impl FileListView {
@@ -97,6 +100,7 @@ impl FileListView {
             context_menu_position: None,
             context_menu_index: None,
             pending_context_action: None,
+            show_open_with_submenu: false,
         }
     }
 
@@ -110,12 +114,14 @@ impl FileListView {
             context_menu_position: None,
             context_menu_index: None,
             pending_context_action: None,
+            show_open_with_submenu: false,
         }
     }
     
     pub fn close_context_menu(&mut self) {
         self.context_menu_position = None;
         self.context_menu_index = None;
+        self.show_open_with_submenu = false;
     }
     
     pub fn take_pending_context_action(&mut self) -> Option<ContextMenuAction> {
@@ -704,19 +710,16 @@ impl Render for FileListView {
                                         }
                                     }
                                 }))
-                                .child(render_context_menu_item("external-link", "Open With...", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::OpenWith(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
-                                        }
-                                    }
-                                }))
+                                .child(render_open_with_submenu(
+                                    selected_entry.clone(),
+                                    self.show_open_with_submenu,
+                                    text_light,
+                                    hover_bg,
+                                    menu_bg,
+                                    border_color,
+                                    entity.clone(),
+                                    cx,
+                                ))
                                 .when(is_dir, |this| {
                                     let entity = entity.clone();
                                     let entry = selected_entry.clone();
@@ -1063,6 +1066,194 @@ fn render_context_menu_divider(color: gpui::Rgba) -> impl IntoElement {
         .mx_2()
         .my_1()
         .bg(color)
+}
+
+fn render_open_with_submenu(
+    selected_entry: Option<FileEntry>,
+    show_submenu: bool,
+    text_color: gpui::Rgba,
+    hover_bg: gpui::Rgba,
+    menu_bg: gpui::Rgba,
+    border_color: gpui::Rgba,
+    entity: gpui::Entity<FileListView>,
+    _cx: &mut Context<FileListView>,
+) -> impl IntoElement {
+    let apps = selected_entry.as_ref()
+        .map(|e| crate::models::get_apps_for_file(&e.path))
+        .unwrap_or_default();
+    
+    let has_apps = !apps.is_empty();
+    let entry_for_other = selected_entry.clone();
+    let entity_for_show = entity.clone();
+    let entity_for_hide = entity.clone();
+    
+    div()
+        .id("open-with-menu-wrapper")
+        .flex()
+        .child(
+            div()
+                .id("open-with-menu")
+                .flex_1()
+                .on_mouse_move(move |_event, _window, cx| {
+                    entity_for_show.update(cx, |view, cx| {
+                        if !view.show_open_with_submenu {
+                            view.show_open_with_submenu = true;
+                            cx.notify();
+                        }
+                    });
+                })
+                .child(
+                    div()
+                        .id("open-with-trigger")
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .gap_3()
+                        .px_3()
+                        .py_1p5()
+                        .mx_1()
+                        .rounded_md()
+                        .cursor_pointer()
+                        .text_sm()
+                        .text_color(text_color)
+                        .hover(|s| s.bg(hover_bg))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_3()
+                                .child(
+                                    svg()
+                                        .path("assets/icons/external-link.svg")
+                                        .size(px(14.0))
+                                        .text_color(text_color),
+                                )
+                                .child("Open With")
+                        )
+                        .child(
+                            svg()
+                                .path("assets/icons/chevron-right.svg")
+                                .size(px(12.0))
+                                .text_color(text_color),
+                        )
+                )
+        )
+        .when(show_submenu, move |this| {
+            this.child(
+                div()
+                    .id("open-with-submenu")
+                    .on_hover(move |is_hovered, _window, cx| {
+                        if !*is_hovered {
+                            entity_for_hide.update(cx, |view, cx| {
+                                view.show_open_with_submenu = false;
+                                cx.notify();
+                            });
+                        }
+                    })
+                    .child(
+                        div()
+                            .w(px(220.0))
+                            .bg(menu_bg)
+                            .border_1()
+                            .border_color(border_color)
+                            .rounded_lg()
+                            .shadow_lg()
+                            .py_1()
+                            .when(has_apps, |submenu| {
+                                let mut submenu = submenu;
+                                for app in apps.iter().take(10) {
+                                    let app_name = app.name.clone();
+                                    let app_path = app.path.clone();
+                                    let file_path = selected_entry.as_ref().map(|e| e.path.clone());
+                                    let entity = entity.clone();
+                                    
+                                    submenu = submenu.child(
+                                        div()
+                                            .id(SharedString::from(format!("app-{}", app_name)))
+                                            .flex()
+                                            .items_center()
+                                            .gap_2()
+                                            .px_3()
+                                            .py_1p5()
+                                            .mx_1()
+                                            .rounded_md()
+                                            .cursor_pointer()
+                                            .text_sm()
+                                            .text_color(text_color)
+                                            .hover(|s| s.bg(hover_bg))
+                                            .on_mouse_down(MouseButton::Left, {
+                                                let app_name = app_name.clone();
+                                                let app_path = app_path.clone();
+                                                move |_event, _window, cx| {
+                                                    if let Some(ref fp) = file_path {
+                                                        entity.update(cx, |view, cx| {
+                                                            view.pending_context_action = Some(ContextMenuAction::OpenWithApp {
+                                                                file_path: fp.clone(),
+                                                                app_path: app_path.clone(),
+                                                                app_name: app_name.clone(),
+                                                            });
+                                                            view.close_context_menu();
+                                                            cx.notify();
+                                                        });
+                                                    }
+                                                }
+                                            })
+                                            .child(
+                                                svg()
+                                                    .path("assets/icons/app-window.svg")
+                                                    .size(px(16.0))
+                                                    .text_color(text_color)
+                                            )
+                                            .child(app_name)
+                                    );
+                                }
+                                submenu
+                            })
+                            .when(has_apps, |submenu| {
+                                submenu.child(render_context_menu_divider(border_color))
+                            })
+                            .child({
+                                let entity = entity.clone();
+                                div()
+                                    .id("open-with-other")
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .px_3()
+                                    .py_1p5()
+                                    .mx_1()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .text_sm()
+                                    .text_color(text_color)
+                                    .hover(|s| s.bg(hover_bg))
+                                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                                        if let Some(ref e) = entry_for_other {
+                                            entity.update(cx, |view, cx| {
+                                                view.pending_context_action = Some(ContextMenuAction::OpenWithOther(e.path.clone()));
+                                                view.close_context_menu();
+                                                cx.notify();
+                                            });
+                                        }
+                                    })
+                                    .child(
+                                        div()
+                                            .size(px(18.0))
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .child(
+                                                svg()
+                                                    .path("assets/icons/more-horizontal.svg")
+                                                    .size(px(16.0))
+                                                    .text_color(text_color),
+                                            )
+                                    )
+                                    .child("Other...")
+                            })
+                    )
+            )
+        })
 }
 
 fn get_file_type(name: &str) -> String {

@@ -11,7 +11,7 @@ use gpui::{px, size, Application, AssetSource, Bounds, Result, SharedString, Win
 use tokio::runtime::Runtime;
 
 use app::Workspace;
-use models::{GlobalSettings, IconCache, IconKey, WindowManager};
+use models::{GlobalSettings, IconCache, IconKey, WindowManager, open_with};
 
 struct Assets {
     base: PathBuf,
@@ -56,6 +56,9 @@ fn main() {
         
         // Spawn Tokio runtime on a dedicated thread for I/O operations
         let _tokio_runtime = spawn_tokio_runtime();
+        
+        // Initialize app registry in background for "Open With" functionality
+        open_with::init_app_registry();
         
         let _icon_cache = preload_default_icons();
         

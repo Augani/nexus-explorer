@@ -519,13 +519,32 @@ impl Workspace {
                     }
                 }
             }
-            ContextMenuAction::OpenWith(path) => {
-                #[cfg(target_os = "macos")]
-                {
-                    let _ = std::process::Command::new("open").args(["-a", "Finder", "--reveal"]).arg(&path).spawn();
-                    let _ = std::process::Command::new("osascript")
-                        .args(["-e", &format!("tell application \"Finder\" to open (POSIX file \"{}\" as alias) using (choose application)", path.display())])
-                        .spawn();
+            ContextMenuAction::OpenWith(_path) => {
+                // This is now handled by the submenu - kept for backwards compatibility
+            }
+            ContextMenuAction::OpenWithApp { file_path, app_path, app_name } => {
+                let app_info = crate::models::AppInfo::new(app_name.clone(), app_path);
+                match crate::models::open_file_with_app(&file_path, &app_info) {
+                    Ok(()) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_success(format!("Opening with {}", app_name), cx);
+                        });
+                    }
+                    Err(e) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to open: {}", e), cx);
+                        });
+                    }
+                }
+            }
+            ContextMenuAction::OpenWithOther(path) => {
+                match crate::models::show_open_with_dialog(&path) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to show dialog: {}", e), cx);
+                        });
+                    }
                 }
             }
             ContextMenuAction::OpenInNewWindow(path) => {

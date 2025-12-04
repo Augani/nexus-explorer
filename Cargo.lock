@@ -1665,6 +1665,7 @@ dependencies = [
  "gpui",
  "image",
  "jwalk",
+ "lazy_static",
  "libc",
  "lru",
  "notify",
