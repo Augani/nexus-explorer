@@ -79,26 +79,15 @@ impl FileSystem {
 
     /// Initiates a navigation request to the specified path.
     /// 
-    /// This increments the request_id for generational tracking and checks the cache.
-    /// If cached data exists, it's immediately made available while revalidation
-    /// can occur in the background.
+    /// This increments the request_id for generational tracking.
+    /// Always clears entries to prevent duplication when processing batches.
     /// 
     /// Returns the new request_id for tracking async operations.
     pub fn begin_load(&mut self, path: PathBuf) -> usize {
         self.request_id = self.request_id.wrapping_add(1);
         self.current_path = path.clone();
         
-        if let Some(cached) = self.cache.get(&path) {
-            let is_stale = std::fs::metadata(&path)
-                .and_then(|m| m.modified())
-                .map(|mtime| mtime > cached.mtime)
-                .unwrap_or(true);
-            
-            self.entries = cached.entries.clone();
-            self.state = LoadState::Cached { stale: is_stale };
-            return self.request_id;
-        }
-        
+        // Always clear entries before loading to prevent duplication
         self.entries.clear();
         self.state = LoadState::Loading { request_id: self.request_id };
         

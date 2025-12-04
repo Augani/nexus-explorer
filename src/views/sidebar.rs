@@ -433,6 +433,11 @@ impl SidebarView {
     pub fn has_clipboard(&self) -> bool {
         self.has_clipboard
     }
+    
+    /// Add a path to favorites
+    pub fn add_favorite(&mut self, path: PathBuf) -> Result<(), crate::models::FavoritesError> {
+        self.sidebar.add_favorite(path)
+    }
 
     /// Add a bookmark for the current directory
     pub fn add_bookmark_for_current(&mut self, cx: &mut Context<Self>) {

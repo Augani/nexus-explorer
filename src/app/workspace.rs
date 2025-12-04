@@ -9,7 +9,8 @@ use gpui::{
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors, current_theme};
-use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView, ToastManager};
+use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView, ToastManager, ContextMenuAction};
+use adabraka_ui::components::input::{Input, InputState, InputEvent};
 
 // Define global keyboard shortcut actions
 actions!(workspace, [
@@ -43,6 +44,7 @@ pub enum DialogState {
     None,
     NewFile { name: String },
     NewFolder { name: String },
+    Rename { path: PathBuf, name: String },
 }
 
 /// Clipboard operation type
@@ -88,6 +90,10 @@ pub struct Workspace {
     dest_path: PathBuf,
     /// Cached entries for destination pane
     dest_entries: Vec<crate::models::FileEntry>,
+    /// Input state for new file/folder dialog
+    dialog_input: Option<Entity<InputState>>,
+    /// Flag to focus dialog input on next render
+    should_focus_dialog_input: bool,
 }
 
 impl Workspace {
@@ -115,17 +121,11 @@ impl Workspace {
     /// Register global keyboard shortcuts for the workspace
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
-            // Cmd+T for new tab (currently opens new window since tabs aren't fully implemented)
             KeyBinding::new("cmd-t", NewTab, Some("Workspace")),
-            // Cmd+W for close tab/window
             KeyBinding::new("cmd-w", CloseTab, Some("Workspace")),
-            // Cmd+` for terminal toggle
             KeyBinding::new("cmd-`", ToggleTerminal, Some("Workspace")),
-            // Cmd+F for search focus
             KeyBinding::new("cmd-f", FocusSearch, Some("Workspace")),
-            // Cmd+N for new window
             KeyBinding::new("cmd-n", NewWindow, Some("Workspace")),
-            // Space for Quick Look toggle (only in FileList context, not Terminal)
             KeyBinding::new("space", QuickLookToggle, Some("FileList")),
         ]);
     }
@@ -226,6 +226,11 @@ impl Workspace {
                     workspace.navigate_to(path, cx);
                 }
                 
+                let context_action = file_list.update(cx, |view, _| view.take_pending_context_action());
+                if let Some(action) = context_action {
+                    workspace.handle_context_menu_action(action, cx);
+                }
+                
                 let selected_index = file_list.read(cx).inner().selected_index();
                 let selection_count = if selected_index.is_some() { 1 } else { 0 };
                 sidebar_for_file_list.update(cx, |view, _| {
@@ -247,6 +252,11 @@ impl Workspace {
                 let nav_path = grid_view.update(cx, |view, _| view.take_pending_navigation());
                 if let Some(path) = nav_path {
                     workspace.navigate_to(path, cx);
+                }
+                
+                let context_action = grid_view.update(cx, |view, _| view.take_pending_context_action());
+                if let Some(action) = context_action {
+                    workspace.handle_context_menu_action(action, cx);
                 }
                 
                 let selected_index = grid_view.read(cx).inner().selected_index();
@@ -337,19 +347,69 @@ impl Workspace {
                 dest_file_list: cx.new(|cx| FileListView::with_file_list(FileList::new(), cx)),
                 dest_path: initial_path,
                 dest_entries: Vec::new(),
+                dialog_input: None,
+                should_focus_dialog_input: false,
             }
         })
+    }
+    
+    fn open_dialog(&mut self, is_file: bool, cx: &mut Context<Self>) {
+        let input_state = cx.new(|cx| InputState::new(cx));
+        
+        cx.subscribe(&input_state, |workspace: &mut Workspace, _input, event: &InputEvent, cx| {
+            match event {
+                InputEvent::Enter => {
+                    workspace.submit_dialog(cx);
+                }
+                _ => {}
+            }
+        }).detach();
+        
+        self.dialog_input = Some(input_state);
+        self.dialog_state = if is_file {
+            DialogState::NewFile { name: String::new() }
+        } else {
+            DialogState::NewFolder { name: String::new() }
+        };
+        self.should_focus_dialog_input = true;
+        cx.notify();
+    }
+    
+    fn submit_dialog(&mut self, cx: &mut Context<Self>) {
+        let name = if let Some(input) = &self.dialog_input {
+            input.read(cx).content.to_string()
+        } else {
+            return;
+        };
+        
+        if name.is_empty() {
+            return;
+        }
+        
+        match &self.dialog_state {
+            DialogState::NewFile { .. } => {
+                self.create_new_file(&name, cx);
+            }
+            DialogState::NewFolder { .. } => {
+                self.create_new_folder(&name, cx);
+            }
+            DialogState::Rename { .. } => {
+                self.submit_rename(cx);
+                return;
+            }
+            DialogState::None => {}
+        }
+        
+        self.dialog_input = None;
     }
     
     fn handle_tool_action(&mut self, action: ToolAction, cx: &mut Context<Self>) {
         match action {
             ToolAction::NewFile => {
-                self.dialog_state = DialogState::NewFile { name: String::new() };
-                cx.notify();
+                self.open_dialog(true, cx);
             }
             ToolAction::NewFolder => {
-                self.dialog_state = DialogState::NewFolder { name: String::new() };
-                cx.notify();
+                self.open_dialog(false, cx);
             }
             ToolAction::Refresh => {
                 self.refresh_current_directory(cx);
@@ -437,6 +497,298 @@ impl Workspace {
             ToolAction::SetAsDefault => {
             }
         }
+    }
+    
+    fn handle_context_menu_action(&mut self, action: ContextMenuAction, cx: &mut Context<Self>) {
+        match action {
+            ContextMenuAction::Open(path) => {
+                if path.is_dir() {
+                    self.navigate_to(path, cx);
+                } else {
+                    #[cfg(target_os = "macos")]
+                    {
+                        let _ = std::process::Command::new("open").arg(&path).spawn();
+                    }
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = std::process::Command::new("cmd").args(["/C", "start", "", path.to_str().unwrap_or("")]).spawn();
+                    }
+                    #[cfg(target_os = "linux")]
+                    {
+                        let _ = std::process::Command::new("xdg-open").arg(&path).spawn();
+                    }
+                }
+            }
+            ContextMenuAction::OpenWith(path) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let _ = std::process::Command::new("open").args(["-a", "Finder", "--reveal"]).arg(&path).spawn();
+                    let _ = std::process::Command::new("osascript")
+                        .args(["-e", &format!("tell application \"Finder\" to open (POSIX file \"{}\" as alias) using (choose application)", path.display())])
+                        .spawn();
+                }
+            }
+            ContextMenuAction::OpenInNewWindow(path) => {
+                Self::open_new_window(path, cx);
+            }
+            ContextMenuAction::GetInfo(path) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let script = format!(
+                        "tell application \"Finder\" to open information window of (POSIX file \"{}\" as alias)",
+                        path.display()
+                    );
+                    let _ = std::process::Command::new("osascript").args(["-e", &script]).spawn();
+                }
+            }
+            ContextMenuAction::Rename(path) => {
+                self.start_rename(path, cx);
+            }
+            ContextMenuAction::Copy(path) => {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("item").to_string();
+                self.clipboard = Some(ClipboardOperation::Copy(path));
+                self.sidebar.update(cx, |view, _| view.set_has_clipboard(true));
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info(format!("Copied: {}", name), cx);
+                });
+            }
+            ContextMenuAction::Cut(path) => {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("item").to_string();
+                self.clipboard = Some(ClipboardOperation::Cut(path));
+                self.sidebar.update(cx, |view, _| view.set_has_clipboard(true));
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info(format!("Cut: {}", name), cx);
+                });
+            }
+            ContextMenuAction::Paste => {
+                self.paste_from_clipboard(cx);
+            }
+            ContextMenuAction::Duplicate(path) => {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
+                let parent = path.parent().unwrap_or(&self.current_path);
+                let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+                
+                let new_name = if extension.is_empty() {
+                    format!("{} copy", stem)
+                } else {
+                    format!("{} copy.{}", stem, extension)
+                };
+                let new_path = parent.join(&new_name);
+                
+                let result = if path.is_dir() {
+                    copy_dir_recursive_async(&path, &new_path)
+                } else {
+                    fs::copy(&path, &new_path).map(|_| ())
+                };
+                
+                match result {
+                    Ok(()) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_success(format!("Duplicated: {}", new_name), cx);
+                        });
+                        self.refresh_current_directory(cx);
+                    }
+                    Err(e) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to duplicate: {}", e), cx);
+                        });
+                    }
+                }
+            }
+            ContextMenuAction::MoveToTrash(path) => {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("item").to_string();
+                match trash::delete(&path) {
+                    Ok(()) => {
+                        self.file_list.update(cx, |view, _| view.inner_mut().set_selected_index(None));
+                        self.preview = None;
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_success(format!("Moved to Trash: {}", name), cx);
+                        });
+                        self.refresh_current_directory(cx);
+                    }
+                    Err(e) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to trash: {}", e), cx);
+                        });
+                    }
+                }
+            }
+            ContextMenuAction::Compress(path) => {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("archive");
+                let parent = path.parent().unwrap_or(&self.current_path);
+                let archive_name = format!("{}.zip", name);
+                let archive_path = parent.join(&archive_name);
+                
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info(format!("Compressing: {}...", name), cx);
+                });
+                
+                let path_clone = path.clone();
+                let archive_path_clone = archive_path.clone();
+                let name_clone = name.to_string();
+                
+                cx.spawn(async move |this, cx| {
+                    let result = std::thread::spawn(move || {
+                        #[cfg(target_os = "macos")]
+                        {
+                            std::process::Command::new("ditto")
+                                .args(["-c", "-k", "--sequesterRsrc", "--keepParent"])
+                                .arg(&path_clone)
+                                .arg(&archive_path_clone)
+                                .output()
+                        }
+                        #[cfg(not(target_os = "macos"))]
+                        {
+                            std::process::Command::new("zip")
+                                .args(["-r"])
+                                .arg(&archive_path_clone)
+                                .arg(&path_clone)
+                                .output()
+                        }
+                    }).join();
+                    
+                    let _ = this.update(cx, |workspace, cx| {
+                        match result {
+                            Ok(Ok(output)) if output.status.success() => {
+                                workspace.toast_manager.update(cx, |toast, cx| {
+                                    toast.show_success(format!("Created: {}.zip", name_clone), cx);
+                                });
+                                workspace.refresh_current_directory(cx);
+                            }
+                            _ => {
+                                workspace.toast_manager.update(cx, |toast, cx| {
+                                    toast.show_error("Failed to compress".to_string(), cx);
+                                });
+                            }
+                        }
+                    });
+                }).detach();
+            }
+            ContextMenuAction::Share(path) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let script = format!(
+                        "tell application \"Finder\" to activate\n\
+                         tell application \"System Events\"\n\
+                         keystroke \"i\" using {{command down, option down}}\n\
+                         end tell"
+                    );
+                    let _ = std::process::Command::new("open").args(["-R"]).arg(&path).spawn();
+                }
+            }
+            ContextMenuAction::CopyPath(path) => {
+                let path_str = path.to_string_lossy().to_string();
+                cx.write_to_clipboard(gpui::ClipboardItem::new_string(path_str.clone()));
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_success("Path copied to clipboard".to_string(), cx);
+                });
+            }
+            ContextMenuAction::ShowInFinder(path) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let _ = std::process::Command::new("open").args(["-R"]).arg(&path).spawn();
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = std::process::Command::new("explorer").args(["/select,"]).arg(&path).spawn();
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    if let Some(parent) = path.parent() {
+                        let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
+                    }
+                }
+            }
+            ContextMenuAction::QuickLook(path) => {
+                if !path.is_dir() {
+                    let entries = self.cached_entries.clone();
+                    let index = entries.iter().position(|e| e.path == path).unwrap_or(0);
+                    self.quick_look.update(cx, |view, _| {
+                        view.toggle(path, entries, index);
+                    });
+                    cx.notify();
+                }
+            }
+            ContextMenuAction::AddToFavorites(path) => {
+                self.sidebar.update(cx, |view, _| {
+                    let _ = view.add_favorite(path.clone());
+                });
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("item");
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_success(format!("Added to Favorites: {}", name), cx);
+                });
+            }
+            ContextMenuAction::NewFolder => {
+                self.open_dialog(false, cx);
+            }
+            ContextMenuAction::NewFile => {
+                self.open_dialog(true, cx);
+            }
+        }
+    }
+    
+    fn start_rename(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
+        self.dialog_state = DialogState::Rename { path, name: name.clone() };
+        
+        let input_state = cx.new(|cx| {
+            let mut state = InputState::new(cx);
+            state.content = name.clone().into();
+            state.select_on_focus = true;
+            state
+        });
+        
+        cx.subscribe(&input_state, |workspace: &mut Workspace, _input, event: &InputEvent, cx| {
+            match event {
+                InputEvent::Enter => {
+                    workspace.submit_rename(cx);
+                }
+                _ => {}
+            }
+        }).detach();
+        
+        self.dialog_input = Some(input_state);
+        self.should_focus_dialog_input = true;
+        cx.notify();
+    }
+    
+    fn submit_rename(&mut self, cx: &mut Context<Self>) {
+        let (old_path, new_name) = match &self.dialog_state {
+            DialogState::Rename { path, .. } => {
+                let new_name = if let Some(input) = &self.dialog_input {
+                    input.read(cx).content.to_string()
+                } else {
+                    return;
+                };
+                (path.clone(), new_name)
+            }
+            _ => return,
+        };
+        
+        if new_name.is_empty() {
+            return;
+        }
+        
+        let new_path = old_path.parent().unwrap_or(&self.current_path).join(&new_name);
+        
+        match fs::rename(&old_path, &new_path) {
+            Ok(()) => {
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_success(format!("Renamed to: {}", new_name), cx);
+                });
+                self.refresh_current_directory(cx);
+            }
+            Err(e) => {
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_error(format!("Failed to rename: {}", e), cx);
+                });
+            }
+        }
+        
+        self.dialog_state = DialogState::None;
+        self.dialog_input = None;
+        cx.notify();
     }
     
     fn refresh_current_directory(&mut self, cx: &mut Context<Self>) {
@@ -762,15 +1114,8 @@ impl Workspace {
     
     fn cancel_dialog(&mut self, cx: &mut Context<Self>) {
         self.dialog_state = DialogState::None;
-        cx.notify();
-    }
-    
-    fn update_dialog_name(&mut self, name: String, cx: &mut Context<Self>) {
-        match &mut self.dialog_state {
-            DialogState::NewFile { name: n } => *n = name,
-            DialogState::NewFolder { name: n } => *n = name,
-            DialogState::None => {}
-        }
+        self.dialog_input = None;
+        self.should_focus_dialog_input = false;
         cx.notify();
     }
     
@@ -1146,7 +1491,6 @@ impl Workspace {
         };
 
         if let Some(entry) = selected_entry {
-            // Don't show Quick Look for directories
             if !entry.is_dir {
                 let entries = self.cached_entries.clone();
                 let index = self.cached_entries.iter().position(|e| e.path == entry.path).unwrap_or(0);
@@ -1234,7 +1578,14 @@ impl Focusable for Workspace {
 }
 
 impl Render for Workspace {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.should_focus_dialog_input {
+            if let Some(input) = &self.dialog_input {
+                window.focus(&input.read(cx).focus_handle(cx));
+            }
+            self.should_focus_dialog_input = false;
+        }
+        
         let theme = theme_colors();
         let bg_dark = theme.bg_secondary;
         let bg_darker = theme.bg_void;
@@ -1957,13 +2308,18 @@ impl Workspace {
         let accent = theme.accent_primary;
         let hover_bg = theme.bg_hover;
         
-        let (title, placeholder, current_name) = match &self.dialog_state {
-            DialogState::NewFile { name } => ("New File", "Enter file name...", name.clone()),
-            DialogState::NewFolder { name } => ("New Folder", "Enter folder name...", name.clone()),
-            DialogState::None => ("", "", String::new()),
+        let (title, placeholder, icon_path, button_text) = match &self.dialog_state {
+            DialogState::NewFile { .. } => ("New File", "Enter file name...", "assets/icons/file-plus.svg", "Create"),
+            DialogState::NewFolder { .. } => ("New Folder", "Enter folder name...", "assets/icons/folder-plus.svg", "Create"),
+            DialogState::Rename { .. } => ("Rename", "Enter new name...", "assets/icons/pen.svg", "Rename"),
+            DialogState::None => ("", "", "", ""),
         };
         
-        let is_new_file = matches!(self.dialog_state, DialogState::NewFile { .. });
+        let is_rename = matches!(self.dialog_state, DialogState::Rename { .. });
+        
+        let input_element: Option<Input> = self.dialog_input.as_ref().map(|input_state| {
+            Input::new(input_state).placeholder(placeholder)
+        });
         
         div()
             .id("dialog-overlay")
@@ -1986,6 +2342,7 @@ impl Workspace {
                     .border_1()
                     .border_color(border_color)
                     .shadow_lg()
+                    .on_mouse_down(MouseButton::Left, |_, _, _| {})
                     .child(
                         div()
                             .p_4()
@@ -1996,11 +2353,7 @@ impl Workspace {
                             .gap_3()
                             .child(
                                 svg()
-                                    .path(SharedString::from(if is_new_file { 
-                                        "assets/icons/file-plus.svg" 
-                                    } else { 
-                                        "assets/icons/folder-plus.svg" 
-                                    }))
+                                    .path(SharedString::from(icon_path))
                                     .size(px(20.0))
                                     .text_color(accent),
                             )
@@ -2017,28 +2370,19 @@ impl Workspace {
                             .p_4()
                             .child(
                                 div()
-                                    .id("name-input")
                                     .w_full()
-                                    .px_3()
-                                    .py_2()
-                                    .bg(theme.bg_void)
-                                    .rounded_md()
-                                    .border_1()
-                                    .border_color(border_color)
-                                    .text_sm()
-                                    .text_color(if current_name.is_empty() { text_muted } else { text_primary })
-                                    .child(if current_name.is_empty() { 
-                                        placeholder.to_string() 
-                                    } else { 
-                                        current_name.clone() 
-                                    })
+                                    .children(input_element)
                             )
                             .child(
                                 div()
                                     .mt_2()
                                     .text_xs()
                                     .text_color(text_muted)
-                                    .child("Press Enter to create, Escape to cancel")
+                                    .child(if is_rename { 
+                                        "Press Enter to rename, Escape to cancel" 
+                                    } else { 
+                                        "Press Enter to create, Escape to cancel" 
+                                    })
                             )
                     )
                     .child(
@@ -2066,7 +2410,7 @@ impl Workspace {
                             )
                             .child(
                                 div()
-                                    .id("create-btn")
+                                    .id("submit-btn")
                                     .px_4()
                                     .py_2()
                                     .rounded_md()
@@ -2076,20 +2420,13 @@ impl Workspace {
                                     .text_color(theme.text_inverse)
                                     .hover(|h| h.opacity(0.9))
                                     .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                        let name = match &view.dialog_state {
-                                            DialogState::NewFile { name } => name.clone(),
-                                            DialogState::NewFolder { name } => name.clone(),
-                                            DialogState::None => String::new(),
-                                        };
-                                        if !name.is_empty() {
-                                            if is_new_file {
-                                                view.create_new_file(&name, cx);
-                                            } else {
-                                                view.create_new_folder(&name, cx);
-                                            }
+                                        if is_rename {
+                                            view.submit_rename(cx);
+                                        } else {
+                                            view.submit_dialog(cx);
                                         }
                                     }))
-                                    .child("Create")
+                                    .child(button_text)
                             )
                     )
             )
