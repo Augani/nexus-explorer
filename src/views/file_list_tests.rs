@@ -151,7 +151,7 @@ fn test_rendered_entry_highlighting() {
     let entry = RenderedEntry {
         name: "test.txt".to_string(),
         formatted_size: "1 KB".to_string(),
-        formatted_date: "2024-01-01".to_string(),
+        formatted_date: "2025-01-01".to_string(),
         icon_key: IconKey::GenericFile,
         is_dir: false,
         highlight_positions: vec![0, 2, 4],
