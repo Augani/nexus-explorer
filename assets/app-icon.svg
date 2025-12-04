@@ -1,0 +1,11 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Letter N formed by connected nodes -->
+  <circle cx="70" cy="70" r="8" fill="#2563eb"/>
+  <circle cx="70" cy="130" r="8" fill="#2563eb"/>
+  <circle cx="130" cy="70" r="8" fill="#2563eb"/>
+  <circle cx="130" cy="130" r="8" fill="#2563eb"/>
+  <!-- Lines forming N -->
+  <line x1="70" y1="70" x2="70" y2="130" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+  <line x1="70" y1="70" x2="130" y2="130" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+  <line x1="130" y1="70" x2="130" y2="130" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+</svg>

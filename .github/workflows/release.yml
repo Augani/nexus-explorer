@@ -40,6 +40,19 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Generate app icon
+        run: |
+          brew install librsvg
+          mkdir -p AppIcon.iconset
+          for size in 16 32 64 128 256 512; do
+            rsvg-convert -w $size -h $size assets/app-icon.svg -o "AppIcon.iconset/icon_${size}x${size}.png"
+            double=$((size * 2))
+            if [ $double -le 1024 ]; then
+              rsvg-convert -w $double -h $double assets/app-icon.svg -o "AppIcon.iconset/icon_${size}x${size}@2x.png"
+            fi
+          done
+          iconutil -c icns AppIcon.iconset -o AppIcon.icns
+
       - name: Create app bundle
         run: |
           APP_NAME="Nexus Explorer"
@@ -47,6 +60,7 @@ jobs:
           mkdir -p "${APP_NAME}.app/Contents/Resources"
 
           cp "target/${{ matrix.target }}/release/${BINARY_NAME}" "${APP_NAME}.app/Contents/MacOS/Nexus Explorer"
+          cp AppIcon.icns "${APP_NAME}.app/Contents/Resources/AppIcon.icns"
 
           if [ -d "assets" ]; then
             cp -r assets "${APP_NAME}.app/Contents/Resources/"
@@ -65,6 +79,8 @@ jobs:
               <string>Nexus Explorer</string>
               <key>CFBundleDisplayName</key>
               <string>Nexus Explorer</string>
+              <key>CFBundleIconFile</key>
+              <string>AppIcon</string>
               <key>CFBundleVersion</key>
               <string>${GITHUB_REF_NAME#v}</string>
               <key>CFBundleShortVersionString</key>
@@ -113,6 +129,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Install icon tools
+        run: choco install imagemagick -y
+
+      - name: Generate Windows icon
+        shell: pwsh
+        run: |
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          magick convert -background none assets/app-icon.svg -define icon:auto-resize=256,128,64,48,32,16 assets/app-icon.ico
+
       - name: Build
         run: cargo build --release
 
@@ -121,6 +146,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "target/release/${BINARY_NAME}.exe" "dist/Nexus Explorer.exe"
+          cp assets/app-icon.ico dist/
           if [ -d "assets" ]; then
             cp -r assets dist/
           fi
@@ -154,6 +180,7 @@ jobs:
             libgtk-3-dev \
             libssl-dev \
             libvulkan-dev \
+            librsvg2-bin \
             pkg-config
 
       - name: Install Rust toolchain
@@ -178,8 +205,19 @@ jobs:
       - name: Create distribution
         run: |
           mkdir -p dist/nexus-explorer
+          mkdir -p dist/nexus-explorer/icons/hicolor/{16x16,32x32,48x48,64x64,128x128,256x256,512x512}/apps
+
           cp "target/release/${BINARY_NAME}" dist/nexus-explorer/nexus-explorer
           chmod +x dist/nexus-explorer/nexus-explorer
+
+          # Generate PNG icons at various sizes
+          for size in 16 32 48 64 128 256 512; do
+            rsvg-convert -w $size -h $size assets/app-icon.svg -o "dist/nexus-explorer/icons/hicolor/${size}x${size}/apps/nexus-explorer.png"
+          done
+
+          # Copy scalable SVG
+          mkdir -p dist/nexus-explorer/icons/hicolor/scalable/apps
+          cp assets/app-icon.svg dist/nexus-explorer/icons/hicolor/scalable/apps/nexus-explorer.svg
 
           if [ -d "assets" ]; then
             cp -r assets dist/nexus-explorer/
@@ -196,6 +234,22 @@ jobs:
           MimeType=inode/directory;
           Terminal=false
           EOF
+
+          cat > dist/nexus-explorer/install.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          PREFIX="${PREFIX:-/usr/local}"
+          install -Dm755 nexus-explorer "$PREFIX/bin/nexus-explorer"
+          install -Dm644 nexus-explorer.desktop "$PREFIX/share/applications/nexus-explorer.desktop"
+          for size in 16 32 48 64 128 256 512; do
+            install -Dm644 "icons/hicolor/${size}x${size}/apps/nexus-explorer.png" \
+              "$PREFIX/share/icons/hicolor/${size}x${size}/apps/nexus-explorer.png"
+          done
+          install -Dm644 icons/hicolor/scalable/apps/nexus-explorer.svg \
+            "$PREFIX/share/icons/hicolor/scalable/apps/nexus-explorer.svg"
+          echo "Installed to $PREFIX"
+          EOF
+          chmod +x dist/nexus-explorer/install.sh
 
           tar -czvf NexusExplorer-linux-x86_64.tar.gz -C dist nexus-explorer
 

@@ -49,7 +49,7 @@ Feature requests are welcome! Please provide:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nexus-explorer.git
+git clone https://github.com/augani/nexus-explorer.git
 cd nexus-explorer
 
 # Build

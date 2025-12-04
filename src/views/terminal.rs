@@ -104,6 +104,20 @@ impl TerminalView {
         }
     }
 
+    /// Change directory in the running shell by sending a cd command
+    pub fn change_directory(&mut self, path: PathBuf) {
+        let is_running = self.is_running();
+        self.state.set_working_directory(path.clone());
+        if let Some(pty) = &mut self.pty {
+            pty.set_working_directory(path.clone());
+            if is_running {
+                let path_str = path.to_string_lossy();
+                let cd_cmd = format!("cd '{}'\n", path_str.replace("'", "'\\''"));
+                let _ = pty.write(cd_cmd.as_bytes());
+            }
+        }
+    }
+
 
     /// Start the terminal with output polling
     pub fn start_with_polling(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Result<(), String> {

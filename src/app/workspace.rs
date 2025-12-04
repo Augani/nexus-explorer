@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -9,7 +10,7 @@ use gpui::{
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine, ThemeId, ViewMode, WindowManager, theme_colors, current_theme};
-use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView, ToastManager, ContextMenuAction};
+use crate::views::{FileList, FileListView, GridView, GridViewComponent, PreviewView, SearchInputView, SidebarView, StatusBarView, StatusBarAction, ThemePickerView, ToolAction, TerminalView, QuickLookView, ToastManager, ContextMenuAction, SmartFolderDialog, SmartFolderDialogAction};
 use adabraka_ui::components::input::{Input, InputState, InputEvent};
 
 actions!(workspace, [
@@ -66,10 +67,11 @@ pub struct Workspace {
     preview: Option<Entity<PreviewView>>,
     theme_picker: Entity<ThemePickerView>,
     status_bar: Entity<StatusBarView>,
-    terminal: Entity<TerminalView>,
+    terminals: HashMap<crate::models::TabId, Entity<TerminalView>>,
     quick_look: Entity<QuickLookView>,
     toast_manager: Entity<ToastManager>,
     tab_bar: Entity<crate::views::TabBarView>,
+    smart_folder_dialog: Entity<SmartFolderDialog>,
     focus_handle: FocusHandle,
     current_path: PathBuf,
     path_history: Vec<PathBuf>,
@@ -91,6 +93,7 @@ pub struct Workspace {
     dialog_input: Option<Entity<InputState>>,
     should_focus_dialog_input: bool,
     tabs_enabled: bool,
+    show_smart_folder_dialog: bool,
 }
 
 impl Workspace {
@@ -111,6 +114,40 @@ impl Workspace {
     /// Opens a new window with the current directory
     pub fn open_new_window_here(&self, cx: &mut App) {
         Self::open_new_window(self.current_path.clone(), cx);
+    }
+
+    /// Get or create terminal for the active tab
+    fn get_or_create_terminal(&mut self, cx: &mut Context<Self>) -> Entity<TerminalView> {
+        let tab_id = self.tab_bar.read(cx).tab_state().active_tab_id();
+        if let Some(terminal) = self.terminals.get(&tab_id) {
+            terminal.clone()
+        } else {
+            let path = self.current_path.clone();
+            let terminal = cx.new(|cx| {
+                TerminalView::new(cx).with_working_directory(path)
+            });
+            self.terminals.insert(tab_id, terminal.clone());
+            terminal
+        }
+    }
+
+    /// Get terminal for the active tab if it exists
+    fn active_terminal(&self, cx: &Context<Self>) -> Option<Entity<TerminalView>> {
+        let tab_id = self.tab_bar.read(cx).tab_state().active_tab_id();
+        self.terminals.get(&tab_id).cloned()
+    }
+
+    /// Create terminal for a new tab
+    fn create_terminal_for_tab(&mut self, tab_id: crate::models::TabId, path: PathBuf, cx: &mut Context<Self>) {
+        let terminal = cx.new(|cx| {
+            TerminalView::new(cx).with_working_directory(path)
+        });
+        self.terminals.insert(tab_id, terminal);
+    }
+
+    /// Remove terminal when tab is closed
+    fn remove_terminal_for_tab(&mut self, tab_id: crate::models::TabId) {
+        self.terminals.remove(&tab_id);
     }
 }
 
@@ -203,13 +240,17 @@ impl Workspace {
                 status_bar_view
             });
 
-            let terminal = cx.new(|cx| {
+            let initial_terminal = cx.new(|cx| {
                 TerminalView::new(cx).with_working_directory(initial_path.clone())
             });
+            let mut terminals = HashMap::new();
+            terminals.insert(crate::models::TabId::new(0), initial_terminal);
 
             let quick_look = cx.new(|cx| QuickLookView::new(cx));
 
             let toast_manager = cx.new(|cx| ToastManager::new(cx));
+
+            let smart_folder_dialog = cx.new(|cx| SmartFolderDialog::new(cx));
 
             // Observe file list for navigation requests and selection changes
             let sidebar_for_file_list = sidebar.clone();
@@ -290,6 +331,23 @@ impl Workspace {
                 if let Some(path) = nav_path {
                     workspace.navigate_to(path, cx);
                 }
+                
+                let show_dialog = sidebar.read(cx).is_smart_folder_dialog_visible();
+                if show_dialog {
+                    sidebar.update(cx, |view, cx| view.hide_smart_folder_dialog(cx));
+                    workspace.smart_folder_dialog.update(cx, |dialog, _| dialog.reset());
+                    workspace.show_smart_folder_dialog = true;
+                    cx.notify();
+                }
+            })
+            .detach();
+            
+            // Observe smart folder dialog for actions
+            cx.observe(&smart_folder_dialog, |workspace: &mut Workspace, dialog, cx| {
+                let action = dialog.update(cx, |view, _| view.take_pending_action());
+                if let Some(action) = action {
+                    workspace.handle_smart_folder_action(action, cx);
+                }
             })
             .detach();
 
@@ -325,9 +383,14 @@ impl Workspace {
                     }
                 }
                 
+                if let Some(closed_tab_id) = tab_bar.update(cx, |view, _| view.take_pending_close()) {
+                    workspace.remove_terminal_for_tab(closed_tab_id);
+                }
+                
                 if tab_bar.update(cx, |view, _| view.take_pending_new_tab()) {
-                    // New tab was created, load its directory
+                    let tab_id = workspace.tab_bar.read(cx).tab_state().active_tab_id();
                     let path = workspace.tab_bar.read(cx).active_path().to_path_buf();
+                    workspace.create_terminal_for_tab(tab_id, path.clone(), cx);
                     workspace.load_directory(path, cx);
                 }
             })
@@ -344,10 +407,11 @@ impl Workspace {
                 preview: None,
                 theme_picker,
                 status_bar,
-                terminal,
+                terminals,
                 quick_look,
                 toast_manager,
                 tab_bar,
+                smart_folder_dialog,
                 focus_handle: cx.focus_handle(),
                 current_path: initial_path.clone(),
                 path_history: vec![initial_path.clone()],
@@ -369,6 +433,7 @@ impl Workspace {
                 dialog_input: None,
                 should_focus_dialog_input: false,
                 tabs_enabled: true,
+                show_smart_folder_dialog: false,
             }
         })
     }
@@ -1240,13 +1305,6 @@ impl Workspace {
             view.set_current_directory(&path, cx);
         });
         
-        if self.is_terminal_open {
-            let terminal_path = path.clone();
-            self.terminal.update(cx, |terminal, _| {
-                terminal.set_working_directory(terminal_path);
-            });
-        }
-        
         cx.notify();
     }
 
@@ -1312,12 +1370,13 @@ impl Workspace {
             view.set_current_directory(&path, cx);
         });
         
-        // Sync terminal working directory if terminal is open
         if self.is_terminal_open {
-            let terminal_path = path.clone();
-            self.terminal.update(cx, |terminal, _| {
-                terminal.set_working_directory(terminal_path);
-            });
+            if let Some(terminal) = self.active_terminal(cx) {
+                let terminal_path = path.clone();
+                terminal.update(cx, |terminal, _| {
+                    terminal.change_directory(terminal_path);
+                });
+            }
         }
         
         cx.notify();
@@ -1377,6 +1436,15 @@ impl Workspace {
                     view.set_current_directory(&prev_path, cx);
                 });
                 
+                if self.is_terminal_open {
+                    if let Some(terminal) = self.active_terminal(cx) {
+                        let terminal_path = prev_path.clone();
+                        terminal.update(cx, |terminal, _| {
+                            terminal.change_directory(terminal_path);
+                        });
+                    }
+                }
+                
                 cx.notify();
             }
         }
@@ -1391,11 +1459,10 @@ impl Workspace {
     pub fn toggle_terminal(&mut self, cx: &mut Context<Self>) {
         self.is_terminal_open = !self.is_terminal_open;
         
-        // Start or stop the terminal based on visibility
         if self.is_terminal_open {
-            // Sync working directory and start terminal
+            let terminal = self.get_or_create_terminal(cx);
             let current_path = self.current_path.clone();
-            self.terminal.update(cx, |terminal, _| {
+            terminal.update(cx, |terminal, _| {
                 terminal.set_working_directory(current_path);
                 terminal.set_visible(true);
                 if !terminal.is_running() {
@@ -1403,10 +1470,11 @@ impl Workspace {
                 }
             });
         } else {
-            // Hide terminal (but keep it running for quick toggle)
-            self.terminal.update(cx, |terminal, _| {
-                terminal.set_visible(false);
-            });
+            if let Some(terminal) = self.active_terminal(cx) {
+                terminal.update(cx, |terminal, _| {
+                    terminal.set_visible(false);
+                });
+            }
         }
         
         self.status_bar.update(cx, |view, cx| {
@@ -1419,6 +1487,45 @@ impl Workspace {
         self.theme_picker.update(cx, |picker, cx| {
             picker.toggle(cx);
         });
+        cx.notify();
+    }
+
+    fn handle_smart_folder_action(&mut self, action: SmartFolderDialogAction, cx: &mut Context<Self>) {
+        match action {
+            SmartFolderDialogAction::Create { name, query } => {
+                match self.sidebar.update(cx, |view, cx| view.create_smart_folder(name.clone(), query, cx)) {
+                    Ok(_) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_success(format!("Created smart folder: {}", name), cx);
+                        });
+                    }
+                    Err(e) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to create smart folder: {:?}", e), cx);
+                        });
+                    }
+                }
+            }
+            SmartFolderDialogAction::Update { id, query } => {
+                match self.sidebar.update(cx, |view, cx| {
+                    view.sidebar_mut().update_smart_folder(id, query)?;
+                    Ok::<(), crate::models::SmartFolderError>(())
+                }) {
+                    Ok(_) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_success("Smart folder updated".to_string(), cx);
+                        });
+                    }
+                    Err(e) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to update smart folder: {:?}", e), cx);
+                        });
+                    }
+                }
+            }
+            SmartFolderDialogAction::Cancel => {}
+        }
+        self.show_smart_folder_dialog = false;
         cx.notify();
     }
 
@@ -2119,6 +2226,7 @@ impl Render for Workspace {
                             .when(is_terminal_open, |this| {
                                 let terminal_height = self.terminal_height;
                                 let handle_color = theme.border_default;
+                                let active_terminal = self.active_terminal(cx);
                                 this
                                     .child(
                                         div()
@@ -2145,13 +2253,15 @@ impl Render for Workspace {
                                                     .bg(handle_color),
                                             ),
                                     )
-                                    .child(
-                                        div()
-                                            .h(px(terminal_height))
-                                            .min_h(px(150.0))
-                                            .max_h(px(600.0))
-                                            .child(self.terminal.clone()),
-                                    )
+                                    .when_some(active_terminal, |this, terminal| {
+                                        this.child(
+                                            div()
+                                                .h(px(terminal_height))
+                                                .min_h(px(150.0))
+                                                .max_h(px(600.0))
+                                                .child(terminal),
+                                        )
+                                    })
                             }),
                     )
                     .when(self.copy_move_mode, |this| {
@@ -2208,6 +2318,10 @@ impl Render for Workspace {
             .child(self.status_bar.clone())
             .when(!matches!(self.dialog_state, DialogState::None), |this| {
                 this.child(self.render_dialog_overlay(cx))
+            })
+            // Smart folder dialog overlay
+            .when(self.show_smart_folder_dialog, |this| {
+                this.child(self.smart_folder_dialog.clone())
             })
             // Theme picker overlay
             .child(self.theme_picker.clone())
