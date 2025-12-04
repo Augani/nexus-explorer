@@ -1919,20 +1919,12 @@ impl Render for Workspace {
                         div()
                             .flex()
                             .items_center()
-                            .gap_2()
                             .pl(px(70.0))
                             .child(
                                 svg()
-                                    .path("assets/icons/hard-drive.svg")
-                                    .size(px(16.0))
+                                    .path("assets/icons/logo.svg")
+                                    .size(px(20.0))
                                     .text_color(theme.accent_primary),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(theme.text_primary)
-                                    .child("Nexus Explorer"),
                             ),
                     )
                     // Center - search input

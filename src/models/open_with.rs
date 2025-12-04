@@ -436,7 +436,7 @@ fn scan_applications_with_plist(
         ("DBeaver", vec!["sql", "csv", "json", "xml"]),
         
         // Other utilities
-        ("Finder", vec![]),  // Finder can open folders
+        ("Finder", vec![]),
         ("iTerm", vec!["sh", "bash", "zsh", "command"]),
         ("Warp", vec!["sh", "bash", "zsh", "command"]),
         ("Alacritty", vec!["sh", "bash", "zsh", "command"]),

@@ -36,7 +36,7 @@ Nexus Explorer is a next-generation file manager designed for speed. Built on th
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nexus-explorer.git
+git clone https://github.com/augani/nexus-explorer.git
 cd nexus-explorer
 
 # Build in release mode
