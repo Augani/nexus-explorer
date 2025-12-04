@@ -28,7 +28,12 @@ Nexus Explorer is a next-generation file manager designed for speed. Built on th
 
 ## Screenshots
 
-*Coming soon*
+### Light Mode
+![Nexus Explorer - Light Mode](assets/screenshots/1.png)
+
+### Dark Mode
+![Nexus Explorer - Dark Mode](assets/screenshots/2.png)
+
 
 ## Installation
 
@@ -43,7 +48,7 @@ cd nexus-explorer
 cargo build --release
 
 # Run
-./target/release/file-explorer
+./target/release/nexus-explorer
 ```
 
 ### Requirements
@@ -156,7 +161,7 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 
 ```bash
 # Clone with submodules
-git clone --recursive https://github.com/yourusername/nexus-explorer.git
+git clone --recursive https://github.com/augani/nexus-explorer.git
 
 # Run tests
 cargo test
