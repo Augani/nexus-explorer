@@ -1,32 +1,122 @@
-use gpui::Rgba;
 use crate::models::terminal::CellStyle;
+use gpui::Rgba;
 
 /// Standard ANSI color palette (16 colors)
 pub const ANSI_COLORS: [Rgba; 16] = [
     // Normal colors (0-7)
-    Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
-    Rgba { r: 0.8, g: 0.2, b: 0.2, a: 1.0 },
-    Rgba { r: 0.2, g: 0.8, b: 0.2, a: 1.0 },
-    Rgba { r: 0.8, g: 0.8, b: 0.2, a: 1.0 },
-    Rgba { r: 0.2, g: 0.4, b: 0.8, a: 1.0 },
-    Rgba { r: 0.8, g: 0.2, b: 0.8, a: 1.0 },
-    Rgba { r: 0.2, g: 0.8, b: 0.8, a: 1.0 },
-    Rgba { r: 0.8, g: 0.8, b: 0.8, a: 1.0 },
+    Rgba {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.8,
+        g: 0.2,
+        b: 0.2,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.2,
+        g: 0.8,
+        b: 0.2,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.8,
+        g: 0.8,
+        b: 0.2,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.2,
+        g: 0.4,
+        b: 0.8,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.8,
+        g: 0.2,
+        b: 0.8,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.2,
+        g: 0.8,
+        b: 0.8,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.8,
+        g: 0.8,
+        b: 0.8,
+        a: 1.0,
+    },
     // Bright colors (8-15)
-    Rgba { r: 0.4, g: 0.4, b: 0.4, a: 1.0 },
-    Rgba { r: 1.0, g: 0.4, b: 0.4, a: 1.0 },
-    Rgba { r: 0.4, g: 1.0, b: 0.4, a: 1.0 },
-    Rgba { r: 1.0, g: 1.0, b: 0.4, a: 1.0 },
-    Rgba { r: 0.4, g: 0.6, b: 1.0, a: 1.0 },
-    Rgba { r: 1.0, g: 0.4, b: 1.0, a: 1.0 },
-    Rgba { r: 0.4, g: 1.0, b: 1.0, a: 1.0 },
-    Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
+    Rgba {
+        r: 0.4,
+        g: 0.4,
+        b: 0.4,
+        a: 1.0,
+    },
+    Rgba {
+        r: 1.0,
+        g: 0.4,
+        b: 0.4,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.4,
+        g: 1.0,
+        b: 0.4,
+        a: 1.0,
+    },
+    Rgba {
+        r: 1.0,
+        g: 1.0,
+        b: 0.4,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.4,
+        g: 0.6,
+        b: 1.0,
+        a: 1.0,
+    },
+    Rgba {
+        r: 1.0,
+        g: 0.4,
+        b: 1.0,
+        a: 1.0,
+    },
+    Rgba {
+        r: 0.4,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    },
+    Rgba {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    },
 ];
 
 /// Default foreground color
-pub const DEFAULT_FG: Rgba = Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 };
+pub const DEFAULT_FG: Rgba = Rgba {
+    r: 0.96,
+    g: 0.91,
+    b: 0.86,
+    a: 1.0,
+};
 /// Default background color (transparent)
-pub const DEFAULT_BG: Rgba = Rgba { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
+pub const DEFAULT_BG: Rgba = Rgba {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 0.0,
+};
 
 /// Parser state machine states
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,7 +152,6 @@ pub enum ParsedSegment {
     ScrollUp(usize),
     ScrollDown(usize),
 }
-
 
 /// Clear mode for screen/line clearing
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -183,7 +272,6 @@ impl AnsiParser {
 
         segments
     }
-
 
     fn handle_ground(
         &mut self,
@@ -346,7 +434,6 @@ impl AnsiParser {
         }
     }
 
-
     fn handle_csi(
         &mut self,
         byte: u8,
@@ -477,11 +564,14 @@ impl AnsiParser {
         self.osc_string.clear();
     }
 
-
     fn execute_csi(&mut self, final_byte: u8, segments: &mut Vec<ParsedSegment>) {
         let param_or = |params: &[u16], idx: usize, default: usize| -> usize {
             let val = params.get(idx).copied().unwrap_or(0) as usize;
-            if val == 0 { default } else { val }
+            if val == 0 {
+                default
+            } else {
+                val
+            }
         };
 
         match final_byte {
@@ -614,7 +704,6 @@ impl AnsiParser {
         }
     }
 
-
     fn parse_extended_color(&self, i: &mut usize) -> Option<Rgba> {
         if *i + 1 >= self.params.len() {
             return None;
@@ -658,15 +747,32 @@ pub fn color_from_256(n: usize) -> Rgba {
             let g = (n / 6) % 6;
             let b = n % 6;
             Rgba {
-                r: if r == 0 { 0.0 } else { (r * 40 + 55) as f32 / 255.0 },
-                g: if g == 0 { 0.0 } else { (g * 40 + 55) as f32 / 255.0 },
-                b: if b == 0 { 0.0 } else { (b * 40 + 55) as f32 / 255.0 },
+                r: if r == 0 {
+                    0.0
+                } else {
+                    (r * 40 + 55) as f32 / 255.0
+                },
+                g: if g == 0 {
+                    0.0
+                } else {
+                    (g * 40 + 55) as f32 / 255.0
+                },
+                b: if b == 0 {
+                    0.0
+                } else {
+                    (b * 40 + 55) as f32 / 255.0
+                },
                 a: 1.0,
             }
         }
         232..=255 => {
             let gray = ((n - 232) * 10 + 8) as f32 / 255.0;
-            Rgba { r: gray, g: gray, b: gray, a: 1.0 }
+            Rgba {
+                r: gray,
+                g: gray,
+                b: gray,
+                a: 1.0,
+            }
         }
         _ => DEFAULT_FG,
     }
@@ -701,7 +807,7 @@ mod tests {
     #[test]
     fn test_cursor_movement() {
         let mut parser = AnsiParser::new();
-        
+
         let segments = parser.parse(b"\x1B[5A");
         assert_eq!(segments, vec![ParsedSegment::CursorUp(5)]);
 
@@ -725,7 +831,7 @@ mod tests {
     #[test]
     fn test_clear_screen() {
         let mut parser = AnsiParser::new();
-        
+
         let segments = parser.parse(b"\x1B[2J");
         assert_eq!(segments, vec![ParsedSegment::ClearScreen(ClearMode::All)]);
 
@@ -736,7 +842,7 @@ mod tests {
     #[test]
     fn test_clear_line() {
         let mut parser = AnsiParser::new();
-        
+
         let segments = parser.parse(b"\x1B[K");
         assert_eq!(segments, vec![ParsedSegment::ClearLine(ClearMode::ToEnd)]);
 
@@ -803,14 +909,17 @@ mod tests {
     fn test_osc_title() {
         let mut parser = AnsiParser::new();
         let segments = parser.parse(b"\x1B]0;My Title\x07");
-        assert_eq!(segments, vec![ParsedSegment::SetTitle("My Title".to_string())]);
+        assert_eq!(
+            segments,
+            vec![ParsedSegment::SetTitle("My Title".to_string())]
+        );
     }
 
     #[test]
     fn test_mixed_content() {
         let mut parser = AnsiParser::new();
         let segments = parser.parse(b"\x1B[31mRed\x1B[0m Normal");
-        
+
         assert_eq!(segments.len(), 2);
         if let ParsedSegment::Text(text, style) = &segments[0] {
             assert_eq!(text, "Red");

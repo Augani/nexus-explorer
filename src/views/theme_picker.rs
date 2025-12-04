@@ -4,7 +4,7 @@ use gpui::{
 };
 use std::time::{Duration, Instant};
 
-use crate::models::{Theme, ThemeColors, ThemeId, theme_colors};
+use crate::models::{theme_colors, Theme, ThemeColors, ThemeId};
 
 /// Callback type for theme selection
 pub type OnThemeSelect = Box<dyn Fn(ThemeId) + 'static>;
@@ -108,9 +108,7 @@ impl ThemePickerView {
 
     pub fn set_selected_theme(&mut self, id: ThemeId, cx: &mut Context<Self>) {
         if self.selected_theme != id {
-            self.transition = Some(
-                TransitionState::new(id).with_from(self.selected_theme)
-            );
+            self.transition = Some(TransitionState::new(id).with_from(self.selected_theme));
             self.selected_theme = id;
             crate::models::set_current_theme(id);
             crate::models::save_theme_selection(id);
@@ -130,7 +128,7 @@ impl ThemePickerView {
 /// Render a mini preview of the file explorer UI with theme colors
 fn render_mini_preview(theme: &Theme) -> impl IntoElement {
     let colors = &theme.colors;
-    
+
     div()
         .h(px(100.0))
         .bg(colors.bg_primary)
@@ -159,7 +157,7 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
                                         .h(px(4.0))
                                         .w(px(32.0))
                                         .bg(colors.text_muted)
-                                        .rounded_sm()
+                                        .rounded_sm(),
                                 )
                                 .child(
                                     div()
@@ -171,26 +169,62 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
                                                 .flex()
                                                 .items_center()
                                                 .gap(px(2.0))
-                                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.folder_color).rounded_sm())
-                                                .child(div().h(px(4.0)).w(px(20.0)).bg(colors.text_secondary).rounded_sm())
+                                                .child(
+                                                    div()
+                                                        .w(px(8.0))
+                                                        .h(px(8.0))
+                                                        .bg(colors.folder_color)
+                                                        .rounded_sm(),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .h(px(4.0))
+                                                        .w(px(20.0))
+                                                        .bg(colors.text_secondary)
+                                                        .rounded_sm(),
+                                                ),
                                         )
                                         .child(
                                             div()
                                                 .flex()
                                                 .items_center()
                                                 .gap(px(2.0))
-                                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.folder_color).rounded_sm())
-                                                .child(div().h(px(4.0)).w(px(18.0)).bg(colors.text_secondary).rounded_sm())
+                                                .child(
+                                                    div()
+                                                        .w(px(8.0))
+                                                        .h(px(8.0))
+                                                        .bg(colors.folder_color)
+                                                        .rounded_sm(),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .h(px(4.0))
+                                                        .w(px(18.0))
+                                                        .bg(colors.text_secondary)
+                                                        .rounded_sm(),
+                                                ),
                                         )
                                         .child(
                                             div()
                                                 .flex()
                                                 .items_center()
                                                 .gap(px(2.0))
-                                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.accent_primary).rounded_sm())
-                                                .child(div().h(px(4.0)).w(px(22.0)).bg(colors.text_secondary).rounded_sm())
-                                        )
-                                )
+                                                .child(
+                                                    div()
+                                                        .w(px(8.0))
+                                                        .h(px(8.0))
+                                                        .bg(colors.accent_primary)
+                                                        .rounded_sm(),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .h(px(4.0))
+                                                        .w(px(22.0))
+                                                        .bg(colors.text_secondary)
+                                                        .rounded_sm(),
+                                                ),
+                                        ),
+                                ),
                         ),
                 )
                 .child(
@@ -209,62 +243,118 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
                                 .flex()
                                 .items_center()
                                 .gap(px(2.0))
-                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.text_muted).rounded_sm())
-                                .child(div().w(px(40.0)).h(px(6.0)).bg(colors.bg_hover).rounded_sm())
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .bg(colors.bg_primary)
-                                .p_1()
                                 .child(
                                     div()
-                                        .flex()
-                                        .flex_col()
-                                        .gap(px(2.0))
-                                        .child(
-                                            div()
-                                                .h(px(12.0))
-                                                .bg(colors.bg_selected)
-                                                .rounded_sm()
-                                                .px_1()
-                                                .flex()
-                                                .items_center()
-                                                .gap(px(2.0))
-                                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.folder_color).rounded_sm())
-                                                .child(div().h(px(4.0)).w(px(30.0)).bg(colors.text_primary).rounded_sm())
-                                        )
-                                        .child(
-                                            div()
-                                                .h(px(12.0))
-                                                .px_1()
-                                                .flex()
-                                                .items_center()
-                                                .gap(px(2.0))
-                                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.file_code).rounded_sm())
-                                                .child(div().h(px(4.0)).w(px(35.0)).bg(colors.text_secondary).rounded_sm())
-                                        )
-                                        .child(
-                                            div()
-                                                .h(px(12.0))
-                                                .px_1()
-                                                .flex()
-                                                .items_center()
-                                                .gap(px(2.0))
-                                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.file_data).rounded_sm())
-                                                .child(div().h(px(4.0)).w(px(28.0)).bg(colors.text_secondary).rounded_sm())
-                                        )
-                                        .child(
-                                            div()
-                                                .h(px(12.0))
-                                                .px_1()
-                                                .flex()
-                                                .items_center()
-                                                .gap(px(2.0))
-                                                .child(div().w(px(8.0)).h(px(8.0)).bg(colors.file_media).rounded_sm())
-                                                .child(div().h(px(4.0)).w(px(32.0)).bg(colors.text_secondary).rounded_sm())
-                                        )
+                                        .w(px(8.0))
+                                        .h(px(8.0))
+                                        .bg(colors.text_muted)
+                                        .rounded_sm(),
+                                )
+                                .child(
+                                    div()
+                                        .w(px(40.0))
+                                        .h(px(6.0))
+                                        .bg(colors.bg_hover)
+                                        .rounded_sm(),
                                 ),
+                        )
+                        .child(
+                            div().flex_1().bg(colors.bg_primary).p_1().child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap(px(2.0))
+                                    .child(
+                                        div()
+                                            .h(px(12.0))
+                                            .bg(colors.bg_selected)
+                                            .rounded_sm()
+                                            .px_1()
+                                            .flex()
+                                            .items_center()
+                                            .gap(px(2.0))
+                                            .child(
+                                                div()
+                                                    .w(px(8.0))
+                                                    .h(px(8.0))
+                                                    .bg(colors.folder_color)
+                                                    .rounded_sm(),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(4.0))
+                                                    .w(px(30.0))
+                                                    .bg(colors.text_primary)
+                                                    .rounded_sm(),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .h(px(12.0))
+                                            .px_1()
+                                            .flex()
+                                            .items_center()
+                                            .gap(px(2.0))
+                                            .child(
+                                                div()
+                                                    .w(px(8.0))
+                                                    .h(px(8.0))
+                                                    .bg(colors.file_code)
+                                                    .rounded_sm(),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(4.0))
+                                                    .w(px(35.0))
+                                                    .bg(colors.text_secondary)
+                                                    .rounded_sm(),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .h(px(12.0))
+                                            .px_1()
+                                            .flex()
+                                            .items_center()
+                                            .gap(px(2.0))
+                                            .child(
+                                                div()
+                                                    .w(px(8.0))
+                                                    .h(px(8.0))
+                                                    .bg(colors.file_data)
+                                                    .rounded_sm(),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(4.0))
+                                                    .w(px(28.0))
+                                                    .bg(colors.text_secondary)
+                                                    .rounded_sm(),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .h(px(12.0))
+                                            .px_1()
+                                            .flex()
+                                            .items_center()
+                                            .gap(px(2.0))
+                                            .child(
+                                                div()
+                                                    .w(px(8.0))
+                                                    .h(px(8.0))
+                                                    .bg(colors.file_media)
+                                                    .rounded_sm(),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(4.0))
+                                                    .w(px(32.0))
+                                                    .bg(colors.text_secondary)
+                                                    .rounded_sm(),
+                                            ),
+                                    ),
+                            ),
                         ),
                 ),
         )
@@ -273,7 +363,7 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
 /// Render color swatches showing the theme's key colors
 fn render_color_swatches(theme: &Theme) -> impl IntoElement {
     let colors = &theme.colors;
-    
+
     div()
         .flex()
         .gap(px(4.0))
@@ -284,7 +374,7 @@ fn render_color_swatches(theme: &Theme) -> impl IntoElement {
                 .rounded_full()
                 .bg(colors.accent_primary)
                 .border_1()
-                .border_color(colors.border_default)
+                .border_color(colors.border_default),
         )
         .child(
             div()
@@ -293,7 +383,7 @@ fn render_color_swatches(theme: &Theme) -> impl IntoElement {
                 .rounded_full()
                 .bg(colors.accent_secondary)
                 .border_1()
-                .border_color(colors.border_default)
+                .border_color(colors.border_default),
         )
         .child(
             div()
@@ -302,7 +392,7 @@ fn render_color_swatches(theme: &Theme) -> impl IntoElement {
                 .rounded_full()
                 .bg(colors.folder_color)
                 .border_1()
-                .border_color(colors.border_default)
+                .border_color(colors.border_default),
         )
         .child(
             div()
@@ -311,7 +401,7 @@ fn render_color_swatches(theme: &Theme) -> impl IntoElement {
                 .rounded_full()
                 .bg(colors.success)
                 .border_1()
-                .border_color(colors.border_default)
+                .border_color(colors.border_default),
         )
         .child(
             div()
@@ -320,19 +410,23 @@ fn render_color_swatches(theme: &Theme) -> impl IntoElement {
                 .rounded_full()
                 .bg(colors.file_code)
                 .border_1()
-                .border_color(colors.border_default)
+                .border_color(colors.border_default),
         )
 }
 
 /// Render a theme card with live preview
-fn render_theme_card(theme: &Theme, is_selected: bool, current_colors: &ThemeColors) -> impl IntoElement {
+fn render_theme_card(
+    theme: &Theme,
+    is_selected: bool,
+    current_colors: &ThemeColors,
+) -> impl IntoElement {
     render_theme_card_animated(theme, is_selected, false, current_colors, false, 1.0)
 }
 
 /// Render a theme card with live preview and animation support
 fn render_theme_card_animated(
-    theme: &Theme, 
-    is_selected: bool, 
+    theme: &Theme,
+    is_selected: bool,
     is_hovered: bool,
     current_colors: &ThemeColors,
     is_transitioning: bool,
@@ -340,7 +434,7 @@ fn render_theme_card_animated(
 ) -> impl IntoElement {
     let colors = &theme.colors;
     let hover_border = colors.border_emphasis;
-    
+
     let card_bg = if is_selected {
         colors.bg_tertiary
     } else if is_hovered {
@@ -356,30 +450,37 @@ fn render_theme_card_animated(
         .cursor_pointer()
         .bg(card_bg)
         // Apply scale animation on hover
-        .when(is_hovered && !is_selected, |s| {
-            s.shadow_lg()
-        })
+        .when(is_hovered && !is_selected, |s| s.shadow_lg())
         // Selected state with accent border and glow effect
         .when(is_selected, |s| {
-            s.border_2()
-                .border_color(colors.accent_primary)
-                .shadow_lg()
+            s.border_2().border_color(colors.accent_primary).shadow_lg()
         })
         // Transitioning animation - pulse effect
         .when(is_transitioning, |s| {
             s.opacity(0.9 + 0.1 * transition_progress)
         })
         .when(!is_selected, |s| {
-            s.border_1()
-                .border_color(if is_hovered { hover_border } else { current_colors.border_default })
+            s.border_1().border_color(if is_hovered {
+                hover_border
+            } else {
+                current_colors.border_default
+            })
         })
         .child(render_mini_preview(theme))
         .child(
             div()
                 .p_3()
-                .bg(if is_selected { colors.bg_secondary } else { current_colors.bg_tertiary })
+                .bg(if is_selected {
+                    colors.bg_secondary
+                } else {
+                    current_colors.bg_tertiary
+                })
                 .border_t_1()
-                .border_color(if is_selected { colors.border_subtle } else { current_colors.border_subtle })
+                .border_color(if is_selected {
+                    colors.border_subtle
+                } else {
+                    current_colors.border_subtle
+                })
                 .flex()
                 .flex_col()
                 .gap_2()
@@ -392,8 +493,12 @@ fn render_theme_card_animated(
                             div()
                                 .text_sm()
                                 .font_weight(gpui::FontWeight::BOLD)
-                                .text_color(if is_selected { colors.text_primary } else { current_colors.text_primary })
-                                .child(theme.name)
+                                .text_color(if is_selected {
+                                    colors.text_primary
+                                } else {
+                                    current_colors.text_primary
+                                })
+                                .child(theme.name),
                         )
                         .when(is_selected, |s| {
                             s.child(
@@ -410,19 +515,23 @@ fn render_theme_card_animated(
                                             .text_xs()
                                             .font_weight(gpui::FontWeight::BOLD)
                                             .text_color(colors.text_inverse)
-                                            .child("✓")
-                                    )
+                                            .child("✓"),
+                                    ),
                             )
-                        })
+                        }),
                 )
                 .child(
                     div()
                         .text_xs()
-                        .text_color(if is_selected { colors.text_secondary } else { current_colors.text_muted })
+                        .text_color(if is_selected {
+                            colors.text_secondary
+                        } else {
+                            current_colors.text_muted
+                        })
                         .line_height(px(16.0))
-                        .child(theme.description)
+                        .child(theme.description),
                 )
-                .child(render_color_swatches(theme))
+                .child(render_color_swatches(theme)),
         )
 }
 
@@ -442,13 +551,14 @@ impl Render for ThemePickerView {
         let themes = Theme::all_themes();
         let selected = self.selected_theme;
 
-        let transition_progress = self.transition
+        let transition_progress = self
+            .transition
             .as_ref()
             .map(|t| t.progress())
             .unwrap_or(1.0);
-        
+
         let is_transitioning = transition_progress < 1.0;
-        
+
         // Calculate crossfade opacity for smooth transition
         let crossfade_opacity = if is_transitioning {
             // Ease-out cubic for smooth deceleration
@@ -551,7 +661,7 @@ impl Render for ThemePickerView {
                                     .children(themes.iter().enumerate().map(|(idx, theme)| {
                                         let theme_id = theme.id;
                                         let is_selected = theme_id == selected;
-                                        
+
                                         div()
                                             .id(("theme-card", idx))
                                             .on_mouse_down(MouseButton::Left, cx.listener(move |view, _, _, cx| {

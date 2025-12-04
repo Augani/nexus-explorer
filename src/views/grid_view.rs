@@ -2,12 +2,12 @@ use std::path::PathBuf;
 
 use gpui::{
     anchored, div, prelude::*, px, svg, App, Context, Corner, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, MouseButton, ParentElement, Point, Pixels, Render, 
-    SharedString, Styled, Window, MouseDownEvent,
+    InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement, Pixels, Point,
+    Render, SharedString, Styled, Window,
 };
 
-use crate::models::{FileEntry, GridConfig, theme_colors};
 use super::file_list::{get_file_icon, get_file_icon_color, ContextMenuAction};
+use crate::models::{theme_colors, FileEntry, GridConfig};
 
 pub struct GridView {
     entries: Vec<FileEntry>,
@@ -87,11 +87,13 @@ impl GridView {
     }
 
     pub fn rows(&self) -> usize {
-        self.config.rows_for_items(self.entries.len(), self.viewport_width)
+        self.config
+            .rows_for_items(self.entries.len(), self.viewport_width)
     }
 
     pub fn content_height(&self) -> f32 {
-        self.config.content_height(self.entries.len(), self.viewport_width)
+        self.config
+            .content_height(self.entries.len(), self.viewport_width)
     }
 }
 
@@ -143,7 +145,7 @@ impl GridViewComponent {
         self.context_menu_index = None;
         self.show_open_with_submenu = false;
     }
-    
+
     pub fn take_pending_context_action(&mut self) -> Option<ContextMenuAction> {
         self.pending_context_action.take()
     }
@@ -197,10 +199,13 @@ impl Render for GridViewComponent {
             .flex()
             .flex_col()
             .relative()
-            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                view.close_context_menu();
-                cx.notify();
-            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.close_context_menu();
+                    cx.notify();
+                }),
+            )
             .child(
                 div()
                     .flex()
@@ -213,7 +218,7 @@ impl Render for GridViewComponent {
                     .text_xs()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(text_gray)
-                    .child(format!("{} items", total_items))
+                    .child(format!("{} items", total_items)),
             )
             .child(
                 div()
@@ -221,108 +226,111 @@ impl Render for GridViewComponent {
                     .overflow_hidden()
                     .p_4()
                     .when(total_items == 0, |this| {
-                        this.flex()
-                            .items_center()
-                            .justify_center()
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .items_center()
-                                    .text_color(text_gray)
-                                    .child(
-                                        svg()
-                                            .path("assets/icons/folder-open.svg")
-                                            .size(px(48.0))
-                                            .text_color(border_subtle)
-                                            .mb_4(),
-                                    )
-                                    .child("Folder is empty"),
-                            )
+                        this.flex().items_center().justify_center().child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .text_color(text_gray)
+                                .child(
+                                    svg()
+                                        .path("assets/icons/folder-open.svg")
+                                        .size(px(48.0))
+                                        .text_color(border_subtle)
+                                        .mb_4(),
+                                )
+                                .child("Folder is empty"),
+                        )
                     })
                     .when(total_items > 0, |this| {
                         let entity = cx.entity().clone();
                         let entries = self.grid_view.entries.clone();
-                        
-                        this.child(
-                            div()
-                                .flex()
-                                .flex_wrap()
-                                .gap(px(config.gap))
-                                .children(
-                                    entries.iter().enumerate().map(|(ix, entry)| {
-                                        let is_selected = selected_index == Some(ix);
-                                        let is_dir = entry.is_dir;
-                                        let name = entry.name.clone();
-                                        let icon_name = get_file_icon(&name, is_dir);
-                                        let icon_color = if is_dir { 
-                                            if is_selected { folder_open_color } else { folder_color }
-                                        } else { 
-                                            get_file_icon_color(&name) 
-                                        };
-                                        let entry_path = entry.path.clone();
-                                        let entity = entity.clone();
-                                        let entity_for_ctx = entity.clone();
 
-                                        div()
-                                            .id(SharedString::from(format!("grid-item-{}", ix)))
-                                            .w(px(config.item_width))
-                                            .h(px(config.item_height))
-                                            .flex()
-                                            .flex_col()
-                                            .items_center()
-                                            .justify_center()
-                                            .gap_2()
-                                            .p_2()
-                                            .rounded_lg()
-                                            .cursor_pointer()
-                                            .when(is_selected, |s| s.bg(selected_bg))
-                                            .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
-                                            .on_click({
-                                                let entry_path = entry_path.clone();
-                                                let entity = entity.clone();
-                                                move |event, _window, cx| {
-                                                    entity.update(cx, |view, cx| {
-                                                        view.close_context_menu();
-                                                        if event.click_count() == 2 && is_dir {
-                                                            view.pending_navigation = Some(entry_path.clone());
-                                                        } else {
-                                                            view.grid_view.selected_index = Some(ix);
-                                                        }
-                                                        cx.notify();
-                                                    });
+                        this.child(div().flex().flex_wrap().gap(px(config.gap)).children(
+                            entries.iter().enumerate().map(|(ix, entry)| {
+                                let is_selected = selected_index == Some(ix);
+                                let is_dir = entry.is_dir;
+                                let name = entry.name.clone();
+                                let icon_name = get_file_icon(&name, is_dir);
+                                let icon_color = if is_dir {
+                                    if is_selected {
+                                        folder_open_color
+                                    } else {
+                                        folder_color
+                                    }
+                                } else {
+                                    get_file_icon_color(&name)
+                                };
+                                let entry_path = entry.path.clone();
+                                let entity = entity.clone();
+                                let entity_for_ctx = entity.clone();
+
+                                div()
+                                    .id(SharedString::from(format!("grid-item-{}", ix)))
+                                    .w(px(config.item_width))
+                                    .h(px(config.item_height))
+                                    .flex()
+                                    .flex_col()
+                                    .items_center()
+                                    .justify_center()
+                                    .gap_2()
+                                    .p_2()
+                                    .rounded_lg()
+                                    .cursor_pointer()
+                                    .when(is_selected, |s| s.bg(selected_bg))
+                                    .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
+                                    .on_click({
+                                        let entry_path = entry_path.clone();
+                                        let entity = entity.clone();
+                                        move |event, _window, cx| {
+                                            entity.update(cx, |view, cx| {
+                                                view.close_context_menu();
+                                                if event.click_count() == 2 && is_dir {
+                                                    view.pending_navigation =
+                                                        Some(entry_path.clone());
+                                                } else {
+                                                    view.grid_view.selected_index = Some(ix);
                                                 }
-                                            })
-                                            .on_mouse_down(MouseButton::Right, {
-                                                let entity = entity_for_ctx.clone();
-                                                move |event: &MouseDownEvent, _window, cx| {
-                                                    entity.update(cx, |view, cx| {
-                                                        view.grid_view.selected_index = Some(ix);
-                                                        view.context_menu_position = Some(event.position);
-                                                        view.context_menu_index = Some(ix);
-                                                        cx.notify();
-                                                    });
-                                                }
-                                            })
-                                            .child(
-                                                svg()
-                                                    .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                                    .size(px(config.icon_size))
-                                                    .text_color(icon_color)
-                                            )
-                                            .child(
-                                                div()
-                                                    .w_full()
-                                                    .text_center()
-                                                    .text_xs()
-                                                    .text_color(if is_selected { theme.text_primary } else { text_light })
-                                                    .truncate()
-                                                    .child(truncate_name(&name, 14))
-                                            )
+                                                cx.notify();
+                                            });
+                                        }
                                     })
-                                )
-                        )
-                    })
+                                    .on_mouse_down(MouseButton::Right, {
+                                        let entity = entity_for_ctx.clone();
+                                        move |event: &MouseDownEvent, _window, cx| {
+                                            entity.update(cx, |view, cx| {
+                                                view.grid_view.selected_index = Some(ix);
+                                                view.context_menu_position = Some(event.position);
+                                                view.context_menu_index = Some(ix);
+                                                cx.notify();
+                                            });
+                                        }
+                                    })
+                                    .child(
+                                        svg()
+                                            .path(SharedString::from(format!(
+                                                "assets/icons/{}.svg",
+                                                icon_name
+                                            )))
+                                            .size(px(config.icon_size))
+                                            .text_color(icon_color),
+                                    )
+                                    .child(
+                                        div()
+                                            .w_full()
+                                            .text_center()
+                                            .text_xs()
+                                            .text_color(if is_selected {
+                                                theme.text_primary
+                                            } else {
+                                                text_light
+                                            })
+                                            .truncate()
+                                            .child(truncate_name(&name, 14)),
+                                    )
+                            }),
+                        ))
+                    }),
             )
             .child(
                 div()
@@ -349,19 +357,15 @@ impl Render for GridViewComponent {
                             )
                             .child(format!("{} items", total_items)),
                     )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child("Grid View"),
-                    ),
+                    .child(div().flex().items_center().gap_3().child("Grid View")),
             )
             .when_some(context_menu_pos, |this, pos| {
                 let entity = cx.entity().clone();
-                let selected_entry = self.context_menu_index.and_then(|idx| self.grid_view.entries.get(idx).cloned());
+                let selected_entry = self
+                    .context_menu_index
+                    .and_then(|idx| self.grid_view.entries.get(idx).cloned());
                 let is_dir = selected_entry.as_ref().map(|e| e.is_dir).unwrap_or(false);
-                
+
                 this.child(
                     anchored()
                         .snap_to_window_with_margin(px(8.0))
@@ -382,19 +386,27 @@ impl Render for GridViewComponent {
                                     view.close_context_menu();
                                     cx.notify();
                                 }))
-                                .child(render_context_menu_item("folder-open", "Open", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Open(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                .child(render_context_menu_item(
+                                    "folder-open",
+                                    "Open",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::Open(e.path.clone()),
+                                                    );
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
+                                    },
+                                ))
                                 .child(render_grid_open_with_submenu(
                                     selected_entry.clone(),
                                     self.show_open_with_submenu,
@@ -409,201 +421,331 @@ impl Render for GridViewComponent {
                                     let entity2 = entity.clone();
                                     let entry = selected_entry.clone();
                                     let entry2 = selected_entry.clone();
-                                    this.child(render_context_menu_item("app-window", "Open in New Window", text_light, hover_bg, {
+                                    this.child(render_context_menu_item(
+                                        "app-window",
+                                        "Open in New Window",
+                                        text_light,
+                                        hover_bg,
+                                        {
+                                            move |_window, cx| {
+                                                if let Some(ref e) = entry {
+                                                    entity.update(cx, |view, cx| {
+                                                        view.pending_context_action = Some(
+                                                            ContextMenuAction::OpenInNewWindow(
+                                                                e.path.clone(),
+                                                            ),
+                                                        );
+                                                        view.close_context_menu();
+                                                        cx.notify();
+                                                    });
+                                                }
+                                            }
+                                        },
+                                    ))
+                                    .child(
+                                        render_context_menu_item(
+                                            "folder-plus",
+                                            "Open in New Tab",
+                                            text_light,
+                                            hover_bg,
+                                            {
+                                                move |_window, cx| {
+                                                    if let Some(ref e) = entry2 {
+                                                        entity2.update(cx, |view, cx| {
+                                                            view.pending_context_action = Some(
+                                                                ContextMenuAction::OpenInNewTab(
+                                                                    e.path.clone(),
+                                                                ),
+                                                            );
+                                                            view.close_context_menu();
+                                                            cx.notify();
+                                                        });
+                                                    }
+                                                }
+                                            },
+                                        ),
+                                    )
+                                })
+                                .child(render_context_menu_divider(border_subtle))
+                                .child(render_context_menu_item(
+                                    "eye",
+                                    "Quick Look",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
                                         move |_window, cx| {
                                             if let Some(ref e) = entry {
                                                 entity.update(cx, |view, cx| {
-                                                    view.pending_context_action = Some(ContextMenuAction::OpenInNewWindow(e.path.clone()));
+                                                    view.pending_context_action =
+                                                        Some(ContextMenuAction::QuickLook(
+                                                            e.path.clone(),
+                                                        ));
                                                     view.close_context_menu();
                                                     cx.notify();
                                                 });
                                             }
                                         }
-                                    }))
-                                    .child(render_context_menu_item("folder-plus", "Open in New Tab", text_light, hover_bg, {
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "info",
+                                    "Get Info",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
                                         move |_window, cx| {
-                                            if let Some(ref e) = entry2 {
-                                                entity2.update(cx, |view, cx| {
-                                                    view.pending_context_action = Some(ContextMenuAction::OpenInNewTab(e.path.clone()));
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::GetInfo(e.path.clone()),
+                                                    );
                                                     view.close_context_menu();
                                                     cx.notify();
                                                 });
                                             }
                                         }
-                                    }))
-                                })
+                                    },
+                                ))
                                 .child(render_context_menu_divider(border_subtle))
-                                .child(render_context_menu_item("eye", "Quick Look", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
+                                .child(render_context_menu_item(
+                                    "pen",
+                                    "Rename",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::Rename(e.path.clone()),
+                                                    );
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "copy",
+                                    "Copy",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::Copy(e.path.clone()),
+                                                    );
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "scissors",
+                                    "Cut",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::Cut(e.path.clone()),
+                                                    );
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "clipboard-paste",
+                                    "Paste",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        move |_window, cx| {
                                             entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::QuickLook(e.path.clone()));
+                                                view.pending_context_action =
+                                                    Some(ContextMenuAction::Paste);
                                                 view.close_context_menu();
                                                 cx.notify();
                                             });
                                         }
-                                    }
-                                }))
-                                .child(render_context_menu_item("info", "Get Info", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::GetInfo(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "files",
+                                    "Duplicate",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action =
+                                                        Some(ContextMenuAction::Duplicate(
+                                                            e.path.clone(),
+                                                        ));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
+                                    },
+                                ))
                                 .child(render_context_menu_divider(border_subtle))
-                                .child(render_context_menu_item("pen", "Rename", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Rename(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                .child(render_context_menu_item(
+                                    "archive",
+                                    "Compress",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::Compress(e.path.clone()),
+                                                    );
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
-                                .child(render_context_menu_item("copy", "Copy", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Copy(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "share-2",
+                                    "Share...",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::Share(e.path.clone()),
+                                                    );
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
-                                .child(render_context_menu_item("scissors", "Cut", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Cut(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
-                                        }
-                                    }
-                                }))
-                                .child(render_context_menu_item("clipboard-paste", "Paste", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    move |_window, cx| {
-                                        entity.update(cx, |view, cx| {
-                                            view.pending_context_action = Some(ContextMenuAction::Paste);
-                                            view.close_context_menu();
-                                            cx.notify();
-                                        });
-                                    }
-                                }))
-                                .child(render_context_menu_item("files", "Duplicate", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Duplicate(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
-                                        }
-                                    }
-                                }))
+                                    },
+                                ))
                                 .child(render_context_menu_divider(border_subtle))
-                                .child(render_context_menu_item("archive", "Compress", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Compress(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                .child(render_context_menu_item(
+                                    "link",
+                                    "Copy Path",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(
+                                                        ContextMenuAction::CopyPath(e.path.clone()),
+                                                    );
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
-                                .child(render_context_menu_item("share-2", "Share...", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Share(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "folder-search",
+                                    "Show in Finder",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action =
+                                                        Some(ContextMenuAction::ShowInFinder(
+                                                            e.path.clone(),
+                                                        ));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
+                                    },
+                                ))
+                                .child(render_context_menu_item(
+                                    "star",
+                                    "Add to Favorites",
+                                    text_light,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action =
+                                                        Some(ContextMenuAction::AddToFavorites(
+                                                            e.path.clone(),
+                                                        ));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    },
+                                ))
                                 .child(render_context_menu_divider(border_subtle))
-                                .child(render_context_menu_item("link", "Copy Path", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::CopyPath(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                .child(render_context_menu_item(
+                                    "trash-2",
+                                    "Move to Trash",
+                                    theme.error,
+                                    hover_bg,
+                                    {
+                                        let entity = entity.clone();
+                                        let entry = selected_entry.clone();
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action =
+                                                        Some(ContextMenuAction::MoveToTrash(
+                                                            e.path.clone(),
+                                                        ));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
-                                .child(render_context_menu_item("folder-search", "Show in Finder", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::ShowInFinder(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
-                                        }
-                                    }
-                                }))
-                                .child(render_context_menu_item("star", "Add to Favorites", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::AddToFavorites(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
-                                        }
-                                    }
-                                }))
-                                .child(render_context_menu_divider(border_subtle))
-                                .child(render_context_menu_item("trash-2", "Move to Trash", theme.error, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::MoveToTrash(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
-                                        }
-                                    }
-                                })),
-                        )
+                                    },
+                                )),
+                        ),
                 )
             })
     }
@@ -618,12 +760,12 @@ fn truncate_name(name: &str, max_len: usize) -> String {
 }
 
 fn render_context_menu_item<F>(
-    icon_name: &'static str, 
-    label: &'static str, 
-    text_color: gpui::Rgba, 
+    icon_name: &'static str,
+    label: &'static str,
+    text_color: gpui::Rgba,
     hover_bg: gpui::Rgba,
     on_click: F,
-) -> impl IntoElement 
+) -> impl IntoElement
 where
     F: Fn(&mut Window, &mut App) + 'static,
 {
@@ -645,7 +787,10 @@ where
         })
         .child(
             svg()
-                .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                .path(SharedString::from(format!(
+                    "assets/icons/{}.svg",
+                    icon_name
+                )))
                 .size(px(14.0))
                 .text_color(text_color),
         )
@@ -653,11 +798,7 @@ where
 }
 
 fn render_context_menu_divider(color: gpui::Rgba) -> impl IntoElement {
-    div()
-        .h(px(1.0))
-        .mx_2()
-        .my_1()
-        .bg(color)
+    div().h(px(1.0)).mx_2().my_1().bg(color)
 }
 
 fn render_grid_open_with_submenu(
@@ -669,14 +810,15 @@ fn render_grid_open_with_submenu(
     border_color: gpui::Rgba,
     entity: gpui::Entity<GridViewComponent>,
 ) -> impl IntoElement {
-    let apps = selected_entry.as_ref()
+    let apps = selected_entry
+        .as_ref()
         .map(|e| crate::models::get_apps_for_file(&e.path))
         .unwrap_or_default();
-    
+
     let has_apps = !apps.is_empty();
     let entry_for_other = selected_entry.clone();
     let entity_for_toggle = entity.clone();
-    
+
     div()
         .id("grid-open-with-menu-wrapper")
         .flex()
@@ -713,14 +855,18 @@ fn render_grid_open_with_submenu(
                                 .size(px(14.0))
                                 .text_color(text_color),
                         )
-                        .child("Open With")
+                        .child("Open With"),
                 )
                 .child(
                     svg()
-                        .path(if show_submenu { "assets/icons/chevron-down.svg" } else { "assets/icons/chevron-right.svg" })
+                        .path(if show_submenu {
+                            "assets/icons/chevron-down.svg"
+                        } else {
+                            "assets/icons/chevron-right.svg"
+                        })
                         .size(px(12.0))
                         .text_color(text_color),
-                )
+                ),
         )
         .when(show_submenu, move |this| {
             this.child(
@@ -739,7 +885,7 @@ fn render_grid_open_with_submenu(
                             let app_path = app.path.clone();
                             let file_path = selected_entry.as_ref().map(|e| e.path.clone());
                             let entity = entity.clone();
-                            
+
                             submenu = submenu.child(
                                 div()
                                     .id(SharedString::from(format!("grid-app-{}", app_name)))
@@ -759,11 +905,12 @@ fn render_grid_open_with_submenu(
                                         move |_event, _window, cx| {
                                             if let Some(ref fp) = file_path {
                                                 entity.update(cx, |view, cx| {
-                                                    view.pending_context_action = Some(ContextMenuAction::OpenWithApp {
-                                                        file_path: fp.clone(),
-                                                        app_path: app_path.clone(),
-                                                        app_name: app_name.clone(),
-                                                    });
+                                                    view.pending_context_action =
+                                                        Some(ContextMenuAction::OpenWithApp {
+                                                            file_path: fp.clone(),
+                                                            app_path: app_path.clone(),
+                                                            app_name: app_name.clone(),
+                                                        });
                                                     view.close_context_menu();
                                                     cx.notify();
                                                 });
@@ -774,9 +921,9 @@ fn render_grid_open_with_submenu(
                                         svg()
                                             .path("assets/icons/app-window.svg")
                                             .size(px(14.0))
-                                            .text_color(text_color)
+                                            .text_color(text_color),
                                     )
-                                    .child(app_name)
+                                    .child(app_name),
                             );
                         }
                         submenu
@@ -798,7 +945,8 @@ fn render_grid_open_with_submenu(
                             .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
                                 if let Some(ref e) = entry_for_other {
                                     entity.update(cx, |view, cx| {
-                                        view.pending_context_action = Some(ContextMenuAction::OpenWithOther(e.path.clone()));
+                                        view.pending_context_action =
+                                            Some(ContextMenuAction::OpenWithOther(e.path.clone()));
                                         view.close_context_menu();
                                         cx.notify();
                                     });
@@ -811,7 +959,7 @@ fn render_grid_open_with_submenu(
                                     .text_color(text_color),
                             )
                             .child("Other...")
-                    })
+                    }),
             )
         })
 }
@@ -845,7 +993,7 @@ mod tests {
             create_test_entry("file1.txt", false),
             create_test_entry("folder1", true),
         ];
-        
+
         grid.set_entries(entries);
         assert_eq!(grid.item_count(), 2);
     }
@@ -857,13 +1005,13 @@ mod tests {
             create_test_entry("file1.txt", false),
             create_test_entry("file2.txt", false),
         ];
-        
+
         grid.set_entries(entries);
         assert!(grid.selected_index().is_none());
-        
+
         grid.set_selected_index(Some(1));
         assert_eq!(grid.selected_index(), Some(1));
-        
+
         grid.set_selected_index(None);
         assert!(grid.selected_index().is_none());
     }
@@ -874,13 +1022,13 @@ mod tests {
         let entries: Vec<FileEntry> = (0..10)
             .map(|i| create_test_entry(&format!("file{}.txt", i), false))
             .collect();
-        
+
         grid.set_entries(entries);
         grid.set_viewport_width(400.0);
-        
+
         let columns = grid.columns();
         let rows = grid.rows();
-        
+
         assert!(columns >= grid.config().min_columns);
         assert!(rows * columns >= 10);
     }
@@ -888,7 +1036,10 @@ mod tests {
     #[test]
     fn test_truncate_name() {
         assert_eq!(truncate_name("short.txt", 14), "short.txt");
-        assert_eq!(truncate_name("very_long_filename.txt", 14), "very_long_f...");
+        assert_eq!(
+            truncate_name("very_long_filename.txt", 14),
+            "very_long_f..."
+        );
         assert_eq!(truncate_name("a", 14), "a");
     }
 }

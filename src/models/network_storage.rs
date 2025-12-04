@@ -65,7 +65,6 @@ impl NetworkProtocol {
     }
 }
 
-
 /// Authentication method for network connections
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthMethod {
@@ -130,10 +129,8 @@ impl NetworkConnectionConfig {
 
     /// Build a URL string for this connection
     pub fn to_url(&self) -> String {
-        let port_str = self.port
-            .map(|p| format!(":{}", p))
-            .unwrap_or_default();
-        
+        let port_str = self.port.map(|p| format!(":{}", p)).unwrap_or_default();
+
         format!(
             "{}://{}{}{}",
             self.protocol.url_scheme(),
@@ -203,7 +200,6 @@ impl NetworkLocation {
         self.config.protocol
     }
 }
-
 
 /// Errors that can occur during network operations
 #[derive(Debug, Error)]
@@ -306,7 +302,11 @@ impl NetworkStorageManager {
     }
 
     /// Update a network location's configuration
-    pub fn update_location(&mut self, id: NetworkLocationId, config: NetworkConnectionConfig) -> NetworkResult<()> {
+    pub fn update_location(
+        &mut self,
+        id: NetworkLocationId,
+        config: NetworkConnectionConfig,
+    ) -> NetworkResult<()> {
         if let Some(location) = self.get_location_mut(id) {
             location.config = config;
             Ok(())
@@ -318,10 +318,11 @@ impl NetworkStorageManager {
     /// Add a server to recent connections
     pub fn add_to_recent(&mut self, config: NetworkConnectionConfig) {
         // Remove if already exists (to move to front)
-        self.recent_servers.retain(|c| c.to_url() != config.to_url());
-        
+        self.recent_servers
+            .retain(|c| c.to_url() != config.to_url());
+
         self.recent_servers.insert(0, config);
-        
+
         // Trim to max size
         self.recent_servers.truncate(self.max_recent);
     }
@@ -334,22 +335,23 @@ impl NetworkStorageManager {
     /// Connect to a network location (placeholder - actual implementation depends on platform)
     pub fn connect(&mut self, id: NetworkLocationId) -> NetworkResult<()> {
         let config = {
-            let location = self.get_location_mut(id)
+            let location = self
+                .get_location_mut(id)
                 .ok_or(NetworkError::LocationNotFound(id))?;
             location.state = ConnectionState::Connecting;
             location.config.clone()
         };
-        
+
         // Add to recent servers
         self.add_to_recent(config);
-        
+
         if let Some(location) = self.get_location_mut(id) {
             // Actual connection would be implemented here
             // For now, we just mark as connected (placeholder)
             location.state = ConnectionState::Connected;
             location.latency_ms = Some(50);
         }
-        
+
         Ok(())
     }
 
@@ -375,25 +377,25 @@ impl NetworkStorageManager {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("nexus-explorer");
-        
+
         std::fs::create_dir_all(&config_dir)?;
-        
+
         let config_path = config_dir.join("network_locations.json");
-        
+
         #[derive(Serialize)]
         struct SaveData<'a> {
             locations: &'a [NetworkLocation],
             recent_servers: &'a [NetworkConnectionConfig],
         }
-        
+
         let data = SaveData {
             locations: &self.locations,
             recent_servers: &self.recent_servers,
         };
-        
+
         let json = serde_json::to_string_pretty(&data)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        
+
         std::fs::write(config_path, json)
     }
 
@@ -403,7 +405,7 @@ impl NetworkStorageManager {
             .unwrap_or_else(|| PathBuf::from("."))
             .join("nexus-explorer")
             .join("network_locations.json");
-        
+
         if config_path.exists() {
             if let Ok(json) = std::fs::read_to_string(&config_path) {
                 #[derive(Deserialize)]
@@ -411,13 +413,10 @@ impl NetworkStorageManager {
                     locations: Vec<NetworkLocation>,
                     recent_servers: Vec<NetworkConnectionConfig>,
                 }
-                
+
                 if let Ok(data) = serde_json::from_str::<SaveData>(&json) {
-                    let max_id = data.locations.iter()
-                        .map(|l| l.id.0)
-                        .max()
-                        .unwrap_or(0);
-                    
+                    let max_id = data.locations.iter().map(|l| l.id.0).max().unwrap_or(0);
+
                     return Self {
                         locations: data.locations,
                         recent_servers: data.recent_servers,
@@ -427,11 +426,10 @@ impl NetworkStorageManager {
                 }
             }
         }
-        
+
         Self::new()
     }
 }
-
 
 /// Cloud storage provider type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -475,7 +473,9 @@ impl CloudProvider {
     pub fn default_path(&self) -> Option<PathBuf> {
         let home = dirs::home_dir()?;
         match self {
-            CloudProvider::ICloud => Some(home.join("Library/Mobile Documents/com~apple~CloudDocs")),
+            CloudProvider::ICloud => {
+                Some(home.join("Library/Mobile Documents/com~apple~CloudDocs"))
+            }
             CloudProvider::Dropbox => Some(home.join("Dropbox")),
             CloudProvider::GoogleDrive => Some(home.join("Google Drive")),
             CloudProvider::OneDrive => Some(home.join("OneDrive")),
@@ -617,7 +617,7 @@ impl CloudStorageManager {
     /// Detect installed cloud storage providers
     pub fn detect_providers(&mut self) {
         self.locations.clear();
-        
+
         for provider in CloudProvider::all() {
             if let Some(path) = provider.default_path() {
                 if path.exists() {
@@ -661,26 +661,30 @@ mod tests {
     fn test_connection_config_url() {
         let config = NetworkConnectionConfig::new(NetworkProtocol::Smb, "server.local".to_string())
             .with_path("/share".to_string());
-        
+
         assert_eq!(config.to_url(), "smb://server.local/share");
-        
-        let config_with_port = NetworkConnectionConfig::new(NetworkProtocol::Ftp, "ftp.example.com".to_string())
-            .with_port(2121)
-            .with_path("/files".to_string());
-        
-        assert_eq!(config_with_port.to_url(), "ftp://ftp.example.com:2121/files");
+
+        let config_with_port =
+            NetworkConnectionConfig::new(NetworkProtocol::Ftp, "ftp.example.com".to_string())
+                .with_port(2121)
+                .with_path("/files".to_string());
+
+        assert_eq!(
+            config_with_port.to_url(),
+            "ftp://ftp.example.com:2121/files"
+        );
     }
 
     #[test]
     fn test_network_storage_manager_add_remove() {
         let mut manager = NetworkStorageManager::new();
-        
+
         let config = NetworkConnectionConfig::new(NetworkProtocol::Smb, "server".to_string());
         let id = manager.add_location(config);
-        
+
         assert_eq!(manager.locations().len(), 1);
         assert!(manager.get_location(id).is_some());
-        
+
         manager.remove_location(id);
         assert_eq!(manager.locations().len(), 0);
         assert!(manager.get_location(id).is_none());
@@ -689,17 +693,17 @@ mod tests {
     #[test]
     fn test_recent_servers() {
         let mut manager = NetworkStorageManager::new();
-        
+
         let config1 = NetworkConnectionConfig::new(NetworkProtocol::Smb, "server1".to_string());
         let config2 = NetworkConnectionConfig::new(NetworkProtocol::Ftp, "server2".to_string());
-        
+
         manager.add_to_recent(config1.clone());
         manager.add_to_recent(config2.clone());
-        
+
         assert_eq!(manager.recent_servers().len(), 2);
         assert_eq!(manager.recent_servers()[0].host, "server2");
         assert_eq!(manager.recent_servers()[1].host, "server1");
-        
+
         // Adding same server should move it to front
         manager.add_to_recent(config1);
         assert_eq!(manager.recent_servers().len(), 2);
@@ -721,7 +725,6 @@ mod tests {
         assert_eq!(SyncStatus::Error.description(), "Sync error");
     }
 }
-
 
 /// Represents a remote file entry from a network location
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -894,14 +897,22 @@ impl NetworkFileOperationsManager {
     pub fn active_operations(&self) -> Vec<&NetworkFileOperation> {
         self.operations
             .iter()
-            .filter(|op| matches!(op.state, NetworkOperationState::Pending | NetworkOperationState::Running))
+            .filter(|op| {
+                matches!(
+                    op.state,
+                    NetworkOperationState::Pending | NetworkOperationState::Running
+                )
+            })
             .collect()
     }
 
     /// Check if there are any active operations
     pub fn has_active_operations(&self) -> bool {
         self.operations.iter().any(|op| {
-            matches!(op.state, NetworkOperationState::Pending | NetworkOperationState::Running)
+            matches!(
+                op.state,
+                NetworkOperationState::Pending | NetworkOperationState::Running
+            )
         })
     }
 
@@ -981,23 +992,36 @@ impl NetworkFileOperationsManager {
     /// Remove completed/failed/cancelled operations
     pub fn clear_finished(&mut self) {
         self.operations.retain(|op| {
-            matches!(op.state, NetworkOperationState::Pending | NetworkOperationState::Running)
+            matches!(
+                op.state,
+                NetworkOperationState::Pending | NetworkOperationState::Running
+            )
         });
     }
 
     /// Get cached listing for a path
-    pub fn get_listing(&self, location_id: NetworkLocationId, path: &str) -> Option<&RemoteListingState> {
+    pub fn get_listing(
+        &self,
+        location_id: NetworkLocationId,
+        path: &str,
+    ) -> Option<&RemoteListingState> {
         self.listings_cache.get(&(location_id, path.to_string()))
     }
 
     /// Set listing state for a path
-    pub fn set_listing(&mut self, location_id: NetworkLocationId, path: String, state: RemoteListingState) {
+    pub fn set_listing(
+        &mut self,
+        location_id: NetworkLocationId,
+        path: String,
+        state: RemoteListingState,
+    ) {
         self.listings_cache.insert((location_id, path), state);
     }
 
     /// Clear listing cache for a location
     pub fn clear_listing_cache(&mut self, location_id: NetworkLocationId) {
-        self.listings_cache.retain(|(loc_id, _), _| *loc_id != location_id);
+        self.listings_cache
+            .retain(|(loc_id, _), _| *loc_id != location_id);
     }
 
     /// Clear all listing caches
@@ -1032,7 +1056,10 @@ pub fn format_transfer_speed(bytes_per_sec: u64) -> String {
     } else if bytes_per_sec < 1024 * 1024 * 1024 {
         format!("{:.1} MB/s", bytes_per_sec as f64 / (1024.0 * 1024.0))
     } else {
-        format!("{:.1} GB/s", bytes_per_sec as f64 / (1024.0 * 1024.0 * 1024.0))
+        format!(
+            "{:.1} GB/s",
+            bytes_per_sec as f64 / (1024.0 * 1024.0 * 1024.0)
+        )
     }
 }
 
@@ -1042,10 +1069,11 @@ mod network_operations_tests {
 
     #[test]
     fn test_remote_file_entry() {
-        let entry = RemoteFileEntry::new("test.txt".to_string(), "/path/test.txt".to_string(), false)
-            .with_size(1024)
-            .with_modified(1700000000)
-            .with_permissions("rw-r--r--".to_string());
+        let entry =
+            RemoteFileEntry::new("test.txt".to_string(), "/path/test.txt".to_string(), false)
+                .with_size(1024)
+                .with_modified(1700000000)
+                .with_permissions("rw-r--r--".to_string());
 
         assert_eq!(entry.name, "test.txt");
         assert_eq!(entry.size, 1024);
@@ -1083,7 +1111,7 @@ mod network_operations_tests {
     #[test]
     fn test_network_file_operations_manager() {
         let mut manager = NetworkFileOperationsManager::new();
-        
+
         let location_id = NetworkLocationId::new(1);
         let op_id = manager.start_download(
             location_id,
@@ -1106,13 +1134,23 @@ mod network_operations_tests {
         let mut manager = NetworkFileOperationsManager::new();
         let location_id = NetworkLocationId::new(1);
 
-        manager.set_listing(location_id, "/path".to_string(), RemoteListingState::Loading);
+        manager.set_listing(
+            location_id,
+            "/path".to_string(),
+            RemoteListingState::Loading,
+        );
         assert!(manager.is_loading(location_id, "/path"));
 
-        let entries = vec![
-            RemoteFileEntry::new("file1.txt".to_string(), "/path/file1.txt".to_string(), false),
-        ];
-        manager.set_listing(location_id, "/path".to_string(), RemoteListingState::Loaded(entries));
+        let entries = vec![RemoteFileEntry::new(
+            "file1.txt".to_string(),
+            "/path/file1.txt".to_string(),
+            false,
+        )];
+        manager.set_listing(
+            location_id,
+            "/path".to_string(),
+            RemoteListingState::Loaded(entries),
+        );
         assert!(!manager.is_loading(location_id, "/path"));
 
         manager.clear_listing_cache(location_id);
@@ -1136,19 +1174,18 @@ mod network_operations_tests {
     }
 }
 
-
 /// Extended cloud storage detection with platform-specific paths
 impl CloudStorageManager {
     /// Detect all cloud storage providers with detailed information
     pub fn detect_all_providers(&mut self) {
         self.locations.clear();
-        
+
         #[cfg(target_os = "macos")]
         self.detect_macos_providers();
-        
+
         #[cfg(target_os = "windows")]
         self.detect_windows_providers();
-        
+
         #[cfg(target_os = "linux")]
         self.detect_linux_providers();
     }
@@ -1156,13 +1193,14 @@ impl CloudStorageManager {
     #[cfg(target_os = "macos")]
     fn detect_macos_providers(&mut self) {
         use std::fs;
-        
+
         if let Some(home) = dirs::home_dir() {
             let icloud_path = home.join("Library/Mobile Documents/com~apple~CloudDocs");
             if icloud_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::ICloud, icloud_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::ICloud, icloud_path));
             }
-            
+
             let dropbox_path = home.join("Dropbox");
             if dropbox_path.exists() {
                 let mut location = CloudLocation::new(CloudProvider::Dropbox, dropbox_path);
@@ -1178,40 +1216,57 @@ impl CloudStorageManager {
                 }
                 self.locations.push(location);
             }
-            
+
             let gdrive_path = home.join("Google Drive");
             if gdrive_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::GoogleDrive, gdrive_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::GoogleDrive, gdrive_path));
             }
             let gdrive_my_drive = home.join("Google Drive/My Drive");
             if gdrive_my_drive.exists() {
-                if let Some(loc) = self.locations.iter_mut().find(|l| l.provider == CloudProvider::GoogleDrive) {
+                if let Some(loc) = self
+                    .locations
+                    .iter_mut()
+                    .find(|l| l.provider == CloudProvider::GoogleDrive)
+                {
                     loc.path = gdrive_my_drive;
                 }
             }
-            
+
             let onedrive_path = home.join("OneDrive");
             if onedrive_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::OneDrive, onedrive_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::OneDrive, onedrive_path));
             }
             let onedrive_personal = home.join("OneDrive - Personal");
-            if onedrive_personal.exists() && !self.locations.iter().any(|l| l.provider == CloudProvider::OneDrive) {
-                self.locations.push(CloudLocation::new(CloudProvider::OneDrive, onedrive_personal));
+            if onedrive_personal.exists()
+                && !self
+                    .locations
+                    .iter()
+                    .any(|l| l.provider == CloudProvider::OneDrive)
+            {
+                self.locations.push(CloudLocation::new(
+                    CloudProvider::OneDrive,
+                    onedrive_personal,
+                ));
             }
-            
+
             let box_path = home.join("Box");
             if box_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::Box, box_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::Box, box_path));
             }
-            
+
             let mega_path = home.join("MEGA");
             if mega_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::Mega, mega_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::Mega, mega_path));
             }
-            
+
             let nextcloud_path = home.join("Nextcloud");
             if nextcloud_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
             }
         }
     }
@@ -1222,43 +1277,47 @@ impl CloudStorageManager {
             // iCloud Drive (Windows)
             let icloud_path = home.join("iCloudDrive");
             if icloud_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::ICloud, icloud_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::ICloud, icloud_path));
             }
-            
+
             let dropbox_path = home.join("Dropbox");
             if dropbox_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::Dropbox, dropbox_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::Dropbox, dropbox_path));
             }
-            
+
             let gdrive_path = home.join("Google Drive");
             if gdrive_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::GoogleDrive, gdrive_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::GoogleDrive, gdrive_path));
             }
-            
-            let onedrive_paths = [
-                home.join("OneDrive"),
-                home.join("OneDrive - Personal"),
-            ];
+
+            let onedrive_paths = [home.join("OneDrive"), home.join("OneDrive - Personal")];
             for path in onedrive_paths {
                 if path.exists() {
-                    self.locations.push(CloudLocation::new(CloudProvider::OneDrive, path));
+                    self.locations
+                        .push(CloudLocation::new(CloudProvider::OneDrive, path));
                     break;
                 }
             }
-            
+
             let box_path = home.join("Box");
             if box_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::Box, box_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::Box, box_path));
             }
-            
+
             let mega_path = home.join("MEGA");
             if mega_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::Mega, mega_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::Mega, mega_path));
             }
-            
+
             let nextcloud_path = home.join("Nextcloud");
             if nextcloud_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
             }
         }
     }
@@ -1268,35 +1327,37 @@ impl CloudStorageManager {
         if let Some(home) = dirs::home_dir() {
             let dropbox_path = home.join("Dropbox");
             if dropbox_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::Dropbox, dropbox_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::Dropbox, dropbox_path));
             }
-            
+
             // Google Drive (via various clients)
-            let gdrive_paths = [
-                home.join("Google Drive"),
-                home.join("google-drive"),
-            ];
+            let gdrive_paths = [home.join("Google Drive"), home.join("google-drive")];
             for path in gdrive_paths {
                 if path.exists() {
-                    self.locations.push(CloudLocation::new(CloudProvider::GoogleDrive, path));
+                    self.locations
+                        .push(CloudLocation::new(CloudProvider::GoogleDrive, path));
                     break;
                 }
             }
-            
+
             // OneDrive (via rclone or onedrive client)
             let onedrive_path = home.join("OneDrive");
             if onedrive_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::OneDrive, onedrive_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::OneDrive, onedrive_path));
             }
-            
+
             let mega_path = home.join("MEGA");
             if mega_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::Mega, mega_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::Mega, mega_path));
             }
-            
+
             let nextcloud_path = home.join("Nextcloud");
             if nextcloud_path.exists() {
-                self.locations.push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
+                self.locations
+                    .push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
             }
         }
     }
@@ -1304,7 +1365,7 @@ impl CloudStorageManager {
     /// Get sync status for a file based on provider-specific indicators
     pub fn get_file_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
         let cloud_location = self.is_cloud_path(path)?;
-        
+
         match cloud_location.provider {
             CloudProvider::Dropbox => self.get_dropbox_sync_status(path),
             CloudProvider::ICloud => self.get_icloud_sync_status(path),
@@ -1317,11 +1378,11 @@ impl CloudStorageManager {
     fn get_dropbox_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
         // Dropbox uses extended attributes on macOS/Linux
         // On Windows, it uses overlay icons
-        
+
         #[cfg(unix)]
         {
             use std::process::Command;
-            
+
             // Try to use dropbox CLI if available
             if let Ok(output) = Command::new("dropbox")
                 .args(["filestatus", path.to_str()?])
@@ -1337,7 +1398,7 @@ impl CloudStorageManager {
                 }
             }
         }
-        
+
         // Default: assume synced if file exists
         if path.exists() {
             Some(SyncStatus::Synced)
@@ -1349,19 +1410,19 @@ impl CloudStorageManager {
     fn get_icloud_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
         // iCloud uses .icloud placeholder files for cloud-only items
         let file_name = path.file_name()?.to_str()?;
-        
+
         if file_name.starts_with('.') && file_name.ends_with(".icloud") {
             return Some(SyncStatus::CloudOnly);
         }
-        
+
         let parent = path.parent()?;
         let icloud_name = format!(".{}.icloud", file_name);
         let icloud_path = parent.join(&icloud_name);
-        
+
         if icloud_path.exists() {
             return Some(SyncStatus::CloudOnly);
         }
-        
+
         if path.exists() {
             Some(SyncStatus::Synced)
         } else {
@@ -1491,19 +1552,24 @@ mod cloud_storage_tests {
 
     #[test]
     fn test_cloud_location_display_name() {
-        let location = CloudLocation::new(CloudProvider::Dropbox, PathBuf::from("/home/user/Dropbox"));
+        let location =
+            CloudLocation::new(CloudProvider::Dropbox, PathBuf::from("/home/user/Dropbox"));
         assert_eq!(location.display_name(), "Dropbox");
 
-        let mut location_with_account = CloudLocation::new(CloudProvider::Dropbox, PathBuf::from("/home/user/Dropbox"));
+        let mut location_with_account =
+            CloudLocation::new(CloudProvider::Dropbox, PathBuf::from("/home/user/Dropbox"));
         location_with_account.account_name = Some("user@example.com".to_string());
-        assert_eq!(location_with_account.display_name(), "Dropbox (user@example.com)");
+        assert_eq!(
+            location_with_account.display_name(),
+            "Dropbox (user@example.com)"
+        );
     }
 
     #[test]
     fn test_network_sidebar_state() {
         let network_manager = NetworkStorageManager::new();
         let cloud_manager = CloudStorageManager::new();
-        
+
         let state = NetworkSidebarState::from_managers(&network_manager, &cloud_manager);
         assert!(!state.has_any_locations());
         assert!(!state.is_loading);
@@ -1512,12 +1578,14 @@ mod cloud_storage_tests {
     #[test]
     fn test_icloud_placeholder_detection() {
         let manager = CloudStorageManager::new();
-        
+
         // Test that .icloud files are detected as cloud-only
         // This is a unit test for the logic, not actual file system
-        let path = PathBuf::from("/Users/test/Library/Mobile Documents/com~apple~CloudDocs/.test.txt.icloud");
+        let path = PathBuf::from(
+            "/Users/test/Library/Mobile Documents/com~apple~CloudDocs/.test.txt.icloud",
+        );
         let file_name = path.file_name().unwrap().to_str().unwrap();
-        
+
         assert!(file_name.starts_with('.'));
         assert!(file_name.ends_with(".icloud"));
     }

@@ -3,8 +3,8 @@ mod platform;
 mod traversal;
 
 pub use pipeline::{
-    create_batch_pipeline, max_batches_for_items, BatchAggregator, BatchConfig,
-    DEFAULT_BATCH_SIZE, DEFAULT_FLUSH_INTERVAL,
+    create_batch_pipeline, max_batches_for_items, BatchAggregator, BatchConfig, DEFAULT_BATCH_SIZE,
+    DEFAULT_FLUSH_INTERVAL,
 };
 pub use platform::{
     detect_platform, EventCoalescer, LinuxPlatform, LinuxWatcher, MacOsPlatform, MacOsWatcher,

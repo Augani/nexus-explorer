@@ -22,7 +22,11 @@ pub struct RenderImage {
 
 impl RenderImage {
     pub fn new(width: u32, height: u32, data: Vec<u8>) -> Self {
-        Self { width, height, data }
+        Self {
+            width,
+            height,
+            data,
+        }
     }
 
     /// Creates a default placeholder icon (simple colored square)
@@ -64,7 +68,6 @@ pub struct IconCache {
     folder_icon: RenderImage,
 }
 
-
 impl IconCache {
     /// Creates a new IconCache with the default maximum entries.
     pub fn new() -> Self {
@@ -73,8 +76,8 @@ impl IconCache {
 
     /// Creates a new IconCache with a custom maximum entries limit.
     pub fn with_capacity(max_entries: usize) -> Self {
-        let capacity = NonZeroUsize::new(max_entries.max(1))
-            .expect("max_entries must be at least 1");
+        let capacity =
+            NonZeroUsize::new(max_entries.max(1)).expect("max_entries must be at least 1");
 
         Self {
             textures: HashMap::new(),
@@ -238,7 +241,7 @@ pub struct IconFetchRequest {
 }
 
 /// Async icon fetch pipeline for loading icons on background threads.
-/// 
+///
 /// This pipeline:
 /// 1. Receives fetch requests for uncached icons
 /// 2. Decodes images on background threads using the `image` crate
@@ -310,10 +313,10 @@ impl IconFetchPipeline {
                 let rgba = img.to_rgba8();
                 let (width, height) = rgba.dimensions();
                 let mut data = rgba.into_raw();
-                
+
                 // Convert RGBA to BGRA for GPU
                 rgba_to_bgra_inplace(&mut data);
-                
+
                 let image = RenderImage::new(width, height, data);
                 IconFetchResult::success(key.clone(), image)
             }

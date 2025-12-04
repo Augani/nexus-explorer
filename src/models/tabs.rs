@@ -1,6 +1,6 @@
+use crate::models::ViewMode;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use crate::models::ViewMode;
 
 /// Unique identifier for a tab
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -80,7 +80,7 @@ impl Tab {
         if self.history_index < self.history.len().saturating_sub(1) {
             self.history.truncate(self.history_index + 1);
         }
-        
+
         self.history.push(path.clone());
         self.history_index = self.history.len() - 1;
         self.set_path(path);
@@ -154,13 +154,13 @@ impl TabState {
     pub fn open_tab(&mut self, path: PathBuf) -> TabId {
         let id = TabId::new(self.next_id);
         self.next_id += 1;
-        
+
         let tab = Tab::new(id, path);
         self.tabs.push(tab);
-        
+
         // Switch to the new tab
         self.active_index = self.tabs.len() - 1;
-        
+
         id
     }
 
@@ -174,16 +174,16 @@ impl TabState {
                 self.tabs[0].set_path(home);
                 return true;
             }
-            
+
             self.tabs.remove(index);
-            
+
             // Adjust active index if needed
             if self.active_index >= self.tabs.len() {
                 self.active_index = self.tabs.len().saturating_sub(1);
             } else if self.active_index > index {
                 self.active_index = self.active_index.saturating_sub(1);
             }
-            
+
             true
         } else {
             false
@@ -315,7 +315,7 @@ impl TabState {
         if from_index < self.tabs.len() && to_index < self.tabs.len() && from_index != to_index {
             let tab = self.tabs.remove(from_index);
             self.tabs.insert(to_index, tab);
-            
+
             // Adjust active index
             if self.active_index == from_index {
                 self.active_index = to_index;

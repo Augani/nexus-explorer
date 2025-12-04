@@ -27,11 +27,11 @@ impl Default for BatchConfig {
 }
 
 /// Batch aggregator that collects FileEntry items and delivers them in batches.
-/// 
+///
 /// Batches are flushed when either:
 /// - The batch reaches `batch_size` items (default: 100)
 /// - The `flush_interval` has elapsed since the last flush (default: 16ms)
-/// 
+///
 /// This ensures the UI receives updates at a reasonable rate without being
 /// overwhelmed by individual item updates.
 pub struct BatchAggregator {
@@ -100,7 +100,10 @@ impl BatchAggregator {
         total_items
     }
 
-    fn flush_batch(&self, batch: &mut Vec<FileEntry>) -> Result<(), flume::SendError<Vec<FileEntry>>> {
+    fn flush_batch(
+        &self,
+        batch: &mut Vec<FileEntry>,
+    ) -> Result<(), flume::SendError<Vec<FileEntry>>> {
         let items = std::mem::take(batch);
         *batch = Vec::with_capacity(self.config.batch_size);
         self.output.send(items)
@@ -108,7 +111,7 @@ impl BatchAggregator {
 }
 
 /// Creates a batch aggregation pipeline.
-/// 
+///
 /// Returns a tuple of:
 /// - Sender for individual FileEntry items
 /// - Receiver for batched Vec<FileEntry>
@@ -130,7 +133,7 @@ pub fn create_batch_pipeline(
 }
 
 /// Calculates the maximum number of batches for N items.
-/// 
+///
 /// Formula: ceil(N / batch_size) + 1 (accounting for time-based flushes)
 pub fn max_batches_for_items(item_count: usize, batch_size: usize) -> usize {
     if batch_size == 0 {
@@ -313,7 +316,7 @@ mod tests {
     proptest! {
         /// **Feature: file-explorer-core, Property 2: Batch Size Bounds**
         /// **Validates: Requirements 1.3, 3.3**
-        /// 
+        ///
         /// For any stream of N file entries from directory traversal, the number of
         /// batch updates delivered to the UI SHALL be at most ceil(N / 100) + 1
         /// (accounting for time-based flushes).

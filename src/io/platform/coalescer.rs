@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use crate::models::FsEvent;
 use super::watcher::DEFAULT_COALESCE_WINDOW;
+use crate::models::FsEvent;
 
 /// Event coalescer that debounces rapid file system events on the same path.
-/// 
+///
 /// When multiple events occur on the same path within the coalescing window,
 /// only the most recent event is emitted after the window expires. This prevents
 /// update storms from rapid successive changes (e.g., during file saves).
@@ -49,31 +49,34 @@ impl EventCoalescer {
     }
 
     /// Adds raw events to the coalescer.
-    /// 
+    ///
     /// Events on the same path will be merged, with the most recent event
     /// replacing any previous pending event for that path.
     pub fn add_events(&mut self, events: Vec<FsEvent>) {
         let now = Instant::now();
-        
+
         for event in events {
             let path = event_path(&event);
-            
+
             if let Some(pending) = self.pending_events.get_mut(&path) {
                 pending.event = event;
                 pending.timestamp = now;
                 pending.count += 1;
             } else {
-                self.pending_events.insert(path, PendingEvent {
-                    event,
-                    timestamp: now,
-                    count: 1,
-                });
+                self.pending_events.insert(
+                    path,
+                    PendingEvent {
+                        event,
+                        timestamp: now,
+                        count: 1,
+                    },
+                );
             }
         }
     }
 
     /// Polls for events that have passed the coalescing window.
-    /// 
+    ///
     /// Returns events whose coalescing window has expired, removing them
     /// from the pending set.
     pub fn poll_ready(&mut self) -> Vec<FsEvent> {
@@ -96,10 +99,11 @@ impl EventCoalescer {
     }
 
     /// Forces all pending events to be emitted immediately, regardless of timing.
-    /// 
+    ///
     /// Useful for cleanup or when immediate processing is required.
     pub fn flush_all(&mut self) -> Vec<FsEvent> {
-        let events: Vec<FsEvent> = self.pending_events
+        let events: Vec<FsEvent> = self
+            .pending_events
             .drain()
             .map(|(_, pending)| pending.event)
             .collect();
@@ -112,7 +116,7 @@ impl EventCoalescer {
     }
 
     /// Returns the total number of raw events that were coalesced.
-    /// 
+    ///
     /// This is the sum of all event counts for pending events.
     pub fn total_coalesced_count(&self) -> usize {
         self.pending_events.values().map(|p| p.count).sum()
@@ -140,20 +144,20 @@ fn event_path(event: &FsEvent) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread::sleep;
     use proptest::prelude::*;
+    use std::thread::sleep;
 
     #[test]
     fn test_coalescer_merges_events_on_same_path() {
         let mut coalescer = EventCoalescer::with_window(Duration::from_millis(10));
         let path = PathBuf::from("/test/file.txt");
-        
+
         coalescer.add_events(vec![
             FsEvent::Created(path.clone()),
             FsEvent::Modified(path.clone()),
             FsEvent::Modified(path.clone()),
         ]);
-        
+
         assert_eq!(coalescer.pending_count(), 1);
         assert_eq!(coalescer.total_coalesced_count(), 3);
     }
@@ -161,12 +165,12 @@ mod tests {
     #[test]
     fn test_coalescer_keeps_separate_paths() {
         let mut coalescer = EventCoalescer::with_window(Duration::from_millis(10));
-        
+
         coalescer.add_events(vec![
             FsEvent::Created(PathBuf::from("/test/file1.txt")),
             FsEvent::Created(PathBuf::from("/test/file2.txt")),
         ]);
-        
+
         assert_eq!(coalescer.pending_count(), 2);
     }
 
@@ -174,16 +178,16 @@ mod tests {
     fn test_coalescer_emits_after_window() {
         let mut coalescer = EventCoalescer::with_window(Duration::from_millis(50));
         let path = PathBuf::from("/test/file.txt");
-        
+
         coalescer.add_events(vec![FsEvent::Created(path.clone())]);
-        
+
         // Immediately after adding, events should still be pending
         let ready = coalescer.poll_ready();
         assert!(ready.is_empty(), "Events should not be ready immediately");
-        
+
         // Wait for the coalescing window to pass
         sleep(Duration::from_millis(60));
-        
+
         let ready = coalescer.poll_ready();
         assert_eq!(ready.len(), 1);
         assert_eq!(coalescer.pending_count(), 0);
@@ -192,12 +196,12 @@ mod tests {
     #[test]
     fn test_coalescer_flush_all() {
         let mut coalescer = EventCoalescer::with_window(Duration::from_secs(60));
-        
+
         coalescer.add_events(vec![
             FsEvent::Created(PathBuf::from("/test/file1.txt")),
             FsEvent::Created(PathBuf::from("/test/file2.txt")),
         ]);
-        
+
         let flushed = coalescer.flush_all();
         assert_eq!(flushed.len(), 2);
         assert_eq!(coalescer.pending_count(), 0);
@@ -227,25 +231,25 @@ mod tests {
     // *For any* sequence of N events on the same path within a coalescing window,
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
-        
+
         #[test]
         fn prop_event_coalescing_reduces_updates((_path, events) in arb_event_sequence_same_path()) {
             let n = events.len();
             prop_assume!(n >= 2);
-            
+
             let mut coalescer = EventCoalescer::with_window(Duration::from_secs(60));
-            
+
             coalescer.add_events(events);
-            
+
             let flushed = coalescer.flush_all();
-            
+
             prop_assert!(
                 flushed.len() < n,
                 "Expected fewer than {} events after coalescing, got {}",
                 n,
                 flushed.len()
             );
-            
+
             prop_assert_eq!(
                 flushed.len(),
                 1,
@@ -256,7 +260,7 @@ mod tests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
-        
+
         #[test]
         fn prop_different_paths_not_coalesced(
             filenames in proptest::collection::vec("[a-z]{1,10}", 2..10)
@@ -265,21 +269,21 @@ mod tests {
                 .collect::<std::collections::HashSet<_>>()
                 .into_iter()
                 .collect();
-            
+
             prop_assume!(unique_filenames.len() >= 2);
-            
+
             let mut coalescer = EventCoalescer::with_window(Duration::from_secs(60));
-            
+
             let events: Vec<FsEvent> = unique_filenames.iter()
                 .map(|name| FsEvent::Created(PathBuf::from(format!("/test/{}.txt", name))))
                 .collect();
-            
+
             let num_unique_paths = unique_filenames.len();
-            
+
             coalescer.add_events(events);
-            
+
             let flushed = coalescer.flush_all();
-            
+
             prop_assert_eq!(
                 flushed.len(),
                 num_unique_paths,

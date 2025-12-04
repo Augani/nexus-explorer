@@ -1,15 +1,13 @@
 /// Property-based tests for core types
 /// **Feature: file-explorer-core**
-
 use super::{CloudSyncStatus, FileEntry, FileType, IconKey, SortColumn, SortDirection, SortState};
 use proptest::prelude::*;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn arb_system_time() -> impl Strategy<Value = SystemTime> {
-    (0u64..253402300799u64, 0u32..1_000_000_000u32).prop_map(|(secs, nanos)| {
-        UNIX_EPOCH + Duration::new(secs, nanos)
-    })
+    (0u64..253402300799u64, 0u32..1_000_000_000u32)
+        .prop_map(|(secs, nanos)| UNIX_EPOCH + Duration::new(secs, nanos))
 }
 
 fn arb_file_type() -> impl Strategy<Value = FileType> {
@@ -41,8 +39,8 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
         arb_file_type(),
         arb_icon_key(),
     )
-        .prop_map(|(name, path_str, is_dir, size, modified, file_type, icon_key)| {
-            FileEntry {
+        .prop_map(
+            |(name, path_str, is_dir, size, modified, file_type, icon_key)| FileEntry {
                 name,
                 path: PathBuf::from(path_str),
                 is_dir,
@@ -52,8 +50,8 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
                 icon_key,
                 linux_permissions: None,
                 sync_status: CloudSyncStatus::None,
-            }
-        })
+            },
+        )
 }
 
 proptest! {
@@ -117,9 +115,9 @@ proptest! {
         sort_state.column = SortColumn::Name;
         sort_state.direction = SortDirection::Ascending;
         sort_state.directories_first = false;
-        
+
         sort_state.sort_entries(&mut entries);
-        
+
         for window in entries.windows(2) {
             let a = &window[0];
             let b = &window[1];
@@ -143,9 +141,9 @@ proptest! {
         sort_state.column = SortColumn::Date;
         sort_state.direction = SortDirection::Descending;
         sort_state.directories_first = false;
-        
+
         sort_state.sort_entries(&mut entries);
-        
+
         for window in entries.windows(2) {
             let a = &window[0];
             let b = &window[1];
@@ -169,16 +167,16 @@ proptest! {
         sort_state.column = SortColumn::Type;
         sort_state.direction = SortDirection::Ascending;
         sort_state.directories_first = false;
-        
+
         sort_state.sort_entries(&mut entries);
-        
+
         fn get_ext(name: &str) -> String {
             name.rsplit('.').next()
                 .filter(|ext| *ext != name)
                 .unwrap_or("")
                 .to_lowercase()
         }
-        
+
         for window in entries.windows(2) {
             let a = &window[0];
             let b = &window[1];
@@ -204,9 +202,9 @@ proptest! {
         sort_state.column = SortColumn::Size;
         sort_state.direction = SortDirection::Descending;
         sort_state.directories_first = false;
-        
+
         sort_state.sort_entries(&mut entries);
-        
+
         for window in entries.windows(2) {
             let a = &window[0];
             let b = &window[1];
@@ -218,7 +216,6 @@ proptest! {
         }
     }
 }
-
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -238,22 +235,22 @@ proptest! {
         ]
     ) {
         let mut sort_state = SortState::new();
-        
+
         sort_state.toggle_column(column);
         let first_direction = sort_state.direction;
-        
+
         // Second click on same column should reverse direction
         sort_state.toggle_column(column);
         let second_direction = sort_state.direction;
-        
+
         prop_assert_ne!(
             first_direction, second_direction,
             "Clicking same column twice should reverse direction"
         );
-        
+
         sort_state.toggle_column(column);
         let third_direction = sort_state.direction;
-        
+
         prop_assert_eq!(
             first_direction, third_direction,
             "Clicking same column three times should return to original direction"
@@ -261,26 +258,25 @@ proptest! {
     }
 }
 
-
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
     /// **Feature: ui-enhancements, Property 12: Directories First Invariant**
     /// **Validates: Requirements 3.7**
     ///
-    /// *For any* sorted list with directories_first enabled, all directory entries 
+    /// *For any* sorted list with directories_first enabled, all directory entries
     /// SHALL appear before all file entries.
     #[test]
     fn prop_directories_first_invariant(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
         let mut sort_state = SortState::new();
         sort_state.directories_first = true;
-        
+
         sort_state.sort_entries(&mut entries);
-        
+
         // Find the first file (non-directory) index
         let first_file_idx = entries.iter().position(|e| !e.is_dir);
-        
+
         // If there are files, all entries after the first file should also be files
         if let Some(first_file) = first_file_idx {
             for (i, entry) in entries.iter().enumerate().skip(first_file) {
@@ -291,7 +287,7 @@ proptest! {
                 );
             }
         }
-        
+
         // All entries before the first file should be directories
         if let Some(first_file) = first_file_idx {
             for (i, entry) in entries.iter().enumerate().take(first_file) {
@@ -304,7 +300,6 @@ proptest! {
         }
     }
 }
-
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -327,7 +322,7 @@ proptest! {
         ascending in proptest::bool::ANY,
     ) {
         use std::time::{Duration, UNIX_EPOCH};
-        
+
         let mut entries: Vec<FileEntry> = (0..initial_count)
             .map(|i| {
                 let name = format!("file_{:04}.txt", i);
@@ -340,16 +335,16 @@ proptest! {
                 )
             })
             .collect();
-        
+
         let mut sort_state = SortState::new();
         sort_state.column = column;
         sort_state.direction = if ascending { SortDirection::Ascending } else { SortDirection::Descending };
         sort_state.directories_first = false;
-        
+
         sort_state.sort_entries(&mut entries);
-        
+
         verify_sort_order(&entries, column, sort_state.direction)?;
-        
+
         // Add new entries
         let new_entries: Vec<FileEntry> = (0..additional_count)
             .map(|i| {
@@ -363,12 +358,12 @@ proptest! {
                 )
             })
             .collect();
-        
+
         entries.extend(new_entries);
-        
+
         // Re-sort with same sort state
         sort_state.sort_entries(&mut entries);
-        
+
         verify_sort_order(&entries, column, sort_state.direction)?;
     }
 }
@@ -379,33 +374,48 @@ fn verify_sort_order(
     direction: SortDirection,
 ) -> std::result::Result<(), proptest::test_runner::TestCaseError> {
     use proptest::prop_assert;
-    
+
     for window in entries.windows(2) {
         let a = &window[0];
         let b = &window[1];
-        
+
         let ordering = match column {
             SortColumn::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
             SortColumn::Date => a.modified.cmp(&b.modified),
             SortColumn::Type => {
-                let ext_a = a.name.rsplit('.').next().filter(|e| *e != &a.name).unwrap_or("").to_lowercase();
-                let ext_b = b.name.rsplit('.').next().filter(|e| *e != &b.name).unwrap_or("").to_lowercase();
+                let ext_a = a
+                    .name
+                    .rsplit('.')
+                    .next()
+                    .filter(|e| *e != &a.name)
+                    .unwrap_or("")
+                    .to_lowercase();
+                let ext_b = b
+                    .name
+                    .rsplit('.')
+                    .next()
+                    .filter(|e| *e != &b.name)
+                    .unwrap_or("")
+                    .to_lowercase();
                 ext_a.cmp(&ext_b)
             }
             SortColumn::Size => a.size.cmp(&b.size),
         };
-        
+
         let is_valid = match direction {
             SortDirection::Ascending => ordering != std::cmp::Ordering::Greater,
             SortDirection::Descending => ordering != std::cmp::Ordering::Less,
         };
-        
+
         prop_assert!(
             is_valid,
             "Sort order violated: '{}' vs '{}' with {:?} {:?}",
-            a.name, b.name, column, direction
+            a.name,
+            b.name,
+            column,
+            direction
         );
     }
-    
+
     Ok(())
 }

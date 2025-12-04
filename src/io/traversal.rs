@@ -45,7 +45,7 @@ impl Default for TraversalConfig {
 }
 
 /// Traverses a directory using jwalk and streams results through a flume channel.
-/// 
+///
 /// This function is designed to be called via `spawn_blocking` on a Tokio thread pool
 /// to avoid blocking the UI thread.
 pub fn traverse_directory(
@@ -125,7 +125,7 @@ fn num_cpus() -> usize {
 fn dir_entry_to_file_entry(entry: &jwalk::DirEntry<((), ())>) -> Option<FileEntry> {
     let path = entry.path();
     let name = entry.file_name().to_string_lossy().to_string();
-    
+
     let metadata = entry.metadata().ok()?;
     let is_dir = metadata.is_dir();
     let size = if is_dir { 0 } else { metadata.len() };
@@ -153,55 +153,45 @@ pub fn sort_entries(entries: &mut [FileEntry], sort_key: SortKey, sort_order: So
             });
         }
         (SortKey::Name, SortOrder::Descending) => {
-            entries.sort_by(|a, b| {
-                match (a.is_dir, b.is_dir) {
-                    (true, false) => std::cmp::Ordering::Less,
-                    (false, true) => std::cmp::Ordering::Greater,
-                    _ => b.name.to_lowercase().cmp(&a.name.to_lowercase()),
-                }
+            entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => b.name.to_lowercase().cmp(&a.name.to_lowercase()),
             });
         }
         (SortKey::Size, SortOrder::Ascending) => {
-            entries.sort_by(|a, b| {
-                match (a.is_dir, b.is_dir) {
-                    (true, false) => std::cmp::Ordering::Less,
-                    (false, true) => std::cmp::Ordering::Greater,
-                    _ => a.size.cmp(&b.size),
-                }
+            entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.size.cmp(&b.size),
             });
         }
         (SortKey::Size, SortOrder::Descending) => {
-            entries.sort_by(|a, b| {
-                match (a.is_dir, b.is_dir) {
-                    (true, false) => std::cmp::Ordering::Less,
-                    (false, true) => std::cmp::Ordering::Greater,
-                    _ => b.size.cmp(&a.size),
-                }
+            entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => b.size.cmp(&a.size),
             });
         }
         (SortKey::Date, SortOrder::Ascending) => {
-            entries.sort_by(|a, b| {
-                match (a.is_dir, b.is_dir) {
-                    (true, false) => std::cmp::Ordering::Less,
-                    (false, true) => std::cmp::Ordering::Greater,
-                    _ => a.modified.cmp(&b.modified),
-                }
+            entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.modified.cmp(&b.modified),
             });
         }
         (SortKey::Date, SortOrder::Descending) => {
-            entries.sort_by(|a, b| {
-                match (a.is_dir, b.is_dir) {
-                    (true, false) => std::cmp::Ordering::Less,
-                    (false, true) => std::cmp::Ordering::Greater,
-                    _ => b.modified.cmp(&a.modified),
-                }
+            entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => b.modified.cmp(&a.modified),
             });
         }
     }
 }
 
 /// Traverses a directory and returns sorted results.
-/// 
+///
 /// This function collects all entries, sorts them according to the config,
 /// and then streams them through the channel. This ensures results are
 /// delivered in sorted order.
@@ -262,12 +252,13 @@ pub fn traverse_directory_sorted(
 pub fn spawn_traversal(
     path: PathBuf,
     config: TraversalConfig,
-) -> (flume::Receiver<FileEntry>, std::thread::JoinHandle<Result<usize>>) {
+) -> (
+    flume::Receiver<FileEntry>,
+    std::thread::JoinHandle<Result<usize>>,
+) {
     let (sender, receiver) = flume::unbounded();
-    
-    let handle = std::thread::spawn(move || {
-        traverse_directory(&path, &config, sender)
-    });
+
+    let handle = std::thread::spawn(move || traverse_directory(&path, &config, sender));
 
     (receiver, handle)
 }
@@ -277,12 +268,13 @@ pub fn spawn_traversal(
 pub fn spawn_sorted_traversal(
     path: PathBuf,
     config: TraversalConfig,
-) -> (flume::Receiver<FileEntry>, std::thread::JoinHandle<Result<usize>>) {
+) -> (
+    flume::Receiver<FileEntry>,
+    std::thread::JoinHandle<Result<usize>>,
+) {
     let (sender, receiver) = flume::unbounded();
-    
-    let handle = std::thread::spawn(move || {
-        traverse_directory_sorted(&path, &config, sender)
-    });
+
+    let handle = std::thread::spawn(move || traverse_directory_sorted(&path, &config, sender));
 
     (receiver, handle)
 }
@@ -296,15 +288,15 @@ mod tests {
 
     fn create_test_directory() -> TempDir {
         let temp_dir = TempDir::new().unwrap();
-        
+
         File::create(temp_dir.path().join("file_a.txt")).unwrap();
         File::create(temp_dir.path().join("file_b.txt")).unwrap();
         File::create(temp_dir.path().join("file_c.txt")).unwrap();
-        
+
         fs::create_dir(temp_dir.path().join("subdir")).unwrap();
-        
+
         File::create(temp_dir.path().join(".hidden")).unwrap();
-        
+
         temp_dir
     }
 
@@ -313,10 +305,10 @@ mod tests {
         let temp_dir = create_test_directory();
         let (sender, receiver) = flume::unbounded();
         let config = TraversalConfig::default();
-        
+
         let result = traverse_directory(temp_dir.path(), &config, sender);
         assert!(result.is_ok());
-        
+
         let entries: Vec<_> = receiver.iter().collect();
         // Should have 4 entries: 3 files + 1 subdir (hidden file excluded by default)
         assert_eq!(entries.len(), 4);
@@ -330,10 +322,10 @@ mod tests {
             include_hidden: true,
             ..Default::default()
         };
-        
+
         let result = traverse_directory(temp_dir.path(), &config, sender);
         assert!(result.is_ok());
-        
+
         let entries: Vec<_> = receiver.iter().collect();
         // Should have 5 entries: 3 files + 1 subdir + 1 hidden file
         assert_eq!(entries.len(), 5);
@@ -343,7 +335,7 @@ mod tests {
     fn test_traverse_nonexistent_path() {
         let (sender, _receiver) = flume::unbounded();
         let config = TraversalConfig::default();
-        
+
         let result = traverse_directory(Path::new("/nonexistent/path"), &config, sender);
         assert!(matches!(result, Err(FileSystemError::PathNotFound(_))));
     }
@@ -351,13 +343,31 @@ mod tests {
     #[test]
     fn test_sort_entries_by_name() {
         let mut entries = vec![
-            FileEntry::new("zebra.txt".to_string(), PathBuf::from("/zebra.txt"), false, 100, SystemTime::UNIX_EPOCH),
-            FileEntry::new("alpha.txt".to_string(), PathBuf::from("/alpha.txt"), false, 200, SystemTime::UNIX_EPOCH),
-            FileEntry::new("beta".to_string(), PathBuf::from("/beta"), true, 0, SystemTime::UNIX_EPOCH),
+            FileEntry::new(
+                "zebra.txt".to_string(),
+                PathBuf::from("/zebra.txt"),
+                false,
+                100,
+                SystemTime::UNIX_EPOCH,
+            ),
+            FileEntry::new(
+                "alpha.txt".to_string(),
+                PathBuf::from("/alpha.txt"),
+                false,
+                200,
+                SystemTime::UNIX_EPOCH,
+            ),
+            FileEntry::new(
+                "beta".to_string(),
+                PathBuf::from("/beta"),
+                true,
+                0,
+                SystemTime::UNIX_EPOCH,
+            ),
         ];
-        
+
         sort_entries(&mut entries, SortKey::Name, SortOrder::Ascending);
-        
+
         // Directory should be first, then alphabetical
         assert_eq!(entries[0].name, "beta");
         assert_eq!(entries[1].name, "alpha.txt");
@@ -367,13 +377,31 @@ mod tests {
     #[test]
     fn test_sort_entries_by_size() {
         let mut entries = vec![
-            FileEntry::new("small.txt".to_string(), PathBuf::from("/small.txt"), false, 100, SystemTime::UNIX_EPOCH),
-            FileEntry::new("large.txt".to_string(), PathBuf::from("/large.txt"), false, 1000, SystemTime::UNIX_EPOCH),
-            FileEntry::new("dir".to_string(), PathBuf::from("/dir"), true, 0, SystemTime::UNIX_EPOCH),
+            FileEntry::new(
+                "small.txt".to_string(),
+                PathBuf::from("/small.txt"),
+                false,
+                100,
+                SystemTime::UNIX_EPOCH,
+            ),
+            FileEntry::new(
+                "large.txt".to_string(),
+                PathBuf::from("/large.txt"),
+                false,
+                1000,
+                SystemTime::UNIX_EPOCH,
+            ),
+            FileEntry::new(
+                "dir".to_string(),
+                PathBuf::from("/dir"),
+                true,
+                0,
+                SystemTime::UNIX_EPOCH,
+            ),
         ];
-        
+
         sort_entries(&mut entries, SortKey::Size, SortOrder::Ascending);
-        
+
         // Directory first, then by size ascending
         assert_eq!(entries[0].name, "dir");
         assert_eq!(entries[1].name, "small.txt");
@@ -389,18 +417,18 @@ mod tests {
             sort_order: SortOrder::Ascending,
             ..Default::default()
         };
-        
+
         let result = traverse_directory_sorted(temp_dir.path(), &config, sender);
         assert!(result.is_ok());
-        
+
         let entries: Vec<_> = receiver.iter().collect();
         // Should have 4 entries: 1 subdir + 3 files (hidden excluded)
         assert_eq!(entries.len(), 4);
-        
+
         // Directory should be first
         assert!(entries[0].is_dir);
         assert_eq!(entries[0].name, "subdir");
-        
+
         // Files should be sorted alphabetically
         assert_eq!(entries[1].name, "file_a.txt");
         assert_eq!(entries[2].name, "file_b.txt");
@@ -416,15 +444,15 @@ mod tests {
             sort_order: SortOrder::Descending,
             ..Default::default()
         };
-        
+
         let result = traverse_directory_sorted(temp_dir.path(), &config, sender);
         assert!(result.is_ok());
-        
+
         let entries: Vec<_> = receiver.iter().collect();
-        
+
         // Directory should still be first (directories always first)
         assert!(entries[0].is_dir);
-        
+
         // Files should be sorted in reverse alphabetical order
         assert_eq!(entries[1].name, "file_c.txt");
         assert_eq!(entries[2].name, "file_b.txt");
@@ -450,14 +478,15 @@ mod tests {
         let dirs: Vec<_> = entries.iter().filter(|e| e.is_dir).collect();
         let files: Vec<_> = entries.iter().filter(|e| !e.is_dir).collect();
 
-        is_group_sorted(&dirs, sort_key, sort_order) && is_group_sorted(&files, sort_key, sort_order)
+        is_group_sorted(&dirs, sort_key, sort_order)
+            && is_group_sorted(&files, sort_key, sort_order)
     }
 
     fn is_group_sorted(entries: &[&FileEntry], sort_key: SortKey, sort_order: SortOrder) -> bool {
         for window in entries.windows(2) {
             let a = window[0];
             let b = window[1];
-            
+
             let cmp = match sort_key {
                 SortKey::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
                 SortKey::Size => a.size.cmp(&b.size),
@@ -479,7 +508,7 @@ mod tests {
     proptest! {
         /// **Feature: file-explorer-core, Property 8: Traversal Results Sorted**
         /// **Validates: Requirements 3.2**
-        /// 
+        ///
         /// For any directory traversal result, the delivered entries SHALL be sorted
         /// by the configured sort key (name, size, or date) in the configured order
         /// (ascending or descending).
@@ -500,7 +529,7 @@ mod tests {
             };
 
             let temp_dir = TempDir::new().unwrap();
-            
+
             for i in 0..file_count {
                 let file_path = temp_dir.path().join(format!("file_{:03}.txt", i));
                 let mut file = File::create(&file_path).unwrap();
@@ -526,7 +555,7 @@ mod tests {
             prop_assert!(result.is_ok());
 
             let entries: Vec<_> = receiver.iter().collect();
-            
+
             // Verify entries are sorted correctly
             prop_assert!(
                 is_sorted(&entries, sort_key, sort_order),

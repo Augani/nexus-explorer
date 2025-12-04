@@ -67,7 +67,6 @@ impl WindowBoundsState {
     }
 }
 
-
 /// Manages multiple application windows
 pub struct WindowManager {
     /// Map of window IDs to their GPUI window handles
@@ -143,7 +142,7 @@ impl WindowManager {
     /// Opens a new window with the given path
     pub fn open_window(&mut self, path: PathBuf, cx: &mut App) -> Option<AppWindowId> {
         let id = AppWindowId::new();
-        
+
         // Calculate cascaded position for new window
         let offset = self.windows.len() as f32 * self.cascade_offset;
         let bounds = Bounds::centered(
@@ -151,7 +150,7 @@ impl WindowManager {
             size(px(self.default_width), px(self.default_height)),
             cx,
         );
-        
+
         let cascaded_bounds = Bounds {
             origin: gpui::Point {
                 x: bounds.origin.x + px(offset),
@@ -159,7 +158,7 @@ impl WindowManager {
             },
             size: bounds.size,
         };
-        
+
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(cascaded_bounds)),
             titlebar: None,
@@ -171,7 +170,7 @@ impl WindowManager {
             window_background: gpui::WindowBackgroundAppearance::Opaque,
             ..Default::default()
         };
-        
+
         let path_clone = path.clone();
         match cx.open_window(window_options, |_window, cx| {
             Workspace::build(path_clone, cx)
@@ -184,11 +183,11 @@ impl WindowManager {
                     bounds: Some(WindowBoundsState::from_bounds(&cascaded_bounds)),
                     is_active: true,
                 };
-                
+
                 self.windows.insert(id, handle);
                 self.window_states.insert(id, state);
                 self.set_active(id);
-                
+
                 Some(id)
             }
             Err(e) => {
@@ -202,7 +201,7 @@ impl WindowManager {
     pub fn close_window(&mut self, id: AppWindowId, cx: &mut App) {
         if let Some(handle) = self.windows.remove(&id) {
             self.window_states.remove(&id);
-            
+
             if self.active_window == Some(id) {
                 self.active_window = self.windows.keys().next().copied();
                 if let Some(new_active) = self.active_window {
@@ -211,27 +210,31 @@ impl WindowManager {
                     }
                 }
             }
-            
+
             // Note: GPUI windows are closed when their handle is dropped
             drop(handle);
         }
     }
 
     /// Registers an existing window (used for the initial window)
-    pub fn register_window(&mut self, handle: WindowHandle<Workspace>, path: PathBuf) -> AppWindowId {
+    pub fn register_window(
+        &mut self,
+        handle: WindowHandle<Workspace>,
+        path: PathBuf,
+    ) -> AppWindowId {
         let id = AppWindowId::new();
-        
+
         let state = WindowState {
             id,
             path,
             bounds: None,
             is_active: true,
         };
-        
+
         self.windows.insert(id, handle);
         self.window_states.insert(id, state);
         self.active_window = Some(id);
-        
+
         id
     }
 
@@ -258,7 +261,6 @@ impl Default for WindowManager {
 
 impl Global for WindowManager {}
 
-
 /// Persisted window manager state for save/restore
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowManagerState {
@@ -272,21 +274,20 @@ impl WindowManager {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("nexus-explorer");
-        
+
         std::fs::create_dir_all(&config_dir)?;
-        
+
         let state = WindowManagerState {
             windows: self.window_states.values().cloned().collect(),
-            active_window_index: self.active_window.and_then(|id| {
-                self.window_states.values()
-                    .position(|s| s.id == id)
-            }),
+            active_window_index: self
+                .active_window
+                .and_then(|id| self.window_states.values().position(|s| s.id == id)),
         };
-        
+
         let config_path = config_dir.join("windows.json");
         let json = serde_json::to_string_pretty(&state)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        
+
         std::fs::write(config_path, json)
     }
 
@@ -296,7 +297,7 @@ impl WindowManager {
             .unwrap_or_else(|| PathBuf::from("."))
             .join("nexus-explorer")
             .join("windows.json");
-        
+
         if config_path.exists() {
             if let Ok(json) = std::fs::read_to_string(&config_path) {
                 if let Ok(state) = serde_json::from_str::<WindowManagerState>(&json) {
@@ -304,7 +305,7 @@ impl WindowManager {
                 }
             }
         }
-        
+
         None
     }
 
@@ -314,9 +315,10 @@ impl WindowManager {
             // Only restore if the path still exists
             if window_state.path.exists() {
                 let id = AppWindowId::new();
-                
+
                 // Use saved bounds or default
-                let bounds = window_state.bounds
+                let bounds = window_state
+                    .bounds
                     .as_ref()
                     .map(|b| b.to_bounds())
                     .unwrap_or_else(|| {
@@ -326,7 +328,7 @@ impl WindowManager {
                             cx,
                         )
                     });
-                
+
                 let window_options = WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     titlebar: None,
@@ -338,7 +340,7 @@ impl WindowManager {
                     window_background: gpui::WindowBackgroundAppearance::Opaque,
                     ..Default::default()
                 };
-                
+
                 let path = window_state.path.clone();
                 if let Ok(handle) = cx.open_window(window_options, |_window, cx| {
                     Workspace::build(path.clone(), cx)
@@ -349,13 +351,13 @@ impl WindowManager {
                         bounds: window_state.bounds,
                         is_active: false,
                     };
-                    
+
                     self.windows.insert(id, handle);
                     self.window_states.insert(id, new_state);
                 }
             }
         }
-        
+
         if let Some(active_idx) = state.active_window_index {
             if let Some(id) = self.window_ids().get(active_idx).copied() {
                 self.set_active(id);
@@ -375,7 +377,7 @@ mod tests {
         let id1 = AppWindowId::new();
         let id2 = AppWindowId::new();
         let id3 = AppWindowId::new();
-        
+
         assert_ne!(id1, id2);
         assert_ne!(id2, id3);
         assert_ne!(id1, id3);
@@ -393,21 +395,21 @@ mod tests {
                 height: px(600.0),
             },
         };
-        
+
         let state = WindowBoundsState::from_bounds(&bounds);
         let restored = state.to_bounds();
-        
+
         // Compare using Into<f32> conversion
         let orig_x: f32 = bounds.origin.x.into();
         let orig_y: f32 = bounds.origin.y.into();
         let orig_w: f32 = bounds.size.width.into();
         let orig_h: f32 = bounds.size.height.into();
-        
+
         let rest_x: f32 = restored.origin.x.into();
         let rest_y: f32 = restored.origin.y.into();
         let rest_w: f32 = restored.size.width.into();
         let rest_h: f32 = restored.size.height.into();
-        
+
         assert_eq!(orig_x, rest_x);
         assert_eq!(orig_y, rest_y);
         assert_eq!(orig_w, rest_w);
@@ -417,7 +419,7 @@ mod tests {
     #[test]
     fn test_window_manager_new() {
         let manager = WindowManager::new();
-        
+
         assert_eq!(manager.window_count(), 0);
         assert!(!manager.has_windows());
         assert!(manager.active_window().is_none());
@@ -436,14 +438,14 @@ mod tests {
             }),
             is_active: true,
         };
-        
+
         let json = serde_json::to_string(&state).expect("Failed to serialize");
         let restored: WindowState = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+
         assert_eq!(state.id, restored.id);
         assert_eq!(state.path, restored.path);
         assert_eq!(state.is_active, restored.is_active);
-        
+
         let bounds = state.bounds.unwrap();
         let restored_bounds = restored.bounds.unwrap();
         assert_eq!(bounds.x, restored_bounds.x);
@@ -476,10 +478,11 @@ mod tests {
             ],
             active_window_index: Some(0),
         };
-        
+
         let json = serde_json::to_string_pretty(&state).expect("Failed to serialize");
-        let restored: WindowManagerState = serde_json::from_str(&json).expect("Failed to deserialize");
-        
+        let restored: WindowManagerState =
+            serde_json::from_str(&json).expect("Failed to deserialize");
+
         assert_eq!(state.windows.len(), restored.windows.len());
         assert_eq!(state.active_window_index, restored.active_window_index);
     }

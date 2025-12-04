@@ -57,12 +57,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(
-        id: DeviceId,
-        name: String,
-        path: PathBuf,
-        device_type: DeviceType,
-    ) -> Self {
+    pub fn new(id: DeviceId, name: String, path: PathBuf, device_type: DeviceType) -> Self {
         Self {
             id,
             name,
@@ -106,7 +101,6 @@ impl Device {
         }
     }
 }
-
 
 /// WSL distribution information (Windows only)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -266,7 +260,7 @@ impl DeviceMonitor {
             return;
         }
         self.is_monitoring.store(true, Ordering::SeqCst);
-        
+
         self.enumerate_devices();
     }
 
@@ -278,13 +272,13 @@ impl DeviceMonitor {
     /// Enumerate all devices on the system
     pub fn enumerate_devices(&mut self) {
         self.devices.clear();
-        
+
         #[cfg(target_os = "windows")]
         self.enumerate_windows_devices();
-        
+
         #[cfg(target_os = "macos")]
         self.enumerate_macos_devices();
-        
+
         #[cfg(target_os = "linux")]
         self.enumerate_linux_devices();
     }
@@ -300,17 +294,16 @@ impl DeviceMonitor {
     }
 }
 
-
 /// Get disk space for a path (cross-platform)
 pub fn get_disk_space(path: &PathBuf) -> std::io::Result<(u64, u64)> {
     #[cfg(unix)]
     {
         use std::ffi::CString;
         use std::os::unix::ffi::OsStrExt;
-        
+
         let c_path = CString::new(path.as_os_str().as_bytes())
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
-        
+
         unsafe {
             let mut stat: libc::statvfs = std::mem::zeroed();
             if libc::statvfs(c_path.as_ptr(), &mut stat) == 0 {
@@ -322,34 +315,36 @@ pub fn get_disk_space(path: &PathBuf) -> std::io::Result<(u64, u64)> {
             }
         }
     }
-    
+
     #[cfg(windows)]
     {
         use std::os::windows::ffi::OsStrExt;
-        
-        let wide_path: Vec<u16> = path.as_os_str()
+
+        let wide_path: Vec<u16> = path
+            .as_os_str()
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
-        
+
         let mut free_bytes_available: u64 = 0;
         let mut total_bytes: u64 = 0;
         let mut total_free_bytes: u64 = 0;
-        
+
         unsafe {
             if windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW(
                 wide_path.as_ptr(),
                 &mut free_bytes_available,
                 &mut total_bytes,
                 &mut total_free_bytes,
-            ) != 0 {
+            ) != 0
+            {
                 Ok((total_bytes, free_bytes_available))
             } else {
                 Err(std::io::Error::last_os_error())
             }
         }
     }
-    
+
     #[cfg(not(any(unix, windows)))]
     {
         Err(std::io::Error::new(
@@ -358,5 +353,3 @@ pub fn get_disk_space(path: &PathBuf) -> std::io::Result<(u64, u64)> {
         ))
     }
 }
-
-

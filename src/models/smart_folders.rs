@@ -340,7 +340,6 @@ impl SearchQuery {
     }
 }
 
-
 /// A smart folder that dynamically shows files matching a query
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SmartFolder {
@@ -409,7 +408,11 @@ impl SmartFolderManager {
 
     /// Creates a new smart folder with the given name and query
     pub fn create(&mut self, name: String, query: SearchQuery) -> SmartFolderResult<SmartFolderId> {
-        if self.folders.iter().any(|f| f.name.eq_ignore_ascii_case(&name)) {
+        if self
+            .folders
+            .iter()
+            .any(|f| f.name.eq_ignore_ascii_case(&name))
+        {
             return Err(SmartFolderError::DuplicateName(name));
         }
 
@@ -443,7 +446,11 @@ impl SmartFolderManager {
 
     /// Renames a smart folder
     pub fn rename(&mut self, id: SmartFolderId, new_name: String) -> SmartFolderResult<()> {
-        if self.folders.iter().any(|f| f.id != id && f.name.eq_ignore_ascii_case(&new_name)) {
+        if self
+            .folders
+            .iter()
+            .any(|f| f.id != id && f.name.eq_ignore_ascii_case(&new_name))
+        {
             return Err(SmartFolderError::DuplicateName(new_name));
         }
 
@@ -460,7 +467,7 @@ impl SmartFolderManager {
     }
 
     /// Executes a smart folder's query against a list of file entries
-    /// 
+    ///
     /// This is the core method that filters files based on the smart folder's query.
     /// The `file_tags` function provides tag information for each file.
     pub fn execute<F>(
@@ -508,7 +515,9 @@ impl SmartFolderManager {
 
     /// Gets a smart folder by name (case-insensitive)
     pub fn get_by_name(&self, name: &str) -> Option<&SmartFolder> {
-        self.folders.iter().find(|f| f.name.eq_ignore_ascii_case(name))
+        self.folders
+            .iter()
+            .find(|f| f.name.eq_ignore_ascii_case(name))
     }
 
     /// Returns all smart folders
@@ -540,15 +549,13 @@ impl SmartFolderManager {
 
         // Ensure parent directory exists
         if let Some(parent) = config_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| SmartFolderError::Io(e.to_string()))?;
+            std::fs::create_dir_all(parent).map_err(|e| SmartFolderError::Io(e.to_string()))?;
         }
 
         let json = serde_json::to_string_pretty(self)
             .map_err(|e| SmartFolderError::Serialization(e.to_string()))?;
 
-        std::fs::write(&config_path, json)
-            .map_err(|e| SmartFolderError::Io(e.to_string()))?;
+        std::fs::write(&config_path, json).map_err(|e| SmartFolderError::Io(e.to_string()))?;
 
         Ok(())
     }
@@ -568,18 +575,11 @@ impl SmartFolderManager {
             .map_err(|e| SmartFolderError::Serialization(e.to_string()))?;
 
         // Calculate next_id from existing folders
-        manager.next_id = manager
-            .folders
-            .iter()
-            .map(|f| f.id.0)
-            .max()
-            .unwrap_or(0)
-            + 1;
+        manager.next_id = manager.folders.iter().map(|f| f.id.0).max().unwrap_or(0) + 1;
 
         Ok(manager)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -707,7 +707,7 @@ mod tests {
     #[test]
     fn test_query_file_types() {
         let query = SearchQuery::new().file_types(vec!["rs".to_string(), "toml".to_string()]);
-        
+
         let rs_file = create_test_entry("main.rs", false, 100);
         let txt_file = create_test_entry("readme.txt", false, 100);
         let empty_tags = HashSet::new();
@@ -719,7 +719,7 @@ mod tests {
     #[test]
     fn test_query_size_filter() {
         let query = SearchQuery::new().size_filter(SizeFilter::LargerThan(50));
-        
+
         let large_file = create_test_entry("large.txt", false, 100);
         let small_file = create_test_entry("small.txt", false, 10);
         let empty_tags = HashSet::new();
@@ -732,7 +732,7 @@ mod tests {
     fn test_query_hidden_files() {
         let query_no_hidden = SearchQuery::new().include_hidden(false);
         let query_with_hidden = SearchQuery::new().include_hidden(true);
-        
+
         let hidden_file = create_test_entry(".hidden", false, 100);
         let normal_file = create_test_entry("normal.txt", false, 100);
         let empty_tags = HashSet::new();
@@ -748,7 +748,7 @@ mod tests {
             directories_only: true,
             ..Default::default()
         };
-        
+
         let dir = create_test_entry("folder", true, 0);
         let file = create_test_entry("file.txt", false, 100);
         let empty_tags = HashSet::new();
@@ -763,7 +763,7 @@ mod tests {
             files_only: true,
             ..Default::default()
         };
-        
+
         let dir = create_test_entry("folder", true, 0);
         let file = create_test_entry("file.txt", false, 100);
         let empty_tags = HashSet::new();
@@ -776,16 +776,16 @@ mod tests {
     fn test_query_with_tags() {
         let tag1 = TagId::new(1);
         let tag2 = TagId::new(2);
-        
+
         let query = SearchQuery::new().tags(vec![tag1]);
         let entry = create_test_entry("file.txt", false, 100);
-        
+
         let mut tags_with_match = HashSet::new();
         tags_with_match.insert(tag1);
-        
+
         let mut tags_without_match = HashSet::new();
         tags_without_match.insert(tag2);
-        
+
         let empty_tags = HashSet::new();
 
         assert!(query.matches(&entry, &tags_with_match));
@@ -806,7 +806,7 @@ mod tests {
         ];
 
         let results = manager.execute(id, &entries, |_| HashSet::new()).unwrap();
-        
+
         assert_eq!(results.len(), 2);
         assert!(results.iter().any(|e| e.name == "test_file.rs"));
         assert!(results.iter().any(|e| e.name == "test_dir"));
@@ -816,14 +816,14 @@ mod tests {
     fn test_date_filter_last_days() {
         let filter = DateFilter::LastDays(7);
         let recent = SystemTime::now();
-        
+
         assert!(filter.matches(recent));
     }
 
     #[test]
     fn test_size_filter_between() {
         let filter = SizeFilter::Between(50, 150);
-        
+
         assert!(filter.matches(100));
         assert!(!filter.matches(10));
         assert!(!filter.matches(200));

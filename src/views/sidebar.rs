@@ -1,16 +1,16 @@
 use std::path::PathBuf;
 
 use gpui::{
-    div, prelude::*, px, svg, App, Context, DragMoveEvent, ExternalPaths, FocusHandle,
-    Focusable, InteractiveElement, IntoElement, MouseButton, ParentElement, Render, SharedString,
-    Styled, Window,
+    div, prelude::*, px, svg, App, Context, DragMoveEvent, ExternalPaths, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, MouseButton, ParentElement, Render, SharedString, Styled,
+    Window,
 };
 
 use crate::models::{
-    Bookmark, BookmarkId, BookmarkManager, CloudStorageManager, Device, DeviceMonitor,
-    DeviceType, Favorite, Favorites, NetworkLocationId, NetworkSidebarState, NetworkStorageManager,
-    WslDistribution, theme_colors, sidebar as sidebar_spacing,
-    SmartFolder, SmartFolderId, SmartFolderManager, SearchQuery,
+    sidebar as sidebar_spacing, theme_colors, Bookmark, BookmarkId, BookmarkManager,
+    CloudStorageManager, Device, DeviceMonitor, DeviceType, Favorite, Favorites, NetworkLocationId,
+    NetworkSidebarState, NetworkStorageManager, SearchQuery, SmartFolder, SmartFolderId,
+    SmartFolderManager, WslDistribution,
 };
 
 #[derive(Clone)]
@@ -121,7 +121,8 @@ impl Sidebar {
         let mut device_monitor = DeviceMonitor::new();
         device_monitor.start_monitoring();
 
-        let smart_folders = SmartFolderManager::load().unwrap_or_else(|_| SmartFolderManager::new());
+        let smart_folders =
+            SmartFolderManager::load().unwrap_or_else(|_| SmartFolderManager::new());
 
         Self {
             favorites,
@@ -167,7 +168,10 @@ impl Sidebar {
         &mut self.bookmarks
     }
 
-    pub fn add_bookmark(&mut self, path: PathBuf) -> Result<BookmarkId, crate::models::BookmarkError> {
+    pub fn add_bookmark(
+        &mut self,
+        path: PathBuf,
+    ) -> Result<BookmarkId, crate::models::BookmarkError> {
         let result = self.bookmarks.add(path);
         if result.is_ok() {
             let _ = self.bookmarks.save();
@@ -175,7 +179,10 @@ impl Sidebar {
         result
     }
 
-    pub fn remove_bookmark(&mut self, id: BookmarkId) -> Result<Bookmark, crate::models::BookmarkError> {
+    pub fn remove_bookmark(
+        &mut self,
+        id: BookmarkId,
+    ) -> Result<Bookmark, crate::models::BookmarkError> {
         let result = self.bookmarks.remove(id);
         if result.is_ok() {
             let _ = self.bookmarks.save();
@@ -183,7 +190,11 @@ impl Sidebar {
         result
     }
 
-    pub fn rename_bookmark(&mut self, id: BookmarkId, name: String) -> Result<(), crate::models::BookmarkError> {
+    pub fn rename_bookmark(
+        &mut self,
+        id: BookmarkId,
+        name: String,
+    ) -> Result<(), crate::models::BookmarkError> {
         let result = self.bookmarks.rename(id, name);
         if result.is_ok() {
             let _ = self.bookmarks.save();
@@ -240,7 +251,10 @@ impl Sidebar {
         result
     }
 
-    pub fn remove_favorite(&mut self, index: usize) -> Result<Favorite, crate::models::FavoritesError> {
+    pub fn remove_favorite(
+        &mut self,
+        index: usize,
+    ) -> Result<Favorite, crate::models::FavoritesError> {
         let result = self.favorites.remove(index);
         if result.is_ok() {
             let _ = self.favorites.save();
@@ -248,7 +262,11 @@ impl Sidebar {
         result
     }
 
-    pub fn reorder_favorites(&mut self, from: usize, to: usize) -> Result<(), crate::models::FavoritesError> {
+    pub fn reorder_favorites(
+        &mut self,
+        from: usize,
+        to: usize,
+    ) -> Result<(), crate::models::FavoritesError> {
         let result = self.favorites.reorder(from, to);
         if result.is_ok() {
             let _ = self.favorites.save();
@@ -337,7 +355,11 @@ impl Sidebar {
         &mut self.smart_folders
     }
 
-    pub fn create_smart_folder(&mut self, name: String, query: SearchQuery) -> Result<SmartFolderId, crate::models::SmartFolderError> {
+    pub fn create_smart_folder(
+        &mut self,
+        name: String,
+        query: SearchQuery,
+    ) -> Result<SmartFolderId, crate::models::SmartFolderError> {
         let result = self.smart_folders.create(name, query);
         if result.is_ok() {
             let _ = self.smart_folders.save();
@@ -345,7 +367,10 @@ impl Sidebar {
         result
     }
 
-    pub fn delete_smart_folder(&mut self, id: SmartFolderId) -> Result<SmartFolder, crate::models::SmartFolderError> {
+    pub fn delete_smart_folder(
+        &mut self,
+        id: SmartFolderId,
+    ) -> Result<SmartFolder, crate::models::SmartFolderError> {
         let result = self.smart_folders.delete(id);
         if result.is_ok() {
             let _ = self.smart_folders.save();
@@ -353,7 +378,11 @@ impl Sidebar {
         result
     }
 
-    pub fn update_smart_folder(&mut self, id: SmartFolderId, query: SearchQuery) -> Result<(), crate::models::SmartFolderError> {
+    pub fn update_smart_folder(
+        &mut self,
+        id: SmartFolderId,
+        query: SearchQuery,
+    ) -> Result<(), crate::models::SmartFolderError> {
         let result = self.smart_folders.update(id, query);
         if result.is_ok() {
             let _ = self.smart_folders.save();
@@ -433,7 +462,7 @@ impl SidebarView {
     pub fn has_clipboard(&self) -> bool {
         self.has_clipboard
     }
-    
+
     /// Add a path to favorites
     pub fn add_favorite(&mut self, path: PathBuf) -> Result<(), crate::models::FavoritesError> {
         self.sidebar.add_favorite(path)
@@ -448,7 +477,12 @@ impl SidebarView {
     }
 
     /// Handle bookmark click for navigation
-    fn handle_bookmark_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_bookmark_click(
+        &mut self,
+        path: PathBuf,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.sidebar.selected_path = Some(path.clone());
         self.pending_navigation = Some(path);
         cx.notify();
@@ -524,15 +558,22 @@ impl SidebarView {
     }
 
     /// Handle network location click
-    fn handle_network_click(&mut self, id: NetworkLocationId, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_network_click(
+        &mut self,
+        id: NetworkLocationId,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         // Connect to the network location if not connected
         let _ = self.sidebar.network_manager_mut().connect(id);
-        
+
         // If connected and has mount point, navigate to it
-        let mount_point = self.sidebar.network_manager()
+        let mount_point = self
+            .sidebar
+            .network_manager()
             .get_location(id)
             .and_then(|loc| loc.mount_point.clone());
-        
+
         if let Some(path) = mount_point {
             self.sidebar.selected_path = Some(path.clone());
             self.pending_navigation = Some(path);
@@ -591,11 +632,17 @@ impl SidebarView {
 
     /// Get the smart folder being edited (if any)
     pub fn editing_smart_folder(&self) -> Option<&SmartFolder> {
-        self.editing_smart_folder.and_then(|id| self.sidebar.smart_folders.get(id))
+        self.editing_smart_folder
+            .and_then(|id| self.sidebar.smart_folders.get(id))
     }
 
     /// Handle smart folder click for executing the query
-    fn handle_smart_folder_click(&mut self, id: SmartFolderId, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_smart_folder_click(
+        &mut self,
+        id: SmartFolderId,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.pending_smart_folder_click = Some(id);
         cx.notify();
     }
@@ -612,14 +659,24 @@ impl SidebarView {
     }
 
     /// Create a new smart folder
-    pub fn create_smart_folder(&mut self, name: String, query: SearchQuery, cx: &mut Context<Self>) -> Result<SmartFolderId, crate::models::SmartFolderError> {
+    pub fn create_smart_folder(
+        &mut self,
+        name: String,
+        query: SearchQuery,
+        cx: &mut Context<Self>,
+    ) -> Result<SmartFolderId, crate::models::SmartFolderError> {
         let result = self.sidebar.create_smart_folder(name, query);
         cx.notify();
         result
     }
 
     /// Update an existing smart folder
-    pub fn update_smart_folder(&mut self, id: SmartFolderId, query: SearchQuery, cx: &mut Context<Self>) -> Result<(), crate::models::SmartFolderError> {
+    pub fn update_smart_folder(
+        &mut self,
+        id: SmartFolderId,
+        query: SearchQuery,
+        cx: &mut Context<Self>,
+    ) -> Result<(), crate::models::SmartFolderError> {
         let result = self.sidebar.update_smart_folder(id, query);
         cx.notify();
         result
@@ -670,7 +727,12 @@ impl SidebarView {
         self.sidebar.wsl_distributions()
     }
 
-    fn handle_tool_action(&mut self, action: ToolAction, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_tool_action(
+        &mut self,
+        action: ToolAction,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match &action {
             ToolAction::CopyPath => {
                 // Copy current directory path to clipboard
@@ -682,10 +744,8 @@ impl SidebarView {
             ToolAction::ToggleHiddenFiles => {
                 self.sidebar.toggle_hidden_files();
             }
-            ToolAction::SetAsDefault => {
-            }
-            _ => {
-            }
+            ToolAction::SetAsDefault => {}
+            _ => {}
         }
         self.pending_action = Some(action);
         cx.notify();
@@ -708,7 +768,12 @@ impl SidebarView {
         &mut self.sidebar
     }
 
-    fn handle_favorite_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_favorite_click(
+        &mut self,
+        path: PathBuf,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.sidebar.selected_path = Some(path.clone());
         self.pending_navigation = Some(path);
         cx.notify();
@@ -750,7 +815,7 @@ impl SidebarView {
                 return "cloud";
             }
         }
-        
+
         // Default folder icon
         match index % 4 {
             0 => "folder",
@@ -778,11 +843,11 @@ impl Render for SidebarView {
         let selected_bg = theme.bg_selected;
         let label_color = theme.text_muted;
         let icon_blue = theme.accent_primary;
-        let drop_zone_bg = gpui::Rgba { 
-            r: theme.accent_primary.r, 
-            g: theme.accent_primary.g, 
-            b: theme.accent_primary.b, 
-            a: 0.2 
+        let drop_zone_bg = gpui::Rgba {
+            r: theme.accent_primary.r,
+            g: theme.accent_primary.g,
+            b: theme.accent_primary.b,
+            a: 0.2,
         };
         let drop_zone_border = theme.accent_primary;
         let warning_color = theme.warning;
@@ -834,16 +899,19 @@ impl Render for SidebarView {
                                     .items_center()
                                     .justify_between()
                                     .cursor_pointer()
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                        view.toggle_tools_section(cx);
-                                    }))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|view, _event, _window, cx| {
+                                            view.toggle_tools_section(cx);
+                                        }),
+                                    )
                                     .child("TOOLS")
                                     .child(
                                         svg()
-                                            .path(if is_tools_expanded { 
-                                                "assets/icons/chevron-down.svg" 
-                                            } else { 
-                                                "assets/icons/chevron-right.svg" 
+                                            .path(if is_tools_expanded {
+                                                "assets/icons/chevron-down.svg"
+                                            } else {
+                                                "assets/icons/chevron-right.svg"
                                             })
                                             .size(px(12.0))
                                             .text_color(label_color),
@@ -882,12 +950,7 @@ impl Render for SidebarView {
                                             icon_blue,
                                             cx,
                                         ))
-                                        .child(
-                                            div()
-                                                .h(px(1.0))
-                                                .bg(gpui::rgb(0x21262d))
-                                                .my_1()
-                                        )
+                                        .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
                                         // Copy button (batch operation)
                                         .child(self.render_tool_button(
                                             "copy-files",
@@ -940,12 +1003,7 @@ impl Render for SidebarView {
                                             gpui::rgb(0xf85149),
                                             cx,
                                         ))
-                                        .child(
-                                            div()
-                                                .h(px(1.0))
-                                                .bg(gpui::rgb(0x21262d))
-                                                .my_1()
-                                        )
+                                        .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
                                         // Open Terminal Here
                                         .child(self.render_tool_button(
                                             "terminal-here",
@@ -983,12 +1041,7 @@ impl Render for SidebarView {
                                             icon_blue,
                                             cx,
                                         ))
-                                        .child(
-                                            div()
-                                                .h(px(1.0))
-                                                .bg(gpui::rgb(0x21262d))
-                                                .my_1()
-                                        )
+                                        .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
                                         // Show Hidden Files toggle
                                         .child(
                                             div()
@@ -1003,36 +1056,44 @@ impl Render for SidebarView {
                                                 .text_sm()
                                                 .text_color(text_gray)
                                                 .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                                    view.toggle_hidden_files(cx);
-                                                }))
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(|view, _event, _window, cx| {
+                                                        view.toggle_hidden_files(cx);
+                                                    }),
+                                                )
                                                 .child(
                                                     svg()
-                                                        .path(if show_hidden { 
-                                                            "assets/icons/eye.svg" 
-                                                        } else { 
-                                                            "assets/icons/eye-off.svg" 
+                                                        .path(if show_hidden {
+                                                            "assets/icons/eye.svg"
+                                                        } else {
+                                                            "assets/icons/eye-off.svg"
                                                         })
                                                         .size(px(14.0))
-                                                        .text_color(if show_hidden { success_color } else { icon_blue }),
+                                                        .text_color(if show_hidden {
+                                                            success_color
+                                                        } else {
+                                                            icon_blue
+                                                        }),
                                                 )
-                                                .child(
-                                                    div()
-                                                        .flex_1()
-                                                        .child(if show_hidden { "Hide Hidden Files" } else { "Show Hidden Files" })
-                                                )
+                                                .child(div().flex_1().child(if show_hidden {
+                                                    "Hide Hidden Files"
+                                                } else {
+                                                    "Show Hidden Files"
+                                                }))
                                                 .when(show_hidden, |s| {
                                                     s.child(
                                                         div()
                                                             .w(px(6.0))
                                                             .h(px(6.0))
                                                             .rounded_full()
-                                                            .bg(success_color)
+                                                            .bg(success_color),
                                                     )
-                                                })
+                                                }),
                                         )
                                         .child({
-                                            let is_default = crate::models::is_default_file_browser();
+                                            let is_default =
+                                                crate::models::is_default_file_browser();
                                             div()
                                                 .id("set-as-default")
                                                 .flex()
@@ -1045,32 +1106,39 @@ impl Render for SidebarView {
                                                 .text_sm()
                                                 .text_color(text_gray)
                                                 .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                                    view.toggle_default_browser(cx);
-                                                }))
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(|view, _event, _window, cx| {
+                                                        view.toggle_default_browser(cx);
+                                                    }),
+                                                )
                                                 .child(
                                                     svg()
                                                         .path("assets/icons/layout-grid.svg")
                                                         .size(px(14.0))
-                                                        .text_color(if is_default { success_color } else { icon_blue }),
+                                                        .text_color(if is_default {
+                                                            success_color
+                                                        } else {
+                                                            icon_blue
+                                                        }),
                                                 )
-                                                .child(
-                                                    div()
-                                                        .flex_1()
-                                                        .child(if is_default { "Default Browser ✓" } else { "Set as Default Browser" })
-                                                )
+                                                .child(div().flex_1().child(if is_default {
+                                                    "Default Browser ✓"
+                                                } else {
+                                                    "Set as Default Browser"
+                                                }))
                                                 .when(is_default, |s| {
                                                     s.child(
                                                         div()
                                                             .w(px(6.0))
                                                             .h(px(6.0))
                                                             .rounded_full()
-                                                            .bg(success_color)
+                                                            .bg(success_color),
                                                     )
                                                 })
-                                        })
+                                        }),
                                 )
-                            })
+                            }),
                     )
                     // Devices Section
                     .child(self.render_devices_section(
@@ -1134,16 +1202,16 @@ impl Render for SidebarView {
                             .p_1()
                             .rounded_md()
                             .when(is_drop_target && !is_full, |s| {
-                                s.bg(drop_zone_bg)
-                                    .border_2()
-                                    .border_color(drop_zone_border)
+                                s.bg(drop_zone_bg).border_2().border_color(drop_zone_border)
                             })
-                            .on_drag_move(cx.listener(|view, _event: &DragMoveEvent<DraggedFolder>, _window, cx| {
-                                if !view.sidebar.favorites.is_full() {
-                                    view.sidebar.set_drop_target(true);
-                                    cx.notify();
-                                }
-                            }))
+                            .on_drag_move(cx.listener(
+                                |view, _event: &DragMoveEvent<DraggedFolder>, _window, cx| {
+                                    if !view.sidebar.favorites.is_full() {
+                                        view.sidebar.set_drop_target(true);
+                                        cx.notify();
+                                    }
+                                },
+                            ))
                             .on_drop(cx.listener(|view, paths: &ExternalPaths, _window, cx| {
                                 for path in paths.paths() {
                                     if path.is_dir() {
@@ -1154,61 +1222,77 @@ impl Render for SidebarView {
                             .on_drop(cx.listener(|view, dragged: &DraggedFolder, _window, cx| {
                                 view.handle_drop(dragged.path.clone(), cx);
                             }))
-                            .children(
-                                favorites.into_iter().enumerate().map(|(i, favorite)| {
-                                    let is_selected = selected_path.as_ref() == Some(&favorite.path);
-                                    let path_clone = favorite.path.clone();
-                                    let path_for_drag = favorite.path.clone();
-                                    let name_for_drag = favorite.name.clone();
-                                    let icon_name = self.get_icon_for_favorite(i, &favorite.path);
-                                    let is_valid = favorite.is_valid;
-                                    let is_being_dragged = dragging_index == Some(i);
-                                    let is_drop_target_here = drop_target_index == Some(i);
+                            .children(favorites.into_iter().enumerate().map(|(i, favorite)| {
+                                let is_selected = selected_path.as_ref() == Some(&favorite.path);
+                                let path_clone = favorite.path.clone();
+                                let path_for_drag = favorite.path.clone();
+                                let name_for_drag = favorite.name.clone();
+                                let icon_name = self.get_icon_for_favorite(i, &favorite.path);
+                                let is_valid = favorite.is_valid;
+                                let is_being_dragged = dragging_index == Some(i);
+                                let is_drop_target_here = drop_target_index == Some(i);
 
-                                    div()
-                                        .id(SharedString::from(format!("fav-{}", i)))
-                                        .flex()
-                                        .items_center()
-                                        .gap_3()
-                                        .px_2()
-                                        .py_1p5()
-                                        .rounded_md()
-                                        .cursor_pointer()
-                                        .text_sm()
-                                        .when(is_being_dragged, |s| s.opacity(0.5))
-                                        .when(is_drop_target_here, |s| {
-                                            s.border_t_2().border_color(drop_zone_border)
-                                        })
-                                        .when(is_selected, |s| {
-                                            s.bg(selected_bg).text_color(text_light)
-                                        })
-                                        .when(!is_selected && is_valid, |s| {
-                                            s.text_color(text_gray)
-                                                .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                        })
-                                        .when(!is_valid, |s| {
-                                            s.text_color(warning_color).opacity(0.7)
-                                        })
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
-                                            view.handle_favorite_click(path_clone.clone(), window, cx);
-                                        }))
-                                        .on_mouse_down(MouseButton::Right, cx.listener(move |view, _event, _window, cx| {
+                                div()
+                                    .id(SharedString::from(format!("fav-{}", i)))
+                                    .flex()
+                                    .items_center()
+                                    .gap_3()
+                                    .px_2()
+                                    .py_1p5()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .text_sm()
+                                    .when(is_being_dragged, |s| s.opacity(0.5))
+                                    .when(is_drop_target_here, |s| {
+                                        s.border_t_2().border_color(drop_zone_border)
+                                    })
+                                    .when(is_selected, |s| s.bg(selected_bg).text_color(text_light))
+                                    .when(!is_selected && is_valid, |s| {
+                                        s.text_color(text_gray)
+                                            .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                    })
+                                    .when(!is_valid, |s| s.text_color(warning_color).opacity(0.7))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |view, _event, window, cx| {
+                                            view.handle_favorite_click(
+                                                path_clone.clone(),
+                                                window,
+                                                cx,
+                                            );
+                                        }),
+                                    )
+                                    .on_mouse_down(
+                                        MouseButton::Right,
+                                        cx.listener(move |view, _event, _window, cx| {
                                             view.handle_favorite_remove(i, cx);
-                                        }))
-                                        .on_drag(DraggedFolder {
+                                        }),
+                                    )
+                                    .on_drag(
+                                        DraggedFolder {
                                             path: path_for_drag,
                                             name: name_for_drag,
-                                        }, |dragged: &DraggedFolder, _position, _window, cx| {
+                                        },
+                                        |dragged: &DraggedFolder, _position, _window, cx| {
                                             let name = dragged.name.clone();
                                             cx.new(|_| DraggedFolderView { name })
-                                        })
-                                        .on_drag_move(cx.listener(move |view, _event: &DragMoveEvent<DraggedFolder>, _window, cx| {
+                                        },
+                                    )
+                                    .on_drag_move(cx.listener(
+                                        move |view,
+                                              _event: &DragMoveEvent<DraggedFolder>,
+                                              _window,
+                                              cx| {
                                             view.drop_target_index = Some(i);
                                             cx.notify();
-                                        }))
-                                        .on_drop(cx.listener(move |view, dragged: &DraggedFolder, _window, cx| {
+                                        },
+                                    ))
+                                    .on_drop(cx.listener(
+                                        move |view, dragged: &DraggedFolder, _window, cx| {
                                             // Find the index of the dragged item
-                                            if let Some(from_idx) = view.sidebar.favorites.find_index(&dragged.path) {
+                                            if let Some(from_idx) =
+                                                view.sidebar.favorites.find_index(&dragged.path)
+                                            {
                                                 if from_idx != i {
                                                     view.handle_reorder_drop(from_idx, i, cx);
                                                 }
@@ -1216,35 +1300,38 @@ impl Render for SidebarView {
                                                 // New item being dropped
                                                 view.handle_drop(dragged.path.clone(), cx);
                                             }
-                                        }))
-                                        .child(
+                                        },
+                                    ))
+                                    .child(
+                                        svg()
+                                            .path(SharedString::from(format!(
+                                                "assets/icons/{}.svg",
+                                                icon_name
+                                            )))
+                                            .size(px(14.0))
+                                            .text_color(if !is_valid {
+                                                warning_color
+                                            } else if is_selected {
+                                                text_light
+                                            } else {
+                                                icon_blue
+                                            }),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .overflow_hidden()
+                                            .child(favorite.name.clone()),
+                                    )
+                                    .when(!is_valid, |s| {
+                                        s.child(
                                             svg()
-                                                .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                                .size(px(14.0))
-                                                .text_color(if !is_valid { 
-                                                    warning_color 
-                                                } else if is_selected { 
-                                                    text_light 
-                                                } else { 
-                                                    icon_blue 
-                                                }),
+                                                .path("assets/icons/triangle-alert.svg")
+                                                .size(px(12.0))
+                                                .text_color(warning_color),
                                         )
-                                        .child(
-                                            div()
-                                                .flex_1()
-                                                .overflow_hidden()
-                                                .child(favorite.name.clone())
-                                        )
-                                        .when(!is_valid, |s| {
-                                            s.child(
-                                                svg()
-                                                    .path("assets/icons/triangle-alert.svg")
-                                                    .size(px(12.0))
-                                                    .text_color(warning_color)
-                                            )
-                                        })
-                                }),
-                            )
+                                    })
+                            }))
                             .when(is_drop_target && !is_full, |s| {
                                 s.child(
                                     div()
@@ -1253,7 +1340,7 @@ impl Render for SidebarView {
                                         .text_sm()
                                         .text_color(icon_blue)
                                         .text_center()
-                                        .child("Drop folder here to add")
+                                        .child("Drop folder here to add"),
                                 )
                             }),
                     )
@@ -1271,7 +1358,9 @@ impl Render for SidebarView {
                             .flex()
                             .items_center()
                             .gap_2()
-                            .when(is_trash_selected, |s| s.bg(theme.bg_hover).text_color(text_light))
+                            .when(is_trash_selected, |s| {
+                                s.bg(theme.bg_hover).text_color(text_light)
+                            })
                             .when(!is_trash_selected, |s| s.text_color(text_gray))
                             .hover(|h| h.bg(theme.bg_hover))
                             .on_mouse_down(MouseButton::Left, {
@@ -1286,7 +1375,11 @@ impl Render for SidebarView {
                                 svg()
                                     .path("assets/icons/trash-2.svg")
                                     .size(px(14.0))
-                                    .text_color(if is_trash_selected { text_light } else { text_gray }),
+                                    .text_color(if is_trash_selected {
+                                        text_light
+                                    } else {
+                                        text_gray
+                                    }),
                             )
                             .child("Trash")
                     }),
@@ -1324,23 +1417,20 @@ impl SidebarView {
                     .size(px(14.0))
                     .text_color(if enabled { icon_color } else { text_gray }),
             )
-            .child(
-                div()
-                    .flex_1()
-                    .child(label)
-            );
+            .child(div().flex_1().child(label));
 
         if enabled {
             base.cursor_pointer()
                 .text_color(text_gray)
                 .hover(|h| h.bg(hover_bg).text_color(text_light))
-                .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
-                    view.handle_tool_action(action_clone.clone(), window, cx);
-                }))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |view, _event, window, cx| {
+                        view.handle_tool_action(action_clone.clone(), window, cx);
+                    }),
+                )
         } else {
-            base.opacity(0.4)
-                .cursor_not_allowed()
-                .text_color(text_gray)
+            base.opacity(0.4).cursor_not_allowed().text_color(text_gray)
         }
     }
 
@@ -1371,9 +1461,12 @@ impl SidebarView {
                     .items_center()
                     .justify_between()
                     .cursor_pointer()
-                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                        view.toggle_smart_folders_section(cx);
-                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.toggle_smart_folders_section(cx);
+                        }),
+                    )
                     .child("SMART FOLDERS")
                     .child(
                         svg()
@@ -1408,62 +1501,66 @@ impl SidebarView {
                                             .text_color(text_gray)
                                             .opacity(0.5)
                                             .mt_1()
-                                            .child("Create saved searches")
-                                    )
+                                            .child("Create saved searches"),
+                                    ),
                             )
                         })
-                        .children(
-                            smart_folders.into_iter().map(|folder| {
-                                let folder_id = folder.id;
-                                let display_name = folder.name.clone();
-                                let description = folder.query.description();
+                        .children(smart_folders.into_iter().map(|folder| {
+                            let folder_id = folder.id;
+                            let display_name = folder.name.clone();
+                            let description = folder.query.description();
 
-                                div()
-                                    .id(SharedString::from(format!("smart-folder-{}", folder.id.0)))
-                                    .flex()
-                                    .flex_col()
-                                    .px_2()
-                                    .py_1p5()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .text_color(text_gray)
-                                    .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                            div()
+                                .id(SharedString::from(format!("smart-folder-{}", folder.id.0)))
+                                .flex()
+                                .flex_col()
+                                .px_2()
+                                .py_1p5()
+                                .rounded_md()
+                                .cursor_pointer()
+                                .text_color(text_gray)
+                                .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(move |view, _event, window, cx| {
                                         view.handle_smart_folder_click(folder_id, window, cx);
-                                    }))
-                                    .on_mouse_down(MouseButton::Right, cx.listener(move |view, _event, _window, cx| {
+                                    }),
+                                )
+                                .on_mouse_down(
+                                    MouseButton::Right,
+                                    cx.listener(move |view, _event, _window, cx| {
                                         view.handle_smart_folder_remove(folder_id, cx);
-                                    }))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_3()
-                                            .child(
-                                                svg()
-                                                    .path("assets/icons/sparkles.svg")
-                                                    .size(px(14.0))
-                                                    .text_color(icon_blue),
-                                            )
-                                            .child(
-                                                div()
-                                                    .flex_1()
-                                                    .overflow_hidden()
-                                                    .text_sm()
-                                                    .child(display_name)
-                                            )
-                                    )
-                                    .child(
-                                        div()
-                                            .pl(px(26.0))
-                                            .text_xs()
-                                            .text_color(text_gray)
-                                            .opacity(0.6)
-                                            .overflow_hidden()
-                                            .child(description)
-                                    )
-                            }),
-                        )
+                                    }),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .child(
+                                            svg()
+                                                .path("assets/icons/sparkles.svg")
+                                                .size(px(14.0))
+                                                .text_color(icon_blue),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex_1()
+                                                .overflow_hidden()
+                                                .text_sm()
+                                                .child(display_name),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .pl(px(26.0))
+                                        .text_xs()
+                                        .text_color(text_gray)
+                                        .opacity(0.6)
+                                        .overflow_hidden()
+                                        .child(description),
+                                )
+                        }))
                         .child(
                             div()
                                 .id("create-smart-folder-btn")
@@ -1478,17 +1575,20 @@ impl SidebarView {
                                 .text_sm()
                                 .text_color(text_gray)
                                 .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                    view.show_smart_folder_dialog(cx);
-                                }))
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|view, _event, _window, cx| {
+                                        view.show_smart_folder_dialog(cx);
+                                    }),
+                                )
                                 .child(
                                     svg()
                                         .path("assets/icons/folder-plus.svg")
                                         .size(px(14.0))
                                         .text_color(icon_blue),
                                 )
-                                .child("New Smart Folder...")
-                        )
+                                .child("New Smart Folder..."),
+                        ),
                 )
             })
     }
@@ -1522,9 +1622,12 @@ impl SidebarView {
                     .items_center()
                     .justify_between()
                     .cursor_pointer()
-                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                        view.toggle_bookmarks_section(cx);
-                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.toggle_bookmarks_section(cx);
+                        }),
+                    )
                     .child("BOOKMARKS")
                     .child(
                         svg()
@@ -1559,81 +1662,81 @@ impl SidebarView {
                                             .text_color(text_gray)
                                             .opacity(0.5)
                                             .mt_1()
-                                            .child("Press ⌘D to bookmark current folder")
-                                    )
+                                            .child("Press ⌘D to bookmark current folder"),
+                                    ),
                             )
                         })
-                        .children(
-                            bookmarks.into_iter().map(|bookmark| {
-                                let is_selected = selected_path.as_ref() == Some(&bookmark.path);
-                                let path_clone = bookmark.path.clone();
-                                let is_valid = bookmark.is_valid;
-                                let bookmark_id = bookmark.id;
-                                let shortcut_display = bookmark.shortcut.as_ref().map(|s| s.display());
+                        .children(bookmarks.into_iter().map(|bookmark| {
+                            let is_selected = selected_path.as_ref() == Some(&bookmark.path);
+                            let path_clone = bookmark.path.clone();
+                            let is_valid = bookmark.is_valid;
+                            let bookmark_id = bookmark.id;
+                            let shortcut_display = bookmark.shortcut.as_ref().map(|s| s.display());
 
-                                div()
-                                    .id(SharedString::from(format!("bookmark-{}", bookmark.id.0)))
-                                    .flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .px_2()
-                                    .py_1p5()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .text_sm()
-                                    .when(is_selected, |s| {
-                                        s.bg(selected_bg).text_color(text_light)
-                                    })
-                                    .when(!is_selected && is_valid, |s| {
-                                        s.text_color(text_gray)
-                                            .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                    })
-                                    .when(!is_valid, |s| {
-                                        s.text_color(warning_color).opacity(0.7)
-                                    })
-                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
+                            div()
+                                .id(SharedString::from(format!("bookmark-{}", bookmark.id.0)))
+                                .flex()
+                                .items_center()
+                                .gap_3()
+                                .px_2()
+                                .py_1p5()
+                                .rounded_md()
+                                .cursor_pointer()
+                                .text_sm()
+                                .when(is_selected, |s| s.bg(selected_bg).text_color(text_light))
+                                .when(!is_selected && is_valid, |s| {
+                                    s.text_color(text_gray)
+                                        .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                })
+                                .when(!is_valid, |s| s.text_color(warning_color).opacity(0.7))
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(move |view, _event, window, cx| {
                                         view.handle_bookmark_click(path_clone.clone(), window, cx);
-                                    }))
-                                    .on_mouse_down(MouseButton::Right, cx.listener(move |view, _event, _window, cx| {
+                                    }),
+                                )
+                                .on_mouse_down(
+                                    MouseButton::Right,
+                                    cx.listener(move |view, _event, _window, cx| {
                                         view.handle_bookmark_remove(bookmark_id, cx);
-                                    }))
-                                    .child(
-                                        svg()
-                                            .path("assets/icons/folder-heart.svg")
-                                            .size(px(14.0))
-                                            .text_color(if !is_valid {
-                                                warning_color
-                                            } else if is_selected {
-                                                text_light
-                                            } else {
-                                                icon_blue
-                                            }),
-                                    )
-                                    .child(
+                                    }),
+                                )
+                                .child(
+                                    svg()
+                                        .path("assets/icons/folder-heart.svg")
+                                        .size(px(14.0))
+                                        .text_color(if !is_valid {
+                                            warning_color
+                                        } else if is_selected {
+                                            text_light
+                                        } else {
+                                            icon_blue
+                                        }),
+                                )
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .overflow_hidden()
+                                        .child(bookmark.name.clone()),
+                                )
+                                .when(shortcut_display.is_some(), |s| {
+                                    s.child(
                                         div()
-                                            .flex_1()
-                                            .overflow_hidden()
-                                            .child(bookmark.name.clone())
+                                            .text_xs()
+                                            .text_color(text_gray)
+                                            .opacity(0.6)
+                                            .child(shortcut_display.unwrap_or_default()),
                                     )
-                                    .when(shortcut_display.is_some(), |s| {
-                                        s.child(
-                                            div()
-                                                .text_xs()
-                                                .text_color(text_gray)
-                                                .opacity(0.6)
-                                                .child(shortcut_display.unwrap_or_default())
-                                        )
-                                    })
-                                    .when(!is_valid, |s| {
-                                        s.child(
-                                            svg()
-                                                .path("assets/icons/triangle-alert.svg")
-                                                .size(px(12.0))
-                                                .text_color(warning_color)
-                                        )
-                                    })
-                            }),
-                        )
+                                })
+                                .when(!is_valid, |s| {
+                                    s.child(
+                                        svg()
+                                            .path("assets/icons/triangle-alert.svg")
+                                            .size(px(12.0))
+                                            .text_color(warning_color),
+                                    )
+                                })
+                        })),
                 )
             })
     }
@@ -1666,9 +1769,12 @@ impl SidebarView {
                     .items_center()
                     .justify_between()
                     .cursor_pointer()
-                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                        view.toggle_network_section(cx);
-                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.toggle_network_section(cx);
+                        }),
+                    )
                     .child("NETWORK & CLOUD")
                     .child(
                         svg()
@@ -1690,122 +1796,143 @@ impl SidebarView {
                         .p_1()
                         // Cloud Storage Locations
                         .children(
-                            network_state.cloud_locations.iter().map(|cloud| {
-                                let is_selected = selected_path.as_ref() == Some(&cloud.path);
-                                let path_clone = cloud.path.clone();
-                                let is_available = cloud.is_available;
-                                let icon_name = cloud.provider.icon_name();
-                                let display_name = cloud.name.clone();
+                            network_state
+                                .cloud_locations
+                                .iter()
+                                .map(|cloud| {
+                                    let is_selected = selected_path.as_ref() == Some(&cloud.path);
+                                    let path_clone = cloud.path.clone();
+                                    let is_available = cloud.is_available;
+                                    let icon_name = cloud.provider.icon_name();
+                                    let display_name = cloud.name.clone();
 
-                                div()
-                                    .id(SharedString::from(format!("cloud-{}", display_name)))
-                                    .flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .px_2()
-                                    .py_1p5()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .text_sm()
-                                    .when(is_selected, |s| {
-                                        s.bg(selected_bg).text_color(text_light)
-                                    })
-                                    .when(!is_selected && is_available, |s| {
-                                        s.text_color(text_gray)
-                                            .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                    })
-                                    .when(!is_available, |s| {
-                                        s.text_color(text_gray).opacity(0.5)
-                                    })
-                                    .when(is_available, |s| {
-                                        s.on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
-                                            view.handle_cloud_click(path_clone.clone(), window, cx);
-                                        }))
-                                    })
-                                    .child(
-                                        svg()
-                                            .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                            .size(px(14.0))
-                                            .text_color(if is_selected { text_light } else { icon_blue }),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .overflow_hidden()
-                                            .child(display_name)
-                                    )
-                                    .when(is_available, |s| {
-                                        s.child(
-                                            div()
-                                                .w(px(6.0))
-                                                .h(px(6.0))
-                                                .rounded_full()
-                                                .bg(gpui::rgb(0x3fb950))
+                                    div()
+                                        .id(SharedString::from(format!("cloud-{}", display_name)))
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .px_2()
+                                        .py_1p5()
+                                        .rounded_md()
+                                        .cursor_pointer()
+                                        .text_sm()
+                                        .when(is_selected, |s| {
+                                            s.bg(selected_bg).text_color(text_light)
+                                        })
+                                        .when(!is_selected && is_available, |s| {
+                                            s.text_color(text_gray)
+                                                .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                        })
+                                        .when(!is_available, |s| {
+                                            s.text_color(text_gray).opacity(0.5)
+                                        })
+                                        .when(is_available, |s| {
+                                            s.on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(move |view, _event, window, cx| {
+                                                    view.handle_cloud_click(
+                                                        path_clone.clone(),
+                                                        window,
+                                                        cx,
+                                                    );
+                                                }),
+                                            )
+                                        })
+                                        .child(
+                                            svg()
+                                                .path(SharedString::from(format!(
+                                                    "assets/icons/{}.svg",
+                                                    icon_name
+                                                )))
+                                                .size(px(14.0))
+                                                .text_color(if is_selected {
+                                                    text_light
+                                                } else {
+                                                    icon_blue
+                                                }),
                                         )
-                                    })
-                            }).collect::<Vec<_>>()
+                                        .child(div().flex_1().overflow_hidden().child(display_name))
+                                        .when(is_available, |s| {
+                                            s.child(
+                                                div()
+                                                    .w(px(6.0))
+                                                    .h(px(6.0))
+                                                    .rounded_full()
+                                                    .bg(gpui::rgb(0x3fb950)),
+                                            )
+                                        })
+                                })
+                                .collect::<Vec<_>>(),
                         )
                         // Network Locations
                         .children(
-                            network_state.network_locations.iter().map(|network| {
-                                let is_connected = network.is_connected;
-                                let display_name = network.name.clone();
-                                let protocol_icon = network.protocol.icon_name();
-                                let latency = network.latency_ms;
-                                let network_id = network.id;
+                            network_state
+                                .network_locations
+                                .iter()
+                                .map(|network| {
+                                    let is_connected = network.is_connected;
+                                    let display_name = network.name.clone();
+                                    let protocol_icon = network.protocol.icon_name();
+                                    let latency = network.latency_ms;
+                                    let network_id = network.id;
 
-                                div()
-                                    .id(SharedString::from(format!("network-{}", network.id.0)))
-                                    .flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .px_2()
-                                    .py_1p5()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .text_sm()
-                                    .text_color(text_gray)
-                                    .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
-                                        view.handle_network_click(network_id, window, cx);
-                                    }))
-                                    .child(
-                                        svg()
-                                            .path(SharedString::from(format!("assets/icons/{}.svg", protocol_icon)))
-                                            .size(px(14.0))
-                                            .text_color(icon_blue),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .overflow_hidden()
-                                            .child(display_name)
-                                    )
-                                    .when(is_connected, |s| {
-                                        s.child(
-                                            div()
-                                                .flex()
-                                                .items_center()
-                                                .gap_1()
-                                                .child(
-                                                    div()
-                                                        .w(px(6.0))
-                                                        .h(px(6.0))
-                                                        .rounded_full()
-                                                        .bg(gpui::rgb(0x3fb950))
-                                                )
-                                                .when(latency.is_some(), |s| {
-                                                    s.child(
-                                                        div()
-                                                            .text_xs()
-                                                            .text_color(text_gray)
-                                                            .opacity(0.6)
-                                                            .child(format!("{}ms", latency.unwrap_or(0)))
-                                                    )
-                                                })
+                                    div()
+                                        .id(SharedString::from(format!("network-{}", network.id.0)))
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .px_2()
+                                        .py_1p5()
+                                        .rounded_md()
+                                        .cursor_pointer()
+                                        .text_sm()
+                                        .text_color(text_gray)
+                                        .hover(|h| h.bg(hover_bg).text_color(text_light))
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(move |view, _event, window, cx| {
+                                                view.handle_network_click(network_id, window, cx);
+                                            }),
                                         )
-                                    })
-                            }).collect::<Vec<_>>()
+                                        .child(
+                                            svg()
+                                                .path(SharedString::from(format!(
+                                                    "assets/icons/{}.svg",
+                                                    protocol_icon
+                                                )))
+                                                .size(px(14.0))
+                                                .text_color(icon_blue),
+                                        )
+                                        .child(div().flex_1().overflow_hidden().child(display_name))
+                                        .when(is_connected, |s| {
+                                            s.child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap_1()
+                                                    .child(
+                                                        div()
+                                                            .w(px(6.0))
+                                                            .h(px(6.0))
+                                                            .rounded_full()
+                                                            .bg(gpui::rgb(0x3fb950)),
+                                                    )
+                                                    .when(latency.is_some(), |s| {
+                                                        s.child(
+                                                            div()
+                                                                .text_xs()
+                                                                .text_color(text_gray)
+                                                                .opacity(0.6)
+                                                                .child(format!(
+                                                                    "{}ms",
+                                                                    latency.unwrap_or(0)
+                                                                )),
+                                                        )
+                                                    }),
+                                            )
+                                        })
+                                })
+                                .collect::<Vec<_>>(),
                         )
                         // Connect to Server button
                         .child(
@@ -1821,29 +1948,36 @@ impl SidebarView {
                                 .text_sm()
                                 .text_color(text_gray)
                                 .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                    view.show_network_dialog(cx);
-                                }))
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|view, _event, _window, cx| {
+                                        view.show_network_dialog(cx);
+                                    }),
+                                )
                                 .child(
                                     svg()
                                         .path("assets/icons/folder-plus.svg")
                                         .size(px(14.0))
                                         .text_color(icon_blue),
                                 )
-                                .child("Connect to Server...")
+                                .child("Connect to Server..."),
                         )
                         // Empty state when no locations
-                        .when(network_state.cloud_locations.is_empty() && network_state.network_locations.is_empty(), |s| {
-                            s.child(
-                                div()
-                                    .px_2()
-                                    .py_1p5()
-                                    .text_sm()
-                                    .text_color(text_gray)
-                                    .opacity(0.7)
-                                    .child("No cloud storage detected")
-                            )
-                        })
+                        .when(
+                            network_state.cloud_locations.is_empty()
+                                && network_state.network_locations.is_empty(),
+                            |s| {
+                                s.child(
+                                    div()
+                                        .px_2()
+                                        .py_1p5()
+                                        .text_sm()
+                                        .text_color(text_gray)
+                                        .opacity(0.7)
+                                        .child("No cloud storage detected"),
+                                )
+                            },
+                        ),
                 )
             })
     }
@@ -1878,9 +2012,12 @@ impl SidebarView {
                     .items_center()
                     .justify_between()
                     .cursor_pointer()
-                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                        view.toggle_devices_section(cx);
-                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.toggle_devices_section(cx);
+                        }),
+                    )
                     .child("DEVICES")
                     .child(
                         svg()
@@ -1901,177 +2038,209 @@ impl SidebarView {
                         .gap_0p5()
                         .p_1()
                         .children(
-                            devices.iter().map(|device| {
-                                let is_selected = selected_path.as_ref() == Some(&device.path);
-                                let path_clone = device.path.clone();
-                                let icon_name = device.device_type.icon_name();
-                                let display_name = device.name.clone();
-                                let is_read_only = device.is_read_only;
-                                let is_removable = device.is_removable;
-                                let is_wsl = matches!(device.device_type, DeviceType::WslDistribution);
-                                
-                                // Format space info
-                                let space_info = if device.total_space > 0 {
-                                    let used_gb = device.used_space() as f64 / 1_073_741_824.0;
-                                    let total_gb = device.total_space as f64 / 1_073_741_824.0;
-                                    Some(format!("{:.1} GB / {:.1} GB", used_gb, total_gb))
-                                } else {
-                                    None
-                                };
+                            devices
+                                .iter()
+                                .map(|device| {
+                                    let is_selected = selected_path.as_ref() == Some(&device.path);
+                                    let path_clone = device.path.clone();
+                                    let icon_name = device.device_type.icon_name();
+                                    let display_name = device.name.clone();
+                                    let is_read_only = device.is_read_only;
+                                    let is_removable = device.is_removable;
+                                    let is_wsl =
+                                        matches!(device.device_type, DeviceType::WslDistribution);
 
-                                div()
-                                    .id(SharedString::from(format!("device-{}", device.id.0)))
-                                    .flex()
-                                    .flex_col()
-                                    .px_2()
-                                    .py_1p5()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .when(is_selected, |s| {
-                                        s.bg(selected_bg)
-                                    })
-                                    .when(!is_selected, |s| {
-                                        s.hover(|h| h.bg(hover_bg))
-                                    })
-                                    .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
-                                        view.handle_device_click(path_clone.clone(), window, cx);
-                                    }))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_3()
-                                            .child(
-                                                svg()
-                                                    .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                                    .size(px(14.0))
-                                                    .text_color(if is_selected { text_light } else { icon_blue }),
-                                            )
-                                            .child(
-                                                div()
-                                                    .flex_1()
-                                                    .overflow_hidden()
-                                                    .text_sm()
-                                                    .text_color(if is_selected { text_light } else { text_gray })
-                                                    .child(display_name)
-                                            )
-                                            // Read-only lock icon
-                                            .when(is_read_only, |s| {
-                                                s.child(
-                                                    svg()
-                                                        .path("assets/icons/file-lock.svg")
-                                                        .size(px(12.0))
-                                                        .text_color(warning_color)
-                                                )
-                                            })
-                                            // Removable indicator
-                                            .when(is_removable && !is_wsl, |s| {
-                                                s.child(
-                                                    svg()
-                                                        .path("assets/icons/hard-drive.svg")
-                                                        .size(px(10.0))
-                                                        .text_color(text_gray)
-                                                        .opacity(0.5)
-                                                )
-                                            })
-                                    )
-                                    // Space info on second line
-                                    .when(space_info.is_some(), |s| {
-                                        s.child(
-                                            div()
-                                                .pl(px(26.0))
-                                                .text_xs()
-                                                .text_color(text_gray)
-                                                .opacity(0.7)
-                                                .child(space_info.unwrap_or_default())
-                                        )
-                                    })
-                            }).collect::<Vec<_>>()
-                        )
-                        // Render WSL distributions (Windows only)
-                        .when(!wsl_distros.is_empty(), |s| {
-                            s.child(
-                                div()
-                                    .h(px(1.0))
-                                    .bg(gpui::rgb(0x21262d))
-                                    .my_2()
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(label_color)
-                                    .opacity(0.7)
-                                    .px_2()
-                                    .mb_1()
-                                    .child("WSL Distributions")
-                            )
-                            .children(
-                                wsl_distros.iter().map(|distro| {
-                                    let is_selected = selected_path.as_ref() == Some(&distro.path);
-                                    let path_clone = distro.path.clone();
-                                    let display_name = distro.name.clone();
-                                    let is_running = distro.is_running;
-                                    let version = distro.version;
+                                    // Format space info
+                                    let space_info = if device.total_space > 0 {
+                                        let used_gb = device.used_space() as f64 / 1_073_741_824.0;
+                                        let total_gb = device.total_space as f64 / 1_073_741_824.0;
+                                        Some(format!("{:.1} GB / {:.1} GB", used_gb, total_gb))
+                                    } else {
+                                        None
+                                    };
 
                                     div()
-                                        .id(SharedString::from(format!("wsl-{}", display_name)))
+                                        .id(SharedString::from(format!("device-{}", device.id.0)))
                                         .flex()
-                                        .items_center()
-                                        .gap_3()
+                                        .flex_col()
                                         .px_2()
                                         .py_1p5()
                                         .rounded_md()
                                         .cursor_pointer()
-                                        .text_sm()
-                                        .when(is_selected, |s| {
-                                            s.bg(selected_bg).text_color(text_light)
-                                        })
-                                        .when(!is_selected, |s| {
-                                            s.text_color(text_gray)
-                                                .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                        })
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, window, cx| {
-                                            view.handle_device_click(path_clone.clone(), window, cx);
-                                        }))
-                                        .child(
-                                            svg()
-                                                .path("assets/icons/terminal.svg")
-                                                .size(px(14.0))
-                                                .text_color(if is_selected { text_light } else { icon_blue }),
+                                        .when(is_selected, |s| s.bg(selected_bg))
+                                        .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(move |view, _event, window, cx| {
+                                                view.handle_device_click(
+                                                    path_clone.clone(),
+                                                    window,
+                                                    cx,
+                                                );
+                                            }),
                                         )
-                                        .child(
-                                            div()
-                                                .flex_1()
-                                                .overflow_hidden()
-                                                .child(display_name)
-                                        )
-                                        // Running status indicator
                                         .child(
                                             div()
                                                 .flex()
                                                 .items_center()
-                                                .gap_1()
+                                                .gap_3()
+                                                .child(
+                                                    svg()
+                                                        .path(SharedString::from(format!(
+                                                            "assets/icons/{}.svg",
+                                                            icon_name
+                                                        )))
+                                                        .size(px(14.0))
+                                                        .text_color(if is_selected {
+                                                            text_light
+                                                        } else {
+                                                            icon_blue
+                                                        }),
+                                                )
                                                 .child(
                                                     div()
-                                                        .w(px(6.0))
-                                                        .h(px(6.0))
-                                                        .rounded_full()
-                                                        .bg(if is_running { 
-                                                            gpui::rgb(0x3fb950)
-                                                        } else { 
-                                                            gpui::rgb(0x6e7681)
+                                                        .flex_1()
+                                                        .overflow_hidden()
+                                                        .text_sm()
+                                                        .text_color(if is_selected {
+                                                            text_light
+                                                        } else {
+                                                            text_gray
                                                         })
+                                                        .child(display_name),
+                                                )
+                                                // Read-only lock icon
+                                                .when(is_read_only, |s| {
+                                                    s.child(
+                                                        svg()
+                                                            .path("assets/icons/file-lock.svg")
+                                                            .size(px(12.0))
+                                                            .text_color(warning_color),
+                                                    )
+                                                })
+                                                // Removable indicator
+                                                .when(is_removable && !is_wsl, |s| {
+                                                    s.child(
+                                                        svg()
+                                                            .path("assets/icons/hard-drive.svg")
+                                                            .size(px(10.0))
+                                                            .text_color(text_gray)
+                                                            .opacity(0.5),
+                                                    )
+                                                }),
+                                        )
+                                        // Space info on second line
+                                        .when(space_info.is_some(), |s| {
+                                            s.child(
+                                                div()
+                                                    .pl(px(26.0))
+                                                    .text_xs()
+                                                    .text_color(text_gray)
+                                                    .opacity(0.7)
+                                                    .child(space_info.unwrap_or_default()),
+                                            )
+                                        })
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                        // Render WSL distributions (Windows only)
+                        .when(!wsl_distros.is_empty(), |s| {
+                            s.child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_2())
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(label_color)
+                                        .opacity(0.7)
+                                        .px_2()
+                                        .mb_1()
+                                        .child("WSL Distributions"),
+                                )
+                                .children(
+                                    wsl_distros
+                                        .iter()
+                                        .map(|distro| {
+                                            let is_selected =
+                                                selected_path.as_ref() == Some(&distro.path);
+                                            let path_clone = distro.path.clone();
+                                            let display_name = distro.name.clone();
+                                            let is_running = distro.is_running;
+                                            let version = distro.version;
+
+                                            div()
+                                                .id(SharedString::from(format!(
+                                                    "wsl-{}",
+                                                    display_name
+                                                )))
+                                                .flex()
+                                                .items_center()
+                                                .gap_3()
+                                                .px_2()
+                                                .py_1p5()
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .text_sm()
+                                                .when(is_selected, |s| {
+                                                    s.bg(selected_bg).text_color(text_light)
+                                                })
+                                                .when(!is_selected, |s| {
+                                                    s.text_color(text_gray).hover(|h| {
+                                                        h.bg(hover_bg).text_color(text_light)
+                                                    })
+                                                })
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(move |view, _event, window, cx| {
+                                                        view.handle_device_click(
+                                                            path_clone.clone(),
+                                                            window,
+                                                            cx,
+                                                        );
+                                                    }),
+                                                )
+                                                .child(
+                                                    svg()
+                                                        .path("assets/icons/terminal.svg")
+                                                        .size(px(14.0))
+                                                        .text_color(if is_selected {
+                                                            text_light
+                                                        } else {
+                                                            icon_blue
+                                                        }),
                                                 )
                                                 .child(
                                                     div()
-                                                        .text_xs()
-                                                        .text_color(text_gray)
-                                                        .opacity(0.6)
-                                                        .child(format!("WSL{}", version))
+                                                        .flex_1()
+                                                        .overflow_hidden()
+                                                        .child(display_name),
                                                 )
-                                        )
-                                }).collect::<Vec<_>>()
-                            )
+                                                // Running status indicator
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_1()
+                                                        .child(
+                                                            div()
+                                                                .w(px(6.0))
+                                                                .h(px(6.0))
+                                                                .rounded_full()
+                                                                .bg(if is_running {
+                                                                    gpui::rgb(0x3fb950)
+                                                                } else {
+                                                                    gpui::rgb(0x6e7681)
+                                                                }),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .text_xs()
+                                                                .text_color(text_gray)
+                                                                .opacity(0.6)
+                                                                .child(format!("WSL{}", version)),
+                                                        ),
+                                                )
+                                        })
+                                        .collect::<Vec<_>>(),
+                                )
                         })
                         // Empty state when no devices
                         .when(devices.is_empty() && wsl_distros.is_empty(), |s| {
@@ -2082,11 +2251,10 @@ impl SidebarView {
                                     .text_sm()
                                     .text_color(text_gray)
                                     .opacity(0.7)
-                                    .child("No devices detected")
+                                    .child("No devices detected"),
                             )
-                        })
+                        }),
                 )
             })
     }
-
 }

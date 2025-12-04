@@ -4,9 +4,9 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::{FsEvent, FileSystemError, Result};
-use super::watcher::{PlatformFs, Watcher, DEFAULT_COALESCE_WINDOW};
 use super::coalescer::EventCoalescer;
+use super::watcher::{PlatformFs, Watcher, DEFAULT_COALESCE_WINDOW};
+use crate::models::{FileSystemError, FsEvent, Result};
 
 /// NTFS File Reference Number - unique identifier for files in MFT
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -66,7 +66,6 @@ impl FileNode {
     }
 }
 
-
 /// MFT Index - in-memory index of all files on an NTFS volume
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MftIndex {
@@ -125,7 +124,7 @@ impl MftIndex {
     }
 
     /// Reconstruct the full path for a file reference number
-    /// 
+    ///
     /// Traverses parent references up to the root to build the complete path.
     /// Results are cached for performance.
     pub fn reconstruct_path(&mut self, frn: &FileReferenceNumber) -> Option<PathBuf> {
@@ -151,7 +150,7 @@ impl MftIndex {
             }
 
             let node = self.files.get(&current)?;
-            
+
             if current == FileReferenceNumber::ROOT {
                 break;
             }
@@ -184,7 +183,7 @@ impl MftIndex {
     pub fn find_by_path(&mut self, path: &Path) -> Option<FileReferenceNumber> {
         // Collect FRNs first to avoid borrow issues
         let frns: Vec<FileReferenceNumber> = self.files.keys().copied().collect();
-        
+
         for frn in frns {
             if let Some(reconstructed) = self.reconstruct_path(&frn) {
                 if reconstructed == path {
@@ -219,9 +218,8 @@ impl MftIndex {
     }
 }
 
-
 /// MFT Parser for building the file index from NTFS Master File Table
-/// 
+///
 /// On Windows, this uses direct MFT access via DeviceIoControl.
 /// On other platforms, this is a stub that returns an error.
 pub struct MftParser {
@@ -234,7 +232,7 @@ impl MftParser {
     }
 
     /// Parse the MFT and build an in-memory index
-    /// 
+    ///
     /// This is the main entry point for building the file index.
     /// On Windows, it reads the $MFT file directly.
     #[cfg(target_os = "windows")]
@@ -251,7 +249,7 @@ impl MftParser {
             .map_err(|e| FileSystemError::Platform(format!("Failed to open volume: {}", e)))?;
 
         let mut index = MftIndex::new(self.volume_path.clone());
-        
+
         // Add root directory entry
         index.insert(
             FileReferenceNumber::ROOT,
@@ -279,7 +277,7 @@ impl MftParser {
     #[cfg(not(target_os = "windows"))]
     pub fn parse(&self) -> Result<MftIndex> {
         Err(FileSystemError::Platform(
-            "MFT parsing is only supported on Windows".to_string()
+            "MFT parsing is only supported on Windows".to_string(),
         ))
     }
 }
@@ -339,7 +337,6 @@ impl UsnReason {
     }
 }
 
-
 /// USN Journal monitor for real-time file system change detection
 pub struct UsnJournalMonitor {
     volume_path: PathBuf,
@@ -372,14 +369,14 @@ impl UsnJournalMonitor {
         // In a real implementation, this would:
         // 2. Use FSCTL_READ_USN_JOURNAL to read records
         // 3. Parse USN_RECORD_V2/V3 structures
-        
+
         Ok(Vec::new())
     }
 
     #[cfg(not(target_os = "windows"))]
     pub fn read_journal(&mut self) -> Result<Vec<UsnRecord>> {
         Err(FileSystemError::Platform(
-            "USN Journal is only supported on Windows".to_string()
+            "USN Journal is only supported on Windows".to_string(),
         ))
     }
 
@@ -476,13 +473,13 @@ impl WindowsWatcher {
     pub fn init_mft_index(&mut self, volume_path: PathBuf) -> Result<()> {
         let parser = MftParser::new(volume_path.clone());
         let index = parser.parse()?;
-        
+
         let mut monitor = UsnJournalMonitor::new(volume_path);
         monitor.set_cursor(index.usn_cursor);
-        
+
         self.mft_index = Some(index);
         self.usn_monitor = Some(monitor);
-        
+
         Ok(())
     }
 
@@ -525,7 +522,7 @@ impl Watcher for WindowsWatcher {
                 if !records.is_empty() {
                     // Apply changes to index
                     monitor.apply_to_index(index, &records);
-                    
+
                     // Convert to FsEvents
                     let new_events = monitor.records_to_events(index, &records);
                     self.coalescer.add_events(new_events);

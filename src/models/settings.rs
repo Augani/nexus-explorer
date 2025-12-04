@@ -5,42 +5,42 @@ use crate::io::{SortKey, SortOrder};
 use crate::models::ThemeId;
 
 /// Global application settings for user preferences.
-/// 
+///
 /// This struct is registered as GPUI global state and provides
 /// application-wide configuration options.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalSettings {
     /// Whether to show hidden files (files starting with '.')
     pub show_hidden_files: bool,
-    
+
     /// Current sort key for file listing
     pub sort_key: SortKey,
-    
+
     /// Current sort order (ascending/descending)
     pub sort_order: SortOrder,
-    
+
     /// Application theme mode (light/dark/system)
     pub theme_mode: AppThemeMode,
-    
+
     /// Whether to show file extensions
     pub show_extensions: bool,
-    
+
     /// Whether to show file sizes
     pub show_sizes: bool,
-    
+
     /// Whether to show modification dates
     pub show_dates: bool,
-    
+
     /// Default view mode
     pub view_mode: ViewMode,
-    
+
     /// Grid view configuration
     pub grid_config: GridConfig,
-    
+
     /// Current RPG theme ID
     #[serde(default)]
     pub theme_id: ThemeId,
-    
+
     /// Whether to restore windows on application start
     #[serde(default)]
     pub restore_windows: bool,
@@ -101,12 +101,12 @@ impl GridConfig {
         if viewport_width <= 0.0 || self.item_width <= 0.0 {
             return self.min_columns;
         }
-        
+
         // Account for gap between items: total_width = n * item_width + (n-1) * gap
         // Solving for n: n = (viewport_width + gap) / (item_width + gap)
         let effective_item_width = self.item_width + self.gap;
         let columns = ((viewport_width + self.gap) / effective_item_width).floor() as usize;
-        
+
         columns.max(self.min_columns)
     }
 
@@ -263,13 +263,13 @@ impl GlobalSettings {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
             .join("nexus-explorer");
-        
+
         std::fs::create_dir_all(&config_dir)?;
-        
+
         let config_path = config_dir.join("settings.json");
         let json = serde_json::to_string_pretty(self)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        
+
         std::fs::write(config_path, json)
     }
 
@@ -279,7 +279,7 @@ impl GlobalSettings {
             .unwrap_or_else(|| std::path::PathBuf::from("."))
             .join("nexus-explorer")
             .join("settings.json");
-        
+
         if config_path.exists() {
             if let Ok(json) = std::fs::read_to_string(&config_path) {
                 if let Ok(settings) = serde_json::from_str::<GlobalSettings>(&json) {
@@ -287,7 +287,7 @@ impl GlobalSettings {
                 }
             }
         }
-        
+
         Self::default()
     }
 }
@@ -343,10 +343,10 @@ mod tests {
     fn test_toggle_hidden() {
         let mut settings = GlobalSettings::default();
         assert!(!settings.show_hidden());
-        
+
         settings.toggle_show_hidden();
         assert!(settings.show_hidden());
-        
+
         settings.toggle_show_hidden();
         assert!(!settings.show_hidden());
     }
@@ -355,10 +355,10 @@ mod tests {
     fn test_toggle_sort_order() {
         let mut settings = GlobalSettings::default();
         assert_eq!(settings.sort_order(), SortOrder::Ascending);
-        
+
         settings.toggle_sort_order();
         assert_eq!(settings.sort_order(), SortOrder::Descending);
-        
+
         settings.toggle_sort_order();
         assert_eq!(settings.sort_order(), SortOrder::Ascending);
     }
@@ -367,10 +367,10 @@ mod tests {
     fn test_toggle_view_mode() {
         let mut settings = GlobalSettings::default();
         assert_eq!(settings.view_mode(), ViewMode::Details);
-        
+
         settings.toggle_view_mode();
         assert_eq!(settings.view_mode(), ViewMode::Grid);
-        
+
         settings.toggle_view_mode();
         assert_eq!(settings.view_mode(), ViewMode::List);
     }
@@ -388,16 +388,16 @@ mod tests {
     #[test]
     fn test_grid_columns_calculation() {
         let config = GridConfig::default();
-        
+
         // With 120px items and 16px gap, effective width is 136px
         // 400px viewport: (400 + 16) / 136 = 3.05 -> 3 columns
         assert_eq!(config.columns_for_width(400.0), 3);
-        
+
         // 800px viewport: (800 + 16) / 136 = 6.0 -> 6 columns
         assert_eq!(config.columns_for_width(800.0), 6);
-        
+
         assert_eq!(config.columns_for_width(50.0), 2);
-        
+
         assert_eq!(config.columns_for_width(0.0), 2);
         assert_eq!(config.columns_for_width(-100.0), 2);
     }
@@ -405,13 +405,13 @@ mod tests {
     #[test]
     fn test_grid_rows_calculation() {
         let config = GridConfig::default();
-        
+
         // 10 items with 3 columns = 4 rows (3+3+3+1)
         assert_eq!(config.rows_for_items(10, 400.0), 4);
-        
+
         // 6 items with 3 columns = 2 rows
         assert_eq!(config.rows_for_items(6, 400.0), 2);
-        
+
         // 0 items = 0 rows
         assert_eq!(config.rows_for_items(0, 400.0), 0);
     }
@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn test_grid_position_for_index() {
         let config = GridConfig::default();
-        
+
         // With 3 columns (400px viewport)
         assert_eq!(config.position_for_index(0, 400.0), (0, 0));
         assert_eq!(config.position_for_index(1, 400.0), (1, 0));
@@ -431,11 +431,11 @@ mod tests {
     #[test]
     fn test_grid_content_height() {
         let config = GridConfig::default();
-        
+
         // 10 items with 3 columns = 4 rows
         // Height = 4 * 100 + 3 * 16 = 448
         assert_eq!(config.content_height(10, 400.0), 448.0);
-        
+
         // 0 items = 0 height
         assert_eq!(config.content_height(0, 400.0), 0.0);
     }
@@ -466,7 +466,7 @@ mod tests {
         /// **Validates: Requirements 5.3**
         ///
         /// *For any* GridConfig and viewport width large enough to fit min_columns,
-        /// the calculated number of columns SHALL be at least min_columns and 
+        /// the calculated number of columns SHALL be at least min_columns and
         /// SHALL maximize the number of columns that fit within the viewport.
         #[test]
         fn prop_grid_columns_calculation(
@@ -474,32 +474,32 @@ mod tests {
             viewport_width in 400.0f32..2000.0,
         ) {
             // Only test when viewport can fit at least min_columns
-            let min_required_width = config.min_columns as f32 * config.item_width 
+            let min_required_width = config.min_columns as f32 * config.item_width
                 + (config.min_columns.saturating_sub(1)) as f32 * config.gap;
-            
+
             prop_assume!(viewport_width >= min_required_width);
-            
+
             let columns = config.columns_for_width(viewport_width);
-            
+
             // Property 1: Columns should be at least min_columns
             prop_assert!(
                 columns >= config.min_columns,
                 "Columns {} should be >= min_columns {}",
                 columns, config.min_columns
             );
-            
+
             // Property 2: The calculated columns should fit within viewport
-            let total_width = columns as f32 * config.item_width 
+            let total_width = columns as f32 * config.item_width
                 + (columns.saturating_sub(1)) as f32 * config.gap;
-            
+
             prop_assert!(
                 total_width <= viewport_width + 1.0,
                 "Total width {} should fit in viewport {}",
                 total_width, viewport_width
             );
-            
+
             // Property 3: Adding one more column should exceed viewport (greedy fit)
-            let extra_column_width = (columns + 1) as f32 * config.item_width 
+            let extra_column_width = (columns + 1) as f32 * config.item_width
                 + columns as f32 * config.gap;
             prop_assert!(
                 extra_column_width > viewport_width,
@@ -521,7 +521,7 @@ mod tests {
         ) {
             let (col, row) = config.position_for_index(index, viewport_width);
             let recovered_index = config.index_for_position(col, row, viewport_width);
-            
+
             prop_assert_eq!(
                 index, recovered_index,
                 "Index {} -> position ({}, {}) -> index {} should round-trip",
@@ -542,7 +542,7 @@ mod tests {
         ) {
             let columns = config.columns_for_width(viewport_width);
             let rows = config.rows_for_items(item_count, viewport_width);
-            
+
             // All items should fit in the grid
             let capacity = rows * columns;
             prop_assert!(
@@ -550,7 +550,7 @@ mod tests {
                 "Grid capacity {} ({}x{}) should fit {} items",
                 capacity, rows, columns, item_count
             );
-            
+
             // But we shouldn't have more than one extra row
             if item_count > 0 && rows > 0 {
                 let min_rows_needed = (item_count + columns - 1) / columns;
@@ -579,31 +579,31 @@ mod tests {
         ) {
             // Only test valid selection indices
             prop_assume!(selected_index < item_count);
-            
+
             // Simulate view mode switching with selection preservation
             let mut current_mode = initial_mode;
             let mut current_selection: Option<usize> = Some(selected_index);
-            
+
             // Toggle view mode (simulating what Workspace.toggle_view_mode does)
             let new_mode = match current_mode {
                 ViewMode::List | ViewMode::Details => ViewMode::Grid,
                 ViewMode::Grid => ViewMode::List,
             };
-            
+
             // Selection should be preserved after mode change
             // (This is what the Workspace does - it reads selection from old view
             // and applies it to the new view)
             let preserved_selection = current_selection;
             current_mode = new_mode;
             current_selection = preserved_selection;
-            
+
             // Property: Selection index should remain the same after view mode change
             prop_assert_eq!(
                 current_selection, Some(selected_index),
                 "Selection {} should be preserved after switching from {:?} to {:?}",
                 selected_index, initial_mode, current_mode
             );
-            
+
             // Property: Selection should still be valid for the item count
             if let Some(idx) = current_selection {
                 prop_assert!(
@@ -612,14 +612,14 @@ mod tests {
                     idx, item_count
                 );
             }
-            
+
             // Toggle back to original mode type
             let final_mode = match current_mode {
                 ViewMode::List | ViewMode::Details => ViewMode::Grid,
                 ViewMode::Grid => ViewMode::List,
             };
             let final_selection = current_selection;
-            
+
             // Property: Selection should still be preserved after toggling back
             prop_assert_eq!(
                 final_selection, Some(selected_index),
@@ -631,7 +631,7 @@ mod tests {
         /// **Feature: ui-enhancements, Property 19: View Mode Persistence**
         /// **Validates: Requirements 5.8**
         ///
-        /// *For any* view mode setting, after save and load (simulated), 
+        /// *For any* view mode setting, after save and load (simulated),
         /// the view mode SHALL be restored correctly.
         #[test]
         fn prop_view_mode_persistence(
@@ -645,19 +645,19 @@ mod tests {
             let mut settings = GlobalSettings::default();
             settings.view_mode = view_mode;
             settings.show_hidden_files = show_hidden;
-            
+
             // Serialize to JSON (simulating save)
             let json = serde_json::to_string(&settings).expect("Failed to serialize settings");
-            
+
             let loaded: GlobalSettings = serde_json::from_str(&json).expect("Failed to deserialize settings");
-            
+
             // Property: View mode should be preserved after round-trip serialization
             prop_assert_eq!(
                 loaded.view_mode, view_mode,
                 "View mode {:?} should be preserved after save/load, got {:?}",
                 view_mode, loaded.view_mode
             );
-            
+
             prop_assert_eq!(
                 loaded.show_hidden_files, show_hidden,
                 "show_hidden_files {} should be preserved after save/load, got {}",
@@ -677,13 +677,13 @@ mod tests {
         ) {
             let mut settings = GlobalSettings::default();
             settings.set_show_hidden(initial_show_hidden);
-            
+
             prop_assert_eq!(
                 settings.show_hidden(), initial_show_hidden,
                 "Initial show_hidden should be {}",
                 initial_show_hidden
             );
-            
+
             // Property 2: Toggle should invert the state
             settings.toggle_show_hidden();
             prop_assert_eq!(
@@ -691,30 +691,30 @@ mod tests {
                 "After toggle, show_hidden should be {} (inverted from {})",
                 !initial_show_hidden, initial_show_hidden
             );
-            
+
             settings.toggle_show_hidden();
             prop_assert_eq!(
                 settings.show_hidden(), initial_show_hidden,
                 "After double toggle, show_hidden should return to original {}",
                 initial_show_hidden
             );
-            
+
             settings.set_show_hidden(initial_show_hidden);
             let json = serde_json::to_string(&settings).expect("Failed to serialize settings");
             let loaded: GlobalSettings = serde_json::from_str(&json).expect("Failed to deserialize settings");
-            
+
             prop_assert_eq!(
                 loaded.show_hidden(), initial_show_hidden,
                 "show_hidden {} should persist after save/load",
                 initial_show_hidden
             );
-            
+
             // Property 5: Toggle state should also persist
             let mut settings_toggled = GlobalSettings::default();
             settings_toggled.set_show_hidden(!initial_show_hidden);
             let json_toggled = serde_json::to_string(&settings_toggled).expect("Failed to serialize");
             let loaded_toggled: GlobalSettings = serde_json::from_str(&json_toggled).expect("Failed to deserialize");
-            
+
             prop_assert_eq!(
                 loaded_toggled.show_hidden(), !initial_show_hidden,
                 "Toggled show_hidden {} should persist after save/load",

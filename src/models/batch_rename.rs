@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
 use chrono::{DateTime, Local};
+use std::path::{Path, PathBuf};
 
 /// Preview of a single file rename operation
 #[derive(Debug, Clone, PartialEq)]
@@ -61,7 +61,6 @@ pub struct BatchRename {
     counter_padding: usize,
     date_format: String,
 }
-
 
 impl Default for BatchRename {
     fn default() -> Self {
@@ -238,13 +237,14 @@ impl BatchRename {
         }
     }
 
-
     /// Generate a new name for a file based on the pattern
     fn generate_name(&self, path: &Path, index: usize, tokens: &[RenameToken]) -> String {
-        let file_name = path.file_stem()
+        let file_name = path
+            .file_stem()
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
-        let extension = path.extension()
+        let extension = path
+            .extension()
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
 
@@ -321,7 +321,8 @@ impl BatchRename {
 
         // Generate new names
         for (index, path) in self.files.iter().enumerate() {
-            let original = path.file_name()
+            let original = path
+                .file_name()
                 .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_default();
 
@@ -398,14 +399,15 @@ impl BatchRename {
 
         for (index, path) in self.files.iter().enumerate() {
             let preview = &self.preview[index];
-            
+
             // Skip if name unchanged
             if preview.original == preview.new_name {
                 renamed_paths.push(path.clone());
                 continue;
             }
 
-            let new_path = path.parent()
+            let new_path = path
+                .parent()
                 .map(|p| p.join(&preview.new_name))
                 .unwrap_or_else(|| PathBuf::from(&preview.new_name));
 
@@ -426,7 +428,8 @@ impl BatchRename {
 
     /// Get the number of files that will be renamed (excluding unchanged)
     pub fn rename_count(&self) -> usize {
-        self.preview.iter()
+        self.preview
+            .iter()
             .filter(|p| p.original != p.new_name)
             .count()
     }

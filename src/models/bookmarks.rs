@@ -147,7 +147,6 @@ impl Bookmark {
     }
 }
 
-
 /// Manages user's bookmarks and recent locations with persistence
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BookmarkManager {
@@ -199,7 +198,11 @@ impl BookmarkManager {
     }
 
     /// Add a bookmark with a custom name
-    pub fn add_with_name(&mut self, path: PathBuf, name: String) -> Result<BookmarkId, BookmarkError> {
+    pub fn add_with_name(
+        &mut self,
+        path: PathBuf,
+        name: String,
+    ) -> Result<BookmarkId, BookmarkError> {
         if self.bookmarks.len() >= self.max_bookmarks {
             return Err(BookmarkError::MaxReached(self.max_bookmarks));
         }
@@ -238,7 +241,11 @@ impl BookmarkManager {
     }
 
     /// Set a keyboard shortcut for a bookmark
-    pub fn set_shortcut(&mut self, id: BookmarkId, shortcut: Option<KeyBinding>) -> Result<(), BookmarkError> {
+    pub fn set_shortcut(
+        &mut self,
+        id: BookmarkId,
+        shortcut: Option<KeyBinding>,
+    ) -> Result<(), BookmarkError> {
         if let Some(ref new_shortcut) = shortcut {
             for bookmark in &mut self.bookmarks {
                 if let Some(ref existing) = bookmark.shortcut {
@@ -274,9 +281,9 @@ impl BookmarkManager {
 
     /// Find a bookmark by keyboard shortcut
     pub fn find_by_shortcut(&self, shortcut: &KeyBinding) -> Option<&Bookmark> {
-        self.bookmarks.iter().find(|b| {
-            b.shortcut.as_ref().map_or(false, |s| s == shortcut)
-        })
+        self.bookmarks
+            .iter()
+            .find(|b| b.shortcut.as_ref().map_or(false, |s| s == shortcut))
     }
 
     /// Get the number of bookmarks
@@ -376,13 +383,7 @@ impl BookmarkManager {
         manager.max_recent = MAX_RECENT_LOCATIONS;
 
         // Calculate next_id from existing bookmarks
-        manager.next_id = manager
-            .bookmarks
-            .iter()
-            .map(|b| b.id.0)
-            .max()
-            .unwrap_or(0)
-            + 1;
+        manager.next_id = manager.bookmarks.iter().map(|b| b.id.0).max().unwrap_or(0) + 1;
 
         manager.validate_all();
 
@@ -527,7 +528,9 @@ mod tests {
 
         let id = manager.add(path.clone()).unwrap();
         manager.rename(id, "Test Bookmark".to_string()).unwrap();
-        manager.set_shortcut(id, Some(KeyBinding::new("1"))).unwrap();
+        manager
+            .set_shortcut(id, Some(KeyBinding::new("1")))
+            .unwrap();
         manager.add_recent(PathBuf::from("/recent/path"));
 
         let json = serde_json::to_string(&manager).unwrap();

@@ -2,14 +2,16 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::time::Duration;
 
-use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher};
+use notify::{
+    Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher as NotifyWatcher,
+};
 
-use crate::models::{FileSystemError, FsEvent, Result};
 use super::coalescer::EventCoalescer;
 use super::watcher::{PlatformFs, Watcher};
+use crate::models::{FileSystemError, FsEvent, Result};
 
 /// FSEvents watcher for macOS.
-/// 
+///
 /// Uses the notify crate which wraps FSEvents on macOS to provide
 /// efficient file system monitoring.
 pub struct MacOsPlatform;
@@ -67,7 +69,7 @@ impl MacOsWatcher {
 
     fn convert_event(&self, event: &Event) -> Option<FsEvent> {
         let path = event.paths.first()?.clone();
-        
+
         match &event.kind {
             EventKind::Create(_) => Some(FsEvent::Created(path)),
             EventKind::Modify(_) => Some(FsEvent::Modified(path)),
@@ -79,7 +81,7 @@ impl MacOsWatcher {
 
     fn drain_raw_events(&mut self) -> Vec<FsEvent> {
         let mut events = Vec::new();
-        
+
         if let Some(rx) = &self.event_rx {
             loop {
                 match rx.try_recv() {
@@ -98,7 +100,7 @@ impl MacOsWatcher {
                 }
             }
         }
-        
+
         events
     }
 }
@@ -112,14 +114,14 @@ impl Default for MacOsWatcher {
 impl Watcher for MacOsWatcher {
     fn watch(&mut self, path: &Path) -> Result<()> {
         self.ensure_watcher()?;
-        
+
         if let Some(watcher) = &mut self.watcher {
             watcher
                 .watch(path, RecursiveMode::NonRecursive)
                 .map_err(|e| FileSystemError::Platform(format!("Failed to watch path: {}", e)))?;
             self.watched_paths.push(path.to_path_buf());
         }
-        
+
         Ok(())
     }
 
@@ -130,7 +132,7 @@ impl Watcher for MacOsWatcher {
                 .map_err(|e| FileSystemError::Platform(format!("Failed to unwatch path: {}", e)))?;
             self.watched_paths.retain(|p| p != path);
         }
-        
+
         Ok(())
     }
 

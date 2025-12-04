@@ -1,13 +1,16 @@
 use gpui::{
-    actions, div, prelude::*, px, svg, App, Context, Entity, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, KeyBinding, MouseButton, ParentElement, Render, Styled,
-    Window, ElementInputHandler, UTF16Selection, Bounds, Pixels, Point, EntityInputHandler,
+    actions, div, prelude::*, px, svg, App, Bounds, Context, ElementInputHandler, Entity,
+    EntityInputHandler, FocusHandle, Focusable, InteractiveElement, IntoElement, KeyBinding,
+    MouseButton, ParentElement, Pixels, Point, Render, Styled, UTF16Selection, Window,
 };
 use std::ops::Range;
 
 use crate::models::SearchEngine;
 
-actions!(search_input, [ClearSearch, EscapeSearch, Backspace, Delete, SelectAll]);
+actions!(
+    search_input,
+    [ClearSearch, EscapeSearch, Backspace, Delete, SelectAll]
+);
 
 /// Search input state for managing query and focus
 pub struct SearchInput {
@@ -155,25 +158,25 @@ impl SearchInputView {
 
     pub fn set_query(&mut self, query: String, cx: &mut Context<Self>) {
         self.search_input.set_query(query.clone());
-        
+
         if let Some(engine) = &self.search_engine {
             engine.update(cx, |engine, _| {
                 engine.set_pattern(&query);
             });
         }
-        
+
         cx.notify();
     }
 
     pub fn clear(&mut self, cx: &mut Context<Self>) {
         self.search_input.clear();
-        
+
         if let Some(engine) = &self.search_engine {
             engine.update(cx, |engine, _| {
                 engine.set_pattern("");
             });
         }
-        
+
         cx.notify();
     }
 
@@ -282,7 +285,9 @@ impl EntityInputHandler for SearchInputView {
         _cx: &mut Context<Self>,
     ) -> Option<UTF16Selection> {
         Some(UTF16Selection {
-            range: self.search_input.range_to_utf16(&self.search_input.selected_range),
+            range: self
+                .search_input
+                .range_to_utf16(&self.search_input.selected_range),
             reversed: self.search_input.selection_reversed,
         })
     }
@@ -292,7 +297,8 @@ impl EntityInputHandler for SearchInputView {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<Range<usize>> {
-        self.search_input.marked_range
+        self.search_input
+            .marked_range
             .as_ref()
             .map(|range| self.search_input.range_to_utf16(range))
     }
@@ -320,7 +326,7 @@ impl EntityInputHandler for SearchInputView {
             new_text,
             &self.search_input.query[range.end..]
         );
-        
+
         let new_cursor = range.start + new_text.len();
         self.search_input.selected_range = new_cursor..new_cursor;
         self.search_input.marked_range = None;
@@ -384,7 +390,10 @@ impl EntityInputHandler for SearchInputView {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<usize> {
-        Some(self.search_input.offset_to_utf16(self.search_input.query.len()))
+        Some(
+            self.search_input
+                .offset_to_utf16(self.search_input.query.len()),
+        )
     }
 }
 
@@ -460,7 +469,7 @@ impl Render for SearchInputView {
                             .overflow_hidden()
                             .child({
                                 let entity_for_input = entity.clone();
-                                SearchTextElement { 
+                                SearchTextElement {
                                     input: entity_for_input,
                                     query: query.clone(),
                                     placeholder: placeholder.clone(),
@@ -472,7 +481,7 @@ impl Render for SearchInputView {
                                     selection_bg,
                                     cursor_color,
                                 }
-                            })
+                            }),
                     )
                     .when(!is_empty, |s| {
                         let entity = entity.clone();
@@ -491,12 +500,7 @@ impl Render for SearchInputView {
                                         view.clear(cx);
                                     });
                                 })
-                                .child(
-                                    div()
-                                        .text_color(text_gray)
-                                        .text_xs()
-                                        .child("✕"),
-                                ),
+                                .child(div().text_color(text_gray).text_xs().child("✕")),
                         )
                     }),
             )
@@ -572,7 +576,7 @@ impl gpui::Element for SearchTextElement {
         cx: &mut App,
     ) {
         let focus_handle = self.input.read(cx).focus_handle.clone();
-        
+
         // This is the key call that enables text input
         window.handle_input(
             &focus_handle,
@@ -582,7 +586,7 @@ impl gpui::Element for SearchTextElement {
 
         let style = window.text_style();
         let font_size = style.font_size.to_pixels(window.rem_size());
-        
+
         let (display_text, color): (String, gpui::Rgba) = if self.query.is_empty() {
             (self.placeholder.clone(), self.placeholder_color)
         } else {
@@ -598,13 +602,10 @@ impl gpui::Element for SearchTextElement {
             strikethrough: None,
         };
 
-        let line = window.text_system().shape_line(
-            display_text.into(),
-            font_size,
-            &[run],
-            None,
-        );
-        
+        let line = window
+            .text_system()
+            .shape_line(display_text.into(), font_size, &[run], None);
+
         // Draw selection if any
         if self.is_focused && !self.selected_range.is_empty() && !self.query.is_empty() {
             let start_x = line.x_for_index(self.selected_range.start);

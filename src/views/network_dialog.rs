@@ -1,5 +1,5 @@
+use crate::models::{AuthMethod, NetworkConnectionConfig, NetworkProtocol};
 use gpui::*;
-use crate::models::{NetworkConnectionConfig, NetworkProtocol, AuthMethod};
 
 /// Actions for the network connection dialog
 #[derive(Clone, PartialEq)]
@@ -73,7 +73,7 @@ impl NetworkConnectionDialog {
         }
 
         let port = self.port.parse::<u16>().ok();
-        
+
         let auth = if self.use_anonymous {
             AuthMethod::Anonymous
         } else {

@@ -1,6 +1,6 @@
 use gpui::{
-    div, prelude::*, px, App, Context, Entity, FocusHandle, Focusable, IntoElement,
-    ParentElement, Render, SharedString, Styled, Timer, Window,
+    div, prelude::*, px, App, Context, Entity, FocusHandle, Focusable, IntoElement, ParentElement,
+    Render, SharedString, Styled, Timer, Window,
 };
 use std::time::Duration;
 
@@ -83,9 +83,9 @@ impl ToastManager {
     pub fn show(&mut self, toast: Toast, cx: &mut Context<Self>) {
         let id = toast.id;
         let duration = toast.duration_ms;
-        
+
         self.toasts.push(toast);
-        
+
         // Schedule auto-dismiss
         cx.spawn(async move |this, cx| {
             Timer::after(Duration::from_millis(duration)).await;
@@ -94,7 +94,7 @@ impl ToastManager {
             });
         })
         .detach();
-        
+
         cx.notify();
     }
 
@@ -155,7 +155,11 @@ impl Render for ToastManager {
             .max_w(px(380.0))
             .children(self.toasts.iter().map(|toast| {
                 let (bg, border, icon_color) = match toast.variant {
-                    ToastVariant::Info => (theme.bg_tertiary, theme.border_default, theme.accent_primary),
+                    ToastVariant::Info => (
+                        theme.bg_tertiary,
+                        theme.border_default,
+                        theme.accent_primary,
+                    ),
                     ToastVariant::Success => (theme.bg_tertiary, theme.success, theme.success),
                     ToastVariant::Warning => (theme.bg_tertiary, theme.warning, theme.warning),
                     ToastVariant::Error => (theme.bg_tertiary, theme.error, theme.error),
@@ -181,12 +185,7 @@ impl Render for ToastManager {
                     .rounded_md()
                     .p_3()
                     .shadow_lg()
-                    .child(
-                        div()
-                            .text_base()
-                            .text_color(icon_color)
-                            .child(icon)
-                    )
+                    .child(div().text_base().text_color(icon_color).child(icon))
                     .child(
                         div()
                             .flex()
@@ -198,16 +197,13 @@ impl Render for ToastManager {
                                     .text_sm()
                                     .font_weight(gpui::FontWeight::SEMIBOLD)
                                     .text_color(theme.text_primary)
-                                    .child(toast.title.clone())
+                                    .child(toast.title.clone()),
                             )
                             .when_some(toast.description.clone(), |this, desc| {
                                 this.child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(theme.text_secondary)
-                                        .child(desc)
+                                    div().text_xs().text_color(theme.text_secondary).child(desc),
                                 )
-                            })
+                            }),
                     )
             }))
             .into_any_element()

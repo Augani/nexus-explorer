@@ -5,14 +5,16 @@ use gpui::{
     IntoElement, MouseButton, ParentElement, Render, Rgba, SharedString, Styled, Window,
 };
 
-use crate::models::{
-    FileOperation, OperationId, OperationStatus, OperationType,
-    theme_colors,
-};
+use crate::models::{theme_colors, FileOperation, OperationId, OperationStatus, OperationType};
 
 /// Create a color with modified alpha
 fn with_alpha(color: Rgba, alpha: f32) -> Rgba {
-    Rgba { r: color.r, g: color.g, b: color.b, a: alpha }
+    Rgba {
+        r: color.r,
+        g: color.g,
+        b: color.b,
+        a: alpha,
+    }
 }
 
 /// Format duration for display
@@ -176,7 +178,13 @@ impl ProgressPanelView {
                                         OperationType::Delete => "assets/icons/trash-2.svg",
                                     })
                                     .size(px(16.0))
-                                    .text_color(if is_completed { success } else if is_failed { error } else { accent }),
+                                    .text_color(if is_completed {
+                                        success
+                                    } else if is_failed {
+                                        error
+                                    } else {
+                                        accent
+                                    }),
                             )
                             // Operation type text
                             .child(
@@ -184,27 +192,21 @@ impl ProgressPanelView {
                                     .text_sm()
                                     .font_weight(gpui::FontWeight::MEDIUM)
                                     .text_color(text_primary)
-                                    .child(format!("{}", op_type))
+                                    .child(format!("{}", op_type)),
                             )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(text_muted)
-                                    .child(format!(
-                                        "{}/{} files",
-                                        progress.completed_files,
-                                        progress.total_files
-                                    ))
-                            )
+                            .child(div().text_xs().text_color(text_muted).child(format!(
+                                "{}/{} files",
+                                progress.completed_files, progress.total_files
+                            )))
                             // Skipped count (if any)
                             .when(skipped_count > 0, |el| {
                                 el.child(
                                     div()
                                         .text_xs()
                                         .text_color(theme.warning)
-                                        .child(format!("({} skipped)", skipped_count))
+                                        .child(format!("({} skipped)", skipped_count)),
                                 )
-                            })
+                            }),
                     )
                     // Status indicator and actions
                     .child(
@@ -225,11 +227,13 @@ impl ProgressPanelView {
                                     .child(match &status {
                                         OperationStatus::Pending => "Pending".to_string(),
                                         OperationStatus::Running => format!("{:.0}%", percentage),
-                                        OperationStatus::Paused => "Error - Action Required".to_string(),
+                                        OperationStatus::Paused => {
+                                            "Error - Action Required".to_string()
+                                        }
                                         OperationStatus::Completed => "Completed".to_string(),
                                         OperationStatus::Failed(_) => "Failed".to_string(),
                                         OperationStatus::Cancelled => "Cancelled".to_string(),
-                                    })
+                                    }),
                             )
                             // Cancel button (for active operations)
                             .when(is_active, |el| {
@@ -243,11 +247,15 @@ impl ProgressPanelView {
                                         .hover(|s| s.bg(hover_bg))
                                         .text_xs()
                                         .text_color(error)
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                            view.pending_action = Some(ProgressPanelAction::Cancel(op_id));
-                                            cx.notify();
-                                        }))
-                                        .child("Cancel")
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(move |view, _event, _window, cx| {
+                                                view.pending_action =
+                                                    Some(ProgressPanelAction::Cancel(op_id));
+                                                cx.notify();
+                                            }),
+                                        )
+                                        .child("Cancel"),
                                 )
                             })
                             // Dismiss button (for completed/failed/cancelled operations)
@@ -262,14 +270,18 @@ impl ProgressPanelView {
                                         .hover(|s| s.bg(hover_bg))
                                         .text_xs()
                                         .text_color(text_muted)
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                            view.pending_action = Some(ProgressPanelAction::Dismiss(op_id));
-                                            cx.notify();
-                                        }))
-                                        .child("Dismiss")
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(move |view, _event, _window, cx| {
+                                                view.pending_action =
+                                                    Some(ProgressPanelAction::Dismiss(op_id));
+                                                cx.notify();
+                                            }),
+                                        )
+                                        .child("Dismiss"),
                                 )
-                            })
-                    )
+                            }),
+                    ),
             )
             // Progress bar (for active operations)
             .when(is_active, |el| {
@@ -285,8 +297,8 @@ impl ProgressPanelView {
                                 .h_full()
                                 .w(gpui::relative(percentage / 100.0))
                                 .bg(accent)
-                                .rounded_full()
-                        )
+                                .rounded_full(),
+                        ),
                 )
             })
             // Current file and speed info (for running operations)
@@ -302,7 +314,7 @@ impl ProgressPanelView {
                             div()
                                 .max_w(px(200.0))
                                 .truncate()
-                                .child(current_file.unwrap_or_else(|| "Preparing...".to_string()))
+                                .child(current_file.unwrap_or_else(|| "Preparing...".to_string())),
                         )
                         .child(
                             div()
@@ -313,23 +325,21 @@ impl ProgressPanelView {
                                     el.child(format_speed(progress.speed_bytes_per_sec))
                                 })
                                 .when(progress.estimated_remaining.as_secs() > 0, |el| {
-                                    el.child(format!("~{} remaining", format_duration(progress.estimated_remaining)))
-                                })
-                        )
+                                    el.child(format!(
+                                        "~{} remaining",
+                                        format_duration(progress.estimated_remaining)
+                                    ))
+                                }),
+                        ),
                 )
             })
             // Bytes transferred info
             .when(progress.total_bytes > 0 && is_active, |el| {
-                el.child(
-                    div()
-                        .text_xs()
-                        .text_color(text_muted)
-                        .child(format!(
-                            "{} / {}",
-                            format_size(progress.transferred_bytes),
-                            format_size(progress.total_bytes)
-                        ))
-                )
+                el.child(div().text_xs().text_color(text_muted).child(format!(
+                    "{} / {}",
+                    format_size(progress.transferred_bytes),
+                    format_size(progress.total_bytes)
+                )))
             })
             // Error message (for failed operations)
             .when(is_failed, |el| {
@@ -346,16 +356,26 @@ impl ProgressPanelView {
                         .rounded_sm()
                         .text_xs()
                         .text_color(error)
-                        .child(msg)
+                        .child(msg),
                 )
             })
             // Error with retry/skip options (when operation is paused for error)
             .when(has_error, |el| {
-                let is_recoverable = op.current_error.as_ref().map(|e| e.is_recoverable).unwrap_or(false);
-                let user_msg = op.current_error.as_ref()
+                let is_recoverable = op
+                    .current_error
+                    .as_ref()
+                    .map(|e| e.is_recoverable)
+                    .unwrap_or(false);
+                let user_msg = op
+                    .current_error
+                    .as_ref()
                     .map(|e| e.user_message())
-                    .unwrap_or_else(|| error_msg.clone().unwrap_or_else(|| "An error occurred".to_string()));
-                
+                    .unwrap_or_else(|| {
+                        error_msg
+                            .clone()
+                            .unwrap_or_else(|| "An error occurred".to_string())
+                    });
+
                 el.child(
                     div()
                         .w_full()
@@ -378,14 +398,9 @@ impl ProgressPanelView {
                                         .path("assets/icons/triangle-alert.svg")
                                         .size(px(14.0))
                                         .text_color(error)
-                                        .flex_shrink_0()
+                                        .flex_shrink_0(),
                                 )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(error)
-                                        .child(user_msg)
-                                )
+                                .child(div().text_xs().text_color(error).child(user_msg)),
                         )
                         .child(
                             div()
@@ -406,11 +421,15 @@ impl ProgressPanelView {
                                         .text_xs()
                                         .font_weight(gpui::FontWeight::MEDIUM)
                                         .text_color(text_primary)
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                            view.pending_action = Some(ProgressPanelAction::Skip(op_id));
-                                            cx.notify();
-                                        }))
-                                        .child("Skip")
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(move |view, _event, _window, cx| {
+                                                view.pending_action =
+                                                    Some(ProgressPanelAction::Skip(op_id));
+                                                cx.notify();
+                                            }),
+                                        )
+                                        .child("Skip"),
                                 )
                                 // Retry button - only for recoverable errors
                                 .when(is_recoverable, |el| {
@@ -426,11 +445,15 @@ impl ProgressPanelView {
                                             .text_xs()
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(accent)
-                                            .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                                view.pending_action = Some(ProgressPanelAction::Retry(op_id));
-                                                cx.notify();
-                                            }))
-                                            .child("Retry")
+                                            .on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(move |view, _event, _window, cx| {
+                                                    view.pending_action =
+                                                        Some(ProgressPanelAction::Retry(op_id));
+                                                    cx.notify();
+                                                }),
+                                            )
+                                            .child("Retry"),
                                     )
                                 })
                                 .child(
@@ -445,13 +468,17 @@ impl ProgressPanelView {
                                         .text_xs()
                                         .font_weight(gpui::FontWeight::MEDIUM)
                                         .text_color(error)
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                            view.pending_action = Some(ProgressPanelAction::Cancel(op_id));
-                                            cx.notify();
-                                        }))
-                                        .child("Cancel All")
-                                )
-                        )
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(move |view, _event, _window, cx| {
+                                                view.pending_action =
+                                                    Some(ProgressPanelAction::Cancel(op_id));
+                                                cx.notify();
+                                            }),
+                                        )
+                                        .child("Cancel All"),
+                                ),
+                        ),
                 )
             })
     }
@@ -509,9 +536,12 @@ impl Render for ProgressPanelView {
                     .border_color(border_color)
                     .cursor_pointer()
                     .hover(|s| s.bg(hover_bg))
-                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                        view.toggle_expanded(cx);
-                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.toggle_expanded(cx);
+                        }),
+                    )
                     .child(
                         div()
                             .flex()
@@ -519,16 +549,20 @@ impl Render for ProgressPanelView {
                             .gap_2()
                             .child(
                                 svg()
-                                    .path(if is_expanded { "assets/icons/chevron-down.svg" } else { "assets/icons/chevron-right.svg" })
+                                    .path(if is_expanded {
+                                        "assets/icons/chevron-down.svg"
+                                    } else {
+                                        "assets/icons/chevron-right.svg"
+                                    })
                                     .size(px(14.0))
-                                    .text_color(text_muted)
+                                    .text_color(text_muted),
                             )
                             .child(
                                 div()
                                     .text_sm()
                                     .font_weight(gpui::FontWeight::MEDIUM)
                                     .text_color(text_primary)
-                                    .child("File Operations")
+                                    .child("File Operations"),
                             )
                             .when(active_count > 0, |el| {
                                 el.child(
@@ -539,9 +573,9 @@ impl Render for ProgressPanelView {
                                         .bg(with_alpha(theme.accent_primary, 0.2))
                                         .text_xs()
                                         .text_color(theme.accent_primary)
-                                        .child(format!("{} active", active_count))
+                                        .child(format!("{} active", active_count)),
                                 )
-                            })
+                            }),
                     )
                     .when(completed_count > 0, |el| {
                         el.child(
@@ -554,13 +588,16 @@ impl Render for ProgressPanelView {
                                 .hover(|s| s.bg(hover_bg))
                                 .text_xs()
                                 .text_color(text_muted)
-                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                    view.pending_action = Some(ProgressPanelAction::DismissAll);
-                                    cx.notify();
-                                }))
-                                .child("Clear completed")
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|view, _event, _window, cx| {
+                                        view.pending_action = Some(ProgressPanelAction::DismissAll);
+                                        cx.notify();
+                                    }),
+                                )
+                                .child("Clear completed"),
                         )
-                    })
+                    }),
             )
             // Operations list (when expanded)
             .when(is_expanded, |el| {
@@ -572,9 +609,7 @@ impl Render for ProgressPanelView {
                         .flex()
                         .flex_col()
                         .gap_2()
-                        .children(
-                            operations.iter().map(|op| self.render_operation(op, cx))
-                        )
+                        .children(operations.iter().map(|op| self.render_operation(op, cx))),
                 )
             })
             .into_any_element()

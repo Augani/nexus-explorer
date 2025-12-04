@@ -1,13 +1,12 @@
 /// Application discovery for "Open With" functionality
-/// 
+///
 /// Provides cross-platform support for finding applications that can open specific file types.
 /// Uses a preloaded registry that's populated in the background at startup to avoid UI freezes.
-
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
 
 /// Represents an application that can open files
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -106,7 +105,11 @@ pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
             let info_plist = app_path.join("Contents/Info.plist");
             if info_plist.exists() {
                 if let Ok(output) = Command::new("defaults")
-                    .args(["read", info_plist.to_str().unwrap_or(""), "CFBundleIconFile"])
+                    .args([
+                        "read",
+                        info_plist.to_str().unwrap_or(""),
+                        "CFBundleIconFile",
+                    ])
                     .output()
                 {
                     let icon_name = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -123,7 +126,7 @@ pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
                     }
                 }
             }
-            
+
             // Fallback: look for common icon names
             for name in ["AppIcon.icns", "app.icns", "icon.icns"] {
                 let icon_path = resources.join(name);
@@ -131,7 +134,7 @@ pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
                     return Some(icon_path.to_string_lossy().to_string());
                 }
             }
-            
+
             // Last resort: find any .icns file
             if let Ok(entries) = std::fs::read_dir(&resources) {
                 for entry in entries.flatten() {
@@ -247,7 +250,10 @@ pub fn show_open_with_dialog(file_path: &Path) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         Command::new("rundll32")
-            .args(["shell32.dll,OpenAs_RunDLL", file_path.to_str().unwrap_or("")])
+            .args([
+                "shell32.dll,OpenAs_RunDLL",
+                file_path.to_str().unwrap_or(""),
+            ])
             .spawn()
             .map_err(|e| format!("Failed to show dialog: {}", e))?;
         Ok(())
@@ -325,29 +331,135 @@ fn scan_applications_with_plist(
         PathBuf::from("/Applications"),
         PathBuf::from("/System/Applications"),
         PathBuf::from("/System/Applications/Utilities"),
-        dirs::home_dir().map(|h| h.join("Applications")).unwrap_or_default(),
+        dirs::home_dir()
+            .map(|h| h.join("Applications"))
+            .unwrap_or_default(),
     ];
 
     // Comprehensive mappings for common applications
     // These are apps that can open various file types but may not declare them in Info.plist
     let editor_extensions: Vec<&str> = vec![
-        "txt", "md", "markdown", "rs", "js", "jsx", "ts", "tsx", "py", "rb", "go", "java",
-        "c", "cpp", "h", "hpp", "cs", "swift", "m", "mm", "json", "xml", "yaml", "yml",
-        "toml", "ini", "cfg", "conf", "html", "htm", "css", "scss", "sass", "less",
-        "sql", "sh", "bash", "zsh", "fish", "ps1", "bat", "cmd", "makefile", "dockerfile",
-        "gitignore", "gitattributes", "editorconfig", "env", "lock", "log", "csv",
-        "vue", "svelte", "astro", "php", "pl", "pm", "lua", "r", "scala", "kt", "kts",
-        "gradle", "groovy", "clj", "cljs", "ex", "exs", "erl", "hrl", "hs", "elm",
-        "purs", "ml", "mli", "fs", "fsx", "fsi", "v", "sv", "vhd", "vhdl", "asm", "s",
+        "txt",
+        "md",
+        "markdown",
+        "rs",
+        "js",
+        "jsx",
+        "ts",
+        "tsx",
+        "py",
+        "rb",
+        "go",
+        "java",
+        "c",
+        "cpp",
+        "h",
+        "hpp",
+        "cs",
+        "swift",
+        "m",
+        "mm",
+        "json",
+        "xml",
+        "yaml",
+        "yml",
+        "toml",
+        "ini",
+        "cfg",
+        "conf",
+        "html",
+        "htm",
+        "css",
+        "scss",
+        "sass",
+        "less",
+        "sql",
+        "sh",
+        "bash",
+        "zsh",
+        "fish",
+        "ps1",
+        "bat",
+        "cmd",
+        "makefile",
+        "dockerfile",
+        "gitignore",
+        "gitattributes",
+        "editorconfig",
+        "env",
+        "lock",
+        "log",
+        "csv",
+        "vue",
+        "svelte",
+        "astro",
+        "php",
+        "pl",
+        "pm",
+        "lua",
+        "r",
+        "scala",
+        "kt",
+        "kts",
+        "gradle",
+        "groovy",
+        "clj",
+        "cljs",
+        "ex",
+        "exs",
+        "erl",
+        "hrl",
+        "hs",
+        "elm",
+        "purs",
+        "ml",
+        "mli",
+        "fs",
+        "fsx",
+        "fsi",
+        "v",
+        "sv",
+        "vhd",
+        "vhdl",
+        "asm",
+        "s",
     ];
 
     let ide_folder_apps: Vec<&str> = vec![
-        "Visual Studio Code", "VSCodium", "Cursor", "Zed", "Sublime Text", "Atom",
-        "WebStorm", "IntelliJ IDEA", "IntelliJ IDEA CE", "PyCharm", "PyCharm CE",
-        "CLion", "GoLand", "RubyMine", "PhpStorm", "Rider", "DataGrip", "AppCode",
-        "Android Studio", "Fleet", "Nova", "BBEdit", "TextMate", "CotEditor",
-        "Xcode", "Eclipse", "NetBeans", "Brackets", "Komodo Edit", "Geany",
-        "Kate", "Emacs", "MacVim", "Neovide",
+        "Visual Studio Code",
+        "VSCodium",
+        "Cursor",
+        "Zed",
+        "Sublime Text",
+        "Atom",
+        "WebStorm",
+        "IntelliJ IDEA",
+        "IntelliJ IDEA CE",
+        "PyCharm",
+        "PyCharm CE",
+        "CLion",
+        "GoLand",
+        "RubyMine",
+        "PhpStorm",
+        "Rider",
+        "DataGrip",
+        "AppCode",
+        "Android Studio",
+        "Fleet",
+        "Nova",
+        "BBEdit",
+        "TextMate",
+        "CotEditor",
+        "Xcode",
+        "Eclipse",
+        "NetBeans",
+        "Brackets",
+        "Komodo Edit",
+        "Geany",
+        "Kate",
+        "Emacs",
+        "MacVim",
+        "Neovide",
     ];
 
     let common_mappings: HashMap<&str, Vec<&str>> = [
@@ -364,7 +476,6 @@ fn scan_applications_with_plist(
         ("Nova", editor_extensions.clone()),
         ("MacVim", editor_extensions.clone()),
         ("Neovide", editor_extensions.clone()),
-        
         // JetBrains IDEs
         ("WebStorm", editor_extensions.clone()),
         ("IntelliJ IDEA", editor_extensions.clone()),
@@ -378,14 +489,50 @@ fn scan_applications_with_plist(
         ("Rider", editor_extensions.clone()),
         ("DataGrip", vec!["sql", "json", "csv"]),
         ("Fleet", editor_extensions.clone()),
-        
         // Apple apps
         ("TextEdit", vec!["txt", "rtf", "rtfd", "html", "htm", "doc"]),
-        ("Xcode", vec!["swift", "m", "mm", "h", "c", "cpp", "hpp", "metal", "xcodeproj", "xcworkspace", "playground", "storyboard", "xib", "plist"]),
-        ("Preview", vec!["pdf", "png", "jpg", "jpeg", "gif", "tiff", "tif", "bmp", "heic", "heif", "webp", "ico", "icns", "psd", "ai", "eps"]),
-        ("QuickTime Player", vec!["mp4", "mov", "m4v", "mp3", "m4a", "wav", "aiff", "aif", "aac", "3gp", "avi"]),
-        ("Music", vec!["mp3", "m4a", "aac", "wav", "aiff", "flac", "alac"]),
-        ("Photos", vec!["png", "jpg", "jpeg", "gif", "heic", "heif", "raw", "cr2", "nef", "arw"]),
+        (
+            "Xcode",
+            vec![
+                "swift",
+                "m",
+                "mm",
+                "h",
+                "c",
+                "cpp",
+                "hpp",
+                "metal",
+                "xcodeproj",
+                "xcworkspace",
+                "playground",
+                "storyboard",
+                "xib",
+                "plist",
+            ],
+        ),
+        (
+            "Preview",
+            vec![
+                "pdf", "png", "jpg", "jpeg", "gif", "tiff", "tif", "bmp", "heic", "heif", "webp",
+                "ico", "icns", "psd", "ai", "eps",
+            ],
+        ),
+        (
+            "QuickTime Player",
+            vec![
+                "mp4", "mov", "m4v", "mp3", "m4a", "wav", "aiff", "aif", "aac", "3gp", "avi",
+            ],
+        ),
+        (
+            "Music",
+            vec!["mp3", "m4a", "aac", "wav", "aiff", "flac", "alac"],
+        ),
+        (
+            "Photos",
+            vec![
+                "png", "jpg", "jpeg", "gif", "heic", "heif", "raw", "cr2", "nef", "arw",
+            ],
+        ),
         ("Safari", vec!["html", "htm", "url", "webloc", "webarchive"]),
         ("Numbers", vec!["csv", "xlsx", "xls", "numbers", "tsv"]),
         ("Pages", vec!["doc", "docx", "pages", "rtf", "txt"]),
@@ -393,62 +540,135 @@ fn scan_applications_with_plist(
         ("Notes", vec!["txt", "md"]),
         ("Terminal", vec!["sh", "bash", "zsh", "command", "tool"]),
         ("Script Editor", vec!["scpt", "applescript", "scptd"]),
-        
         // Browsers
-        ("Firefox", vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"]),
-        ("Google Chrome", vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"]),
-        ("Brave Browser", vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"]),
-        ("Microsoft Edge", vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"]),
-        ("Arc", vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"]),
-        ("Opera", vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"]),
-        
+        (
+            "Firefox",
+            vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
+        ),
+        (
+            "Google Chrome",
+            vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
+        ),
+        (
+            "Brave Browser",
+            vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
+        ),
+        (
+            "Microsoft Edge",
+            vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
+        ),
+        (
+            "Arc",
+            vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
+        ),
+        (
+            "Opera",
+            vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
+        ),
         // Media players
-        ("VLC", vec!["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "mp3", "flac", "wav", "ogg", "m4a", "aac", "wma"]),
-        ("IINA", vec!["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "mp3", "flac", "wav", "ogg"]),
-        ("Infuse", vec!["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm"]),
+        (
+            "VLC",
+            vec![
+                "mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "mp3", "flac", "wav", "ogg",
+                "m4a", "aac", "wma",
+            ],
+        ),
+        (
+            "IINA",
+            vec![
+                "mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "mp3", "flac", "wav", "ogg",
+            ],
+        ),
+        (
+            "Infuse",
+            vec!["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm"],
+        ),
         ("Spotify", vec!["mp3", "m4a", "ogg"]),
-        
         // Image editors
-        ("Pixelmator Pro", vec!["png", "jpg", "jpeg", "gif", "tiff", "psd", "heic", "webp", "svg", "pdf", "raw"]),
-        ("Affinity Photo", vec!["png", "jpg", "jpeg", "gif", "tiff", "psd", "heic", "webp", "raw", "afphoto"]),
-        ("Affinity Designer", vec!["svg", "ai", "eps", "pdf", "afdesign"]),
+        (
+            "Pixelmator Pro",
+            vec![
+                "png", "jpg", "jpeg", "gif", "tiff", "psd", "heic", "webp", "svg", "pdf", "raw",
+            ],
+        ),
+        (
+            "Affinity Photo",
+            vec![
+                "png", "jpg", "jpeg", "gif", "tiff", "psd", "heic", "webp", "raw", "afphoto",
+            ],
+        ),
+        (
+            "Affinity Designer",
+            vec!["svg", "ai", "eps", "pdf", "afdesign"],
+        ),
         ("Sketch", vec!["sketch", "svg", "pdf", "png", "jpg"]),
         ("Figma", vec!["fig", "svg", "png", "jpg", "pdf"]),
-        ("GIMP", vec!["png", "jpg", "jpeg", "gif", "tiff", "psd", "xcf", "bmp"]),
-        ("Adobe Photoshop", vec!["psd", "png", "jpg", "jpeg", "gif", "tiff", "bmp", "raw"]),
+        (
+            "GIMP",
+            vec!["png", "jpg", "jpeg", "gif", "tiff", "psd", "xcf", "bmp"],
+        ),
+        (
+            "Adobe Photoshop",
+            vec!["psd", "png", "jpg", "jpeg", "gif", "tiff", "bmp", "raw"],
+        ),
         ("Adobe Illustrator", vec!["ai", "svg", "eps", "pdf", "png"]),
-        
         // Archive utilities
-        ("Archive Utility", vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz"]),
-        ("The Unarchiver", vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz", "lzma", "cab", "iso", "dmg"]),
-        ("Keka", vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz", "lzma"]),
-        ("BetterZip", vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz"]),
-        
+        (
+            "Archive Utility",
+            vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz"],
+        ),
+        (
+            "The Unarchiver",
+            vec![
+                "zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz", "lzma", "cab", "iso",
+                "dmg",
+            ],
+        ),
+        (
+            "Keka",
+            vec![
+                "zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz", "lzma",
+            ],
+        ),
+        (
+            "BetterZip",
+            vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz"],
+        ),
         // Development tools
-        ("Android Studio", vec!["java", "kt", "kts", "xml", "gradle", "json"]),
+        (
+            "Android Studio",
+            vec!["java", "kt", "kts", "xml", "gradle", "json"],
+        ),
         ("Docker", vec!["dockerfile", "yaml", "yml", "json"]),
         ("Postman", vec!["json", "xml"]),
         ("Insomnia", vec!["json", "xml", "yaml", "yml"]),
-        
         // Database tools
         ("TablePlus", vec!["sql", "csv", "json"]),
         ("Sequel Pro", vec!["sql"]),
         ("DBeaver", vec!["sql", "csv", "json", "xml"]),
-        
         // Other utilities
         ("Finder", vec![]),
         ("iTerm", vec!["sh", "bash", "zsh", "command"]),
         ("Warp", vec!["sh", "bash", "zsh", "command"]),
         ("Alacritty", vec!["sh", "bash", "zsh", "command"]),
         ("Kitty", vec!["sh", "bash", "zsh", "command"]),
-    ].into_iter().collect();
+    ]
+    .into_iter()
+    .collect();
 
     // Scan all app directories
     for app_dir in &app_dirs {
         if !app_dir.exists() {
             continue;
         }
-        scan_app_directory(app_dir, extension_to_apps, all_apps, seen_apps, &common_mappings, &ide_folder_apps);
+        scan_app_directory(
+            app_dir,
+            extension_to_apps,
+            all_apps,
+            seen_apps,
+            &common_mappings,
+            &ide_folder_apps,
+        );
     }
 
     // Add folder support for IDEs
@@ -471,17 +691,26 @@ fn scan_app_directory(
     common_mappings: &HashMap<&str, Vec<&str>>,
     ide_folder_apps: &[&str],
 ) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
 
     for entry in entries.flatten() {
         let path = entry.path();
-        
+
         // Handle nested directories (like /Applications/Utilities)
         if path.is_dir() && path.extension().is_none() {
-            scan_app_directory(&path, extension_to_apps, all_apps, seen_apps, common_mappings, ide_folder_apps);
+            scan_app_directory(
+                &path,
+                extension_to_apps,
+                all_apps,
+                seen_apps,
+                common_mappings,
+                ide_folder_apps,
+            );
             continue;
         }
-        
+
         if !path.extension().map(|e| e == "app").unwrap_or(false) || seen_apps.contains(&path) {
             continue;
         }
@@ -493,10 +722,10 @@ fn scan_app_directory(
             .to_string();
 
         let app_info = AppInfo::new(name.clone(), path.clone());
-        
+
         // First, try to read extensions from Info.plist
         let plist_extensions = read_app_document_types(&path);
-        
+
         // Add extensions from Info.plist
         for ext in &plist_extensions {
             extension_to_apps
@@ -504,7 +733,7 @@ fn scan_app_directory(
                 .or_default()
                 .push(app_info.clone());
         }
-        
+
         // Also add from common mappings (these may not be in Info.plist)
         if let Some(extensions) = common_mappings.get(name.as_str()) {
             for ext in extensions {
@@ -525,26 +754,32 @@ fn scan_app_directory(
 fn read_app_document_types(app_path: &Path) -> Vec<String> {
     let mut extensions = Vec::new();
     let info_plist = app_path.join("Contents/Info.plist");
-    
+
     if !info_plist.exists() {
         return extensions;
     }
 
     // Use plutil to convert plist to JSON for easier parsing
     let Ok(output) = Command::new("plutil")
-        .args(["-convert", "json", "-o", "-", info_plist.to_str().unwrap_or("")])
+        .args([
+            "-convert",
+            "json",
+            "-o",
+            "-",
+            info_plist.to_str().unwrap_or(""),
+        ])
         .output()
     else {
         return extensions;
     };
 
     let json_str = String::from_utf8_lossy(&output.stdout);
-    
+
     // Parse CFBundleDocumentTypes to get supported extensions
     // Look for patterns like "CFBundleTypeExtensions": ["ext1", "ext2"]
     if let Some(doc_types_start) = json_str.find("CFBundleDocumentTypes") {
         let remaining = &json_str[doc_types_start..];
-        
+
         // Find all extension arrays
         let mut pos = 0;
         while let Some(ext_start) = remaining[pos..].find("CFBundleTypeExtensions") {
@@ -555,7 +790,9 @@ fn read_app_document_types(app_path: &Path) -> Vec<String> {
                     let arr_content = &remaining[arr_begin + 1..arr_begin + arr_end];
                     // Extract extensions from the array
                     for part in arr_content.split(',') {
-                        let ext = part.trim().trim_matches(|c| c == '"' || c == '\'' || c == ' ');
+                        let ext = part
+                            .trim()
+                            .trim_matches(|c| c == '"' || c == '\'' || c == ' ');
                         if !ext.is_empty() && ext.len() < 20 && !ext.contains(':') {
                             extensions.push(ext.to_lowercase());
                         }
@@ -582,8 +819,9 @@ fn read_app_document_types(app_path: &Path) -> Vec<String> {
                 if let Some(colon) = remaining[search_start..].find(':') {
                     let value_start = search_start + colon + 1;
                     // Could be a string or array
-                    let value_area = &remaining[value_start..value_start.saturating_add(200).min(remaining.len())];
-                    
+                    let value_area = &remaining
+                        [value_start..value_start.saturating_add(200).min(remaining.len())];
+
                     if let Some(quote_start) = value_area.find('"') {
                         if let Some(quote_end) = value_area[quote_start + 1..].find('"') {
                             let ext = &value_area[quote_start + 1..quote_start + 1 + quote_end];
@@ -619,7 +857,12 @@ fn load_app_registry_windows() -> AppRegistry {
         .output()
     {
         let result = String::from_utf8_lossy(&output.stdout);
-        parse_windows_registry(&result, &mut extension_to_apps, &mut all_apps, &mut seen_apps);
+        parse_windows_registry(
+            &result,
+            &mut extension_to_apps,
+            &mut all_apps,
+            &mut seen_apps,
+        );
     }
 
     // Scan common application directories
@@ -660,11 +903,7 @@ fn parse_windows_registry(
 }
 
 #[cfg(target_os = "windows")]
-fn scan_windows_apps(
-    dir: &Path,
-    all_apps: &mut Vec<AppInfo>,
-    seen_apps: &mut HashSet<PathBuf>,
-) {
+fn scan_windows_apps(dir: &Path, all_apps: &mut Vec<AppInfo>, seen_apps: &mut HashSet<PathBuf>) {
     if !dir.exists() {
         return;
     }
@@ -677,8 +916,8 @@ fn scan_windows_apps(
                 if let Ok(sub_entries) = std::fs::read_dir(&path) {
                     for sub_entry in sub_entries.flatten() {
                         let exe_path = sub_entry.path();
-                        if exe_path.extension().map(|e| e == "exe").unwrap_or(false) 
-                            && !seen_apps.contains(&exe_path) 
+                        if exe_path.extension().map(|e| e == "exe").unwrap_or(false)
+                            && !seen_apps.contains(&exe_path)
                         {
                             let name = exe_path
                                 .file_stem()
@@ -743,7 +982,13 @@ fn parse_desktop_files(
             let path = entry.path();
             if path.extension().map(|e| e == "desktop").unwrap_or(false) {
                 if let Ok(content) = std::fs::read_to_string(&path) {
-                    parse_single_desktop_file(&content, &path, extension_to_apps, all_apps, seen_apps);
+                    parse_single_desktop_file(
+                        &content,
+                        &path,
+                        extension_to_apps,
+                        all_apps,
+                        seen_apps,
+                    );
                 }
             }
         }
@@ -765,7 +1010,7 @@ fn parse_single_desktop_file(
 
     for line in content.lines() {
         let trimmed = line.trim();
-        
+
         if trimmed.starts_with("Name=") && name.is_none() {
             name = trimmed.strip_prefix("Name=").map(|s| s.to_string());
         } else if trimmed.starts_with("Exec=") {
@@ -787,7 +1032,7 @@ fn parse_single_desktop_file(
 
     if let (Some(name), Some(exec)) = (name, exec) {
         let exec_path = PathBuf::from(&exec);
-        
+
         if seen_apps.contains(&exec_path) {
             return;
         }

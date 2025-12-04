@@ -1,10 +1,9 @@
 use gpui::{
-    div, prelude::*, px, svg, App, Context, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, MouseButton, ParentElement, Render, SharedString, Styled,
-    Window,
+    div, prelude::*, px, svg, App, Context, FocusHandle, Focusable, InteractiveElement,
+    IntoElement, MouseButton, ParentElement, Render, SharedString, Styled, Window,
 };
 
-use crate::models::{TabId, TabState, theme_colors};
+use crate::models::{theme_colors, TabId, TabState};
 
 pub struct TabBarView {
     tab_state: TabState,
@@ -121,7 +120,8 @@ impl TabBarView {
     }
 
     fn scroll_right(&mut self, cx: &mut Context<Self>) {
-        let max_offset = (self.tab_state.tab_count() as f32 - self.max_visible_tabs as f32).max(0.0);
+        let max_offset =
+            (self.tab_state.tab_count() as f32 - self.max_visible_tabs as f32).max(0.0);
         self.scroll_offset = (self.scroll_offset + 1.0).min(max_offset);
         cx.notify();
     }
@@ -232,9 +232,7 @@ impl Render for TabBarView {
                                             .border_1()
                                             .border_color(theme.border_subtle)
                                     })
-                                    .when(!is_active, |s| {
-                                        s.hover(|h| h.bg(theme.bg_hover))
-                                    })
+                                    .when(!is_active, |s| s.hover(|h| h.bg(theme.bg_hover)))
                                     .on_mouse_down(MouseButton::Left, move |_, _, cx| {
                                         entity_click.update(cx, |view, cx| {
                                             view.handle_tab_click(tab_id, cx);
@@ -249,14 +247,26 @@ impl Render for TabBarView {
                                         svg()
                                             .path("assets/icons/folder.svg")
                                             .size(px(14.0))
-                                            .text_color(if is_active { theme.accent_primary } else { theme.text_muted }),
+                                            .text_color(if is_active {
+                                                theme.accent_primary
+                                            } else {
+                                                theme.text_muted
+                                            }),
                                     )
                                     .when(!is_pinned, |s| {
                                         s.child(
                                             div()
                                                 .text_xs()
-                                                .font_weight(if is_active { gpui::FontWeight::MEDIUM } else { gpui::FontWeight::NORMAL })
-                                                .text_color(if is_active { theme.text_primary } else { theme.text_muted })
+                                                .font_weight(if is_active {
+                                                    gpui::FontWeight::MEDIUM
+                                                } else {
+                                                    gpui::FontWeight::NORMAL
+                                                })
+                                                .text_color(if is_active {
+                                                    theme.text_primary
+                                                } else {
+                                                    theme.text_muted
+                                                })
                                                 .flex_1()
                                                 .overflow_hidden()
                                                 .text_ellipsis()
@@ -275,7 +285,10 @@ impl Render for TabBarView {
                                     .when(!is_pinned, |s| {
                                         s.child(
                                             div()
-                                                .id(SharedString::from(format!("close-{}", tab_id.0)))
+                                                .id(SharedString::from(format!(
+                                                    "close-{}",
+                                                    tab_id.0
+                                                )))
                                                 .w(px(16.0))
                                                 .h(px(16.0))
                                                 .rounded_sm()
@@ -284,11 +297,14 @@ impl Render for TabBarView {
                                                 .justify_center()
                                                 .cursor_pointer()
                                                 .hover(|h| h.bg(theme.bg_hover))
-                                                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                                                    entity_close.update(cx, |view, cx| {
-                                                        view.handle_tab_close(tab_id, cx);
-                                                    });
-                                                })
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    move |_, _, cx| {
+                                                        entity_close.update(cx, |view, cx| {
+                                                            view.handle_tab_close(tab_id, cx);
+                                                        });
+                                                    },
+                                                )
                                                 .child(
                                                     svg()
                                                         .path("assets/icons/x.svg")
@@ -300,26 +316,29 @@ impl Render for TabBarView {
                             }),
                     ),
             )
-            .when(has_overflow && scroll_offset < tabs.len().saturating_sub(self.max_visible_tabs), |s| {
-                let entity = entity.clone();
-                s.child(
-                    div()
-                        .id("scroll-right")
-                        .p_1()
-                        .rounded_sm()
-                        .cursor_pointer()
-                        .hover(|h| h.bg(theme.bg_hover))
-                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                            entity.update(cx, |view, cx| view.scroll_right(cx));
-                        })
-                        .child(
-                            svg()
-                                .path("assets/icons/chevron-right.svg")
-                                .size(px(14.0))
-                                .text_color(theme.text_muted),
-                        ),
-                )
-            })
+            .when(
+                has_overflow && scroll_offset < tabs.len().saturating_sub(self.max_visible_tabs),
+                |s| {
+                    let entity = entity.clone();
+                    s.child(
+                        div()
+                            .id("scroll-right")
+                            .p_1()
+                            .rounded_sm()
+                            .cursor_pointer()
+                            .hover(|h| h.bg(theme.bg_hover))
+                            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                entity.update(cx, |view, cx| view.scroll_right(cx));
+                            })
+                            .child(
+                                svg()
+                                    .path("assets/icons/chevron-right.svg")
+                                    .size(px(14.0))
+                                    .text_color(theme.text_muted),
+                            ),
+                    )
+                },
+            )
             .child(
                 div()
                     .id("new-tab")

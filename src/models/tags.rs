@@ -103,9 +103,8 @@ pub enum TagError {
 /// Result type for tag operations
 pub type TagResult<T> = std::result::Result<T, TagError>;
 
-
 /// Manages file tags - creating, deleting, and applying tags to files
-/// 
+///
 /// Tags are stored in two ways:
 /// 1. Extended attributes (xattr) on supported platforms for per-file storage
 /// 2. A local JSON database as fallback or for platforms without xattr support
@@ -133,17 +132,21 @@ impl TagManager {
             file_tags: HashMap::new(),
             next_id: 1,
         };
-        
+
         for color in TagColor::all() {
             let _ = manager.create_tag(color.display_name().to_string(), *color);
         }
-        
+
         manager
     }
 
     /// Creates a new tag with the given name and color
     pub fn create_tag(&mut self, name: String, color: TagColor) -> TagResult<TagId> {
-        if self.tags.values().any(|t| t.name.eq_ignore_ascii_case(&name)) {
+        if self
+            .tags
+            .values()
+            .any(|t| t.name.eq_ignore_ascii_case(&name))
+        {
             return Err(TagError::DuplicateName(name));
         }
 
@@ -209,12 +212,7 @@ impl TagManager {
     pub fn tags_for_file(&self, path: &Path) -> Vec<&Tag> {
         self.file_tags
             .get(path)
-            .map(|tag_ids| {
-                tag_ids
-                    .iter()
-                    .filter_map(|id| self.tags.get(id))
-                    .collect()
-            })
+            .map(|tag_ids| tag_ids.iter().filter_map(|id| self.tags.get(id)).collect())
             .unwrap_or_default()
     }
 
@@ -239,7 +237,9 @@ impl TagManager {
 
     /// Returns a tag by name (case-insensitive)
     pub fn get_tag_by_name(&self, name: &str) -> Option<&Tag> {
-        self.tags.values().find(|t| t.name.eq_ignore_ascii_case(name))
+        self.tags
+            .values()
+            .find(|t| t.name.eq_ignore_ascii_case(name))
     }
 
     /// Returns the number of defined tags
@@ -254,7 +254,10 @@ impl TagManager {
 
     /// Checks if a file has any tags
     pub fn has_tags(&self, path: &Path) -> bool {
-        self.file_tags.get(path).map(|t| !t.is_empty()).unwrap_or(false)
+        self.file_tags
+            .get(path)
+            .map(|t| !t.is_empty())
+            .unwrap_or(false)
     }
 
     /// Checks if a file has a specific tag
@@ -267,7 +270,11 @@ impl TagManager {
 
     /// Renames a tag
     pub fn rename_tag(&mut self, id: TagId, new_name: String) -> TagResult<()> {
-        if self.tags.values().any(|t| t.id != id && t.name.eq_ignore_ascii_case(&new_name)) {
+        if self
+            .tags
+            .values()
+            .any(|t| t.id != id && t.name.eq_ignore_ascii_case(&new_name))
+        {
             return Err(TagError::DuplicateName(new_name));
         }
 
@@ -301,7 +308,6 @@ impl TagManager {
         }
     }
 }
-
 
 /// Persistence format for tags
 #[derive(Debug, Serialize, Deserialize)]
@@ -341,15 +347,23 @@ impl TagManager {
 
         let config = TagsConfig {
             version: 1,
-            tags: self.tags.values().map(|t| TagEntry {
-                id: t.id.0,
-                name: t.name.clone(),
-                color: t.color,
-            }).collect(),
-            file_tags: self.file_tags.iter().map(|(path, tags)| FileTagEntry {
-                path: path.to_string_lossy().to_string(),
-                tag_ids: tags.iter().map(|id| id.0).collect(),
-            }).collect(),
+            tags: self
+                .tags
+                .values()
+                .map(|t| TagEntry {
+                    id: t.id.0,
+                    name: t.name.clone(),
+                    color: t.color,
+                })
+                .collect(),
+            file_tags: self
+                .file_tags
+                .iter()
+                .map(|(path, tags)| FileTagEntry {
+                    path: path.to_string_lossy().to_string(),
+                    tag_ids: tags.iter().map(|id| id.0).collect(),
+                })
+                .collect(),
             next_id: self.next_id,
         };
 
@@ -363,14 +377,14 @@ impl TagManager {
     /// Loads tags from the config file
     pub fn load() -> TagResult<Self> {
         let config_path = Self::config_path();
-        
+
         if !config_path.exists() {
             return Ok(Self::new());
         }
 
         let json = std::fs::read_to_string(&config_path)?;
-        let config: TagsConfig = serde_json::from_str(&json)
-            .map_err(|e| TagError::Serialization(e.to_string()))?;
+        let config: TagsConfig =
+            serde_json::from_str(&json).map_err(|e| TagError::Serialization(e.to_string()))?;
 
         let mut manager = Self {
             tags: HashMap::new(),
@@ -409,32 +423,29 @@ impl TagManager {
 #[cfg(unix)]
 pub mod xattr_storage {
     use super::*;
-    
+
     const XATTR_NAME: &str = "user.nexus-explorer.tags";
-    
+
     #[cfg(target_os = "macos")]
     const ENOTSUP: i32 = 45;
     #[cfg(target_os = "linux")]
     const ENOTSUP: i32 = 95;
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     const ENOTSUP: i32 = 95;
-    
+
     fn is_not_supported_error(e: &std::io::Error) -> bool {
         matches!(e.raw_os_error(), Some(code) if code == ENOTSUP || code == 95 || code == 45)
     }
-    
+
     pub fn is_supported(path: &Path) -> bool {
         xattr::list(path).is_ok()
     }
-    
+
     pub fn read_tags(path: &Path) -> TagResult<Vec<u64>> {
         match xattr::get(path, XATTR_NAME) {
             Ok(Some(data)) => {
                 let s = String::from_utf8_lossy(&data);
-                let ids: Vec<u64> = s
-                    .split(',')
-                    .filter_map(|s| s.trim().parse().ok())
-                    .collect();
+                let ids: Vec<u64> = s.split(',').filter_map(|s| s.trim().parse().ok()).collect();
                 Ok(ids)
             }
             Ok(None) => Ok(Vec::new()),
@@ -447,7 +458,7 @@ pub mod xattr_storage {
             }
         }
     }
-    
+
     pub fn write_tags(path: &Path, tag_ids: &[u64]) -> TagResult<()> {
         if tag_ids.is_empty() {
             match xattr::remove(path, XATTR_NAME) {
@@ -467,7 +478,7 @@ pub mod xattr_storage {
                 .map(|id| id.to_string())
                 .collect::<Vec<_>>()
                 .join(",");
-            
+
             xattr::set(path, XATTR_NAME, data.as_bytes()).map_err(|e| {
                 if is_not_supported_error(&e) {
                     TagError::XattrNotSupported
@@ -477,7 +488,7 @@ pub mod xattr_storage {
             })
         }
     }
-    
+
     pub fn clear_tags(path: &Path) -> TagResult<()> {
         write_tags(path, &[])
     }
@@ -487,19 +498,19 @@ pub mod xattr_storage {
 #[cfg(not(unix))]
 pub mod xattr_storage {
     use super::*;
-    
+
     pub fn is_supported(_path: &Path) -> bool {
         false
     }
-    
+
     pub fn read_tags(_path: &Path) -> TagResult<Vec<u64>> {
         Err(TagError::XattrNotSupported)
     }
-    
+
     pub fn write_tags(_path: &Path, _tag_ids: &[u64]) -> TagResult<()> {
         Err(TagError::XattrNotSupported)
     }
-    
+
     pub fn clear_tags(_path: &Path) -> TagResult<()> {
         Err(TagError::XattrNotSupported)
     }
@@ -507,42 +518,44 @@ pub mod xattr_storage {
 
 impl TagManager {
     /// Applies a tag to a file and optionally stores it in xattr
-    /// 
+    ///
     /// This method first updates the in-memory state, then attempts to
     /// write to xattr. If xattr fails, the in-memory state is still valid.
     pub fn apply_tag_with_xattr(&mut self, path: &Path, tag_id: TagId) -> TagResult<()> {
         // First apply to in-memory state
         self.apply_tag(path, tag_id)?;
-        
+
         // Try to write to xattr (best effort)
-        let tag_ids: Vec<u64> = self.file_tags
+        let tag_ids: Vec<u64> = self
+            .file_tags
             .get(path)
             .map(|ids| ids.iter().map(|id| id.0).collect())
             .unwrap_or_default();
-        
+
         // Ignore xattr errors - fall back to database storage
         let _ = xattr_storage::write_tags(path, &tag_ids);
-        
+
         Ok(())
     }
-    
+
     /// Removes a tag from a file and updates xattr
     pub fn remove_tag_with_xattr(&mut self, path: &Path, tag_id: TagId) -> TagResult<()> {
         // First remove from in-memory state
         self.remove_tag(path, tag_id)?;
-        
-        let tag_ids: Vec<u64> = self.file_tags
+
+        let tag_ids: Vec<u64> = self
+            .file_tags
             .get(path)
             .map(|ids| ids.iter().map(|id| id.0).collect())
             .unwrap_or_default();
-        
+
         let _ = xattr_storage::write_tags(path, &tag_ids);
-        
+
         Ok(())
     }
-    
+
     /// Syncs tags from xattr to in-memory state for a file
-    /// 
+    ///
     /// This is useful when loading a directory to pick up tags
     /// that were set by other applications or previous sessions.
     pub fn sync_from_xattr(&mut self, path: &Path) -> TagResult<()> {
@@ -556,7 +569,7 @@ impl TagManager {
                         .map(TagId::new)
                         .filter(|id| self.tags.contains_key(id))
                         .collect();
-                    
+
                     if valid_ids.is_empty() {
                         self.file_tags.remove(path);
                     } else {
@@ -572,17 +585,18 @@ impl TagManager {
             Err(e) => Err(e),
         }
     }
-    
+
     /// Syncs tags from in-memory state to xattr for a file
     pub fn sync_to_xattr(&self, path: &Path) -> TagResult<()> {
-        let tag_ids: Vec<u64> = self.file_tags
+        let tag_ids: Vec<u64> = self
+            .file_tags
             .get(path)
             .map(|ids| ids.iter().map(|id| id.0).collect())
             .unwrap_or_default();
-        
+
         xattr_storage::write_tags(path, &tag_ids)
     }
-    
+
     /// Checks if xattr storage is supported for the given path
     pub fn xattr_supported(path: &Path) -> bool {
         xattr_storage::is_supported(path)

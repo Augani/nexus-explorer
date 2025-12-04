@@ -69,7 +69,7 @@ fn list_trash_macos() -> Vec<FileEntry> {
 #[cfg(target_os = "linux")]
 fn list_trash_linux() -> Vec<FileEntry> {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
-    
+
     let mut entries = Vec::new();
 
     if let Ok(items) = trash::os_limited::list() {
@@ -253,22 +253,22 @@ pub fn empty_trash() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         use std::fs;
-        
+
         let trash_path = get_trash_path();
-        
+
         if !trash_path.exists() {
             return Ok(());
         }
-        
+
         let entries: Vec<_> = fs::read_dir(&trash_path)
             .map_err(|e| format!("Failed to read trash: {}", e))?
             .filter_map(|e| e.ok())
             .collect();
-        
+
         if entries.is_empty() {
             return Ok(());
         }
-        
+
         for entry in entries {
             let path = entry.path();
             if path.is_dir() {
@@ -279,14 +279,14 @@ pub fn empty_trash() -> Result<(), String> {
                     .map_err(|e| format!("Failed to remove {}: {}", path.display(), e))?;
             }
         }
-        
+
         Ok(())
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         use std::fs;
-        
+
         let trash_files = dirs::data_local_dir()
             .map(|d| d.join("Trash/files"))
             .unwrap_or_else(|| {
@@ -294,7 +294,7 @@ pub fn empty_trash() -> Result<(), String> {
                     .map(|h| h.join(".local/share/Trash/files"))
                     .unwrap_or_else(|| PathBuf::from("/tmp"))
             });
-        
+
         let trash_info = dirs::data_local_dir()
             .map(|d| d.join("Trash/info"))
             .unwrap_or_else(|| {
@@ -302,7 +302,7 @@ pub fn empty_trash() -> Result<(), String> {
                     .map(|h| h.join(".local/share/Trash/info"))
                     .unwrap_or_else(|| PathBuf::from("/tmp"))
             });
-        
+
         for trash_dir in [&trash_files, &trash_info] {
             if trash_dir.exists() {
                 if let Ok(entries) = fs::read_dir(trash_dir) {
@@ -317,15 +317,15 @@ pub fn empty_trash() -> Result<(), String> {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     #[cfg(target_os = "windows")]
     {
         Err("Empty trash not implemented for Windows - use system Recycle Bin".to_string())
     }
-    
+
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         Err("Empty trash not implemented for this platform".to_string())

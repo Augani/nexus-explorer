@@ -1,26 +1,32 @@
 use std::path::PathBuf;
 
 use gpui::{
-    actions, div, prelude::*, px, svg, App, Context, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, KeyBinding, MouseButton, ParentElement, Pixels, Point, Render,
-    SharedString, Styled, Window, MouseDownEvent,
+    actions, div, prelude::*, px, svg, App, Context, FocusHandle, Focusable, InteractiveElement,
+    IntoElement, KeyBinding, MouseButton, MouseDownEvent, ParentElement, Pixels, Point, Render,
+    SharedString, Styled, Window,
 };
 
-use crate::models::{Column, ColumnView, FileEntry};
 use super::file_list::{get_file_icon, get_file_icon_color};
+use crate::models::{Column, ColumnView, FileEntry};
 
 // Define actions for keyboard navigation
-actions!(column_view, [
-    ColumnNavigateUp,
-    ColumnNavigateDown,
-    ColumnNavigateLeft,
-    ColumnNavigateRight,
-    ColumnOpenSelected,
-]);
+actions!(
+    column_view,
+    [
+        ColumnNavigateUp,
+        ColumnNavigateDown,
+        ColumnNavigateLeft,
+        ColumnNavigateRight,
+        ColumnOpenSelected,
+    ]
+);
 
 /// Actions for the column view (public structs for external use)
 pub struct NavigateToPath(pub PathBuf);
-pub struct SelectColumnEntry { pub column: usize, pub entry: usize }
+pub struct SelectColumnEntry {
+    pub column: usize,
+    pub entry: usize,
+}
 pub struct NavigateUp;
 pub struct NavigateDown;
 pub struct NavigateLeft;
@@ -78,13 +84,23 @@ impl ColumnViewComponent {
     }
 
     /// Sets entries for a specific column
-    pub fn set_column_entries(&mut self, column_index: usize, entries: Vec<FileEntry>, cx: &mut Context<Self>) {
+    pub fn set_column_entries(
+        &mut self,
+        column_index: usize,
+        entries: Vec<FileEntry>,
+        cx: &mut Context<Self>,
+    ) {
         self.column_view.set_column_entries(column_index, entries);
         cx.notify();
     }
 
     /// Handles selection of an entry in a column
-    pub fn select_entry(&mut self, column_index: usize, entry_index: usize, cx: &mut Context<Self>) {
+    pub fn select_entry(
+        &mut self,
+        column_index: usize,
+        entry_index: usize,
+        cx: &mut Context<Self>,
+    ) {
         self.column_view.select(column_index, entry_index);
         cx.notify();
     }
@@ -142,25 +158,45 @@ impl ColumnViewComponent {
     }
 
     /// Handle up arrow key - move selection up in current column
-    fn handle_navigate_up(&mut self, _: &ColumnNavigateUp, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_navigate_up(
+        &mut self,
+        _: &ColumnNavigateUp,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.column_view.navigate_up();
         cx.notify();
     }
 
     /// Handle down arrow key - move selection down in current column
-    fn handle_navigate_down(&mut self, _: &ColumnNavigateDown, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_navigate_down(
+        &mut self,
+        _: &ColumnNavigateDown,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.column_view.navigate_down();
         cx.notify();
     }
 
     /// Handle left arrow key - move to parent column
-    fn handle_navigate_left(&mut self, _: &ColumnNavigateLeft, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_navigate_left(
+        &mut self,
+        _: &ColumnNavigateLeft,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.column_view.navigate_left();
         cx.notify();
     }
 
     /// Handle right arrow key - move into selected directory
-    fn handle_navigate_right(&mut self, _: &ColumnNavigateRight, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_navigate_right(
+        &mut self,
+        _: &ColumnNavigateRight,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if !self.column_view.navigate_right() {
             // If can't navigate right (no child column), try to open the selected directory
             if let Some(entry) = self.column_view.selected_entry() {
@@ -173,7 +209,12 @@ impl ColumnViewComponent {
     }
 
     /// Handle enter key - open selected item
-    fn handle_open_selected(&mut self, _: &ColumnOpenSelected, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_open_selected(
+        &mut self,
+        _: &ColumnOpenSelected,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let Some(entry) = self.column_view.selected_entry() {
             if entry.is_dir {
                 self.pending_navigation = Some(entry.path.clone());
@@ -222,10 +263,13 @@ impl Render for ColumnViewComponent {
             .on_action(cx.listener(Self::handle_navigate_left))
             .on_action(cx.listener(Self::handle_navigate_right))
             .on_action(cx.listener(Self::handle_open_selected))
-            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                view.close_context_menu();
-                cx.notify();
-            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.close_context_menu();
+                    cx.notify();
+                }),
+            )
             .child(
                 div()
                     .flex()
@@ -238,37 +282,31 @@ impl Render for ColumnViewComponent {
                     .text_xs()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(text_gray)
-                    .child(format!("{} columns", columns.len()))
+                    .child(format!("{} columns", columns.len())),
             )
             // Columns container with horizontal scroll
             .child(
                 div()
                     .flex_1()
                     .overflow_hidden()
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .h_full()
-                            .children(
-                                columns.iter().enumerate().map(|(col_idx, column)| {
-                                    render_column(
-                                        col_idx,
-                                        column,
-                                        column_width,
-                                        entity.clone(),
-                                        bg_dark,
-                                        border_color,
-                                        text_gray,
-                                        text_light,
-                                        hover_bg,
-                                        selected_bg,
-                                        folder_color,
-                                        folder_open_color,
-                                    )
-                                })
+                    .child(div().flex().flex_row().h_full().children(
+                        columns.iter().enumerate().map(|(col_idx, column)| {
+                            render_column(
+                                col_idx,
+                                column,
+                                column_width,
+                                entity.clone(),
+                                bg_dark,
+                                border_color,
+                                text_gray,
+                                text_light,
+                                hover_bg,
+                                selected_bg,
+                                folder_color,
+                                folder_open_color,
                             )
-                    )
+                        }),
+                    )),
             )
             .child(
                 div()
@@ -294,17 +332,19 @@ impl Render for ColumnViewComponent {
                                     .text_color(text_gray),
                             )
                             .child("Column View"),
-                    )
+                    ),
             )
             .when_some(context_menu_pos, |this, pos| {
                 let entity = cx.entity().clone();
-                let selected_entry = self.context_menu_column
+                let selected_entry = self
+                    .context_menu_column
                     .and_then(|col| self.context_menu_entry.map(|entry| (col, entry)))
                     .and_then(|(col, entry)| {
-                        self.column_view.column(col)
+                        self.column_view
+                            .column(col)
                             .and_then(|c| c.entries.get(entry).cloned())
                     });
-                
+
                 this.child(
                     div()
                         .absolute()
@@ -317,59 +357,89 @@ impl Render for ColumnViewComponent {
                         .rounded_lg()
                         .shadow_lg()
                         .py_1()
-                        .child(render_context_menu_item("folder-open", "Open", text_light, hover_bg, {
-                            let entity = entity.clone();
-                            let entry = selected_entry.clone();
-                            move |_window, cx| {
-                                if let Some(ref e) = entry {
-                                    if e.is_dir {
-                                        entity.update(cx, |view, cx| {
-                                            view.pending_navigation = Some(e.path.clone());
-                                            view.close_context_menu();
-                                            cx.notify();
-                                        });
+                        .child(render_context_menu_item(
+                            "folder-open",
+                            "Open",
+                            text_light,
+                            hover_bg,
+                            {
+                                let entity = entity.clone();
+                                let entry = selected_entry.clone();
+                                move |_window, cx| {
+                                    if let Some(ref e) = entry {
+                                        if e.is_dir {
+                                            entity.update(cx, |view, cx| {
+                                                view.pending_navigation = Some(e.path.clone());
+                                                view.close_context_menu();
+                                                cx.notify();
+                                            });
+                                        }
                                     }
                                 }
-                            }
-                        }))
+                            },
+                        ))
                         .child(render_context_menu_divider(border_subtle))
-                        .child(render_context_menu_item("copy", "Copy", text_light, hover_bg, {
-                            let entity = entity.clone();
-                            move |_window, cx| {
-                                entity.update(cx, |view, cx| {
-                                    view.close_context_menu();
-                                    cx.notify();
-                                });
-                            }
-                        }))
-                        .child(render_context_menu_item("clipboard-paste", "Paste", text_light, hover_bg, {
-                            let entity = entity.clone();
-                            move |_window, cx| {
-                                entity.update(cx, |view, cx| {
-                                    view.close_context_menu();
-                                    cx.notify();
-                                });
-                            }
-                        }))
-                        .child(render_context_menu_item("pen", "Rename", text_light, hover_bg, {
-                            let entity = entity.clone();
-                            move |_window, cx| {
-                                entity.update(cx, |view, cx| {
-                                    view.close_context_menu();
-                                    cx.notify();
-                                });
-                            }
-                        }))
+                        .child(render_context_menu_item(
+                            "copy",
+                            "Copy",
+                            text_light,
+                            hover_bg,
+                            {
+                                let entity = entity.clone();
+                                move |_window, cx| {
+                                    entity.update(cx, |view, cx| {
+                                        view.close_context_menu();
+                                        cx.notify();
+                                    });
+                                }
+                            },
+                        ))
+                        .child(render_context_menu_item(
+                            "clipboard-paste",
+                            "Paste",
+                            text_light,
+                            hover_bg,
+                            {
+                                let entity = entity.clone();
+                                move |_window, cx| {
+                                    entity.update(cx, |view, cx| {
+                                        view.close_context_menu();
+                                        cx.notify();
+                                    });
+                                }
+                            },
+                        ))
+                        .child(render_context_menu_item(
+                            "pen",
+                            "Rename",
+                            text_light,
+                            hover_bg,
+                            {
+                                let entity = entity.clone();
+                                move |_window, cx| {
+                                    entity.update(cx, |view, cx| {
+                                        view.close_context_menu();
+                                        cx.notify();
+                                    });
+                                }
+                            },
+                        ))
                         .child(render_context_menu_divider(border_subtle))
-                        .child(render_context_menu_item("trash-2", "Delete", gpui::rgb(0xf85149), hover_bg, {
-                            let entity = entity.clone();
-                            move |_window, cx| {
-                                entity.update(cx, |view, cx| {
-                                    view.close_context_menu();
-                                    cx.notify();
-                                });
-                            }
-                        })),
+                        .child(render_context_menu_item(
+                            "trash-2",
+                            "Delete",
+                            gpui::rgb(0xf85149),
+                            hover_bg,
+                            {
+                                let entity = entity.clone();
+                                move |_window, cx| {
+                                    entity.update(cx, |view, cx| {
+                                        view.close_context_menu();
+                                        cx.notify();
+                                    });
+                                }
+                            },
+                        )),
                 )
             })
     }
@@ -392,7 +462,8 @@ fn render_column(
     let entries = column.entries.clone();
     let selected_index = column.selected_index;
     let path = column.path.clone();
-    let column_name = path.file_name()
+    let column_name = path
+        .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("/")
         .to_string();
@@ -418,7 +489,7 @@ fn render_column(
                 .font_weight(gpui::FontWeight::SEMIBOLD)
                 .text_color(text_gray)
                 .truncate()
-                .child(column_name)
+                .child(column_name),
         )
         .child(
             div()
@@ -433,84 +504,96 @@ fn render_column(
                         .child("Empty")
                 })
                 .when(!entries.is_empty(), |this| {
-                    this.children(
-                        entries.iter().enumerate().map(|(entry_idx, entry)| {
-                            let is_selected = selected_index == Some(entry_idx);
-                            let is_dir = entry.is_dir;
-                            let name = entry.name.clone();
-                            let icon_name = get_file_icon(&name, is_dir);
-                            let icon_color = if is_dir {
-                                if is_selected { folder_open_color } else { folder_color }
+                    this.children(entries.iter().enumerate().map(|(entry_idx, entry)| {
+                        let is_selected = selected_index == Some(entry_idx);
+                        let is_dir = entry.is_dir;
+                        let name = entry.name.clone();
+                        let icon_name = get_file_icon(&name, is_dir);
+                        let icon_color = if is_dir {
+                            if is_selected {
+                                folder_open_color
                             } else {
-                                get_file_icon_color(&name)
-                            };
-                            let entity = entity.clone();
-                            let entity_for_ctx = entity.clone();
-                            let entry_path = entry.path.clone();
+                                folder_color
+                            }
+                        } else {
+                            get_file_icon_color(&name)
+                        };
+                        let entity = entity.clone();
+                        let entity_for_ctx = entity.clone();
+                        let entry_path = entry.path.clone();
 
-                            div()
-                                .id(SharedString::from(format!("col-{}-entry-{}", col_idx, entry_idx)))
-                                .h(px(28.0))
-                                .px_3()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .cursor_pointer()
-                                .when(is_selected, |s| s.bg(selected_bg))
-                                .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
-                                .on_click({
-                                    let entry_path = entry_path.clone();
-                                    let entity = entity.clone();
-                                    move |event, _window, cx| {
-                                        entity.update(cx, |view, cx| {
-                                            view.close_context_menu();
-                                            if event.click_count() == 2 && is_dir {
-                                                view.pending_navigation = Some(entry_path.clone());
-                                            } else {
-                                                view.column_view.select(col_idx, entry_idx);
-                                            }
-                                            cx.notify();
-                                        });
-                                    }
-                                })
-                                .on_mouse_down(MouseButton::Right, {
-                                    let entity = entity_for_ctx.clone();
-                                    move |event: &MouseDownEvent, _window, cx| {
-                                        entity.update(cx, |view, cx| {
+                        div()
+                            .id(SharedString::from(format!(
+                                "col-{}-entry-{}",
+                                col_idx, entry_idx
+                            )))
+                            .h(px(28.0))
+                            .px_3()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .cursor_pointer()
+                            .when(is_selected, |s| s.bg(selected_bg))
+                            .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
+                            .on_click({
+                                let entry_path = entry_path.clone();
+                                let entity = entity.clone();
+                                move |event, _window, cx| {
+                                    entity.update(cx, |view, cx| {
+                                        view.close_context_menu();
+                                        if event.click_count() == 2 && is_dir {
+                                            view.pending_navigation = Some(entry_path.clone());
+                                        } else {
                                             view.column_view.select(col_idx, entry_idx);
-                                            view.context_menu_position = Some(event.position);
-                                            view.context_menu_column = Some(col_idx);
-                                            view.context_menu_entry = Some(entry_idx);
-                                            cx.notify();
-                                        });
-                                    }
-                                })
-                                .child(
+                                        }
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            .on_mouse_down(MouseButton::Right, {
+                                let entity = entity_for_ctx.clone();
+                                move |event: &MouseDownEvent, _window, cx| {
+                                    entity.update(cx, |view, cx| {
+                                        view.column_view.select(col_idx, entry_idx);
+                                        view.context_menu_position = Some(event.position);
+                                        view.context_menu_column = Some(col_idx);
+                                        view.context_menu_entry = Some(entry_idx);
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            .child(
+                                svg()
+                                    .path(SharedString::from(format!(
+                                        "assets/icons/{}.svg",
+                                        icon_name
+                                    )))
+                                    .size(px(16.0))
+                                    .text_color(icon_color),
+                            )
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .text_xs()
+                                    .text_color(if is_selected {
+                                        gpui::rgb(0xffffff)
+                                    } else {
+                                        text_light
+                                    })
+                                    .truncate()
+                                    .child(name),
+                            )
+                            // Directory indicator
+                            .when(is_dir, |this| {
+                                this.child(
                                     svg()
-                                        .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                        .size(px(16.0))
-                                        .text_color(icon_color)
+                                        .path("assets/icons/chevron-right.svg")
+                                        .size(px(12.0))
+                                        .text_color(text_gray),
                                 )
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .text_xs()
-                                        .text_color(if is_selected { gpui::rgb(0xffffff) } else { text_light })
-                                        .truncate()
-                                        .child(name)
-                                )
-                                // Directory indicator
-                                .when(is_dir, |this| {
-                                    this.child(
-                                        svg()
-                                            .path("assets/icons/chevron-right.svg")
-                                            .size(px(12.0))
-                                            .text_color(text_gray)
-                                    )
-                                })
-                        })
-                    )
-                })
+                            })
+                    }))
+                }),
         )
 }
 
@@ -542,7 +625,10 @@ where
         })
         .child(
             svg()
-                .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                .path(SharedString::from(format!(
+                    "assets/icons/{}.svg",
+                    icon_name
+                )))
                 .size(px(14.0))
                 .text_color(text_color),
         )
@@ -550,11 +636,7 @@ where
 }
 
 fn render_context_menu_divider(color: gpui::Rgba) -> impl IntoElement {
-    div()
-        .h(px(1.0))
-        .mx_2()
-        .my_1()
-        .bg(color)
+    div().h(px(1.0)).mx_2().my_1().bg(color)
 }
 
 #[cfg(test)]

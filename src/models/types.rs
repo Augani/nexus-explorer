@@ -93,29 +93,35 @@ impl LinuxFilePermissions {
     /// Format permissions as rwxrwxrwx string
     pub fn format_mode(&self) -> String {
         let mut result = String::with_capacity(9);
-        
+
         // Owner permissions
         result.push(if self.mode & 0o400 != 0 { 'r' } else { '-' });
         result.push(if self.mode & 0o200 != 0 { 'w' } else { '-' });
         result.push(if self.mode & 0o100 != 0 { 'x' } else { '-' });
-        
+
         // Group permissions
         result.push(if self.mode & 0o040 != 0 { 'r' } else { '-' });
         result.push(if self.mode & 0o020 != 0 { 'w' } else { '-' });
         result.push(if self.mode & 0o010 != 0 { 'x' } else { '-' });
-        
+
         // Other permissions
         result.push(if self.mode & 0o004 != 0 { 'r' } else { '-' });
         result.push(if self.mode & 0o002 != 0 { 'w' } else { '-' });
         result.push(if self.mode & 0o001 != 0 { 'x' } else { '-' });
-        
+
         result
     }
 
     /// Format as full permission string like "-rwxr-xr-x owner group"
     pub fn format_full(&self) -> String {
         let type_char = '-';
-        format!("{}{} {} {}", type_char, self.format_mode(), self.owner, self.group)
+        format!(
+            "{}{} {} {}",
+            type_char,
+            self.format_mode(),
+            self.owner,
+            self.group
+        )
     }
 }
 
@@ -196,9 +202,7 @@ mod system_time_serde {
     where
         S: Serializer,
     {
-        let duration = time
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or(Duration::ZERO);
+        let duration = time.duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO);
         (duration.as_secs(), duration.subsec_nanos()).serialize(serializer)
     }
 
@@ -212,13 +216,7 @@ mod system_time_serde {
 }
 
 impl FileEntry {
-    pub fn new(
-        name: String,
-        path: PathBuf,
-        is_dir: bool,
-        size: u64,
-        modified: SystemTime,
-    ) -> Self {
+    pub fn new(name: String, path: PathBuf, is_dir: bool, size: u64, modified: SystemTime) -> Self {
         let file_type = if is_dir {
             FileType::Directory
         } else {
@@ -360,12 +358,12 @@ impl SortState {
     pub fn sort_entries(&self, entries: &mut [FileEntry]) {
         if self.directories_first {
             // Partition into directories and files, sort each group
-            let (mut dirs, mut files): (Vec<_>, Vec<_>) = 
+            let (mut dirs, mut files): (Vec<_>, Vec<_>) =
                 entries.iter().cloned().partition(|e| e.is_dir);
-            
+
             self.sort_by_column(&mut dirs);
             self.sort_by_column(&mut files);
-            
+
             // Combine back: directories first, then files
             let combined: Vec<_> = dirs.into_iter().chain(files).collect();
             entries.clone_from_slice(&combined);
@@ -376,7 +374,7 @@ impl SortState {
 
     fn sort_by_column(&self, entries: &mut [FileEntry]) {
         let direction = self.direction;
-        
+
         entries.sort_by(|a, b| {
             let ordering = match self.column {
                 SortColumn::Name => compare_names(&a.name, &b.name),
@@ -384,7 +382,7 @@ impl SortState {
                 SortColumn::Type => compare_types(a, b),
                 SortColumn::Size => a.size.cmp(&b.size),
             };
-            
+
             if direction == SortDirection::Descending {
                 ordering.reverse()
             } else {
@@ -412,7 +410,10 @@ fn compare_types(a: &FileEntry, b: &FileEntry) -> Ordering {
 
 /// Extract file extension for sorting
 fn get_extension(name: &str) -> &str {
-    name.rsplit('.').next().filter(|ext| *ext != name).unwrap_or("")
+    name.rsplit('.')
+        .next()
+        .filter(|ext| *ext != name)
+        .unwrap_or("")
 }
 
 #[cfg(test)]

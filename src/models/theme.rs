@@ -205,7 +205,12 @@ impl ShadowConfig {
             offset_y: 0.0,
             blur: 0.0,
             spread: 0.0,
-            color: Rgba { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
+            color: Rgba {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            },
         }
     }
 
@@ -219,7 +224,6 @@ impl ShadowConfig {
         }
     }
 }
-
 
 /// Helper to create Rgba from hex color
 pub fn rgba_from_hex(hex: u32) -> Rgba {
@@ -298,7 +302,6 @@ impl ThemeColors {
     }
 }
 
-
 impl Theme {
     /// Light theme - Clean, minimal light mode
     pub fn light() -> Self {
@@ -365,9 +368,27 @@ impl Theme {
                 corner_flourish: None,
                 divider_style: DividerStyle::Simple,
                 frame_style: FrameStyle::Simple,
-                shadow_sm: ShadowConfig::new(0.0, 1.0, 2.0, 0.0, rgba_from_hex_alpha(0x000000, 0.05)),
-                shadow_md: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.1)),
-                shadow_lg: ShadowConfig::new(0.0, 4.0, 8.0, 0.0, rgba_from_hex_alpha(0x000000, 0.15)),
+                shadow_sm: ShadowConfig::new(
+                    0.0,
+                    1.0,
+                    2.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.05),
+                ),
+                shadow_md: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.1),
+                ),
+                shadow_lg: ShadowConfig::new(
+                    0.0,
+                    4.0,
+                    8.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.15),
+                ),
                 shadow_glow: ShadowConfig::none(),
                 shadow_inner: ShadowConfig::none(),
                 bg_pattern: None,
@@ -441,9 +462,27 @@ impl Theme {
                 corner_flourish: None,
                 divider_style: DividerStyle::Simple,
                 frame_style: FrameStyle::Simple,
-                shadow_sm: ShadowConfig::new(0.0, 1.0, 2.0, 0.0, rgba_from_hex_alpha(0x000000, 0.2)),
-                shadow_md: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.3)),
-                shadow_lg: ShadowConfig::new(0.0, 4.0, 8.0, 0.0, rgba_from_hex_alpha(0x000000, 0.4)),
+                shadow_sm: ShadowConfig::new(
+                    0.0,
+                    1.0,
+                    2.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.2),
+                ),
+                shadow_md: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.3),
+                ),
+                shadow_lg: ShadowConfig::new(
+                    0.0,
+                    4.0,
+                    8.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.4),
+                ),
                 shadow_glow: ShadowConfig::none(),
                 shadow_inner: ShadowConfig::none(),
                 bg_pattern: None,
@@ -530,11 +569,41 @@ impl Theme {
                 }),
                 divider_style: DividerStyle::Ornate,
                 frame_style: FrameStyle::Ornate,
-                shadow_sm: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.3)),
-                shadow_md: ShadowConfig::new(0.0, 4.0, 8.0, 0.0, rgba_from_hex_alpha(0x000000, 0.4)),
-                shadow_lg: ShadowConfig::new(0.0, 8.0, 16.0, 0.0, rgba_from_hex_alpha(0x000000, 0.5)),
-                shadow_glow: ShadowConfig::new(0.0, 0.0, 16.0, 4.0, rgba_from_hex_alpha(0xd43f3f, 0.3)),
-                shadow_inner: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.2)),
+                shadow_sm: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.3),
+                ),
+                shadow_md: ShadowConfig::new(
+                    0.0,
+                    4.0,
+                    8.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.4),
+                ),
+                shadow_lg: ShadowConfig::new(
+                    0.0,
+                    8.0,
+                    16.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.5),
+                ),
+                shadow_glow: ShadowConfig::new(
+                    0.0,
+                    0.0,
+                    16.0,
+                    4.0,
+                    rgba_from_hex_alpha(0xd43f3f, 0.3),
+                ),
+                shadow_inner: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.2),
+                ),
                 bg_pattern: Some(BackgroundPattern::Volcanic),
                 bg_noise_opacity: 0.03,
             },
@@ -619,17 +688,46 @@ impl Theme {
                 }),
                 divider_style: DividerStyle::Gradient,
                 frame_style: FrameStyle::Beveled,
-                shadow_sm: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000020, 0.3)),
-                shadow_md: ShadowConfig::new(0.0, 4.0, 8.0, 0.0, rgba_from_hex_alpha(0x000020, 0.4)),
-                shadow_lg: ShadowConfig::new(0.0, 8.0, 16.0, 0.0, rgba_from_hex_alpha(0x000020, 0.5)),
-                shadow_glow: ShadowConfig::new(0.0, 0.0, 20.0, 6.0, rgba_from_hex_alpha(0x6bd4ff, 0.25)),
-                shadow_inner: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000020, 0.2)),
+                shadow_sm: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000020, 0.3),
+                ),
+                shadow_md: ShadowConfig::new(
+                    0.0,
+                    4.0,
+                    8.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000020, 0.4),
+                ),
+                shadow_lg: ShadowConfig::new(
+                    0.0,
+                    8.0,
+                    16.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000020, 0.5),
+                ),
+                shadow_glow: ShadowConfig::new(
+                    0.0,
+                    0.0,
+                    20.0,
+                    6.0,
+                    rgba_from_hex_alpha(0x6bd4ff, 0.25),
+                ),
+                shadow_inner: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000020, 0.2),
+                ),
                 bg_pattern: Some(BackgroundPattern::Crystalline),
                 bg_noise_opacity: 0.02,
             },
         }
     }
-
 
     /// Ancient Tome theme - Parchment and leather browns
     pub fn ancient_tome() -> Self {
@@ -710,11 +808,41 @@ impl Theme {
                 }),
                 divider_style: DividerStyle::Embossed,
                 frame_style: FrameStyle::Double,
-                shadow_sm: ShadowConfig::new(2.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.4)),
-                shadow_md: ShadowConfig::new(3.0, 3.0, 6.0, 0.0, rgba_from_hex_alpha(0x000000, 0.5)),
-                shadow_lg: ShadowConfig::new(4.0, 4.0, 12.0, 0.0, rgba_from_hex_alpha(0x000000, 0.6)),
-                shadow_glow: ShadowConfig::new(0.0, 0.0, 12.0, 2.0, rgba_from_hex_alpha(0xd4af37, 0.2)),
-                shadow_inner: ShadowConfig::new(1.0, 1.0, 2.0, 0.0, rgba_from_hex_alpha(0x000000, 0.3)),
+                shadow_sm: ShadowConfig::new(
+                    2.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.4),
+                ),
+                shadow_md: ShadowConfig::new(
+                    3.0,
+                    3.0,
+                    6.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.5),
+                ),
+                shadow_lg: ShadowConfig::new(
+                    4.0,
+                    4.0,
+                    12.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.6),
+                ),
+                shadow_glow: ShadowConfig::new(
+                    0.0,
+                    0.0,
+                    12.0,
+                    2.0,
+                    rgba_from_hex_alpha(0xd4af37, 0.2),
+                ),
+                shadow_inner: ShadowConfig::new(
+                    1.0,
+                    1.0,
+                    2.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.3),
+                ),
                 bg_pattern: Some(BackgroundPattern::Parchment),
                 bg_noise_opacity: 0.05,
             },
@@ -799,11 +927,41 @@ impl Theme {
                 }),
                 divider_style: DividerStyle::Runic,
                 frame_style: FrameStyle::Inset,
-                shadow_sm: ShadowConfig::new(0.0, 2.0, 6.0, 0.0, rgba_from_hex_alpha(0x000000, 0.5)),
-                shadow_md: ShadowConfig::new(0.0, 4.0, 12.0, 0.0, rgba_from_hex_alpha(0x000000, 0.6)),
-                shadow_lg: ShadowConfig::new(0.0, 8.0, 24.0, 0.0, rgba_from_hex_alpha(0x000000, 0.7)),
-                shadow_glow: ShadowConfig::new(0.0, 0.0, 24.0, 8.0, rgba_from_hex_alpha(0x9966ff, 0.4)),
-                shadow_inner: ShadowConfig::new(0.0, 2.0, 6.0, 0.0, rgba_from_hex_alpha(0x000000, 0.4)),
+                shadow_sm: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    6.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.5),
+                ),
+                shadow_md: ShadowConfig::new(
+                    0.0,
+                    4.0,
+                    12.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.6),
+                ),
+                shadow_lg: ShadowConfig::new(
+                    0.0,
+                    8.0,
+                    24.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.7),
+                ),
+                shadow_glow: ShadowConfig::new(
+                    0.0,
+                    0.0,
+                    24.0,
+                    8.0,
+                    rgba_from_hex_alpha(0x9966ff, 0.4),
+                ),
+                shadow_inner: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    6.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.4),
+                ),
                 bg_pattern: Some(BackgroundPattern::Mystical),
                 bg_noise_opacity: 0.04,
             },
@@ -883,11 +1041,41 @@ impl Theme {
                 }),
                 divider_style: DividerStyle::Gradient,
                 frame_style: FrameStyle::Simple,
-                shadow_sm: ShadowConfig::new(0.0, 2.0, 4.0, 0.0, rgba_from_hex_alpha(0x000000, 0.25)),
-                shadow_md: ShadowConfig::new(0.0, 4.0, 8.0, 0.0, rgba_from_hex_alpha(0x000000, 0.35)),
-                shadow_lg: ShadowConfig::new(0.0, 8.0, 16.0, 0.0, rgba_from_hex_alpha(0x000000, 0.45)),
-                shadow_glow: ShadowConfig::new(0.0, 0.0, 16.0, 4.0, rgba_from_hex_alpha(0xc0c0c0, 0.2)),
-                shadow_inner: ShadowConfig::new(0.0, 1.0, 3.0, 0.0, rgba_from_hex_alpha(0x000000, 0.2)),
+                shadow_sm: ShadowConfig::new(
+                    0.0,
+                    2.0,
+                    4.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.25),
+                ),
+                shadow_md: ShadowConfig::new(
+                    0.0,
+                    4.0,
+                    8.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.35),
+                ),
+                shadow_lg: ShadowConfig::new(
+                    0.0,
+                    8.0,
+                    16.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.45),
+                ),
+                shadow_glow: ShadowConfig::new(
+                    0.0,
+                    0.0,
+                    16.0,
+                    4.0,
+                    rgba_from_hex_alpha(0xc0c0c0, 0.2),
+                ),
+                shadow_inner: ShadowConfig::new(
+                    0.0,
+                    1.0,
+                    3.0,
+                    0.0,
+                    rgba_from_hex_alpha(0x000000, 0.2),
+                ),
                 bg_pattern: Some(BackgroundPattern::Organic),
                 bg_noise_opacity: 0.02,
             },
@@ -921,7 +1109,6 @@ impl Theme {
     }
 }
 
-
 /// Theme manager for handling theme selection and persistence
 #[derive(Clone)]
 pub struct ThemeManager {
@@ -944,7 +1131,9 @@ impl ThemeManager {
 
     pub fn current_theme(&self) -> &Theme {
         self.themes.get(&self.current_id).unwrap_or_else(|| {
-            self.themes.get(&ThemeId::DragonForge).expect("Default theme must exist")
+            self.themes
+                .get(&ThemeId::DragonForge)
+                .expect("Default theme must exist")
         })
     }
 
@@ -971,17 +1160,17 @@ impl ThemeManager {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
             .join("nexus-explorer");
-        
+
         std::fs::create_dir_all(&config_dir)?;
-        
+
         let config_path = config_dir.join("theme.json");
         let config = ThemeConfig {
             theme_id: self.current_id,
         };
-        
+
         let json = serde_json::to_string_pretty(&config)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        
+
         std::fs::write(config_path, json)
     }
 
@@ -991,16 +1180,16 @@ impl ThemeManager {
             .unwrap_or_else(|| std::path::PathBuf::from("."))
             .join("nexus-explorer")
             .join("theme.json");
-        
+
         let mut manager = Self::new();
-        
+
         if config_path.exists() {
             let json = std::fs::read_to_string(config_path)?;
             if let Ok(config) = serde_json::from_str::<ThemeConfig>(&json) {
                 manager.current_id = config.theme_id;
             }
         }
-        
+
         Ok(manager)
     }
 }
@@ -1095,13 +1284,13 @@ mod tests {
         #[test]
         fn prop_theme_color_completeness(theme_id in arb_theme_id()) {
             let theme = Theme::from_id(theme_id);
-            
+
             prop_assert!(
                 theme.colors.is_complete(),
                 "Theme {:?} must have complete color definitions",
                 theme_id
             );
-            
+
             prop_assert!(
                 theme.colors.bg_primary.a > 0.0,
                 "Theme {:?} must have bg_primary set",
@@ -1127,15 +1316,15 @@ mod tests {
         #[test]
         fn prop_theme_persistence_round_trip(theme_id in arb_theme_id()) {
             let mut manager = ThemeManager::new();
-            
+
             manager.set_theme(theme_id);
-            
+
             prop_assert_eq!(
                 manager.current_id(),
                 theme_id,
                 "Theme ID should match after setting"
             );
-            
+
             // Verify we can retrieve the theme
             let theme = manager.current_theme();
             prop_assert_eq!(
@@ -1153,7 +1342,7 @@ mod tests {
         #[test]
         fn prop_theme_application_consistency(theme_id in arb_theme_id()) {
             let theme = Theme::from_id(theme_id);
-            
+
             // Typography must have valid font sizes
             prop_assert!(
                 theme.typography.size_base > 0.0,
@@ -1170,7 +1359,7 @@ mod tests {
                 "Theme {:?} size_base should be smaller than size_lg",
                 theme_id
             );
-            
+
             // Decorations must have valid border radii
             prop_assert!(
                 theme.decorations.border_radius_sm >= 0.0,
@@ -1190,7 +1379,6 @@ mod tests {
         }
     }
 }
-
 
 // ============================================================================
 // Background Effects Rendering
@@ -1297,32 +1485,32 @@ impl Theme {
     pub fn content_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_primary;
         let void = self.colors.bg_void;
-        
+
         let mut effect = BackgroundEffect::solid(base)
             .with_gradient(GradientConfig::vertical(
                 rgba_from_hex_alpha(rgba_to_hex(&void), 0.3),
                 rgba_from_hex_alpha(rgba_to_hex(&base), 1.0),
             ))
             .with_noise(self.decorations.bg_noise_opacity);
-        
+
         if let Some(pattern) = self.decorations.bg_pattern {
             effect = effect.with_pattern(pattern);
         }
-        
+
         effect
     }
 
     /// Get the background effect for sidebar panels
     pub fn sidebar_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_secondary;
-        
-        let mut effect = BackgroundEffect::solid(base)
-            .with_noise(self.decorations.bg_noise_opacity * 0.5);
-        
+
+        let mut effect =
+            BackgroundEffect::solid(base).with_noise(self.decorations.bg_noise_opacity * 0.5);
+
         if let Some(pattern) = self.decorations.bg_pattern {
             effect = effect.with_pattern(pattern);
         }
-        
+
         effect
     }
 
@@ -1330,7 +1518,7 @@ impl Theme {
     pub fn toolbar_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_secondary;
         let tertiary = self.colors.bg_tertiary;
-        
+
         BackgroundEffect::solid(base)
             .with_gradient(GradientConfig::vertical(tertiary, base))
             .with_noise(self.decorations.bg_noise_opacity * 0.3)
@@ -1339,15 +1527,15 @@ impl Theme {
     /// Get the background effect for cards and elevated surfaces
     pub fn card_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_tertiary;
-        
-        let mut effect = BackgroundEffect::solid(base)
-            .with_noise(self.decorations.bg_noise_opacity * 0.5);
-        
+
+        let mut effect =
+            BackgroundEffect::solid(base).with_noise(self.decorations.bg_noise_opacity * 0.5);
+
         // Add subtle glow for RPG effect
         if self.decorations.use_ornate_borders {
             effect = effect.with_glow(self.colors.accent_glow, 0.1);
         }
-        
+
         effect
     }
 
@@ -1372,8 +1560,12 @@ impl BackgroundPattern {
     pub fn overlay_color(&self, theme: &Theme) -> Rgba {
         match self {
             BackgroundPattern::None => rgba_from_hex_alpha(0x000000, 0.0),
-            BackgroundPattern::Dots => rgba_from_hex_alpha(rgba_to_hex(&theme.colors.text_muted), 0.05),
-            BackgroundPattern::Grid => rgba_from_hex_alpha(rgba_to_hex(&theme.colors.border_subtle), 0.08),
+            BackgroundPattern::Dots => {
+                rgba_from_hex_alpha(rgba_to_hex(&theme.colors.text_muted), 0.05)
+            }
+            BackgroundPattern::Grid => {
+                rgba_from_hex_alpha(rgba_to_hex(&theme.colors.border_subtle), 0.08)
+            }
             BackgroundPattern::Noise => rgba_from_hex_alpha(0x808080, 0.03),
             BackgroundPattern::Parchment => rgba_from_hex_alpha(0xd4c4a8, 0.05),
             BackgroundPattern::Leather => rgba_from_hex_alpha(0x8b4513, 0.04),
@@ -1463,25 +1655,25 @@ impl OrnateBorderConfig {
 pub mod flourish_paths {
     /// Simple curved corner flourish
     pub const CURVED: &str = "M0,0 Q8,0 8,8 L8,16 Q8,8 16,8 L24,8";
-    
+
     /// Diamond-shaped corner accent
     pub const DIAMOND: &str = "M0,8 L8,0 L16,8 L8,16 Z";
-    
+
     /// Elegant scroll flourish
     pub const SCROLL: &str = "M0,0 C4,0 8,4 8,8 C8,4 12,0 16,0";
-    
+
     /// Mystical swirl pattern
     pub const SWIRL: &str = "M0,12 Q6,6 12,0 Q6,6 0,12";
-    
+
     /// Organic vine-like flourish
     pub const VINE: &str = "M0,16 C8,16 16,8 16,0 C16,8 24,16 32,16";
-    
+
     /// Celtic knot corner
     pub const CELTIC: &str = "M0,0 L8,8 L0,16 M8,0 L0,8 L8,16";
-    
+
     /// Simple bracket corner
     pub const BRACKET: &str = "M0,12 L0,4 Q0,0 4,0 L12,0";
-    
+
     /// Ornate medieval corner
     pub const MEDIEVAL: &str = "M0,0 Q4,4 0,8 Q4,4 8,8 Q4,4 8,0 Q4,4 0,0";
 }
@@ -1581,34 +1773,26 @@ impl Theme {
     /// Get divider configuration for section separators
     pub fn section_divider(&self) -> DividerConfig {
         match self.decorations.divider_style {
-            DividerStyle::Simple => DividerConfig::simple(
-                self.colors.border_subtle,
-                1.0,
-            ),
-            DividerStyle::Ornate => DividerConfig::ornate(
-                self.colors.border_default,
-                self.colors.accent_secondary,
-            ),
+            DividerStyle::Simple => DividerConfig::simple(self.colors.border_subtle, 1.0),
+            DividerStyle::Ornate => {
+                DividerConfig::ornate(self.colors.border_default, self.colors.accent_secondary)
+            }
             DividerStyle::Gradient => DividerConfig {
                 style: DividerStyle::Gradient,
                 color: self.colors.accent_primary,
                 thickness: 1.0,
                 ornament_color: None,
             },
-            DividerStyle::Dashed => DividerConfig::simple(
-                self.colors.border_default,
-                1.0,
-            ),
+            DividerStyle::Dashed => DividerConfig::simple(self.colors.border_default, 1.0),
             DividerStyle::Embossed => DividerConfig {
                 style: DividerStyle::Embossed,
                 color: self.colors.border_emphasis,
                 thickness: 2.0,
                 ornament_color: Some(self.colors.bg_tertiary),
             },
-            DividerStyle::Runic => DividerConfig::ornate(
-                self.colors.accent_primary,
-                self.colors.accent_glow,
-            ),
+            DividerStyle::Runic => {
+                DividerConfig::ornate(self.colors.accent_primary, self.colors.accent_glow)
+            }
         }
     }
 }
@@ -1638,7 +1822,12 @@ impl FrameConfig {
     }
 
     /// Create a double-line medieval frame
-    pub fn double(border_width: f32, outer_color: Rgba, inner_color: Rgba, corner_radius: f32) -> Self {
+    pub fn double(
+        border_width: f32,
+        outer_color: Rgba,
+        inner_color: Rgba,
+        corner_radius: f32,
+    ) -> Self {
         Self {
             style: FrameStyle::Double,
             border_width,
@@ -1673,7 +1862,8 @@ impl Theme {
                 self.colors.border_default,
                 self.colors.border_subtle,
                 self.decorations.border_radius_md,
-            ).with_shadow(self.decorations.shadow_md.clone()),
+            )
+            .with_shadow(self.decorations.shadow_md.clone()),
             FrameStyle::Ornate => base.with_shadow(self.decorations.shadow_glow.clone()),
             FrameStyle::Beveled => FrameConfig {
                 style: FrameStyle::Beveled,
@@ -1700,7 +1890,8 @@ impl Theme {
             self.decorations.border_width,
             self.colors.border_subtle,
             self.decorations.border_radius_md,
-        ).with_shadow(self.decorations.shadow_sm.clone())
+        )
+        .with_shadow(self.decorations.shadow_sm.clone())
     }
 
     /// Get frame configuration for modals/dialogs
@@ -1709,22 +1900,21 @@ impl Theme {
             self.decorations.border_width,
             self.colors.border_emphasis,
             self.decorations.border_radius_lg,
-        ).with_shadow(self.decorations.shadow_lg.clone())
+        )
+        .with_shadow(self.decorations.shadow_lg.clone())
     }
 }
 
 impl Theme {
     /// Get border configuration for panels
     pub fn panel_border(&self) -> OrnateBorderConfig {
-        let mut config = OrnateBorderConfig::simple(
-            self.decorations.border_width,
-            self.colors.border_default,
-        );
+        let mut config =
+            OrnateBorderConfig::simple(self.decorations.border_width, self.colors.border_default);
 
         if self.decorations.use_ornate_borders {
             config.style = self.decorations.frame_style;
             config.corner_flourish = self.decorations.corner_flourish.clone();
-            
+
             // Add subtle glow for ornate borders
             config = config.with_glow(self.colors.accent_glow, 8.0);
         }
@@ -1906,16 +2096,16 @@ pub fn save_theme_selection(id: ThemeId) {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("nexus-explorer");
-    
+
     if std::fs::create_dir_all(&config_dir).is_err() {
         return;
     }
-    
+
     let config_path = config_dir.join("theme.json");
     let config = serde_json::json!({
         "theme_id": id
     });
-    
+
     if let Ok(json) = serde_json::to_string_pretty(&config) {
         let _ = std::fs::write(config_path, json);
     }
@@ -1927,7 +2117,7 @@ pub fn load_theme_selection() -> ThemeId {
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("nexus-explorer")
         .join("theme.json");
-    
+
     if config_path.exists() {
         if let Ok(json) = std::fs::read_to_string(&config_path) {
             if let Ok(config) = serde_json::from_str::<serde_json::Value>(&json) {
@@ -1939,6 +2129,6 @@ pub fn load_theme_selection() -> ThemeId {
             }
         }
     }
-    
+
     ThemeId::default()
 }

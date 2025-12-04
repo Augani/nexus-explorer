@@ -22,8 +22,18 @@ pub struct CellStyle {
 impl Default for CellStyle {
     fn default() -> Self {
         Self {
-            foreground: Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 },
-            background: Rgba { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
+            foreground: Rgba {
+                r: 0.96,
+                g: 0.91,
+                b: 0.86,
+                a: 1.0,
+            },
+            background: Rgba {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            },
             bold: false,
             italic: false,
             underline: false,
@@ -60,7 +70,6 @@ impl CellStyle {
         self
     }
 }
-
 
 /// A single cell in the terminal grid
 #[derive(Clone, Debug)]
@@ -169,7 +178,6 @@ impl TerminalLine {
         self.cells.resize_with(cols, TerminalCell::default);
     }
 }
-
 
 /// Cursor position in the terminal
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -299,7 +307,6 @@ impl TerminalState {
         self.scrollback_lines()
     }
 
-
     pub fn set_running(&mut self, running: bool) {
         self.is_running = running;
     }
@@ -413,7 +420,6 @@ impl TerminalState {
             self.cursor.col -= 1;
         }
     }
-
 
     /// Scroll the terminal up by one line
     pub fn scroll_up(&mut self) {
@@ -543,7 +549,6 @@ impl TerminalState {
             line.clear_to(self.cursor.col + 1);
         }
     }
-
 
     /// Scroll viewport up (view older content)
     pub fn scroll_viewport_up(&mut self, lines: usize) {
@@ -713,9 +718,12 @@ mod tests {
 
     #[test]
     fn test_cell_style() {
-        let style = CellStyle::default()
-            .with_bold(true)
-            .with_foreground(Rgba { r: 1.0, g: 0.0, b: 0.0, a: 1.0 });
+        let style = CellStyle::default().with_bold(true).with_foreground(Rgba {
+            r: 1.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        });
         assert!(style.bold);
         assert_eq!(style.foreground.r, 1.0);
     }

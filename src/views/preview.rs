@@ -230,10 +230,13 @@ impl Preview {
             Ok(content) => {
                 let line_count = content.lines().count();
                 let language = extension.and_then(|ext| detect_language(&ext));
-                
+
                 // Limit content size for preview
                 let preview_content = if content.len() > 50000 {
-                    format!("{}...\n\n[Content truncated - file too large]", &content[..50000])
+                    format!(
+                        "{}...\n\n[Content truncated - file too large]",
+                        &content[..50000]
+                    )
                 } else {
                     content
                 };
@@ -283,7 +286,6 @@ impl Preview {
     }
 }
 
-
 /// Calculate directory statistics
 pub fn calculate_directory_stats(path: &Path) -> std::io::Result<(usize, u64, usize, usize)> {
     let mut item_count = 0;
@@ -320,16 +322,88 @@ fn is_text_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
         Some(
-            "txt" | "md" | "rs" | "js" | "ts" | "jsx" | "tsx" | "py" | "rb" | "go" | "java"
-                | "c" | "cpp" | "h" | "hpp" | "css" | "scss" | "sass" | "less" | "html"
-                | "htm" | "xml" | "json" | "yaml" | "yml" | "toml" | "ini" | "cfg" | "conf"
-                | "sh" | "bash" | "zsh" | "fish" | "ps1" | "bat" | "cmd" | "sql" | "graphql"
-                | "vue" | "svelte" | "astro" | "php" | "swift" | "kt" | "kts" | "scala"
-                | "clj" | "cljs" | "ex" | "exs" | "erl" | "hrl" | "hs" | "ml" | "mli"
-                | "fs" | "fsx" | "r" | "R" | "jl" | "lua" | "vim" | "el" | "lisp" | "scm"
-                | "rkt" | "pl" | "pm" | "t" | "awk" | "sed" | "makefile" | "cmake"
-                | "dockerfile" | "gitignore" | "gitattributes" | "editorconfig" | "env"
-                | "lock" | "log" | "csv" | "tsv"
+            "txt"
+                | "md"
+                | "rs"
+                | "js"
+                | "ts"
+                | "jsx"
+                | "tsx"
+                | "py"
+                | "rb"
+                | "go"
+                | "java"
+                | "c"
+                | "cpp"
+                | "h"
+                | "hpp"
+                | "css"
+                | "scss"
+                | "sass"
+                | "less"
+                | "html"
+                | "htm"
+                | "xml"
+                | "json"
+                | "yaml"
+                | "yml"
+                | "toml"
+                | "ini"
+                | "cfg"
+                | "conf"
+                | "sh"
+                | "bash"
+                | "zsh"
+                | "fish"
+                | "ps1"
+                | "bat"
+                | "cmd"
+                | "sql"
+                | "graphql"
+                | "vue"
+                | "svelte"
+                | "astro"
+                | "php"
+                | "swift"
+                | "kt"
+                | "kts"
+                | "scala"
+                | "clj"
+                | "cljs"
+                | "ex"
+                | "exs"
+                | "erl"
+                | "hrl"
+                | "hs"
+                | "ml"
+                | "mli"
+                | "fs"
+                | "fsx"
+                | "r"
+                | "R"
+                | "jl"
+                | "lua"
+                | "vim"
+                | "el"
+                | "lisp"
+                | "scm"
+                | "rkt"
+                | "pl"
+                | "pm"
+                | "t"
+                | "awk"
+                | "sed"
+                | "makefile"
+                | "cmake"
+                | "dockerfile"
+                | "gitignore"
+                | "gitattributes"
+                | "editorconfig"
+                | "env"
+                | "lock"
+                | "log"
+                | "csv"
+                | "tsv"
         )
     )
 }
@@ -338,7 +412,12 @@ fn is_text_extension(ext: Option<&str>) -> bool {
 fn is_likely_text_file(path: &Path) -> bool {
     if let Ok(data) = fs::read(path) {
         let sample: Vec<u8> = data.into_iter().take(512).collect();
-        !sample.contains(&0) && sample.iter().filter(|&&b| b < 32 && b != 9 && b != 10 && b != 13).count() < sample.len() / 10
+        !sample.contains(&0)
+            && sample
+                .iter()
+                .filter(|&&b| b < 32 && b != 9 && b != 10 && b != 13)
+                .count()
+                < sample.len() / 10
     } else {
         false
     }
@@ -425,36 +504,36 @@ pub fn format_size(size: u64) -> String {
 /// Format date for display
 pub fn format_date(time: SystemTime) -> String {
     use std::time::UNIX_EPOCH;
-    
+
     let duration = time.duration_since(UNIX_EPOCH).unwrap_or_default();
     let secs = duration.as_secs();
-    
+
     // Simple date formatting
     let days_since_epoch = secs / 86400;
     let years = 1970 + (days_since_epoch / 365);
     let remaining_days = days_since_epoch % 365;
     let month = (remaining_days / 30) + 1;
     let day = (remaining_days % 30) + 1;
-    
+
     format!("{:04}-{:02}-{:02}", years, month.min(12), day.min(31))
 }
 
 /// Format hex dump for display
 pub fn format_hex_dump(bytes: &[u8]) -> Vec<(String, String, String)> {
     let mut lines = Vec::new();
-    
+
     for (i, chunk) in bytes.chunks(16).enumerate() {
         let offset = format!("{:08X}", i * 16);
-        
+
         let hex: String = chunk
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
             .join(" ");
-        
+
         // Pad hex to 48 chars (16 bytes * 3 chars each - 1 for last space)
         let hex_padded = format!("{:<47}", hex);
-        
+
         let ascii: String = chunk
             .iter()
             .map(|&b| {
@@ -465,10 +544,10 @@ pub fn format_hex_dump(bytes: &[u8]) -> Vec<(String, String, String)> {
                 }
             })
             .collect();
-        
+
         lines.push((offset, hex_padded, ascii));
     }
-    
+
     lines
 }
 
@@ -544,36 +623,33 @@ impl Render for PreviewView {
                             .child("PREVIEW"),
                     )
                     .child(
-                        div()
-                            .flex()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .w(px(24.0))
-                                    .h(px(24.0))
-                                    .rounded_md()
-                                    .bg(theme.bg_hover)
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .cursor_pointer()
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(text_gray)
-                                            .child("×"),
-                                    ),
-                            ),
+                        div().flex().gap_2().child(
+                            div()
+                                .w(px(24.0))
+                                .h(px(24.0))
+                                .rounded_md()
+                                .bg(theme.bg_hover)
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .cursor_pointer()
+                                .child(div().text_xs().text_color(text_gray).child("×")),
+                        ),
                     ),
             )
             // Metadata header
-            .child(self.render_metadata_header(bg_header, border_color, text_light, text_gray, accent))
+            .child(self.render_metadata_header(
+                bg_header,
+                border_color,
+                text_light,
+                text_gray,
+                accent,
+            ))
             .child(self.render_content(bg_dark, text_light, text_gray, accent))
             // Bottom info bar
             .child(self.render_info_bar(bg_dark, border_color, text_gray))
     }
 }
-
 
 impl PreviewView {
     fn render_metadata_header(
@@ -585,7 +661,7 @@ impl PreviewView {
         accent: gpui::Rgba,
     ) -> impl IntoElement {
         let metadata = self.preview.metadata();
-        
+
         div()
             .bg(bg_header)
             .border_b_1()
@@ -621,21 +697,17 @@ impl PreviewView {
                                     ),
                             )
                             .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(text_gray)
-                                    .mt_0p5()
-                                    .child(
-                                        metadata
-                                            .map(|m| {
-                                                if m.is_dir {
-                                                    m.file_type.clone()
-                                                } else {
-                                                    format!("{} • {}", format_size(m.size), m.file_type)
-                                                }
-                                            })
-                                            .unwrap_or_default(),
-                                    ),
+                                div().text_xs().text_color(text_gray).mt_0p5().child(
+                                    metadata
+                                        .map(|m| {
+                                            if m.is_dir {
+                                                m.file_type.clone()
+                                            } else {
+                                                format!("{} • {}", format_size(m.size), m.file_type)
+                                            }
+                                        })
+                                        .unwrap_or_default(),
+                                ),
                             ),
                     ),
             )
@@ -643,11 +715,7 @@ impl PreviewView {
     }
 
     fn render_file_icon(&self, text_gray: gpui::Rgba) -> impl IntoElement {
-        let is_dir = self
-            .preview
-            .metadata()
-            .map(|m| m.is_dir)
-            .unwrap_or(false);
+        let is_dir = self.preview.metadata().map(|m| m.is_dir).unwrap_or(false);
 
         let icon_path = if is_dir {
             "assets/icons/folder.svg"
@@ -655,10 +723,7 @@ impl PreviewView {
             "assets/icons/file.svg"
         };
 
-        svg()
-            .path(icon_path)
-            .size(px(32.0))
-            .text_color(text_gray)
+        svg().path(icon_path).size(px(32.0)).text_color(text_gray)
     }
 
     fn render_metadata_details(
@@ -680,41 +745,29 @@ impl PreviewView {
                         .flex()
                         .gap_4()
                         .child(
-                            div()
-                                .flex()
-                                .gap_1()
-                                .child("Size:")
-                                .child(
-                                    div()
-                                        .text_color(gpui::rgb(0xc9d1d9))
-                                        .child(format_size(meta.size)),
-                                ),
+                            div().flex().gap_1().child("Size:").child(
+                                div()
+                                    .text_color(gpui::rgb(0xc9d1d9))
+                                    .child(format_size(meta.size)),
+                            ),
                         )
                         .when_some(meta.modified, |this, modified| {
                             this.child(
-                                div()
-                                    .flex()
-                                    .gap_1()
-                                    .child("Modified:")
-                                    .child(
-                                        div()
-                                            .text_color(gpui::rgb(0xc9d1d9))
-                                            .child(format_date(modified)),
-                                    ),
+                                div().flex().gap_1().child("Modified:").child(
+                                    div()
+                                        .text_color(gpui::rgb(0xc9d1d9))
+                                        .child(format_date(modified)),
+                                ),
                             )
                         }),
                 )
                 .when(!meta.permissions.is_empty(), |this| {
                     this.child(
-                        div()
-                            .flex()
-                            .gap_1()
-                            .child("Permissions:")
-                            .child(
-                                div()
-                                    .text_color(gpui::rgb(0xc9d1d9))
-                                    .child(meta.permissions.clone()),
-                            ),
+                        div().flex().gap_1().child("Permissions:").child(
+                            div()
+                                .text_color(gpui::rgb(0xc9d1d9))
+                                .child(meta.permissions.clone()),
+                        ),
                     )
                 })
             })
@@ -722,24 +775,22 @@ impl PreviewView {
                 matches!(self.preview.content(), PreviewContent::Text { .. }),
                 |this| {
                     this.child(
-                        div()
-                            .mt_2()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .gap_2()
-                                    .py_1p5()
-                                    .px_3()
-                                    .bg(accent)
-                                    .rounded_md()
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::MEDIUM)
-                                    .text_color(gpui::white())
-                                    .cursor_pointer()
-                                    .child("Explain Code"),
-                            ),
+                        div().mt_2().child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .gap_2()
+                                .py_1p5()
+                                .px_3()
+                                .bg(accent)
+                                .rounded_md()
+                                .text_xs()
+                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .text_color(gpui::white())
+                                .cursor_pointer()
+                                .child("Explain Code"),
+                        ),
                     )
                 },
             )
@@ -756,18 +807,39 @@ impl PreviewView {
             PreviewContent::None => self.render_empty_state(text_gray),
             PreviewContent::Loading => self.render_loading_state(text_gray),
             PreviewContent::Error { message } => self.render_error_state(message, text_gray),
-            PreviewContent::Text { content, language, line_count } => {
-                self.render_text_content(content, language.as_deref(), *line_count, text_light, text_gray)
-            }
-            PreviewContent::Image { path, dimensions, format } => {
-                self.render_image_content(path, dimensions.as_ref(), format, text_gray)
-            }
+            PreviewContent::Text {
+                content,
+                language,
+                line_count,
+            } => self.render_text_content(
+                content,
+                language.as_deref(),
+                *line_count,
+                text_light,
+                text_gray,
+            ),
+            PreviewContent::Image {
+                path,
+                dimensions,
+                format,
+            } => self.render_image_content(path, dimensions.as_ref(), format, text_gray),
             PreviewContent::HexDump { bytes, total_size } => {
                 self.render_hex_dump(bytes, *total_size, text_light, text_gray)
             }
-            PreviewContent::Directory { item_count, total_size, subdir_count, file_count } => {
-                self.render_directory_stats(*item_count, *total_size, *subdir_count, *file_count, text_light, text_gray, accent)
-            }
+            PreviewContent::Directory {
+                item_count,
+                total_size,
+                subdir_count,
+                file_count,
+            } => self.render_directory_stats(
+                *item_count,
+                *total_size,
+                *subdir_count,
+                *file_count,
+                text_light,
+                text_gray,
+                accent,
+            ),
         };
 
         div()
@@ -793,11 +865,7 @@ impl PreviewView {
                     .text_color(text_gray)
                     .mb_4(),
             )
-            .child(
-                div()
-                    .text_sm()
-                    .child("Select a file to preview"),
-            )
+            .child(div().text_sm().child("Select a file to preview"))
     }
 
     fn render_loading_state(&self, text_gray: gpui::Rgba) -> gpui::Div {
@@ -871,28 +939,22 @@ impl PreviewView {
                             .border_r_1()
                             .border_color(gpui::rgb(0x30363d))
                             .mr_3()
-                            .children(
-                                (0..lines.len()).map(|i| {
-                                    div()
-                                        .text_right()
-                                        .min_w(px((line_number_width * 8) as f32))
-                                        .child(format!("{}", i + 1))
-                                }),
-                            ),
+                            .children((0..lines.len()).map(|i| {
+                                div()
+                                    .text_right()
+                                    .min_w(px((line_number_width * 8) as f32))
+                                    .child(format!("{}", i + 1))
+                            })),
                     )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .text_color(text_light)
-                            .children(
-                                lines.into_iter().map(|line| {
-                                    div()
-                                        .whitespace_nowrap()
-                                        .child(if line.is_empty() { " ".to_string() } else { line })
-                                }),
-                            ),
-                    ),
+                    .child(div().flex().flex_col().text_color(text_light).children(
+                        lines.into_iter().map(|line| {
+                            div().whitespace_nowrap().child(if line.is_empty() {
+                                " ".to_string()
+                            } else {
+                                line
+                            })
+                        }),
+                    )),
             )
     }
 
@@ -905,7 +967,7 @@ impl PreviewView {
     ) -> gpui::Div {
         let dims = dimensions.copied();
         let format_str = format.to_string();
-        
+
         div()
             .flex()
             .flex_col()
@@ -934,11 +996,7 @@ impl PreviewView {
                     .text_center()
                     .child(format!("Format: {}", format_str))
                     .when_some(dims, |this, (w, h)| {
-                        this.child(
-                            div()
-                                .mt_1()
-                                .child(format!("Dimensions: {}×{}", w, h)),
-                        )
+                        this.child(div().mt_1().child(format!("Dimensions: {}×{}", w, h)))
                     }),
             )
     }
@@ -958,16 +1016,11 @@ impl PreviewView {
             .flex_col()
             .font_family("JetBrains Mono")
             .text_xs()
-            .child(
-                div()
-                    .text_color(text_gray)
-                    .mb_3()
-                    .child(format!(
-                        "Showing first {} of {} bytes",
-                        bytes_len,
-                        format_size(total_size)
-                    )),
-            )
+            .child(div().text_color(text_gray).mb_3().child(format!(
+                "Showing first {} of {} bytes",
+                bytes_len,
+                format_size(total_size)
+            )))
             .child(
                 div()
                     .flex()
@@ -977,23 +1030,9 @@ impl PreviewView {
                         div()
                             .flex()
                             .gap_3()
-                            .child(
-                                div()
-                                    .text_color(text_gray)
-                                    .min_w(px(72.0))
-                                    .child(offset),
-                            )
-                            .child(
-                                div()
-                                    .text_color(text_light)
-                                    .min_w(px(380.0))
-                                    .child(hex),
-                            )
-                            .child(
-                                div()
-                                    .text_color(gpui::rgb(0x7ee787))
-                                    .child(ascii),
-                            )
+                            .child(div().text_color(text_gray).min_w(px(72.0)).child(offset))
+                            .child(div().text_color(text_light).min_w(px(380.0)).child(hex))
+                            .child(div().text_color(gpui::rgb(0x7ee787)).child(ascii))
                     })),
             )
     }
@@ -1041,34 +1080,30 @@ impl PreviewView {
                         div()
                             .flex()
                             .justify_between()
+                            .child(div().text_color(text_gray).child("Folders"))
                             .child(
-                                div().text_color(text_gray).child("Folders"),
-                            )
-                            .child(
-                                div().text_color(text_light).child(format!("{}", subdir_count)),
+                                div()
+                                    .text_color(text_light)
+                                    .child(format!("{}", subdir_count)),
                             ),
                     )
                     .child(
                         div()
                             .flex()
                             .justify_between()
+                            .child(div().text_color(text_gray).child("Files"))
                             .child(
-                                div().text_color(text_gray).child("Files"),
-                            )
-                            .child(
-                                div().text_color(text_light).child(format!("{}", file_count)),
+                                div()
+                                    .text_color(text_light)
+                                    .child(format!("{}", file_count)),
                             ),
                     )
                     .child(
                         div()
                             .flex()
                             .justify_between()
-                            .child(
-                                div().text_color(text_gray).child("Total Size"),
-                            )
-                            .child(
-                                div().text_color(text_light).child(format_size(total_size)),
-                            ),
+                            .child(div().text_color(text_gray).child("Total Size"))
+                            .child(div().text_color(text_light).child(format_size(total_size))),
                     ),
             )
     }
@@ -1080,9 +1115,7 @@ impl PreviewView {
         text_gray: gpui::Rgba,
     ) -> impl IntoElement {
         let metadata = self.preview.metadata();
-        let file_type = metadata
-            .map(|m| m.file_type.clone())
-            .unwrap_or_default();
+        let file_type = metadata.map(|m| m.file_type.clone()).unwrap_or_default();
         let modified = metadata
             .and_then(|m| m.modified)
             .map(format_date)

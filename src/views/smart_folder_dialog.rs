@@ -10,8 +10,14 @@ use crate::models::{
 /// Actions that can be triggered from the smart folder dialog
 #[derive(Clone, Debug, PartialEq)]
 pub enum SmartFolderDialogAction {
-    Create { name: String, query: SearchQuery },
-    Update { id: SmartFolderId, query: SearchQuery },
+    Create {
+        name: String,
+        query: SearchQuery,
+    },
+    Update {
+        id: SmartFolderId,
+        query: SearchQuery,
+    },
     Cancel,
 }
 
@@ -58,7 +64,7 @@ impl QueryBuilderState {
 
     pub fn from_smart_folder(folder: &SmartFolder) -> Self {
         let query = &folder.query;
-        
+
         let (date_filter_type, date_filter_value) = match &query.date_filter {
             Some(DateFilter::LastDays(d)) => (DateFilterType::LastDays, *d),
             Some(DateFilter::LastWeeks(w)) => (DateFilterType::LastWeeks, *w),
@@ -95,7 +101,8 @@ impl QueryBuilderState {
         }
 
         if !self.file_types.is_empty() {
-            let types: Vec<String> = self.file_types
+            let types: Vec<String> = self
+                .file_types
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
@@ -136,7 +143,6 @@ impl QueryBuilderState {
         query
     }
 }
-
 
 pub struct SmartFolderDialog {
     focus_handle: FocusHandle,
@@ -186,7 +192,7 @@ impl SmartFolderDialog {
         }
 
         let query = self.state.to_search_query();
-        
+
         if let Some(id) = self.editing_id {
             self.pending_action = Some(SmartFolderDialogAction::Update { id, query });
         } else {
@@ -270,7 +276,6 @@ impl Focusable for SmartFolderDialog {
     }
 }
 
-
 impl Render for SmartFolderDialog {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = theme_colors();
@@ -285,7 +290,11 @@ impl Render for SmartFolderDialog {
         let input_bg = theme.bg_tertiary;
 
         let is_editing = self.editing_id.is_some();
-        let title = if is_editing { "Edit Smart Folder" } else { "New Smart Folder" };
+        let title = if is_editing {
+            "Edit Smart Folder"
+        } else {
+            "New Smart Folder"
+        };
         let save_label = if is_editing { "Save" } else { "Create" };
 
         let name = self.state.name.clone();
@@ -319,9 +328,12 @@ impl Render for SmartFolderDialog {
             .flex()
             .items_center()
             .justify_center()
-            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                view.handle_cancel(cx);
-            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.handle_cancel(cx);
+                }),
+            )
             .child(
                 div()
                     .id("smart-folder-dialog")
@@ -363,8 +375,8 @@ impl Render for SmartFolderDialog {
                                             .text_base()
                                             .font_weight(gpui::FontWeight::SEMIBOLD)
                                             .text_color(text_primary)
-                                            .child(title)
-                                    )
+                                            .child(title),
+                                    ),
                             )
                             .child(
                                 div()
@@ -373,16 +385,19 @@ impl Render for SmartFolderDialog {
                                     .rounded_md()
                                     .cursor_pointer()
                                     .hover(|h| h.bg(hover_bg))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                        view.handle_cancel(cx);
-                                    }))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|view, _event, _window, cx| {
+                                            view.handle_cancel(cx);
+                                        }),
+                                    )
                                     .child(
                                         svg()
                                             .path("assets/icons/x.svg")
                                             .size(px(16.0))
                                             .text_color(text_secondary),
-                                    )
-                            )
+                                    ),
+                            ),
                     )
                     .child(
                         div()
@@ -402,7 +417,7 @@ impl Render for SmartFolderDialog {
                                             .text_sm()
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(text_primary)
-                                            .child("Name")
+                                            .child("Name"),
                                     )
                                     .child(
                                         div()
@@ -413,9 +428,17 @@ impl Render for SmartFolderDialog {
                                             .border_1()
                                             .border_color(border_color)
                                             .text_sm()
-                                            .text_color(if name.is_empty() { text_muted } else { text_primary })
-                                            .child(if name.is_empty() { "Enter smart folder name...".to_string() } else { name })
-                                    )
+                                            .text_color(if name.is_empty() {
+                                                text_muted
+                                            } else {
+                                                text_primary
+                                            })
+                                            .child(if name.is_empty() {
+                                                "Enter smart folder name...".to_string()
+                                            } else {
+                                                name
+                                            }),
+                                    ),
                             )
                             // Text pattern field
                             .child(
@@ -428,7 +451,7 @@ impl Render for SmartFolderDialog {
                                             .text_sm()
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(text_primary)
-                                            .child("Name contains")
+                                            .child("Name contains"),
                                     )
                                     .child(
                                         div()
@@ -439,9 +462,17 @@ impl Render for SmartFolderDialog {
                                             .border_1()
                                             .border_color(border_color)
                                             .text_sm()
-                                            .text_color(if text_pattern.is_empty() { text_muted } else { text_primary })
-                                            .child(if text_pattern.is_empty() { "e.g., report, test, config".to_string() } else { text_pattern })
-                                    )
+                                            .text_color(if text_pattern.is_empty() {
+                                                text_muted
+                                            } else {
+                                                text_primary
+                                            })
+                                            .child(if text_pattern.is_empty() {
+                                                "e.g., report, test, config".to_string()
+                                            } else {
+                                                text_pattern
+                                            }),
+                                    ),
                             )
                             // File types field
                             .child(
@@ -454,7 +485,7 @@ impl Render for SmartFolderDialog {
                                             .text_sm()
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(text_primary)
-                                            .child("File types (comma separated)")
+                                            .child("File types (comma separated)"),
                                     )
                                     .child(
                                         div()
@@ -465,9 +496,17 @@ impl Render for SmartFolderDialog {
                                             .border_1()
                                             .border_color(border_color)
                                             .text_sm()
-                                            .text_color(if file_types.is_empty() { text_muted } else { text_primary })
-                                            .child(if file_types.is_empty() { "e.g., rs, toml, md".to_string() } else { file_types })
-                                    )
+                                            .text_color(if file_types.is_empty() {
+                                                text_muted
+                                            } else {
+                                                text_primary
+                                            })
+                                            .child(if file_types.is_empty() {
+                                                "e.g., rs, toml, md".to_string()
+                                            } else {
+                                                file_types
+                                            }),
+                                    ),
                             )
                             .child(
                                 div()
@@ -479,7 +518,7 @@ impl Render for SmartFolderDialog {
                                             .text_sm()
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(text_primary)
-                                            .child("Date filter")
+                                            .child("Date filter"),
                                     )
                                     .child(
                                         div()
@@ -492,9 +531,12 @@ impl Render for SmartFolderDialog {
                                             .border_color(border_color)
                                             .cursor_pointer()
                                             .hover(|h| h.bg(hover_bg))
-                                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                                view.cycle_date_filter(cx);
-                                            }))
+                                            .on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(|view, _event, _window, cx| {
+                                                    view.cycle_date_filter(cx);
+                                                }),
+                                            )
                                             .flex()
                                             .items_center()
                                             .justify_between()
@@ -502,15 +544,15 @@ impl Render for SmartFolderDialog {
                                                 div()
                                                     .text_sm()
                                                     .text_color(text_primary)
-                                                    .child(date_filter_label)
+                                                    .child(date_filter_label),
                                             )
                                             .child(
                                                 svg()
                                                     .path("assets/icons/chevron-down.svg")
                                                     .size(px(14.0))
                                                     .text_color(text_secondary),
-                                            )
-                                    )
+                                            ),
+                                    ),
                             )
                             .child(
                                 div()
@@ -522,7 +564,7 @@ impl Render for SmartFolderDialog {
                                             .text_sm()
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(text_primary)
-                                            .child("Size filter")
+                                            .child("Size filter"),
                                     )
                                     .child(
                                         div()
@@ -535,9 +577,12 @@ impl Render for SmartFolderDialog {
                                             .border_color(border_color)
                                             .cursor_pointer()
                                             .hover(|h| h.bg(hover_bg))
-                                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                                view.cycle_size_filter(cx);
-                                            }))
+                                            .on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(|view, _event, _window, cx| {
+                                                    view.cycle_size_filter(cx);
+                                                }),
+                                            )
                                             .flex()
                                             .items_center()
                                             .justify_between()
@@ -545,26 +590,46 @@ impl Render for SmartFolderDialog {
                                                 div()
                                                     .text_sm()
                                                     .text_color(text_primary)
-                                                    .child(size_filter_label)
+                                                    .child(size_filter_label),
                                             )
                                             .child(
                                                 svg()
                                                     .path("assets/icons/chevron-down.svg")
                                                     .size(px(14.0))
                                                     .text_color(text_secondary),
-                                            )
-                                    )
+                                            ),
+                                    ),
                             )
                             .child(
                                 div()
                                     .flex()
                                     .flex_col()
                                     .gap_2()
-                                    .child(self.render_checkbox("include-hidden", "Include hidden files", include_hidden, cx))
-                                    .child(self.render_checkbox("recursive", "Search recursively", recursive, cx))
-                                    .child(self.render_checkbox("dirs-only", "Directories only", directories_only, cx))
-                                    .child(self.render_checkbox("files-only", "Files only", files_only, cx))
-                            )
+                                    .child(self.render_checkbox(
+                                        "include-hidden",
+                                        "Include hidden files",
+                                        include_hidden,
+                                        cx,
+                                    ))
+                                    .child(self.render_checkbox(
+                                        "recursive",
+                                        "Search recursively",
+                                        recursive,
+                                        cx,
+                                    ))
+                                    .child(self.render_checkbox(
+                                        "dirs-only",
+                                        "Directories only",
+                                        directories_only,
+                                        cx,
+                                    ))
+                                    .child(self.render_checkbox(
+                                        "files-only",
+                                        "Files only",
+                                        files_only,
+                                        cx,
+                                    )),
+                            ),
                     )
                     .child(
                         div()
@@ -586,10 +651,13 @@ impl Render for SmartFolderDialog {
                                     .text_sm()
                                     .text_color(text_secondary)
                                     .hover(|h| h.bg(hover_bg))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                        view.handle_cancel(cx);
-                                    }))
-                                    .child("Cancel")
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|view, _event, _window, cx| {
+                                            view.handle_cancel(cx);
+                                        }),
+                                    )
+                                    .child("Cancel"),
                             )
                             .child(
                                 div()
@@ -602,12 +670,15 @@ impl Render for SmartFolderDialog {
                                     .text_sm()
                                     .text_color(theme.text_inverse)
                                     .hover(|h| h.opacity(0.9))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                        view.handle_save(cx);
-                                    }))
-                                    .child(save_label)
-                            )
-                    )
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|view, _event, _window, cx| {
+                                            view.handle_save(cx);
+                                        }),
+                                    )
+                                    .child(save_label),
+                            ),
+                    ),
             )
     }
 }
@@ -636,15 +707,16 @@ impl SmartFolderDialog {
             .px_2()
             .py_1()
             .rounded_md()
-            .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                match id {
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |view, _event, _window, cx| match id {
                     "include-hidden" => view.toggle_include_hidden(cx),
                     "recursive" => view.toggle_recursive(cx),
                     "dirs-only" => view.toggle_directories_only(cx),
                     "files-only" => view.toggle_files_only(cx),
                     _ => {}
-                }
-            }))
+                }),
+            )
             .child(
                 div()
                     .w(px(16.0))
@@ -663,13 +735,8 @@ impl SmartFolderDialog {
                                 .size(px(12.0))
                                 .text_color(theme.text_inverse),
                         )
-                    })
+                    }),
             )
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(text_primary)
-                    .child(label)
-            )
+            .child(div().text_sm().text_color(text_primary).child(label))
     }
 }

@@ -1,8 +1,7 @@
 /// WSL (Windows Subsystem for Linux) Integration
-/// 
+///
 /// This module provides functionality for detecting, browsing, and interacting
 /// with WSL distributions on Windows systems.
-
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -93,7 +92,9 @@ impl WslManager {
 
     /// Get a distribution by name
     pub fn get_distribution(&self, name: &str) -> Option<&WslDistro> {
-        self.distributions.iter().find(|d| d.name.eq_ignore_ascii_case(name))
+        self.distributions
+            .iter()
+            .find(|d| d.name.eq_ignore_ascii_case(name))
     }
 
     /// Get the default distribution
@@ -138,7 +139,7 @@ impl WslManager {
         self.is_available = true;
 
         let stdout = decode_wsl_output(&output.stdout);
-        
+
         self.parse_wsl_list_output(&stdout);
     }
 
@@ -157,7 +158,7 @@ impl WslManager {
 
             // Split by whitespace, handling multiple spaces
             let parts: Vec<&str> = line.split_whitespace().collect();
-            
+
             if parts.len() >= 3 {
                 let name = parts[0].to_string();
                 let state = WslState::from_str(parts[1]);
@@ -189,17 +190,17 @@ impl WslManager {
     /// Translate a Windows path to a WSL path
     pub fn windows_to_wsl_path(windows_path: &Path) -> WslResult<String> {
         let path_str = windows_path.to_string_lossy();
-        
+
         let wsl_prefix = "\\\\wsl$\\";
         let wsl_localhost_prefix = "\\\\wsl.localhost\\";
-        
+
         if path_str.starts_with(wsl_prefix) || path_str.starts_with(wsl_localhost_prefix) {
             let without_prefix = if path_str.starts_with(wsl_prefix) {
                 &path_str[wsl_prefix.len()..]
             } else {
                 &path_str[wsl_localhost_prefix.len()..]
             };
-            
+
             // Find the distribution name (first path component)
             if let Some(slash_pos) = without_prefix.find('\\') {
                 let linux_path = &without_prefix[slash_pos..];
@@ -210,14 +211,18 @@ impl WslManager {
                 return Ok("/".to_string());
             }
         }
-        
+
         if path_str.len() >= 2 && path_str.chars().nth(1) == Some(':') {
             if let Some(drive_letter) = path_str.chars().next() {
                 let rest = &path_str[2..].replace('\\', "/");
-                return Ok(format!("/mnt/{}{}", drive_letter.to_ascii_lowercase(), rest));
+                return Ok(format!(
+                    "/mnt/{}{}",
+                    drive_letter.to_ascii_lowercase(),
+                    rest
+                ));
             }
         }
-        
+
         Err(WslError::PathTranslationFailed(format!(
             "Cannot translate path: {}",
             path_str
@@ -229,15 +234,19 @@ impl WslManager {
         if wsl_path.starts_with("/mnt/") && wsl_path.len() >= 6 {
             if let Some(drive_letter) = wsl_path.chars().nth(5) {
                 let rest = &wsl_path[6..];
-                let windows_path = format!("{}:{}", drive_letter.to_ascii_uppercase(), rest.replace('/', "\\"));
+                let windows_path = format!(
+                    "{}:{}",
+                    drive_letter.to_ascii_uppercase(),
+                    rest.replace('/', "\\")
+                );
                 return Ok(PathBuf::from(windows_path));
             }
         }
-        
+
         // Build the path manually to avoid PathBuf::join issues with UNC paths
         let linux_path = wsl_path.replace('/', "\\");
         let linux_path = linux_path.trim_start_matches('\\');
-        
+
         let full_path = format!("\\\\wsl$\\{}\\{}", distro_name, linux_path);
         Ok(PathBuf::from(full_path))
     }
@@ -251,10 +260,10 @@ impl WslManager {
     /// Extract the distribution name from a WSL path
     pub fn extract_distro_name(path: &Path) -> Option<String> {
         let path_str = path.to_string_lossy();
-        
+
         let wsl_prefix = "\\\\wsl$\\";
         let wsl_localhost_prefix = "\\\\wsl.localhost\\";
-        
+
         let without_prefix = if path_str.starts_with(wsl_prefix) {
             Some(&path_str[wsl_prefix.len()..])
         } else if path_str.starts_with(wsl_localhost_prefix) {
@@ -262,7 +271,7 @@ impl WslManager {
         } else {
             None
         }?;
-        
+
         let end = without_prefix.find('\\').unwrap_or(without_prefix.len());
         Some(without_prefix[..end].to_string())
     }
@@ -314,10 +323,14 @@ impl WslManager {
 
     /// Get Linux file permissions for a path in WSL
     #[cfg(target_os = "windows")]
-    pub fn get_linux_permissions(&self, distro: &str, linux_path: &str) -> WslResult<LinuxPermissions> {
+    pub fn get_linux_permissions(
+        &self,
+        distro: &str,
+        linux_path: &str,
+    ) -> WslResult<LinuxPermissions> {
         let command = format!("stat -c '%a %U %G' '{}'", linux_path);
         let output = self.execute_command(distro, &command)?;
-        
+
         let parts: Vec<&str> = output.trim().split_whitespace().collect();
         if parts.len() >= 3 {
             Ok(LinuxPermissions {
@@ -326,7 +339,9 @@ impl WslManager {
                 group: parts[2].to_string(),
             })
         } else {
-            Err(WslError::CommandFailed("Failed to parse permissions".to_string()))
+            Err(WslError::CommandFailed(
+                "Failed to parse permissions".to_string(),
+            ))
         }
     }
 
@@ -336,10 +351,7 @@ impl WslManager {
     pub fn open_terminal_here(distro: &str, linux_path: &str) -> WslResult<()> {
         // Try Windows Terminal first (preferred)
         let wt_result = std::process::Command::new("wt")
-            .args([
-                "-d", linux_path,
-                "wsl", "-d", distro
-            ])
+            .args(["-d", linux_path, "wsl", "-d", distro])
             .spawn();
 
         if wt_result.is_ok() {
@@ -348,11 +360,7 @@ impl WslManager {
 
         // Fall back to cmd with wsl
         let cmd_result = std::process::Command::new("cmd")
-            .args([
-                "/c", "start", "wsl",
-                "-d", distro,
-                "--cd", linux_path
-            ])
+            .args(["/c", "start", "wsl", "-d", distro, "--cd", linux_path])
             .spawn();
 
         match cmd_result {
@@ -369,17 +377,16 @@ impl WslManager {
     pub fn open_terminal_at_path(path: &Path) -> WslResult<()> {
         if !Self::is_wsl_path(path) {
             return Err(WslError::PathTranslationFailed(
-                "Not a WSL path".to_string()
+                "Not a WSL path".to_string(),
             ));
         }
 
-        let distro = Self::extract_distro_name(path)
-            .ok_or_else(|| WslError::PathTranslationFailed(
-                "Could not extract distribution name".to_string()
-            ))?;
+        let distro = Self::extract_distro_name(path).ok_or_else(|| {
+            WslError::PathTranslationFailed("Could not extract distribution name".to_string())
+        })?;
 
         let linux_path = Self::windows_to_wsl_path(path)?;
-        
+
         Self::open_terminal_here(&distro, &linux_path)
     }
 }
@@ -396,22 +403,22 @@ impl LinuxPermissions {
     /// Format permissions as rwxrwxrwx string
     pub fn format_mode(&self) -> String {
         let mut result = String::with_capacity(9);
-        
+
         // Owner permissions
         result.push(if self.mode & 0o400 != 0 { 'r' } else { '-' });
         result.push(if self.mode & 0o200 != 0 { 'w' } else { '-' });
         result.push(if self.mode & 0o100 != 0 { 'x' } else { '-' });
-        
+
         // Group permissions
         result.push(if self.mode & 0o040 != 0 { 'r' } else { '-' });
         result.push(if self.mode & 0o020 != 0 { 'w' } else { '-' });
         result.push(if self.mode & 0o010 != 0 { 'x' } else { '-' });
-        
+
         // Other permissions
         result.push(if self.mode & 0o004 != 0 { 'r' } else { '-' });
         result.push(if self.mode & 0o002 != 0 { 'w' } else { '-' });
         result.push(if self.mode & 0o001 != 0 { 'x' } else { '-' });
-        
+
         result
     }
 

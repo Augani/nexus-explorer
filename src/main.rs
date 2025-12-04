@@ -7,11 +7,13 @@ mod views;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use gpui::{px, size, Application, AssetSource, Bounds, Result, SharedString, WindowBounds, WindowOptions};
+use gpui::{
+    px, size, Application, AssetSource, Bounds, Result, SharedString, WindowBounds, WindowOptions,
+};
 use tokio::runtime::Runtime;
 
 use app::Workspace;
-use models::{GlobalSettings, IconCache, IconKey, WindowManager, open_with};
+use models::{open_with, GlobalSettings, IconCache, IconKey, WindowManager};
 
 struct Assets {
     base: PathBuf,
@@ -41,43 +43,42 @@ impl AssetSource for Assets {
 }
 
 fn main() {
-    let app = Application::new()
-        .with_assets(Assets {
-            base: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-        });
-    
+    let app = Application::new().with_assets(Assets {
+        base: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+    });
+
     app.run(|cx| {
         adabraka_ui::init(cx);
         adabraka_ui::set_icon_base_path("assets/icons");
-        
+
         cx.set_global(GlobalSettings::default());
-        
+
         let mut window_manager = WindowManager::new();
-        
+
         // Spawn Tokio runtime on a dedicated thread for I/O operations
         let _tokio_runtime = spawn_tokio_runtime();
-        
+
         // Initialize app registry in background for "Open With" functionality
         open_with::init_app_registry();
-        
+
         let _icon_cache = preload_default_icons();
-        
+
         cx.on_window_closed(|cx| {
             // Save window state before potentially quitting
             if cx.has_global::<WindowManager>() {
                 let _ = cx.global::<WindowManager>().save_state();
             }
-            
+
             // Quit when all windows are closed
             if cx.windows().is_empty() {
                 cx.quit();
             }
         })
         .detach();
-        
+
         let settings = GlobalSettings::load();
         let should_restore = settings.restore_windows_on_start();
-        
+
         if should_restore {
             if let Some(saved_state) = WindowManager::load_state() {
                 if !saved_state.windows.is_empty() {
@@ -87,9 +88,9 @@ fn main() {
                 }
             }
         }
-        
+
         let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
-        
+
         let bounds = Bounds::centered(None, size(px(1200.0), px(800.0)), cx);
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -106,13 +107,12 @@ fn main() {
             window_background: gpui::WindowBackgroundAppearance::Opaque,
             ..Default::default()
         };
-        
+
         let path = home_dir.clone();
-        let handle = cx.open_window(window_options, |_window, cx| {
-            Workspace::build(path, cx)
-        })
-        .expect("Failed to open window");
-        
+        let handle = cx
+            .open_window(window_options, |_window, cx| Workspace::build(path, cx))
+            .expect("Failed to open window");
+
         window_manager.register_window(handle, home_dir);
         cx.set_global(window_manager);
     });
@@ -128,7 +128,7 @@ fn spawn_tokio_runtime() -> Arc<Runtime> {
 /// Pre-loads default icons into an IconCache.
 fn preload_default_icons() -> IconCache {
     let mut cache = IconCache::new();
-    
+
     let default_keys = [
         IconKey::Directory,
         IconKey::GenericFile,
@@ -151,10 +151,10 @@ fn preload_default_icons() -> IconCache {
         IconKey::Extension("pdf".to_string()),
         IconKey::Extension("zip".to_string()),
     ];
-    
+
     for key in default_keys {
         cache.get_or_default(&key);
     }
-    
+
     cache
 }

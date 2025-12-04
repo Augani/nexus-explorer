@@ -2,13 +2,16 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use gpui::{
-    actions, anchored, div, prelude::*, px, svg, uniform_list, App, Context, Corner, FocusHandle, 
-    Focusable, InteractiveElement, IntoElement, KeyBinding, MouseButton, ParentElement, Point, 
-    Pixels, Render, ScrollStrategy, SharedString, Styled, UniformListScrollHandle, Window, 
-    MouseDownEvent,
+    actions, anchored, div, prelude::*, px, svg, uniform_list, App, Context, Corner, FocusHandle,
+    Focusable, InteractiveElement, IntoElement, KeyBinding, MouseButton, MouseDownEvent,
+    ParentElement, Pixels, Point, Render, ScrollStrategy, SharedString, Styled,
+    UniformListScrollHandle, Window,
 };
 
-use crate::models::{CloudSyncStatus, FileEntry, IconKey, SortColumn, SortDirection, SortState, theme_colors, file_list as file_list_spacing};
+use crate::models::{
+    file_list as file_list_spacing, theme_colors, CloudSyncStatus, FileEntry, IconKey, SortColumn,
+    SortDirection, SortState,
+};
 use crate::views::sidebar::{DraggedFolder, DraggedFolderView};
 
 /// Context menu actions that can be triggered on files/folders
@@ -16,7 +19,11 @@ use crate::views::sidebar::{DraggedFolder, DraggedFolderView};
 pub enum ContextMenuAction {
     Open(PathBuf),
     OpenWith(PathBuf),
-    OpenWithApp { file_path: PathBuf, app_path: PathBuf, app_name: String },
+    OpenWithApp {
+        file_path: PathBuf,
+        app_path: PathBuf,
+        app_name: String,
+    },
     OpenWithOther(PathBuf),
     OpenInNewWindow(PathBuf),
     OpenInNewTab(PathBuf),
@@ -38,12 +45,15 @@ pub enum ContextMenuAction {
 }
 
 // Define actions for keyboard navigation
-actions!(file_list, [
-    MoveSelectionUp,
-    MoveSelectionDown,
-    OpenSelected,
-    NavigateToParent,
-]);
+actions!(
+    file_list,
+    [
+        MoveSelectionUp,
+        MoveSelectionDown,
+        OpenSelected,
+        NavigateToParent,
+    ]
+);
 
 // Use typography constants for row height (40px as per design spec)
 pub const DEFAULT_ROW_HEIGHT: f32 = file_list_spacing::ROW_HEIGHT;
@@ -118,13 +128,13 @@ impl FileListView {
             show_open_with_submenu: false,
         }
     }
-    
+
     pub fn close_context_menu(&mut self) {
         self.context_menu_position = None;
         self.context_menu_index = None;
         self.show_open_with_submenu = false;
     }
-    
+
     pub fn take_pending_context_action(&mut self) -> Option<ContextMenuAction> {
         self.pending_context_action.take()
     }
@@ -173,7 +183,12 @@ impl FileListView {
     }
 
     /// Move selection up by one item
-    fn handle_move_up(&mut self, _: &MoveSelectionUp, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_move_up(
+        &mut self,
+        _: &MoveSelectionUp,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let item_count = self.file_list.item_count();
         if item_count == 0 {
             return;
@@ -191,7 +206,12 @@ impl FileListView {
     }
 
     /// Move selection down by one item
-    fn handle_move_down(&mut self, _: &MoveSelectionDown, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_move_down(
+        &mut self,
+        _: &MoveSelectionDown,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let item_count = self.file_list.item_count();
         if item_count == 0 {
             return;
@@ -210,7 +230,12 @@ impl FileListView {
     }
 
     /// Open the selected item (navigate into directory)
-    fn handle_open_selected(&mut self, _: &OpenSelected, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_open_selected(
+        &mut self,
+        _: &OpenSelected,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let Some(index) = self.file_list.selected_index {
             let entry = if let Some(filtered) = &self.file_list.filtered_entries {
                 filtered.get(index).map(|f| &f.entry)
@@ -228,7 +253,12 @@ impl FileListView {
     }
 
     /// Navigate to parent directory
-    fn handle_navigate_to_parent(&mut self, _: &NavigateToParent, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_navigate_to_parent(
+        &mut self,
+        _: &NavigateToParent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         // Signal to workspace to navigate to parent directory
         self.pending_parent_navigation = true;
         cx.notify();
@@ -236,7 +266,8 @@ impl FileListView {
 
     /// Scroll to ensure the given index is visible
     fn scroll_to_index(&self, index: usize) {
-        self.scroll_handle.scroll_to_item(index, ScrollStrategy::Center);
+        self.scroll_handle
+            .scroll_to_item(index, ScrollStrategy::Center);
     }
 
     /// Move selection up by one item (public API for testing)
@@ -288,7 +319,7 @@ impl Render for FileListView {
         let context_menu_idx = self.context_menu_index;
 
         let colors = theme_colors();
-        
+
         // Background colors from theme
         let bg_darker = colors.bg_void;
         let bg_dark = colors.bg_primary;
@@ -302,7 +333,7 @@ impl Render for FileListView {
         let folder_open_color = colors.folder_open_color;
         let _file_color = colors.text_muted;
         let menu_bg = colors.bg_tertiary;
-        
+
         // Accent colors for glow effects and selection
         let _accent_glow = colors.accent_glow;
         let accent_primary = colors.accent_primary;
@@ -332,7 +363,7 @@ impl Render for FileListView {
                 let entity_date = entity.clone();
                 let entity_type = entity.clone();
                 let entity_size = entity.clone();
-                
+
                 // Header row with RPG styling
                 div()
                     .flex()
@@ -470,7 +501,7 @@ impl Render for FileListView {
                                         } else {
                                             continue;
                                         };
-                                        
+
                                         let is_selected = selected_index == Some(ix);
                                         let is_dir = entry.is_dir;
                                         let name = entry.name.clone();
@@ -482,10 +513,10 @@ impl Render for FileListView {
                                             get_file_type(&name)
                                         };
                                         let icon_name = get_file_icon(&name, is_dir);
-                                        let icon_color = if is_dir { 
+                                        let icon_color = if is_dir {
                                             if is_selected { folder_open_color } else { folder_color }
-                                        } else { 
-                                            get_file_icon_color(&name) 
+                                        } else {
+                                            get_file_icon_color(&name)
                                         };
                                         let sync_status = entry.sync_status;
                                         let entry_path = entry.path.clone();
@@ -677,7 +708,7 @@ impl Render for FileListView {
                 let entity = cx.entity().clone();
                 let selected_entry = context_menu_idx.and_then(|idx| self.file_list.entries.get(idx).cloned());
                 let is_dir = selected_entry.as_ref().map(|e| e.is_dir).unwrap_or(false);
-                
+
                 this.child(
                     anchored()
                         .snap_to_window_with_margin(px(8.0))
@@ -942,11 +973,18 @@ fn render_sort_indicator(
     } else {
         "arrow-down-up"
     };
-    
+
     svg()
-        .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+        .path(SharedString::from(format!(
+            "assets/icons/{}.svg",
+            icon_name
+        )))
         .size(px(12.0))
-        .text_color(if is_active { active_color } else { inactive_color })
+        .text_color(if is_active {
+            active_color
+        } else {
+            inactive_color
+        })
         .when(!is_active, |s| s.opacity(0.5))
 }
 
@@ -959,8 +997,16 @@ fn render_highlighted_name(
 ) -> impl IntoElement {
     // Use theme accent color for search highlights
     let highlight_color = accent_color;
-    let text_color = if is_selected { gpui::rgb(0xffffff) } else { text_light };
-    let font_weight = if is_selected { gpui::FontWeight::MEDIUM } else { gpui::FontWeight::NORMAL };
+    let text_color = if is_selected {
+        gpui::rgb(0xffffff)
+    } else {
+        text_light
+    };
+    let font_weight = if is_selected {
+        gpui::FontWeight::MEDIUM
+    } else {
+        gpui::FontWeight::NORMAL
+    };
 
     match match_positions {
         Some(positions) if !positions.is_empty() => {
@@ -972,7 +1018,7 @@ fn render_highlighted_name(
 
             for (i, ch) in chars.iter().enumerate() {
                 let should_highlight = positions.contains(&i);
-                
+
                 if should_highlight != in_highlight {
                     // Flush current segment
                     if !current_segment.is_empty() {
@@ -982,7 +1028,7 @@ fn render_highlighted_name(
                                     .text_color(highlight_color)
                                     .font_weight(gpui::FontWeight::BOLD)
                                     .child(current_segment.clone())
-                                    .into_any_element()
+                                    .into_any_element(),
                             );
                         } else {
                             elements.push(
@@ -990,7 +1036,7 @@ fn render_highlighted_name(
                                     .text_color(text_color)
                                     .font_weight(font_weight)
                                     .child(current_segment.clone())
-                                    .into_any_element()
+                                    .into_any_element(),
                             );
                         }
                         current_segment.clear();
@@ -1008,7 +1054,7 @@ fn render_highlighted_name(
                             .text_color(highlight_color)
                             .font_weight(gpui::FontWeight::BOLD)
                             .child(current_segment)
-                            .into_any_element()
+                            .into_any_element(),
                     );
                 } else {
                     elements.push(
@@ -1016,7 +1062,7 @@ fn render_highlighted_name(
                             .text_color(text_color)
                             .font_weight(font_weight)
                             .child(current_segment)
-                            .into_any_element()
+                            .into_any_element(),
                     );
                 }
             }
@@ -1040,12 +1086,12 @@ fn render_highlighted_name(
 }
 
 fn render_context_menu_item<F>(
-    icon_name: &'static str, 
-    label: &'static str, 
-    text_color: gpui::Rgba, 
+    icon_name: &'static str,
+    label: &'static str,
+    text_color: gpui::Rgba,
     hover_bg: gpui::Rgba,
     on_click: F,
-) -> impl IntoElement 
+) -> impl IntoElement
 where
     F: Fn(&mut Window, &mut App) + 'static,
 {
@@ -1067,7 +1113,10 @@ where
         })
         .child(
             svg()
-                .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                .path(SharedString::from(format!(
+                    "assets/icons/{}.svg",
+                    icon_name
+                )))
                 .size(px(14.0))
                 .text_color(text_color),
         )
@@ -1075,11 +1124,7 @@ where
 }
 
 fn render_context_menu_divider(color: gpui::Rgba) -> impl IntoElement {
-    div()
-        .h(px(1.0))
-        .mx_2()
-        .my_1()
-        .bg(color)
+    div().h(px(1.0)).mx_2().my_1().bg(color)
 }
 
 fn render_open_with_submenu(
@@ -1092,14 +1137,15 @@ fn render_open_with_submenu(
     entity: gpui::Entity<FileListView>,
     _cx: &mut Context<FileListView>,
 ) -> impl IntoElement {
-    let apps = selected_entry.as_ref()
+    let apps = selected_entry
+        .as_ref()
         .map(|e| crate::models::get_apps_for_file(&e.path))
         .unwrap_or_default();
-    
+
     let has_apps = !apps.is_empty();
     let entry_for_other = selected_entry.clone();
     let entity_for_toggle = entity.clone();
-    
+
     div()
         .id("open-with-menu-wrapper")
         .flex()
@@ -1136,14 +1182,18 @@ fn render_open_with_submenu(
                                 .size(px(14.0))
                                 .text_color(text_color),
                         )
-                        .child("Open With")
+                        .child("Open With"),
                 )
                 .child(
                     svg()
-                        .path(if show_submenu { "assets/icons/chevron-down.svg" } else { "assets/icons/chevron-right.svg" })
+                        .path(if show_submenu {
+                            "assets/icons/chevron-down.svg"
+                        } else {
+                            "assets/icons/chevron-right.svg"
+                        })
                         .size(px(12.0))
                         .text_color(text_color),
-                )
+                ),
         )
         .when(show_submenu, move |this| {
             this.child(
@@ -1162,7 +1212,7 @@ fn render_open_with_submenu(
                             let app_path = app.path.clone();
                             let file_path = selected_entry.as_ref().map(|e| e.path.clone());
                             let entity = entity.clone();
-                            
+
                             submenu = submenu.child(
                                 div()
                                     .id(SharedString::from(format!("app-{}", app_name)))
@@ -1182,11 +1232,12 @@ fn render_open_with_submenu(
                                         move |_event, _window, cx| {
                                             if let Some(ref fp) = file_path {
                                                 entity.update(cx, |view, cx| {
-                                                    view.pending_context_action = Some(ContextMenuAction::OpenWithApp {
-                                                        file_path: fp.clone(),
-                                                        app_path: app_path.clone(),
-                                                        app_name: app_name.clone(),
-                                                    });
+                                                    view.pending_context_action =
+                                                        Some(ContextMenuAction::OpenWithApp {
+                                                            file_path: fp.clone(),
+                                                            app_path: app_path.clone(),
+                                                            app_name: app_name.clone(),
+                                                        });
                                                     view.close_context_menu();
                                                     cx.notify();
                                                 });
@@ -1197,9 +1248,9 @@ fn render_open_with_submenu(
                                         svg()
                                             .path("assets/icons/app-window.svg")
                                             .size(px(14.0))
-                                            .text_color(text_color)
+                                            .text_color(text_color),
                                     )
-                                    .child(app_name)
+                                    .child(app_name),
                             );
                         }
                         submenu
@@ -1221,7 +1272,8 @@ fn render_open_with_submenu(
                             .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
                                 if let Some(ref e) = entry_for_other {
                                     entity.update(cx, |view, cx| {
-                                        view.pending_context_action = Some(ContextMenuAction::OpenWithOther(e.path.clone()));
+                                        view.pending_context_action =
+                                            Some(ContextMenuAction::OpenWithOther(e.path.clone()));
                                         view.close_context_menu();
                                         cx.notify();
                                     });
@@ -1234,7 +1286,7 @@ fn render_open_with_submenu(
                                     .text_color(text_color),
                             )
                             .child("Other...")
-                    })
+                    }),
             )
         })
 }
@@ -1265,7 +1317,7 @@ pub fn get_file_icon(name: &str, is_dir: bool) -> &'static str {
             _ => "folder",
         };
     }
-    
+
     let ext = name.rsplit('.').next().unwrap_or("");
     match ext.to_lowercase().as_str() {
         "rs" => "file-code",
@@ -1462,7 +1514,7 @@ impl FileList {
     /// Apply search filter using nucleo fuzzy matching results
     pub fn apply_search_filter(&mut self, query: &str, matches: Vec<(usize, Vec<usize>, u32)>) {
         self.search_query = query.to_string();
-        
+
         if query.is_empty() {
             self.clear_search_filter();
             return;

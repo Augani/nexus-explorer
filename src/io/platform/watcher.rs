@@ -7,12 +7,12 @@ use crate::models::{FsEvent, Result};
 pub const DEFAULT_COALESCE_WINDOW: Duration = Duration::from_millis(50);
 
 /// File system change watcher trait.
-/// 
+///
 /// Platform-specific implementations wrap native APIs (FSEvents, inotify, USN Journal)
 /// to provide a unified interface for monitoring file system changes.
 pub trait Watcher: Send {
     /// Start watching the specified path for changes.
-    /// 
+    ///
     /// The path can be a file or directory. For directories, changes to
     /// immediate children are monitored.
     fn watch(&mut self, path: &Path) -> Result<()>;
@@ -21,13 +21,13 @@ pub trait Watcher: Send {
     fn unwatch(&mut self, path: &Path) -> Result<()>;
 
     /// Poll for pending file system events.
-    /// 
+    ///
     /// Returns a vector of coalesced events since the last poll.
     /// Events on the same path within the coalescing window are merged.
     fn poll_events(&mut self) -> Vec<FsEvent>;
 
     /// Set the coalescing window for event debouncing.
-    /// 
+    ///
     /// Events on the same path within this duration are merged to prevent
     /// update storms from rapid successive changes.
     fn set_coalesce_window(&mut self, window: Duration);
@@ -37,7 +37,7 @@ pub trait Watcher: Send {
 }
 
 /// Platform-specific file system operations trait.
-/// 
+///
 /// Provides factory methods for creating platform-appropriate watchers
 /// and querying platform capabilities.
 pub trait PlatformFs: Send + Sync {

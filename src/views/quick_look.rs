@@ -1,6 +1,7 @@
 use gpui::{
-    actions, div, img, prelude::*, px, svg, App, Context, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, KeyBinding, ParentElement, Render, SharedString, Styled, Window,
+    actions, div, img, prelude::*, px, svg, App, Context, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, KeyBinding, ParentElement, Render, SharedString, Styled,
+    Window,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -119,11 +120,11 @@ impl QuickLook {
         if entries.is_empty() {
             return;
         }
-        
+
         // Find next non-directory file
         let mut next_idx = (current_index + 1) % entries.len();
         let start_idx = next_idx;
-        
+
         loop {
             if !entries[next_idx].is_dir {
                 self.show(entries[next_idx].path.clone());
@@ -141,7 +142,7 @@ impl QuickLook {
         if entries.is_empty() {
             return;
         }
-        
+
         // Find previous non-directory file
         let mut prev_idx = if current_index == 0 {
             entries.len() - 1
@@ -149,7 +150,7 @@ impl QuickLook {
             current_index - 1
         };
         let start_idx = prev_idx;
-        
+
         loop {
             if !entries[prev_idx].is_dir {
                 self.show(entries[prev_idx].path.clone());
@@ -186,7 +187,7 @@ impl QuickLook {
             self.file_size = metadata.len();
             self.modified = metadata.modified().ok();
         }
-        
+
         self.file_name = path
             .file_name()
             .and_then(|n| n.to_str())
@@ -233,10 +234,13 @@ impl QuickLook {
             Ok(content) => {
                 let line_count = content.lines().count();
                 let language = extension.and_then(|ext| detect_language(&ext));
-                
+
                 // Limit content size for preview
                 let preview_content = if content.len() > 100000 {
-                    format!("{}...\n\n[Content truncated - file too large]", &content[..100000])
+                    format!(
+                        "{}...\n\n[Content truncated - file too large]",
+                        &content[..100000]
+                    )
                 } else {
                     content
                 };
@@ -269,16 +273,88 @@ fn is_text_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
         Some(
-            "txt" | "md" | "rs" | "js" | "ts" | "jsx" | "tsx" | "py" | "rb" | "go" | "java"
-                | "c" | "cpp" | "h" | "hpp" | "css" | "scss" | "sass" | "less" | "html"
-                | "htm" | "xml" | "json" | "yaml" | "yml" | "toml" | "ini" | "cfg" | "conf"
-                | "sh" | "bash" | "zsh" | "fish" | "ps1" | "bat" | "cmd" | "sql" | "graphql"
-                | "vue" | "svelte" | "astro" | "php" | "swift" | "kt" | "kts" | "scala"
-                | "clj" | "cljs" | "ex" | "exs" | "erl" | "hrl" | "hs" | "ml" | "mli"
-                | "fs" | "fsx" | "r" | "R" | "jl" | "lua" | "vim" | "el" | "lisp" | "scm"
-                | "rkt" | "pl" | "pm" | "t" | "awk" | "sed" | "makefile" | "cmake"
-                | "dockerfile" | "gitignore" | "gitattributes" | "editorconfig" | "env"
-                | "lock" | "log" | "csv" | "tsv"
+            "txt"
+                | "md"
+                | "rs"
+                | "js"
+                | "ts"
+                | "jsx"
+                | "tsx"
+                | "py"
+                | "rb"
+                | "go"
+                | "java"
+                | "c"
+                | "cpp"
+                | "h"
+                | "hpp"
+                | "css"
+                | "scss"
+                | "sass"
+                | "less"
+                | "html"
+                | "htm"
+                | "xml"
+                | "json"
+                | "yaml"
+                | "yml"
+                | "toml"
+                | "ini"
+                | "cfg"
+                | "conf"
+                | "sh"
+                | "bash"
+                | "zsh"
+                | "fish"
+                | "ps1"
+                | "bat"
+                | "cmd"
+                | "sql"
+                | "graphql"
+                | "vue"
+                | "svelte"
+                | "astro"
+                | "php"
+                | "swift"
+                | "kt"
+                | "kts"
+                | "scala"
+                | "clj"
+                | "cljs"
+                | "ex"
+                | "exs"
+                | "erl"
+                | "hrl"
+                | "hs"
+                | "ml"
+                | "mli"
+                | "fs"
+                | "fsx"
+                | "r"
+                | "R"
+                | "jl"
+                | "lua"
+                | "vim"
+                | "el"
+                | "lisp"
+                | "scm"
+                | "rkt"
+                | "pl"
+                | "pm"
+                | "t"
+                | "awk"
+                | "sed"
+                | "makefile"
+                | "cmake"
+                | "dockerfile"
+                | "gitignore"
+                | "gitattributes"
+                | "editorconfig"
+                | "env"
+                | "lock"
+                | "log"
+                | "csv"
+                | "tsv"
         )
     )
 }
@@ -287,7 +363,12 @@ fn is_text_extension(ext: Option<&str>) -> bool {
 fn is_likely_text_file(path: &Path) -> bool {
     if let Ok(data) = fs::read(path) {
         let sample: Vec<u8> = data.into_iter().take(512).collect();
-        !sample.contains(&0) && sample.iter().filter(|&&b| b < 32 && b != 9 && b != 10 && b != 13).count() < sample.len() / 10
+        !sample.contains(&0)
+            && sample
+                .iter()
+                .filter(|&&b| b < 32 && b != 9 && b != 10 && b != 13)
+                .count()
+                < sample.len() / 10
     } else {
         false
     }
@@ -358,17 +439,19 @@ fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
     None
 }
 
-
 // Define actions for Quick Look key bindings
-actions!(quick_look, [
-    ToggleQuickLook,
-    CloseQuickLook,
-    QuickLookNext,
-    QuickLookPrevious,
-    QuickLookZoomIn,
-    QuickLookZoomOut,
-    QuickLookResetZoom,
-]);
+actions!(
+    quick_look,
+    [
+        ToggleQuickLook,
+        CloseQuickLook,
+        QuickLookNext,
+        QuickLookPrevious,
+        QuickLookZoomIn,
+        QuickLookZoomOut,
+        QuickLookResetZoom,
+    ]
+);
 
 /// Quick Look view component
 pub struct QuickLookView {
@@ -399,7 +482,6 @@ impl QuickLookView {
             KeyBinding::new("cmd-0", QuickLookResetZoom, None),
         ]);
     }
-
 
     pub fn is_visible(&self) -> bool {
         self.quick_look.is_visible()
@@ -440,7 +522,11 @@ impl QuickLookView {
 
     pub fn previous(&mut self) {
         if let Some(idx) = self.current_index {
-            let prev_idx = if idx == 0 { self.entries.len().saturating_sub(1) } else { idx - 1 };
+            let prev_idx = if idx == 0 {
+                self.entries.len().saturating_sub(1)
+            } else {
+                idx - 1
+            };
             if !self.entries.is_empty() && !self.entries[prev_idx].is_dir {
                 self.current_index = Some(prev_idx);
                 self.quick_look.show(self.entries[prev_idx].path.clone());
@@ -452,7 +538,6 @@ impl QuickLookView {
             }
         }
     }
-
 
     pub fn zoom_in(&mut self) {
         self.quick_look.zoom_in();
@@ -500,9 +585,12 @@ impl Render for QuickLookView {
             .flex_col()
             .items_center()
             .justify_center()
-            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|view, _event, _window, _cx| {
-                view.hide();
-            }))
+            .on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener(|view, _event, _window, _cx| {
+                    view.hide();
+                }),
+            )
             .on_action(cx.listener(|view, _: &CloseQuickLook, _window, _cx| {
                 view.hide();
             }))
@@ -512,7 +600,6 @@ impl Render for QuickLookView {
             .on_action(cx.listener(|view, _: &QuickLookPrevious, _window, _cx| {
                 view.previous();
             }))
-
             .on_action(cx.listener(|view, _: &QuickLookZoomIn, _window, _cx| {
                 view.zoom_in();
             }))
@@ -535,7 +622,9 @@ impl QuickLookView {
     fn render_header(&self, text_primary: gpui::Rgba, text_muted: gpui::Rgba) -> impl IntoElement {
         let file_name = self.quick_look.file_name().to_string();
         let file_size = format_size(self.quick_look.file_size());
-        let modified = self.quick_look.modified()
+        let modified = self
+            .quick_look
+            .modified()
             .map(format_date)
             .unwrap_or_default();
 
@@ -572,15 +661,9 @@ impl QuickLookView {
                     .rounded_md()
                     .cursor_pointer()
                     .hover(|h| h.bg(gpui::rgba(0xffffff22)))
-                    .child(
-                        div()
-                            .text_xl()
-                            .text_color(text_muted)
-                            .child("×"),
-                    ),
+                    .child(div().text_xl().text_color(text_muted).child("×")),
             )
     }
-
 
     fn render_content(
         &self,
@@ -590,24 +673,31 @@ impl QuickLookView {
         text_muted: gpui::Rgba,
     ) -> impl IntoElement {
         let content = match self.quick_look.content() {
-            QuickLookContent::Image { path, dimensions, format } => {
-                self.render_image_content(path, dimensions.as_ref(), format, text_muted)
-            }
-            QuickLookContent::Text { content, language, line_count } => {
-                self.render_text_content(content, language.as_deref(), *line_count, panel_bg, text_primary, text_muted)
-            }
+            QuickLookContent::Image {
+                path,
+                dimensions,
+                format,
+            } => self.render_image_content(path, dimensions.as_ref(), format, text_muted),
+            QuickLookContent::Text {
+                content,
+                language,
+                line_count,
+            } => self.render_text_content(
+                content,
+                language.as_deref(),
+                *line_count,
+                panel_bg,
+                text_primary,
+                text_muted,
+            ),
             QuickLookContent::Document { content, file_type } => {
                 self.render_document_content(content, file_type, panel_bg, text_primary, text_muted)
             }
             QuickLookContent::Unsupported { file_type } => {
                 self.render_unsupported_content(file_type, text_muted)
             }
-            QuickLookContent::Loading => {
-                self.render_loading_content(text_muted)
-            }
-            QuickLookContent::None => {
-                div()
-            }
+            QuickLookContent::Loading => self.render_loading_content(text_muted),
+            QuickLookContent::None => div(),
         };
 
         div()
@@ -638,7 +728,6 @@ impl QuickLookView {
             .map(|(w, h)| format!("{}×{}", w, h))
             .unwrap_or_else(|| "Unknown".to_string());
         let format_str = format.to_string();
-
 
         div()
             .size_full()
@@ -722,7 +811,6 @@ impl QuickLookView {
             )
     }
 
-
     fn render_text_content(
         &self,
         content: &str,
@@ -781,32 +869,25 @@ impl QuickLookView {
                                     .border_r_1()
                                     .border_color(gpui::rgb(0x30363d))
                                     .mr_3()
-                                    .children(
-                                        (0..lines.len()).map(|i| {
-                                            div()
-                                                .text_right()
-                                                .min_w(px((line_number_width * 8) as f32))
-                                                .child(format!("{}", i + 1))
-                                        }),
-                                    ),
+                                    .children((0..lines.len()).map(|i| {
+                                        div()
+                                            .text_right()
+                                            .min_w(px((line_number_width * 8) as f32))
+                                            .child(format!("{}", i + 1))
+                                    })),
                             )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .text_color(text_primary)
-                                    .children(
-                                        lines.into_iter().map(|line| {
-                                            div()
-                                                .whitespace_nowrap()
-                                                .child(if line.is_empty() { " ".to_string() } else { line })
-                                        }),
-                                    ),
-                            ),
+                            .child(div().flex().flex_col().text_color(text_primary).children(
+                                lines.into_iter().map(|line| {
+                                    div().whitespace_nowrap().child(if line.is_empty() {
+                                        " ".to_string()
+                                    } else {
+                                        line
+                                    })
+                                }),
+                            )),
                     ),
             )
     }
-
 
     fn render_document_content(
         &self,
@@ -818,7 +899,7 @@ impl QuickLookView {
     ) -> gpui::Div {
         let file_type_str = file_type.to_string();
         let content_str = content.to_string();
-        
+
         div()
             .size_full()
             .flex()
@@ -847,7 +928,7 @@ impl QuickLookView {
 
     fn render_unsupported_content(&self, file_type: &str, text_muted: gpui::Rgba) -> gpui::Div {
         let file_type_str = file_type.to_string();
-        
+
         div()
             .size_full()
             .flex()
@@ -879,10 +960,10 @@ impl QuickLookView {
             .child("Loading...")
     }
 
-
     fn render_footer(&self, text_muted: gpui::Rgba) -> impl IntoElement {
         let has_entries = !self.entries.is_empty();
-        let current_pos = self.current_index
+        let current_pos = self
+            .current_index
             .map(|i| format!("{} of {}", i + 1, self.entries.len()))
             .unwrap_or_default();
 
@@ -907,26 +988,13 @@ impl QuickLookView {
                                 .items_center()
                                 .gap_2()
                                 .child("←")
-                                .child("Previous")
+                                .child("Previous"),
                         )
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .child("Next")
-                                .child("→")
-                        )
+                        .child(div().flex().items_center().gap_2().child("Next").child("→"))
                     }),
             )
-            .child(
-                div()
-                    .when(has_entries, |this| this.child(current_pos)),
-            )
-            .child(
-                div()
-                    .child("Press Space or Escape to close"),
-            )
+            .child(div().when(has_entries, |this| this.child(current_pos)))
+            .child(div().child("Press Space or Escape to close"))
     }
 }
 
@@ -947,11 +1015,11 @@ mod tests {
     fn test_quick_look_show_hide() {
         let mut ql = QuickLook::new();
         let path = PathBuf::from("/tmp/test.txt");
-        
+
         ql.show(path.clone());
         assert!(ql.is_visible());
         assert_eq!(ql.current_path(), Some(&path));
-        
+
         ql.hide();
         assert!(!ql.is_visible());
     }
@@ -960,10 +1028,10 @@ mod tests {
     fn test_quick_look_toggle() {
         let mut ql = QuickLook::new();
         let path = PathBuf::from("/tmp/test.txt");
-        
+
         ql.toggle(path.clone());
         assert!(ql.is_visible());
-        
+
         ql.toggle(path.clone());
         assert!(!ql.is_visible());
     }
@@ -971,15 +1039,15 @@ mod tests {
     #[test]
     fn test_quick_look_zoom() {
         let mut ql = QuickLook::new();
-        
+
         assert_eq!(ql.zoom_level(), 1.0);
-        
+
         ql.zoom_in();
         assert!(ql.zoom_level() > 1.0);
-        
+
         ql.reset_zoom();
         assert_eq!(ql.zoom_level(), 1.0);
-        
+
         ql.zoom_out();
         assert!(ql.zoom_level() < 1.0);
     }
@@ -987,12 +1055,12 @@ mod tests {
     #[test]
     fn test_quick_look_zoom_limits() {
         let mut ql = QuickLook::new();
-        
+
         for _ in 0..20 {
             ql.zoom_in();
         }
         assert!(ql.zoom_level() <= 4.0);
-        
+
         // Zoom out to min
         for _ in 0..40 {
             ql.zoom_out();

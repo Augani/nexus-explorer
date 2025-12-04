@@ -9,7 +9,7 @@ fn test_device_creation() {
         PathBuf::from("/test"),
         DeviceType::InternalDrive,
     );
-    
+
     assert_eq!(device.id, DeviceId::new(1));
     assert_eq!(device.name, "Test Drive");
     assert_eq!(device.path, PathBuf::from("/test"));
@@ -26,7 +26,7 @@ fn test_device_with_space() {
         DeviceType::UsbDrive,
     )
     .with_space(1000, 400);
-    
+
     assert_eq!(device.total_space, 1000);
     assert_eq!(device.free_space, 400);
     assert_eq!(device.used_space(), 600);
@@ -41,7 +41,7 @@ fn test_device_usage_percentage() {
         DeviceType::UsbDrive,
     )
     .with_space(1000, 250);
-    
+
     let usage = device.usage_percentage();
     assert!((usage - 0.75).abs() < 0.001);
 }
@@ -55,7 +55,7 @@ fn test_device_usage_percentage_zero_total() {
         DeviceType::UsbDrive,
     )
     .with_space(0, 0);
-    
+
     assert_eq!(device.usage_percentage(), 0.0);
 }
 
@@ -70,16 +70,16 @@ fn test_device_monitor_creation() {
 #[test]
 fn test_device_monitor_add_device() {
     let mut monitor = DeviceMonitor::new();
-    
+
     let device = Device::new(
         DeviceId::new(0),
         "Test Drive".to_string(),
         PathBuf::from("/test"),
         DeviceType::ExternalDrive,
     );
-    
+
     let id = monitor.add_device(device);
-    
+
     assert_eq!(monitor.devices().len(), 1);
     assert!(monitor.get_device(id).is_some());
 }
@@ -87,17 +87,17 @@ fn test_device_monitor_add_device() {
 #[test]
 fn test_device_monitor_remove_device() {
     let mut monitor = DeviceMonitor::new();
-    
+
     let device = Device::new(
         DeviceId::new(0),
         "Test Drive".to_string(),
         PathBuf::from("/test"),
         DeviceType::ExternalDrive,
     );
-    
+
     let id = monitor.add_device(device);
     assert_eq!(monitor.devices().len(), 1);
-    
+
     let removed = monitor.remove_device(id);
     assert!(removed.is_some());
     assert!(monitor.devices().is_empty());
@@ -106,7 +106,7 @@ fn test_device_monitor_remove_device() {
 #[test]
 fn test_device_monitor_get_by_path() {
     let mut monitor = DeviceMonitor::new();
-    
+
     let path = PathBuf::from("/test/path");
     let device = Device::new(
         DeviceId::new(0),
@@ -114,9 +114,9 @@ fn test_device_monitor_get_by_path() {
         path.clone(),
         DeviceType::ExternalDrive,
     );
-    
+
     monitor.add_device(device);
-    
+
     let found = monitor.get_device_by_path(&path);
     assert!(found.is_some());
     assert_eq!(found.unwrap().path, path);
@@ -140,12 +140,8 @@ fn test_device_type_icon_names() {
 
 #[test]
 fn test_wsl_distribution_creation() {
-    let distro = WslDistribution::new(
-        "Ubuntu".to_string(),
-        PathBuf::from("\\\\wsl$\\Ubuntu"),
-        2,
-    );
-    
+    let distro = WslDistribution::new("Ubuntu".to_string(), PathBuf::from("\\\\wsl$\\Ubuntu"), 2);
+
     assert_eq!(distro.name, "Ubuntu");
     assert_eq!(distro.version, 2);
     assert!(!distro.is_running);
@@ -154,24 +150,24 @@ fn test_wsl_distribution_creation() {
 #[test]
 fn test_device_monitor_multiple_devices() {
     let mut monitor = DeviceMonitor::new();
-    
+
     let device1 = Device::new(
         DeviceId::new(0),
         "Drive 1".to_string(),
         PathBuf::from("/drive1"),
         DeviceType::InternalDrive,
     );
-    
+
     let device2 = Device::new(
         DeviceId::new(0),
         "Drive 2".to_string(),
         PathBuf::from("/drive2"),
         DeviceType::ExternalDrive,
     );
-    
+
     let id1 = monitor.add_device(device1);
     let id2 = monitor.add_device(device2);
-    
+
     assert_eq!(monitor.devices().len(), 2);
     assert_ne!(id1, id2);
 }
@@ -179,7 +175,7 @@ fn test_device_monitor_multiple_devices() {
 #[test]
 fn test_device_monitor_update_device() {
     let mut monitor = DeviceMonitor::new();
-    
+
     let device = Device::new(
         DeviceId::new(0),
         "Test Drive".to_string(),
@@ -187,13 +183,13 @@ fn test_device_monitor_update_device() {
         DeviceType::ExternalDrive,
     )
     .with_space(1000, 500);
-    
+
     let id = monitor.add_device(device);
-    
+
     let mut updated = monitor.get_device(id).unwrap().clone();
     updated.free_space = 300;
     monitor.update_device(updated);
-    
+
     let device = monitor.get_device(id).unwrap();
     assert_eq!(device.free_space, 300);
 }
@@ -207,7 +203,7 @@ fn test_device_removable_flag() {
         DeviceType::UsbDrive,
     )
     .with_removable(true);
-    
+
     assert!(device.is_removable);
 }
 
@@ -220,7 +216,7 @@ fn test_device_read_only_flag() {
         DeviceType::OpticalDrive,
     )
     .with_read_only(true);
-    
+
     assert!(device.is_read_only);
 }
 
@@ -276,17 +272,17 @@ mod property_tests {
         #[test]
         fn prop_device_detection_completeness(devices in prop::collection::vec(arb_device(), 0..20)) {
             let mut monitor = DeviceMonitor::new();
-            
+
             // Add all devices
             let mut added_ids = Vec::new();
             for device in &devices {
                 let id = monitor.add_device(device.clone());
                 added_ids.push(id);
             }
-            
+
             // Verify all devices are present
             prop_assert_eq!(monitor.devices().len(), devices.len());
-            
+
             // Verify each device can be found by ID
             for id in &added_ids {
                 prop_assert!(monitor.get_device(*id).is_some());
@@ -300,15 +296,15 @@ mod property_tests {
         fn prop_device_event_ordering(devices in prop::collection::vec(arb_device(), 1..10)) {
             let mut monitor = DeviceMonitor::new();
             let receiver = monitor.subscribe().unwrap();
-            
+
             let mut added_ids = Vec::new();
-            
+
             // Add devices and collect IDs
             for device in &devices {
                 let id = monitor.add_device(device.clone());
                 added_ids.push(id);
             }
-            
+
             // Collect connect events
             let mut connect_events = Vec::new();
             while let Ok(event) = receiver.try_recv() {
@@ -316,12 +312,12 @@ mod property_tests {
                     connect_events.push(event);
                 }
             }
-            
+
             // Remove devices in order
             for id in &added_ids {
                 monitor.remove_device(*id);
             }
-            
+
             // Collect disconnect events
             let mut disconnect_events = Vec::new();
             while let Ok(event) = receiver.try_recv() {
@@ -329,11 +325,11 @@ mod property_tests {
                     disconnect_events.push(event);
                 }
             }
-            
+
             // Verify event counts match
             prop_assert_eq!(connect_events.len(), devices.len());
             prop_assert_eq!(disconnect_events.len(), devices.len());
-            
+
             // Verify disconnect events are in same order as added_ids
             for (i, event) in disconnect_events.iter().enumerate() {
                 if let DeviceEvent::Disconnected(id) = event {
@@ -351,7 +347,7 @@ mod property_tests {
             free_ratio in 0.0f64..=1.0,
         ) {
             let free = (total as f64 * free_ratio) as u64;
-            
+
             let device = Device::new(
                 DeviceId::new(1),
                 "Test".to_string(),
@@ -359,13 +355,13 @@ mod property_tests {
                 DeviceType::InternalDrive,
             )
             .with_space(total, free);
-            
+
             // Property: total_space >= free_space
             prop_assert!(device.total_space >= device.free_space);
-            
+
             // Property: used_space = total_space - free_space
             prop_assert_eq!(device.used_space(), device.total_space.saturating_sub(device.free_space));
-            
+
             // Property: usage_percentage is between 0 and 1
             let usage = device.usage_percentage();
             prop_assert!(usage >= 0.0 && usage <= 1.0);

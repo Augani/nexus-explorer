@@ -5,7 +5,7 @@ use gpui::{
     IntoElement, MouseButton, ParentElement, Render, Styled, Window,
 };
 
-use crate::models::{FileEntry, ViewMode, theme_colors};
+use crate::models::{theme_colors, FileEntry, ViewMode};
 
 /// State for the status bar display
 #[derive(Debug, Clone)]
@@ -83,10 +83,10 @@ impl StatusBarState {
 pub fn detect_git_branch(path: &Path) -> Option<String> {
     // Walk up the directory tree to find .git
     let mut current = Some(path);
-    
+
     while let Some(dir) = current {
         let git_dir = dir.join(".git");
-        
+
         if git_dir.is_dir() {
             // Found .git directory, read HEAD
             let head_path = git_dir.join("HEAD");
@@ -114,10 +114,10 @@ pub fn detect_git_branch(path: &Path) -> Option<String> {
                 }
             }
         }
-        
+
         current = dir.parent();
     }
-    
+
     None
 }
 
@@ -184,7 +184,12 @@ impl StatusBarView {
     }
 
     /// Update from file entries
-    pub fn update_from_entries(&mut self, entries: &[FileEntry], selected_index: Option<usize>, cx: &mut Context<Self>) {
+    pub fn update_from_entries(
+        &mut self,
+        entries: &[FileEntry],
+        selected_index: Option<usize>,
+        cx: &mut Context<Self>,
+    ) {
         self.state.update_from_file_list(entries, selected_index);
         cx.notify();
     }
@@ -261,7 +266,7 @@ impl Render for StatusBarView {
                                     .size(px(12.0))
                                     .text_color(text_muted),
                             )
-                            .child(format!("{} items", total_items))
+                            .child(format!("{} items", total_items)),
                     )
                     .when(selected_count > 0, |el| {
                         el.child(
@@ -270,23 +275,17 @@ impl Render for StatusBarView {
                                 .items_center()
                                 .gap_1()
                                 .text_color(text_primary)
-                                .child(
-                                    div()
-                                        .h(px(12.0))
-                                        .w(px(1.0))
-                                        .bg(border_color)
-                                        .mx_1(),
-                                )
+                                .child(div().h(px(12.0)).w(px(1.0)).bg(border_color).mx_1())
                                 .child(format!("{} selected", selected_count))
                                 .when(selected_size > 0, |el| {
                                     el.child(
                                         div()
                                             .text_color(text_muted)
-                                            .child(format!("({})", format_size(selected_size)))
+                                            .child(format!("({})", format_size(selected_size))),
                                     )
-                                })
+                                }),
                         )
-                    })
+                    }),
             )
             .child(
                 // Right section: Actions and git branch
@@ -308,15 +307,9 @@ impl Render for StatusBarView {
                                         .size(px(12.0))
                                         .text_color(accent),
                                 )
-                                .child(branch)
+                                .child(branch),
                         )
-                        .child(
-                            div()
-                                .h(px(12.0))
-                                .w(px(1.0))
-                                .bg(border_color)
-                                .mx_1(),
-                        )
+                        .child(div().h(px(12.0)).w(px(1.0)).bg(border_color).mx_1())
                     })
                     // Terminal toggle
                     .child(
@@ -331,10 +324,13 @@ impl Render for StatusBarView {
                             .cursor_pointer()
                             .hover(|s| s.bg(hover_bg))
                             .when(is_terminal_open, |s| s.bg(hover_bg))
-                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                view.pending_action = Some(StatusBarAction::ToggleTerminal);
-                                cx.notify();
-                            }))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|view, _event, _window, cx| {
+                                    view.pending_action = Some(StatusBarAction::ToggleTerminal);
+                                    cx.notify();
+                                }),
+                            )
                             .child(
                                 svg()
                                     .path("assets/icons/terminal.svg")
@@ -343,16 +339,15 @@ impl Render for StatusBarView {
                             )
                             .child(
                                 div()
-                                    .text_color(if is_terminal_open { text_primary } else { text_muted })
-                                    .child("Terminal")
-                            )
+                                    .text_color(if is_terminal_open {
+                                        text_primary
+                                    } else {
+                                        text_muted
+                                    })
+                                    .child("Terminal"),
+                            ),
                     )
-                    .child(
-                        div()
-                            .h(px(12.0))
-                            .w(px(1.0))
-                            .bg(border_color),
-                    )
+                    .child(div().h(px(12.0)).w(px(1.0)).bg(border_color))
                     // View mode toggle
                     .child(
                         div()
@@ -365,28 +360,29 @@ impl Render for StatusBarView {
                             .rounded_sm()
                             .cursor_pointer()
                             .hover(|s| s.bg(hover_bg))
-                            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                view.pending_action = Some(StatusBarAction::ToggleViewMode);
-                                cx.notify();
-                            }))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|view, _event, _window, cx| {
+                                    view.pending_action = Some(StatusBarAction::ToggleViewMode);
+                                    cx.notify();
+                                }),
+                            )
                             .child(
                                 svg()
                                     .path(match view_mode {
-                                        ViewMode::List | ViewMode::Details => "assets/icons/list.svg",
+                                        ViewMode::List | ViewMode::Details => {
+                                            "assets/icons/list.svg"
+                                        }
                                         ViewMode::Grid => "assets/icons/grid-2x2.svg",
                                     })
                                     .size(px(12.0))
                                     .text_color(text_muted),
                             )
-                            .child(
-                                div()
-                                    .text_color(text_muted)
-                                    .child(match view_mode {
-                                        ViewMode::List | ViewMode::Details => "List",
-                                        ViewMode::Grid => "Grid",
-                                    })
-                            )
-                    )
+                            .child(div().text_color(text_muted).child(match view_mode {
+                                ViewMode::List | ViewMode::Details => "List",
+                                ViewMode::Grid => "Grid",
+                            })),
+                    ),
             )
     }
 }
@@ -394,9 +390,9 @@ impl Render for StatusBarView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::SystemTime;
     use crate::models::{FileType, IconKey};
     use proptest::prelude::*;
+    use std::time::SystemTime;
 
     fn create_test_entry(name: &str, is_dir: bool, size: u64) -> FileEntry {
         FileEntry {
@@ -405,8 +401,16 @@ mod tests {
             is_dir,
             size,
             modified: SystemTime::now(),
-            file_type: if is_dir { FileType::Directory } else { FileType::RegularFile },
-            icon_key: if is_dir { IconKey::Directory } else { IconKey::GenericFile },
+            file_type: if is_dir {
+                FileType::Directory
+            } else {
+                FileType::RegularFile
+            },
+            icon_key: if is_dir {
+                IconKey::Directory
+            } else {
+                IconKey::GenericFile
+            },
             linux_permissions: None,
             sync_status: crate::models::CloudSyncStatus::None,
         }
@@ -512,7 +516,7 @@ mod tests {
         // Test with current directory (which should be a git repo)
         let current_dir = std::env::current_dir().unwrap();
         let branch = detect_git_branch(&current_dir);
-        
+
         // We expect to find a branch since we're in a git repo
         // The branch name should be non-empty if found
         if let Some(ref b) = branch {
@@ -525,7 +529,7 @@ mod tests {
     fn test_detect_git_branch_non_git_dir() {
         let temp_dir = std::env::temp_dir();
         let branch = detect_git_branch(&temp_dir);
-        
+
         // Temp dir is unlikely to be a git repo (unless nested in one)
         // This test mainly verifies the function doesn't panic
         let _ = branch;
@@ -533,15 +537,12 @@ mod tests {
 
     /// Generate arbitrary file entries for property testing
     fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
-        (
-            "[a-zA-Z0-9_]{1,20}",
-            prop::bool::ANY,
-            0u64..10_000_000_000,
-        )
-            .prop_map(|(name, is_dir, size)| {
+        ("[a-zA-Z0-9_]{1,20}", prop::bool::ANY, 0u64..10_000_000_000).prop_map(
+            |(name, is_dir, size)| {
                 let actual_size = if is_dir { 0 } else { size };
                 create_test_entry(&name, is_dir, actual_size)
-            })
+            },
+        )
     }
 
     /// Generate a vector of file entries
@@ -561,9 +562,9 @@ mod tests {
         fn prop_status_bar_item_count(entries in arb_entries()) {
             let mut state = StatusBarState::new();
             state.update_from_file_list(&entries, None);
-            
+
             prop_assert_eq!(
-                state.total_items, 
+                state.total_items,
                 entries.len(),
                 "Status bar total_items {} should equal entries count {}",
                 state.total_items, entries.len()
@@ -581,11 +582,11 @@ mod tests {
             selection_offset in 0usize..100,
         ) {
             let mut state = StatusBarState::new();
-            
+
             // Test with no selection
             state.update_from_file_list(&entries, None);
             prop_assert_eq!(state.selected_count, 0, "No selection should have count 0");
-            
+
             // Test with valid selection
             if !entries.is_empty() {
                 let valid_index = selection_offset % entries.len();
@@ -608,7 +609,7 @@ mod tests {
             selection_indices in prop::collection::vec(0usize..100, 0..20),
         ) {
             let mut state = StatusBarState::new();
-            
+
             // Filter to valid indices and deduplicate
             let valid_indices: Vec<usize> = selection_indices
                 .into_iter()
@@ -616,11 +617,11 @@ mod tests {
                 .collect::<std::collections::HashSet<_>>()
                 .into_iter()
                 .collect();
-            
+
             state.update_from_entries(&entries, &valid_indices);
-            
+
             prop_assert_eq!(
-                state.selected_count, 
+                state.selected_count,
                 valid_indices.len(),
                 "Selected count {} should equal valid indices count {}",
                 state.selected_count, valid_indices.len()
@@ -638,7 +639,7 @@ mod tests {
             selection_indices in prop::collection::vec(0usize..100, 0..20),
         ) {
             let mut state = StatusBarState::new();
-            
+
             // Filter to valid indices and deduplicate
             let valid_indices: Vec<usize> = selection_indices
                 .into_iter()
@@ -646,18 +647,18 @@ mod tests {
                 .collect::<std::collections::HashSet<_>>()
                 .into_iter()
                 .collect();
-            
+
             state.update_from_entries(&entries, &valid_indices);
-            
+
             // Calculate expected size
             let expected_size: u64 = valid_indices
                 .iter()
                 .filter_map(|&idx| entries.get(idx))
                 .map(|e| e.size)
                 .sum();
-            
+
             prop_assert_eq!(
-                state.selected_size, 
+                state.selected_size,
                 expected_size,
                 "Selected size {} should equal sum of selected entry sizes {}",
                 state.selected_size, expected_size
@@ -675,19 +676,19 @@ mod tests {
             selection_offset in 0usize..100,
         ) {
             let mut state = StatusBarState::new();
-            
+
             // Test with no selection
             state.update_from_file_list(&entries, None);
             prop_assert_eq!(state.selected_size, 0, "No selection should have size 0");
-            
+
             // Test with valid selection
             if !entries.is_empty() {
                 let valid_index = selection_offset % entries.len();
                 state.update_from_file_list(&entries, Some(valid_index));
-                
+
                 let expected_size = entries[valid_index].size;
                 prop_assert_eq!(
-                    state.selected_size, 
+                    state.selected_size,
                     expected_size,
                     "Single selection size {} should equal entry size {}",
                     state.selected_size, expected_size

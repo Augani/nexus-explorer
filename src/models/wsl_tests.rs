@@ -56,13 +56,18 @@ mod unit_tests {
         // Test /home/user -> \\wsl$\Ubuntu\home\user
         let result = WslManager::wsl_to_windows_path("Ubuntu", "/home/user");
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), PathBuf::from("\\\\wsl$\\Ubuntu\\home\\user"));
+        assert_eq!(
+            result.unwrap(),
+            PathBuf::from("\\\\wsl$\\Ubuntu\\home\\user")
+        );
     }
 
     #[test]
     fn test_is_wsl_path() {
         assert!(WslManager::is_wsl_path(&PathBuf::from("\\\\wsl$\\Ubuntu")));
-        assert!(WslManager::is_wsl_path(&PathBuf::from("\\\\wsl.localhost\\Debian")));
+        assert!(WslManager::is_wsl_path(&PathBuf::from(
+            "\\\\wsl.localhost\\Debian"
+        )));
         assert!(!WslManager::is_wsl_path(&PathBuf::from("C:\\Users")));
         assert!(!WslManager::is_wsl_path(&PathBuf::from("/home/user")));
     }
@@ -99,14 +104,14 @@ mod unit_tests {
             group: "root".to_string(),
         };
         assert_eq!(perms.format_mode(), "rwxr-xr-x");
-        
+
         let perms2 = LinuxPermissions {
             mode: 0o644,
             owner: "user".to_string(),
             group: "users".to_string(),
         };
         assert_eq!(perms2.format_mode(), "rw-r--r--");
-        
+
         let perms3 = LinuxPermissions {
             mode: 0o000,
             owner: "nobody".to_string(),
@@ -137,12 +142,7 @@ mod property_tests {
 
     /// Strategy for generating valid Windows drive letters
     fn drive_letter_strategy() -> impl Strategy<Value = char> {
-        prop_oneof![
-            Just('C'),
-            Just('D'),
-            Just('E'),
-            Just('F'),
-        ]
+        prop_oneof![Just('C'), Just('D'), Just('E'), Just('F'),]
     }
 
     /// Strategy for generating valid path components (no special chars)
@@ -171,11 +171,11 @@ mod property_tests {
             let path_suffix = components.join("\\");
             let windows_path_str = format!("{}:\\{}", drive, path_suffix);
             let windows_path = PathBuf::from(&windows_path_str);
-            
+
             let wsl_path = WslManager::windows_to_wsl_path(&windows_path);
             prop_assert!(wsl_path.is_ok(), "Failed to convert Windows path to WSL: {:?}", windows_path);
             let wsl_path = wsl_path.unwrap();
-            
+
             // Verify the WSL path format
             let expected_prefix = format!("/mnt/{}", drive.to_ascii_lowercase());
             prop_assert!(
@@ -184,12 +184,12 @@ mod property_tests {
                 expected_prefix,
                 wsl_path
             );
-            
+
             // WSL -> Windows (using any distro name since it's a /mnt/ path)
             let back_to_windows = WslManager::wsl_to_windows_path("Ubuntu", &wsl_path);
             prop_assert!(back_to_windows.is_ok(), "Failed to convert WSL path back to Windows: {}", wsl_path);
             let back_to_windows = back_to_windows.unwrap();
-            
+
             // The paths should be equivalent (case-insensitive on Windows)
             prop_assert_eq!(
                 windows_path.to_string_lossy().to_lowercase(),
@@ -212,9 +212,9 @@ mod property_tests {
             } else {
                 format!("\\{}", components.join("\\"))
             };
-            
+
             let unc_path = PathBuf::from(format!("\\\\wsl$\\{}{}", distro, path_suffix));
-            
+
             let extracted = WslManager::extract_distro_name(&unc_path);
             prop_assert!(extracted.is_some(), "Should extract distro name from: {:?}", unc_path);
             prop_assert_eq!(extracted.unwrap(), distro);
@@ -227,18 +227,18 @@ mod property_tests {
             components in prop::collection::vec(path_component_strategy(), 1..5)
         ) {
             let linux_path = format!("/{}", components.join("/"));
-            
+
             let windows_path = WslManager::wsl_to_windows_path(&distro, &linux_path);
             prop_assert!(windows_path.is_ok(), "Failed to convert Linux path: {}", linux_path);
             let windows_path = windows_path.unwrap();
-            
+
             // Should be a UNC path
             prop_assert!(
                 WslManager::is_wsl_path(&windows_path),
                 "Result should be a WSL UNC path: {:?}",
                 windows_path
             );
-            
+
             // Should contain the distro name
             let extracted = WslManager::extract_distro_name(&windows_path);
             prop_assert_eq!(extracted, Some(distro.clone()));
@@ -252,12 +252,12 @@ mod property_tests {
                 owner: "user".to_string(),
                 group: "group".to_string(),
             };
-            
+
             let formatted = perms.format_mode();
-            
+
             // Should always be 9 characters
             prop_assert_eq!(formatted.len(), 9, "Permission string should be 9 chars: {}", formatted);
-            
+
             // Should only contain r, w, x, or -
             prop_assert!(
                 formatted.chars().all(|c| matches!(c, 'r' | 'w' | 'x' | '-')),

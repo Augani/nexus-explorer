@@ -181,9 +181,12 @@ impl Render for GoToFolderView {
             .flex()
             .items_center()
             .justify_center()
-            .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                view.hide(cx);
-            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.hide(cx);
+                }),
+            )
             .child(
                 // Dialog container
                 div()
@@ -215,7 +218,7 @@ impl Render for GoToFolderView {
                                     .text_base()
                                     .font_weight(gpui::FontWeight::SEMIBOLD)
                                     .text_color(theme.text_primary)
-                                    .child("Go to Folder")
+                                    .child("Go to Folder"),
                             )
                             .child(
                                 div()
@@ -224,16 +227,19 @@ impl Render for GoToFolderView {
                                     .p_1()
                                     .rounded_md()
                                     .hover(|s| s.bg(theme.bg_hover))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _event, _window, cx| {
-                                        view.hide(cx);
-                                    }))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|view, _event, _window, cx| {
+                                            view.hide(cx);
+                                        }),
+                                    )
                                     .child(
                                         svg()
                                             .path("assets/icons/x.svg")
                                             .size(px(16.0))
-                                            .text_color(theme.text_secondary)
-                                    )
-                            )
+                                            .text_color(theme.text_secondary),
+                                    ),
+                            ),
                     )
                     .child(
                         div()
@@ -258,7 +264,7 @@ impl Render for GoToFolderView {
                                         svg()
                                             .path("assets/icons/folder.svg")
                                             .size(px(16.0))
-                                            .text_color(theme.text_secondary)
+                                            .text_color(theme.text_secondary),
                                     )
                                     .child(
                                         div()
@@ -271,8 +277,8 @@ impl Render for GoToFolderView {
                                                     .child("Enter path (e.g., ~/Documents)")
                                             } else {
                                                 div().child(input_value.clone())
-                                            })
-                                    )
+                                            }),
+                                    ),
                             )
                             .when(error_message.is_some(), |s| {
                                 s.child(
@@ -280,9 +286,9 @@ impl Render for GoToFolderView {
                                         .mt_2()
                                         .text_xs()
                                         .text_color(theme.error)
-                                        .child(error_message.unwrap_or_default())
+                                        .child(error_message.unwrap_or_default()),
                                 )
-                            })
+                            }),
                     )
                     // Suggestions / Recent locations
                     .child(
@@ -298,15 +304,18 @@ impl Render for GoToFolderView {
                                         .font_weight(gpui::FontWeight::BOLD)
                                         .text_color(theme.text_muted)
                                         .mb_2()
-                                        .child("SUGGESTIONS")
+                                        .child("SUGGESTIONS"),
                                 )
                                 .children(
                                     suggestions.into_iter().map(|(name, path)| {
                                         let path_clone = path.clone();
                                         let path_display = path.to_string_lossy().to_string();
-                                        
+
                                         div()
-                                            .id(SharedString::from(format!("suggestion-{}", path_display)))
+                                            .id(SharedString::from(format!(
+                                                "suggestion-{}",
+                                                path_display
+                                            )))
                                             .flex()
                                             .items_center()
                                             .gap_2()
@@ -316,10 +325,15 @@ impl Render for GoToFolderView {
                                             .cursor_pointer()
                                             .text_sm()
                                             .text_color(theme.text_secondary)
-                                            .hover(|h| h.bg(theme.bg_hover).text_color(theme.text_primary))
-                                            .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                                view.navigate_to(path_clone.clone(), cx);
-                                            }))
+                                            .hover(|h| {
+                                                h.bg(theme.bg_hover).text_color(theme.text_primary)
+                                            })
+                                            .on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(move |view, _event, _window, cx| {
+                                                    view.navigate_to(path_clone.clone(), cx);
+                                                }),
+                                            )
                                             .child(name)
                                             .child(
                                                 div()
@@ -327,63 +341,80 @@ impl Render for GoToFolderView {
                                                     .text_xs()
                                                     .text_color(theme.text_muted)
                                                     .overflow_hidden()
-                                                    .child(path_display)
+                                                    .child(path_display),
                                             )
-                                    })
+                                    }),
                                 )
                             })
-                            .when(input_value.is_empty() && !recent_locations.is_empty(), |s| {
-                                s.child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(gpui::FontWeight::BOLD)
-                                        .text_color(theme.text_muted)
-                                        .mb_2()
-                                        .child("RECENT LOCATIONS")
-                                )
-                                .children(
-                                    recent_locations.into_iter().take(10).map(|path| {
-                                        let path_clone = path.clone();
-                                        let name = path
-                                            .file_name()
-                                            .and_then(|n| n.to_str())
-                                            .unwrap_or("Unknown")
-                                            .to_string();
-                                        let path_display = path.to_string_lossy().to_string();
-                                        
+                            .when(
+                                input_value.is_empty() && !recent_locations.is_empty(),
+                                |s| {
+                                    s.child(
                                         div()
-                                            .id(SharedString::from(format!("recent-{}", path_display)))
-                                            .flex()
-                                            .items_center()
-                                            .gap_2()
-                                            .px_2()
-                                            .py_1p5()
-                                            .rounded_md()
-                                            .cursor_pointer()
-                                            .text_sm()
-                                            .text_color(theme.text_secondary)
-                                            .hover(|h| h.bg(theme.bg_hover).text_color(theme.text_primary))
-                                            .on_mouse_down(MouseButton::Left, cx.listener(move |view, _event, _window, cx| {
-                                                view.navigate_to(path_clone.clone(), cx);
-                                            }))
-                                            .child(
-                                                svg()
-                                                    .path("assets/icons/folder.svg")
-                                                    .size(px(14.0))
-                                                    .text_color(theme.accent_primary)
-                                            )
-                                            .child(name)
-                                            .child(
-                                                div()
-                                                    .flex_1()
-                                                    .text_xs()
-                                                    .text_color(theme.text_muted)
-                                                    .overflow_hidden()
-                                                    .child(path_display)
-                                            )
-                                    })
-                                )
-                            })
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::BOLD)
+                                            .text_color(theme.text_muted)
+                                            .mb_2()
+                                            .child("RECENT LOCATIONS"),
+                                    )
+                                    .children(
+                                        recent_locations.into_iter().take(10).map(|path| {
+                                            let path_clone = path.clone();
+                                            let name = path
+                                                .file_name()
+                                                .and_then(|n| n.to_str())
+                                                .unwrap_or("Unknown")
+                                                .to_string();
+                                            let path_display = path.to_string_lossy().to_string();
+
+                                            div()
+                                                .id(SharedString::from(format!(
+                                                    "recent-{}",
+                                                    path_display
+                                                )))
+                                                .flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .px_2()
+                                                .py_1p5()
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .text_sm()
+                                                .text_color(theme.text_secondary)
+                                                .hover(|h| {
+                                                    h.bg(theme.bg_hover)
+                                                        .text_color(theme.text_primary)
+                                                })
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(
+                                                        move |view, _event, _window, cx| {
+                                                            view.navigate_to(
+                                                                path_clone.clone(),
+                                                                cx,
+                                                            );
+                                                        },
+                                                    ),
+                                                )
+                                                .child(
+                                                    svg()
+                                                        .path("assets/icons/folder.svg")
+                                                        .size(px(14.0))
+                                                        .text_color(theme.accent_primary),
+                                                )
+                                                .child(name)
+                                                .child(
+                                                    div()
+                                                        .flex_1()
+                                                        .text_xs()
+                                                        .text_color(theme.text_muted)
+                                                        .overflow_hidden()
+                                                        .child(path_display),
+                                                )
+                                        }),
+                                    )
+                                },
+                            ),
                     )
                     // Footer with keyboard hints
                     .child(
@@ -398,8 +429,8 @@ impl Render for GoToFolderView {
                             .text_xs()
                             .text_color(theme.text_muted)
                             .child("Press Enter to navigate")
-                            .child("Esc to close")
-                    )
+                            .child("Esc to close"),
+                    ),
             )
             .into_any_element()
     }

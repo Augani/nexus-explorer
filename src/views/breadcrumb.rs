@@ -17,7 +17,11 @@ pub struct PathSegment {
 
 impl PathSegment {
     pub fn new(name: String, path: PathBuf, is_root: bool) -> Self {
-        Self { name, path, is_root }
+        Self {
+            name,
+            path,
+            is_root,
+        }
     }
 }
 
@@ -72,11 +76,7 @@ impl Breadcrumb {
         paths_collected.reverse();
 
         for (i, (p, name)) in paths_collected.into_iter().enumerate() {
-            segments.push(PathSegment::new(
-                name,
-                p.to_path_buf(),
-                i == 0,
-            ));
+            segments.push(PathSegment::new(name, p.to_path_buf(), i == 0));
         }
 
         segments
@@ -100,7 +100,7 @@ impl Breadcrumb {
             // Show first segment, ellipsis, then last (max_visible - 2) segments
             let mut visible = Vec::new();
             visible.push(&self.segments[0]);
-            
+
             let start = self.segments.len() - (self.max_visible - 1);
             for seg in &self.segments[start..] {
                 visible.push(seg);
@@ -198,7 +198,12 @@ impl BreadcrumbView {
         self.pending_navigation.take()
     }
 
-    fn handle_segment_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_segment_click(
+        &mut self,
+        path: PathBuf,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.pending_navigation = Some(path);
         cx.notify();
     }
@@ -208,7 +213,12 @@ impl BreadcrumbView {
         cx.notify();
     }
 
-    fn copy_path_to_clipboard(&mut self, path: &Path, _window: &mut Window, cx: &mut Context<Self>) {
+    fn copy_path_to_clipboard(
+        &mut self,
+        path: &Path,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let Some(path_str) = path.to_str() {
             // Copy to clipboard - using cx to write to clipboard
             cx.write_to_clipboard(gpui::ClipboardItem::new_string(path_str.to_string()));
@@ -226,7 +236,7 @@ impl Focusable for BreadcrumbView {
 impl Render for BreadcrumbView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = theme_colors();
-        
+
         let text_gray = colors.text_secondary;
         let text_light = colors.text_primary;
         let hover_color = colors.accent_primary;
@@ -239,7 +249,7 @@ impl Render for BreadcrumbView {
         let visible_segments = self.breadcrumb.visible_segments();
         let hidden_segments = self.breadcrumb.hidden_segments();
         let show_ellipsis_menu = self.breadcrumb.show_ellipsis_menu;
-        
+
         // Breadcrumb segment padding from toolbar spacing
         let segment_padding = px(toolbar_spacing::BREADCRUMB_PADDING);
 

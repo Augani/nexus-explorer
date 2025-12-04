@@ -26,42 +26,35 @@ fn arb_file_node() -> impl Strategy<Value = FileNode> {
 
 /// Generate a valid tree structure for MftIndex testing
 /// Ensures unique FRNs by using sequential record numbers
-fn arb_mft_tree(max_depth: usize, max_children: usize) -> impl Strategy<Value = Vec<(FileReferenceNumber, FileNode)>> {
+fn arb_mft_tree(
+    max_depth: usize,
+    max_children: usize,
+) -> impl Strategy<Value = Vec<(FileReferenceNumber, FileNode)>> {
     let root_frn = FileReferenceNumber::ROOT;
-    
+
     prop::collection::vec(
-        (
-            "[a-zA-Z0-9_]{1,20}",
-            any::<bool>(),
-        ),
-        1..max_children * max_depth
-    ).prop_map(move |items| {
+        ("[a-zA-Z0-9_]{1,20}", any::<bool>()),
+        1..max_children * max_depth,
+    )
+    .prop_map(move |items| {
         let mut result = Vec::new();
         let mut available_parents = vec![root_frn];
-        
+
         // Use strictly sequential record numbers to ensure uniqueness
         for (i, (name, is_dir)) in items.into_iter().enumerate() {
             let frn = FileReferenceNumber::new(100 + i as u64, 1);
             let parent_idx = i % available_parents.len().max(1);
             let parent = available_parents[parent_idx];
-            
-            let node = FileNode::new(
-                name,
-                parent,
-                is_dir,
-                0,
-                0,
-                0,
-                if is_dir { 0x10 } else { 0 },
-            );
-            
+
+            let node = FileNode::new(name, parent, is_dir, 0, 0, 0, if is_dir { 0x10 } else { 0 });
+
             if is_dir {
                 available_parents.push(frn);
             }
-            
+
             result.push((frn, node));
         }
-        
+
         result
     })
 }
@@ -76,7 +69,7 @@ fn test_file_reference_number_components() {
 #[test]
 fn test_mft_index_basic_operations() {
     let mut index = MftIndex::new(PathBuf::from("C:\\"));
-    
+
     let frn = FileReferenceNumber::new(100, 1);
     let node = FileNode::new(
         "test.txt".to_string(),
@@ -87,15 +80,15 @@ fn test_mft_index_basic_operations() {
         0,
         0,
     );
-    
+
     assert!(index.is_empty());
     index.insert(frn, node.clone());
     assert_eq!(index.len(), 1);
     assert!(index.contains(&frn));
-    
+
     let retrieved = index.get(&frn).unwrap();
     assert_eq!(retrieved.name, "test.txt");
-    
+
     index.remove(&frn);
     assert!(!index.contains(&frn));
 }
@@ -103,19 +96,35 @@ fn test_mft_index_basic_operations() {
 #[test]
 fn test_path_reconstruction_simple() {
     let mut index = MftIndex::new(PathBuf::from("C:"));
-    
+
     index.insert(
         FileReferenceNumber::ROOT,
-        FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
+        FileNode::new(
+            String::new(),
+            FileReferenceNumber::ROOT,
+            true,
+            0,
+            0,
+            0,
+            0x10,
+        ),
     );
-    
+
     // Add a file in root
     let file_frn = FileReferenceNumber::new(100, 1);
     index.insert(
         file_frn,
-        FileNode::new("test.txt".to_string(), FileReferenceNumber::ROOT, false, 0, 0, 0, 0),
+        FileNode::new(
+            "test.txt".to_string(),
+            FileReferenceNumber::ROOT,
+            false,
+            0,
+            0,
+            0,
+            0,
+        ),
     );
-    
+
     let path = index.reconstruct_path(&file_frn).unwrap();
     // Path should be volume + filename
     assert!(path.ends_with("test.txt"));
@@ -125,31 +134,47 @@ fn test_path_reconstruction_simple() {
 #[test]
 fn test_path_reconstruction_nested() {
     let mut index = MftIndex::new(PathBuf::from("C:"));
-    
+
     index.insert(
         FileReferenceNumber::ROOT,
-        FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
+        FileNode::new(
+            String::new(),
+            FileReferenceNumber::ROOT,
+            true,
+            0,
+            0,
+            0,
+            0x10,
+        ),
     );
-    
+
     let folder_frn = FileReferenceNumber::new(100, 1);
     index.insert(
         folder_frn,
-        FileNode::new("Documents".to_string(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
+        FileNode::new(
+            "Documents".to_string(),
+            FileReferenceNumber::ROOT,
+            true,
+            0,
+            0,
+            0,
+            0x10,
+        ),
     );
-    
+
     let subfolder_frn = FileReferenceNumber::new(101, 1);
     index.insert(
         subfolder_frn,
         FileNode::new("Projects".to_string(), folder_frn, true, 0, 0, 0, 0x10),
     );
-    
+
     // Add file in subfolder
     let file_frn = FileReferenceNumber::new(102, 1);
     index.insert(
         file_frn,
         FileNode::new("readme.md".to_string(), subfolder_frn, false, 0, 0, 0, 0),
     );
-    
+
     let path = index.reconstruct_path(&file_frn).unwrap();
     // Verify path components
     let components: Vec<_> = path.components().collect();
@@ -162,14 +187,14 @@ fn test_usn_reason_flags() {
     let create = UsnReason::FILE_CREATE;
     assert!(create.is_create());
     assert!(!create.is_delete());
-    
+
     let delete = UsnReason::FILE_DELETE;
     assert!(delete.is_delete());
     assert!(!delete.is_create());
-    
+
     let modify = UsnReason::DATA_OVERWRITE;
     assert!(modify.is_modify());
-    
+
     let rename = UsnReason(UsnReason::RENAME_OLD_NAME.0 | UsnReason::RENAME_NEW_NAME.0);
     assert!(rename.is_rename());
 }
@@ -177,14 +202,22 @@ fn test_usn_reason_flags() {
 #[test]
 fn test_usn_apply_create() {
     let mut index = MftIndex::new(PathBuf::from("C:\\"));
-    
+
     index.insert(
         FileReferenceNumber::ROOT,
-        FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
+        FileNode::new(
+            String::new(),
+            FileReferenceNumber::ROOT,
+            true,
+            0,
+            0,
+            0,
+            0x10,
+        ),
     );
-    
+
     let monitor = UsnJournalMonitor::new(PathBuf::from("C:\\"));
-    
+
     let record = UsnRecord {
         frn: FileReferenceNumber::new(200, 1),
         parent_frn: FileReferenceNumber::ROOT,
@@ -193,9 +226,9 @@ fn test_usn_apply_create() {
         file_name: "newfile.txt".to_string(),
         file_attributes: 0,
     };
-    
+
     monitor.apply_to_index(&mut index, &[record]);
-    
+
     assert!(index.contains(&FileReferenceNumber::new(200, 1)));
     let node = index.get(&FileReferenceNumber::new(200, 1)).unwrap();
     assert_eq!(node.name, "newfile.txt");
@@ -204,15 +237,23 @@ fn test_usn_apply_create() {
 #[test]
 fn test_usn_apply_delete() {
     let mut index = MftIndex::new(PathBuf::from("C:\\"));
-    
+
     let frn = FileReferenceNumber::new(200, 1);
     index.insert(
         frn,
-        FileNode::new("oldfile.txt".to_string(), FileReferenceNumber::ROOT, false, 0, 0, 0, 0),
+        FileNode::new(
+            "oldfile.txt".to_string(),
+            FileReferenceNumber::ROOT,
+            false,
+            0,
+            0,
+            0,
+            0,
+        ),
     );
-    
+
     let monitor = UsnJournalMonitor::new(PathBuf::from("C:\\"));
-    
+
     let record = UsnRecord {
         frn,
         parent_frn: FileReferenceNumber::ROOT,
@@ -221,9 +262,9 @@ fn test_usn_apply_delete() {
         file_name: "oldfile.txt".to_string(),
         file_attributes: 0,
     };
-    
+
     monitor.apply_to_index(&mut index, &[record]);
-    
+
     assert!(!index.contains(&frn));
 }
 
@@ -237,32 +278,32 @@ proptest! {
     fn prop_mft_path_reconstruction(tree in arb_mft_tree(5, 10)) {
         let volume_root = PathBuf::from("C:");
         let mut index = MftIndex::new(volume_root.clone());
-        
+
         index.insert(
             FileReferenceNumber::ROOT,
             FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
         );
-        
+
         // Add all nodes from the tree
         for (frn, node) in &tree {
             index.insert(*frn, node.clone());
         }
-        
+
         // Verify all nodes can have their paths reconstructed
         for (frn, node) in &tree {
             let path = index.reconstruct_path(frn);
-            
+
             // Path must be reconstructable
             prop_assert!(path.is_some(), "Failed to reconstruct path for {:?}", frn);
-            
+
             let path = path.unwrap();
-            
+
             // Path must start with volume root
             prop_assert!(
-                path.starts_with(&volume_root), 
+                path.starts_with(&volume_root),
                 "Path doesn't start with volume: {:?}", path
             );
-            
+
             // Path must end with the file's name
             if !node.name.is_empty() {
                 let file_name = path.file_name().and_then(|n| n.to_str());
@@ -286,19 +327,19 @@ proptest! {
         deletes in prop::collection::vec(0usize..20, 0..10)
     ) {
         let mut index = MftIndex::new(PathBuf::from("C:"));
-        
+
         index.insert(
             FileReferenceNumber::ROOT,
             FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
         );
-        
+
         let monitor = UsnJournalMonitor::new(PathBuf::from("C:\\"));
-        
+
         let mut created_frns = Vec::new();
         for (i, (name, record_num)) in creates.iter().enumerate() {
             let frn = FileReferenceNumber::new(*record_num + i as u64, 1);
             created_frns.push(frn);
-            
+
             let record = UsnRecord {
                 frn,
                 parent_frn: FileReferenceNumber::ROOT,
@@ -307,20 +348,20 @@ proptest! {
                 file_name: name.clone(),
                 file_attributes: 0,
             };
-            
+
             monitor.apply_to_index(&mut index, &[record]);
-            
+
             prop_assert!(
                 index.contains(&frn),
                 "Entry not found after create: {:?}",
                 frn
             );
         }
-        
+
         for delete_idx in deletes {
             if delete_idx < created_frns.len() {
                 let frn = created_frns[delete_idx];
-                
+
                 let record = UsnRecord {
                     frn,
                     parent_frn: FileReferenceNumber::ROOT,
@@ -329,9 +370,9 @@ proptest! {
                     file_name: String::new(),
                     file_attributes: 0,
                 };
-                
+
                 monitor.apply_to_index(&mut index, &[record]);
-                
+
                 // After delete, entry must not exist
                 prop_assert!(
                     !index.contains(&frn),
@@ -343,27 +384,42 @@ proptest! {
     }
 }
 
-
 #[test]
 fn test_mft_serialization_basic() {
     let mut index = MftIndex::new(PathBuf::from("C:"));
-    
+
     index.insert(
         FileReferenceNumber::ROOT,
-        FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
+        FileNode::new(
+            String::new(),
+            FileReferenceNumber::ROOT,
+            true,
+            0,
+            0,
+            0,
+            0x10,
+        ),
     );
-    
+
     index.insert(
         FileReferenceNumber::new(100, 1),
-        FileNode::new("test.txt".to_string(), FileReferenceNumber::ROOT, false, 1024, 100, 200, 0),
+        FileNode::new(
+            "test.txt".to_string(),
+            FileReferenceNumber::ROOT,
+            false,
+            1024,
+            100,
+            200,
+            0,
+        ),
     );
-    
+
     index.set_usn_cursor(12345);
-    
+
     // Serialize and deserialize
     let serialized = index.serialize().expect("Serialization should succeed");
     let deserialized = MftIndex::deserialize(&serialized).expect("Deserialization should succeed");
-    
+
     assert_eq!(deserialized.len(), index.len());
     assert_eq!(deserialized.usn_cursor, index.usn_cursor);
     assert_eq!(deserialized.volume_path, index.volume_path);
@@ -377,12 +433,20 @@ fn test_mft_corrupted_data_rejection() {
     let garbage = vec![0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD];
     let result = MftIndex::deserialize(&garbage);
     assert!(result.is_err(), "Corrupted data should be rejected");
-    
+
     // Truncated data should fail
     let mut index = MftIndex::new(PathBuf::from("C:"));
     index.insert(
         FileReferenceNumber::ROOT,
-        FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
+        FileNode::new(
+            String::new(),
+            FileReferenceNumber::ROOT,
+            true,
+            0,
+            0,
+            0,
+            0x10,
+        ),
     );
     let serialized = index.serialize().unwrap();
     let truncated = &serialized[..serialized.len() / 2];
@@ -392,23 +456,27 @@ fn test_mft_corrupted_data_rejection() {
 
 /// Generate arbitrary MftIndex for property testing
 fn arb_mft_index() -> impl Strategy<Value = MftIndex> {
-    (
-        "[A-Z]:",
-        0u64..u64::MAX,
-        arb_mft_tree(3, 5),
-    ).prop_map(|(volume, cursor, tree)| {
+    ("[A-Z]:", 0u64..u64::MAX, arb_mft_tree(3, 5)).prop_map(|(volume, cursor, tree)| {
         let mut index = MftIndex::new(PathBuf::from(volume));
         index.set_usn_cursor(cursor);
-        
+
         index.insert(
             FileReferenceNumber::ROOT,
-            FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
+            FileNode::new(
+                String::new(),
+                FileReferenceNumber::ROOT,
+                true,
+                0,
+                0,
+                0,
+                0x10,
+            ),
         );
-        
+
         for (frn, node) in tree {
             index.insert(frn, node);
         }
-        
+
         index
     })
 }
@@ -424,30 +492,30 @@ proptest! {
         let serialized = index.serialize();
         prop_assert!(serialized.is_ok(), "Serialization should succeed");
         let serialized = serialized.unwrap();
-        
+
         let deserialized = MftIndex::deserialize(&serialized);
         prop_assert!(deserialized.is_ok(), "Deserialization should succeed");
         let deserialized = deserialized.unwrap();
-        
+
         // Verify equivalence
         prop_assert_eq!(
             deserialized.len(),
             index.len(),
             "File count should match"
         );
-        
+
         prop_assert_eq!(
             deserialized.usn_cursor,
             index.usn_cursor,
             "USN cursor should match"
         );
-        
+
         prop_assert_eq!(
             &deserialized.volume_path,
             &index.volume_path,
             "Volume path should match"
         );
-        
+
         // Verify all files are present with correct data
         for (frn, original_node) in &index.files {
             let deserialized_node = deserialized.get(frn);
@@ -456,7 +524,7 @@ proptest! {
                 "File {:?} should exist after round-trip",
                 frn
             );
-            
+
             let deserialized_node = deserialized_node.unwrap();
             prop_assert_eq!(
                 &deserialized_node.name,

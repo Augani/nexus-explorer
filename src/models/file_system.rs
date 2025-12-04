@@ -5,7 +5,9 @@ use flume::Receiver;
 use lru::LruCache;
 use std::num::NonZeroUsize;
 
-use super::{CachedDirectory, CloudSyncStatus, FileEntry, LoadState, SyncStatus, CloudStorageManager};
+use super::{
+    CachedDirectory, CloudStorageManager, CloudSyncStatus, FileEntry, LoadState, SyncStatus,
+};
 use crate::io::{
     create_batch_pipeline, traverse_directory_sorted, BatchConfig, SortKey, SortOrder,
     TraversalConfig,
@@ -15,7 +17,7 @@ use crate::io::{
 const DEFAULT_CACHE_CAPACITY: usize = 100;
 
 /// Central file system state and I/O coordination.
-/// 
+///
 /// The FileSystem model manages directory navigation, caching, and async I/O coordination.
 /// It uses generational ID tracking to prevent stale results from being displayed when
 /// rapid navigation occurs.
@@ -32,7 +34,7 @@ impl FileSystem {
     pub fn new(initial_path: PathBuf) -> Self {
         let cache_capacity = NonZeroUsize::new(DEFAULT_CACHE_CAPACITY)
             .expect("DEFAULT_CACHE_CAPACITY must be non-zero");
-        
+
         Self {
             current_path: initial_path,
             entries: Vec::new(),
@@ -44,9 +46,9 @@ impl FileSystem {
 
     /// Creates a new FileSystem model with a custom cache capacity.
     pub fn with_cache_capacity(initial_path: PathBuf, capacity: usize) -> Self {
-        let cache_capacity = NonZeroUsize::new(capacity.max(1))
-            .expect("capacity must be at least 1");
-        
+        let cache_capacity =
+            NonZeroUsize::new(capacity.max(1)).expect("capacity must be at least 1");
+
         Self {
             current_path: initial_path,
             entries: Vec::new(),
@@ -76,26 +78,27 @@ impl FileSystem {
         self.request_id
     }
 
-
     /// Initiates a navigation request to the specified path.
-    /// 
+    ///
     /// This increments the request_id for generational tracking.
     /// Always clears entries to prevent duplication when processing batches.
-    /// 
+    ///
     /// Returns the new request_id for tracking async operations.
     pub fn begin_load(&mut self, path: PathBuf) -> usize {
         self.request_id = self.request_id.wrapping_add(1);
         self.current_path = path.clone();
-        
+
         // Always clear entries before loading to prevent duplication
         self.entries.clear();
-        self.state = LoadState::Loading { request_id: self.request_id };
-        
+        self.state = LoadState::Loading {
+            request_id: self.request_id,
+        };
+
         self.request_id
     }
 
     /// Validates if the given request_id matches the current generation.
-    /// 
+    ///
     /// Used to prevent stale async results from being applied when a newer
     /// navigation request has superseded the original.
     pub fn is_valid_request(&self, request_id: usize) -> bool {
@@ -103,7 +106,7 @@ impl FileSystem {
     }
 
     /// Applies loaded entries if the request_id is still valid.
-    /// 
+    ///
     /// Returns true if the update was applied, false if it was discarded
     /// due to a stale request_id.
     pub fn complete_load(
@@ -118,25 +121,25 @@ impl FileSystem {
         }
 
         let count = entries.len();
-        
+
         // Cache the directory state with current generation
         let cached = CachedDirectory::new(entries.clone(), request_id, mtime);
         self.cache.put(self.current_path.clone(), cached);
-        
+
         self.entries = entries;
         self.state = LoadState::Loaded { count, duration };
-        
+
         true
     }
 
     /// Sets an error state if the request_id is still valid.
-    /// 
+    ///
     /// Returns true if the error was applied, false if discarded.
     pub fn set_error(&mut self, request_id: usize, message: String) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
         }
-        
+
         self.state = LoadState::Error { message };
         true
     }
@@ -163,13 +166,13 @@ impl FileSystem {
 
     /// Appends entries to the current list if the request_id is still valid.
     /// Used for incremental batch updates during traversal.
-    /// 
+    ///
     /// Returns true if the update was applied, false if discarded.
     pub fn append_entries(&mut self, request_id: usize, new_entries: Vec<FileEntry>) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
         }
-        
+
         self.entries.extend(new_entries);
         true
     }
@@ -184,12 +187,12 @@ pub struct LoadOperation {
 
 impl FileSystem {
     /// Initiates an asynchronous load of the specified directory path.
-    /// 
+    ///
     /// This method:
     /// 1. Increments the request_id for generational tracking
     /// 2. Checks cache for immediate display
     /// 3. Spawns a background traversal with batch aggregation
-    /// 
+    ///
     /// Returns a LoadOperation containing the request_id and receivers for
     /// processing batched results.
     pub fn load_path(
@@ -204,7 +207,7 @@ impl FileSystem {
         if super::is_trash_path(&path) {
             let batch_config = BatchConfig::default();
             let (entry_tx, batch_rx, _batch_handle) = create_batch_pipeline(batch_config);
-            
+
             let traversal_handle = std::thread::spawn(move || -> crate::models::Result<usize> {
                 let entries = super::list_trash_items();
                 let count = entries.len();
@@ -213,7 +216,7 @@ impl FileSystem {
                 }
                 Ok(count)
             });
-            
+
             return LoadOperation {
                 request_id,
                 batch_receiver: batch_rx,
@@ -231,9 +234,8 @@ impl FileSystem {
         let batch_config = BatchConfig::default();
         let (entry_tx, batch_rx, _batch_handle) = create_batch_pipeline(batch_config);
 
-        let traversal_handle = std::thread::spawn(move || {
-            traverse_directory_sorted(&path, &config, entry_tx)
-        });
+        let traversal_handle =
+            std::thread::spawn(move || traverse_directory_sorted(&path, &config, entry_tx));
 
         LoadOperation {
             request_id,
@@ -243,10 +245,10 @@ impl FileSystem {
     }
 
     /// Processes batched entries from a load operation.
-    /// 
+    ///
     /// This method should be called repeatedly to process incoming batches
     /// until the receiver is disconnected.
-    /// 
+    ///
     /// Returns the number of entries added, or None if the request was stale.
     pub fn process_batch(&mut self, request_id: usize, batch: Vec<FileEntry>) -> Option<usize> {
         if !self.is_valid_request(request_id) {
@@ -259,7 +261,7 @@ impl FileSystem {
     }
 
     /// Completes a load operation, finalizing the state.
-    /// 
+    ///
     /// This should be called after all batches have been processed.
     pub fn finalize_load(&mut self, request_id: usize, duration: Duration) -> bool {
         if !self.is_valid_request(request_id) {
@@ -267,7 +269,7 @@ impl FileSystem {
         }
 
         let count = self.entries.len();
-        
+
         let mtime = std::fs::metadata(&self.current_path)
             .and_then(|m| m.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH);
@@ -306,7 +308,7 @@ impl FileSystem {
 }
 
 /// Synchronously loads a directory and processes all batches.
-/// 
+///
 /// This is a convenience function for simple use cases where async
 /// processing is not needed.
 pub fn load_directory_sync(
@@ -325,8 +327,9 @@ pub fn load_directory_sync(
     }
 
     // Wait for traversal to complete
-    let result = op.traversal_handle.join()
-        .map_err(|_| crate::models::FileSystemError::Platform("Traversal thread panicked".to_string()))?;
+    let result = op.traversal_handle.join().map_err(|_| {
+        crate::models::FileSystemError::Platform("Traversal thread panicked".to_string())
+    })?;
 
     let duration = start.elapsed();
     fs.finalize_load(request_id, duration);
@@ -343,13 +346,13 @@ impl Default for FileSystem {
 use super::FsEvent;
 
 /// File event processing for the FileSystem model.
-/// 
+///
 /// These methods handle real-time file system events from watchers,
 /// updating the entries list to reflect changes without requiring
 /// a full directory reload.
 impl FileSystem {
     /// Processes a file system event and updates entries accordingly.
-    /// 
+    ///
     /// Returns true if the entries were modified, false otherwise.
     /// Events for paths outside the current directory are ignored.
     pub fn process_event(&mut self, event: FsEvent) -> bool {
@@ -362,10 +365,11 @@ impl FileSystem {
     }
 
     /// Processes multiple file system events.
-    /// 
+    ///
     /// Returns the number of events that resulted in entry modifications.
     pub fn process_events(&mut self, events: Vec<FsEvent>) -> usize {
-        events.into_iter()
+        events
+            .into_iter()
             .filter(|event| self.process_event(event.clone()))
             .count()
     }
@@ -384,7 +388,8 @@ impl FileSystem {
         }
 
         if let Some(entry) = Self::create_entry_from_path(&path) {
-            let insert_pos = self.entries
+            let insert_pos = self
+                .entries
                 .binary_search_by(|e| e.name.cmp(&entry.name))
                 .unwrap_or_else(|pos| pos);
             self.entries.insert(insert_pos, entry);
@@ -418,7 +423,7 @@ impl FileSystem {
 
         let original_len = self.entries.len();
         self.entries.retain(|e| e.path != path);
-        
+
         if self.entries.len() != original_len {
             self.invalidate_cache_for_current();
             true
@@ -435,7 +440,8 @@ impl FileSystem {
             (true, true) => {
                 if let Some(entry) = self.entries.iter_mut().find(|e| e.path == from) {
                     entry.path = to.clone();
-                    entry.name = to.file_name()
+                    entry.name = to
+                        .file_name()
                         .and_then(|n| n.to_str())
                         .unwrap_or("")
                         .to_string();
@@ -459,7 +465,13 @@ impl FileSystem {
         let size = if is_dir { 0 } else { metadata.len() };
         let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
 
-        Some(FileEntry::new(name, path.to_path_buf(), is_dir, size, modified))
+        Some(FileEntry::new(
+            name,
+            path.to_path_buf(),
+            is_dir,
+            size,
+            modified,
+        ))
     }
 
     fn invalidate_cache_for_current(&mut self) {

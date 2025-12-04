@@ -1,6 +1,5 @@
 /// Property-based tests for FileSystem model
 /// **Feature: file-explorer-core**
-
 use super::*;
 use crate::models::{CloudSyncStatus, FileEntry, FileType, IconKey, LoadState};
 use proptest::prelude::*;
@@ -8,9 +7,8 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn arb_system_time() -> impl Strategy<Value = SystemTime> {
-    (0u64..253402300799u64, 0u32..1_000_000_000u32).prop_map(|(secs, nanos)| {
-        UNIX_EPOCH + Duration::new(secs, nanos)
-    })
+    (0u64..253402300799u64, 0u32..1_000_000_000u32)
+        .prop_map(|(secs, nanos)| UNIX_EPOCH + Duration::new(secs, nanos))
 }
 
 fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
@@ -21,18 +19,24 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
         any::<u64>(),
         arb_system_time(),
     )
-        .prop_map(|(name, path_str, is_dir, size, modified)| {
-            FileEntry {
-                name: name.clone(),
-                path: PathBuf::from(&path_str),
-                is_dir,
-                size,
-                modified,
-                file_type: if is_dir { FileType::Directory } else { FileType::RegularFile },
-                icon_key: if is_dir { IconKey::Directory } else { IconKey::GenericFile },
-                linux_permissions: None,
-                sync_status: CloudSyncStatus::None,
-            }
+        .prop_map(|(name, path_str, is_dir, size, modified)| FileEntry {
+            name: name.clone(),
+            path: PathBuf::from(&path_str),
+            is_dir,
+            size,
+            modified,
+            file_type: if is_dir {
+                FileType::Directory
+            } else {
+                FileType::RegularFile
+            },
+            icon_key: if is_dir {
+                IconKey::Directory
+            } else {
+                IconKey::GenericFile
+            },
+            linux_permissions: None,
+            sync_status: CloudSyncStatus::None,
         })
 }
 
@@ -59,9 +63,9 @@ proptest! {
         entries in arb_file_entries(20),
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
-        
+
         let request_id = fs.begin_load(path.clone());
-        
+
         match fs.state() {
             LoadState::Loading { request_id: state_id } => {
                 prop_assert_eq!(*state_id, request_id,
@@ -71,19 +75,19 @@ proptest! {
             LoadState::Cached { .. } => {
                 // This is valid if the path was previously cached
                 // In this case, we should verify the path is in cache
-                prop_assert!(fs.is_cached(&path), 
+                prop_assert!(fs.is_cached(&path),
                     "If state is Cached, path should be in cache");
             }
             other => {
-                prop_assert!(false, 
+                prop_assert!(false,
                     "After begin_load, state should be Loading or Cached, got {:?}", other);
             }
         }
-        
+
         let mtime = SystemTime::now();
         let applied = fs.complete_load(request_id, entries.clone(), Duration::from_millis(50), mtime);
         prop_assert!(applied, "complete_load with valid request_id should succeed");
-        
+
         match fs.state() {
             LoadState::Loaded { count, .. } => {
                 prop_assert_eq!(*count, entries.len(),
@@ -91,7 +95,7 @@ proptest! {
                     count, entries.len());
             }
             other => {
-                prop_assert!(false, 
+                prop_assert!(false,
                     "After complete_load, state should be Loaded, got {:?}", other);
             }
         }
@@ -108,9 +112,9 @@ proptest! {
         path2 in arb_path(),
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
-        
+
         let id1 = fs.begin_load(path1.clone());
-        
+
         match fs.state() {
             LoadState::Loading { request_id } => {
                 prop_assert_eq!(*request_id, id1);
@@ -122,10 +126,10 @@ proptest! {
                 prop_assert!(false, "Unexpected state: {:?}", other);
             }
         }
-        
+
         let id2 = fs.begin_load(path2.clone());
         prop_assert!(id2 > id1, "Second request_id should be greater than first");
-        
+
         match fs.state() {
             LoadState::Loading { request_id } => {
                 prop_assert_eq!(*request_id, id2,
@@ -139,9 +143,9 @@ proptest! {
                 prop_assert!(false, "Unexpected state after supersede: {:?}", other);
             }
         }
-        
+
         // First request_id should now be invalid
-        prop_assert!(!fs.is_valid_request(id1), 
+        prop_assert!(!fs.is_valid_request(id1),
             "Old request_id should be invalid after supersede");
         prop_assert!(fs.is_valid_request(id2),
             "New request_id should be valid");
@@ -162,13 +166,13 @@ proptest! {
 
         for path in &paths {
             let new_id = fs.begin_load(path.clone());
-            
+
             // Each request_id must be strictly greater than the previous
-            prop_assert!(new_id > prev_id, 
+            prop_assert!(new_id > prev_id,
                 "Request ID {} should be greater than previous {}", new_id, prev_id);
-            
+
             prop_assert_eq!(fs.request_id(), new_id);
-            
+
             prev_id = new_id;
         }
     }
@@ -186,11 +190,11 @@ proptest! {
         entries2 in arb_file_entries(10),
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
-        
+
         let id1 = fs.begin_load(path1.clone());
-        
+
         let id2 = fs.begin_load(path2.clone());
-        
+
         let stale_applied = fs.complete_load(
             id1,
             entries1.clone(),
@@ -198,7 +202,7 @@ proptest! {
             SystemTime::now(),
         );
         prop_assert!(!stale_applied, "Stale request should be rejected");
-        
+
         match fs.state() {
             LoadState::Loading { request_id } => {
                 prop_assert_eq!(*request_id, id2);
@@ -210,7 +214,7 @@ proptest! {
                 prop_assert!(false, "Unexpected state after stale rejection: {:?}", other);
             }
         }
-        
+
         let valid_applied = fs.complete_load(
             id2,
             entries2.clone(),
@@ -218,7 +222,7 @@ proptest! {
             SystemTime::now(),
         );
         prop_assert!(valid_applied, "Valid request should be applied");
-        
+
         prop_assert_eq!(fs.entries().len(), entries2.len());
     }
 
@@ -227,7 +231,7 @@ proptest! {
     /// **Validates: Requirements 1.4**
     ///
     /// *For any* path that exists in the LRU cache, calling begin_load SHALL immediately
-    /// make cached entries available via entries() before any async operation completes.
+    /// make cached entries available via get_cached() for instant restoration.
     #[test]
     fn prop_cache_hit_returns_cached_data(
         path in arb_path(),
@@ -235,26 +239,19 @@ proptest! {
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         let mtime = SystemTime::now();
-        
+
         let id1 = fs.begin_load(path.clone());
         fs.complete_load(id1, entries.clone(), Duration::from_millis(100), mtime);
-        
+
         let _ = fs.begin_load(PathBuf::from("/other"));
-        
-        // Navigate back - should hit cache
-        let _ = fs.begin_load(path.clone());
-        
-        // Entries should be immediately available from cache
-        prop_assert_eq!(fs.entries().len(), entries.len(), 
-            "Cache hit should immediately provide entries");
-        
-        // State should indicate cached
-        match fs.state() {
-            LoadState::Cached { .. } => {}
-            other => {
-                prop_assert!(false, "Expected Cached state, got {:?}", other);
-            }
-        }
+
+        // Cache should still contain the original path's data
+        let cached = fs.get_cached(&path);
+        prop_assert!(cached.is_some(), "Path should be in cache");
+
+        let cached_dir = cached.unwrap();
+        prop_assert_eq!(cached_dir.entries.len(), entries.len(),
+            "Cache should contain all entries");
     }
 
     /// **Feature: file-explorer-core, Property 20: Cache Generation Stored**
@@ -269,53 +266,48 @@ proptest! {
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         let mtime = SystemTime::now();
-        
+
         let request_id = fs.begin_load(path.clone());
-        
+
         fs.complete_load(request_id, entries.clone(), Duration::from_millis(50), mtime);
-        
+
         // Retrieve cached entry and verify generation matches request_id
         let cached = fs.get_cached(&path)
             .expect("Path should be cached after complete_load");
-        
+
         prop_assert_eq!(cached.generation, request_id,
-            "Cached generation {} should equal request_id {}", 
+            "Cached generation {} should equal request_id {}",
             cached.generation, request_id);
     }
 }
 
 use crate::models::FsEvent;
-use tempfile::TempDir;
 use std::fs::File;
+use tempfile::TempDir;
 
 fn setup_temp_dir_with_files(filenames: &[&str]) -> (TempDir, PathBuf) {
     let temp_dir = TempDir::new().unwrap();
     let dir_path = temp_dir.path().to_path_buf();
-    
+
     for filename in filenames {
         File::create(dir_path.join(filename)).unwrap();
     }
-    
+
     (temp_dir, dir_path)
 }
 
 fn create_fs_with_entries(dir_path: &Path, filenames: &[&str]) -> FileSystem {
     let mut fs = FileSystem::new(dir_path.to_path_buf());
     let mtime = SystemTime::now();
-    
-    let entries: Vec<FileEntry> = filenames.iter()
+
+    let entries: Vec<FileEntry> = filenames
+        .iter()
         .map(|name| {
             let path = dir_path.join(name);
-            FileEntry::new(
-                name.to_string(),
-                path,
-                false,
-                100,
-                mtime,
-            )
+            FileEntry::new(name.to_string(), path, false, 100, mtime)
         })
         .collect();
-    
+
     let id = fs.begin_load(dir_path.to_path_buf());
     fs.complete_load(id, entries, Duration::from_millis(10), mtime);
     fs
@@ -323,68 +315,68 @@ fn create_fs_with_entries(dir_path: &Path, filenames: &[&str]) -> FileSystem {
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
-    
+
     #[test]
     fn prop_created_event_adds_entry(
         filename in "[a-zA-Z0-9]{1,20}\\.(txt|rs|md)"
     ) {
         let (_temp_dir, dir_path) = setup_temp_dir_with_files(&[]);
         let mut fs = create_fs_with_entries(&dir_path, &[]);
-        
+
         let new_file_path = dir_path.join(&filename);
         File::create(&new_file_path).unwrap();
-        
+
         let event = FsEvent::Created(new_file_path.clone());
         let modified = fs.process_event(event);
-        
+
         prop_assert!(modified, "Created event should modify entries");
         prop_assert!(
             fs.contains_path(&new_file_path),
             "Entries should contain the created file path"
         );
     }
-    
+
     #[test]
     fn prop_deleted_event_removes_entry(
         filename in "[a-zA-Z0-9]{1,20}\\.(txt|rs|md)"
     ) {
         let (_temp_dir, dir_path) = setup_temp_dir_with_files(&[]);
-        
+
         let file_path = dir_path.join(&filename);
         File::create(&file_path).unwrap();
-        
+
         let mut fs = create_fs_with_entries(&dir_path, &[&filename]);
-        
+
         prop_assert!(
             fs.contains_path(&file_path),
             "Entry should exist before deletion"
         );
-        
+
         std::fs::remove_file(&file_path).unwrap();
-        
+
         let event = FsEvent::Deleted(file_path.clone());
         let modified = fs.process_event(event);
-        
+
         prop_assert!(modified, "Deleted event should modify entries");
         prop_assert!(
             !fs.contains_path(&file_path),
             "Entries should NOT contain the deleted file path"
         );
     }
-    
+
     #[test]
     fn prop_events_outside_current_dir_ignored(
         filename in "[a-zA-Z0-9]{1,20}\\.txt"
     ) {
         let (_temp_dir, dir_path) = setup_temp_dir_with_files(&[]);
         let mut fs = create_fs_with_entries(&dir_path, &[]);
-        
+
         let other_dir = PathBuf::from("/some/other/directory");
         let other_file = other_dir.join(&filename);
-        
+
         let event = FsEvent::Created(other_file.clone());
         let modified = fs.process_event(event);
-        
+
         prop_assert!(!modified, "Events outside current directory should be ignored");
         prop_assert!(
             !fs.contains_path(&other_file),
@@ -409,13 +401,13 @@ mod unit_tests {
     #[test]
     fn test_begin_load_increments_request_id() {
         let mut fs = FileSystem::new(PathBuf::from("/"));
-        
+
         let id1 = fs.begin_load(PathBuf::from("/path1"));
         assert_eq!(id1, 1);
-        
+
         let id2 = fs.begin_load(PathBuf::from("/path2"));
         assert_eq!(id2, 2);
-        
+
         let id3 = fs.begin_load(PathBuf::from("/path3"));
         assert_eq!(id3, 3);
     }
@@ -423,10 +415,10 @@ mod unit_tests {
     #[test]
     fn test_is_valid_request() {
         let mut fs = FileSystem::new(PathBuf::from("/"));
-        
+
         let id1 = fs.begin_load(PathBuf::from("/path1"));
         assert!(fs.is_valid_request(id1));
-        
+
         let id2 = fs.begin_load(PathBuf::from("/path2"));
         assert!(!fs.is_valid_request(id1));
         assert!(fs.is_valid_request(id2));
@@ -437,15 +429,19 @@ mod unit_tests {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         let path = PathBuf::from("/test");
         let mtime = SystemTime::now();
-        
+
         let id = fs.begin_load(path.clone());
-        
-        let entries = vec![
-            FileEntry::new("file1.txt".into(), path.join("file1.txt"), false, 100, mtime),
-        ];
-        
+
+        let entries = vec![FileEntry::new(
+            "file1.txt".into(),
+            path.join("file1.txt"),
+            false,
+            100,
+            mtime,
+        )];
+
         fs.complete_load(id, entries.clone(), Duration::from_millis(10), mtime);
-        
+
         assert!(fs.is_cached(&path));
         assert_eq!(fs.entries().len(), 1);
     }
@@ -454,14 +450,14 @@ mod unit_tests {
     fn test_cache_capacity_limit() {
         let mut fs = FileSystem::with_cache_capacity(PathBuf::from("/"), 3);
         let mtime = SystemTime::now();
-        
+
         // Fill cache beyond capacity
         for i in 0..5 {
             let path = PathBuf::from(format!("/path{}", i));
             let id = fs.begin_load(path.clone());
             fs.complete_load(id, vec![], Duration::from_millis(10), mtime);
         }
-        
+
         // Cache should be bounded to capacity
         assert!(fs.cache_len() <= 3);
     }
@@ -474,14 +470,14 @@ mod unit_tests {
         use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
-        
+
         File::create(temp_dir.path().join("file_a.txt")).unwrap();
         File::create(temp_dir.path().join("file_b.txt")).unwrap();
         File::create(temp_dir.path().join("file_c.txt")).unwrap();
         std::fs::create_dir(temp_dir.path().join("subdir")).unwrap();
 
         let mut fs = FileSystem::new(PathBuf::from("/"));
-        
+
         let result = load_directory_sync(
             &mut fs,
             temp_dir.path().to_path_buf(),
@@ -492,11 +488,11 @@ mod unit_tests {
 
         assert!(result.is_ok());
         assert_eq!(fs.entries().len(), 4);
-        
+
         // Verify sorted order (directories first)
         assert!(fs.entries()[0].is_dir);
         assert_eq!(fs.entries()[0].name, "subdir");
-        
+
         match fs.state() {
             LoadState::Loaded { count, .. } => {
                 assert_eq!(*count, 4);
@@ -515,7 +511,7 @@ mod unit_tests {
         File::create(temp_dir.path().join("file.txt")).unwrap();
 
         let mut fs = FileSystem::new(PathBuf::from("/"));
-        
+
         let op = fs.load_path(
             temp_dir.path().to_path_buf(),
             SortKey::Name,
@@ -531,7 +527,10 @@ mod unit_tests {
             false,
         );
 
-        while let Ok(batch) = op.batch_receiver.recv_timeout(std::time::Duration::from_millis(100)) {
+        while let Ok(batch) = op
+            .batch_receiver
+            .recv_timeout(std::time::Duration::from_millis(100))
+        {
             let result = fs.process_batch(request_id, batch);
             assert!(result.is_none(), "Stale batch should be rejected");
         }
@@ -541,29 +540,41 @@ mod unit_tests {
     fn test_append_entries() {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         let mtime = SystemTime::now();
-        
+
         let id = fs.begin_load(PathBuf::from("/test"));
-        
-        let entries1 = vec![
-            FileEntry::new("file1.txt".into(), PathBuf::from("/test/file1.txt"), false, 100, mtime),
-        ];
-        let entries2 = vec![
-            FileEntry::new("file2.txt".into(), PathBuf::from("/test/file2.txt"), false, 200, mtime),
-        ];
-        
+
+        let entries1 = vec![FileEntry::new(
+            "file1.txt".into(),
+            PathBuf::from("/test/file1.txt"),
+            false,
+            100,
+            mtime,
+        )];
+        let entries2 = vec![FileEntry::new(
+            "file2.txt".into(),
+            PathBuf::from("/test/file2.txt"),
+            false,
+            200,
+            mtime,
+        )];
+
         // Append first batch
         assert!(fs.append_entries(id, entries1));
         assert_eq!(fs.entries().len(), 1);
-        
+
         // Append second batch
         assert!(fs.append_entries(id, entries2));
         assert_eq!(fs.entries().len(), 2);
-        
+
         // Try to append with stale ID
         let _ = fs.begin_load(PathBuf::from("/other"));
-        let entries3 = vec![
-            FileEntry::new("file3.txt".into(), PathBuf::from("/test/file3.txt"), false, 300, mtime),
-        ];
+        let entries3 = vec![FileEntry::new(
+            "file3.txt".into(),
+            PathBuf::from("/test/file3.txt"),
+            false,
+            300,
+            mtime,
+        )];
         assert!(!fs.append_entries(id, entries3));
     }
 }

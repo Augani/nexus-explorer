@@ -18,14 +18,12 @@ pub fn set_as_default_file_browser() -> Result<String, String> {
                 do shell script "open 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles'"
             end if
         "#;
-        
-        let _ = Command::new("osascript")
-            .args(["-e", script])
-            .output();
-        
+
+        let _ = Command::new("osascript").args(["-e", script]).output();
+
         // Save preference
         save_default_preference(true);
-        
+
         Ok("Instructions shown. Follow the steps to set as default.".to_string())
     }
 
@@ -34,16 +32,16 @@ pub fn set_as_default_file_browser() -> Result<String, String> {
         let _ = Command::new("cmd")
             .args(["/c", "start", "ms-settings:defaultapps"])
             .output();
-        
+
         save_default_preference(true);
         Ok("Default Apps settings opened.".to_string())
     }
 
     #[cfg(target_os = "linux")]
     {
-        let exe_path = std::env::current_exe()
-            .map_err(|e| format!("Failed to get executable path: {}", e))?;
-        
+        let exe_path =
+            std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+
         let desktop_entry = format!(
             r#"[Desktop Entry]
 Name=Nexus File Explorer
@@ -54,17 +52,17 @@ MimeType=inode/directory;
 "#,
             exe_path.to_string_lossy()
         );
-        
+
         if let Some(data_dir) = dirs::data_dir() {
             let desktop_path = data_dir.join("applications/nexus-file-explorer.desktop");
             let _ = std::fs::create_dir_all(desktop_path.parent().unwrap());
             let _ = std::fs::write(&desktop_path, desktop_entry);
-            
+
             let _ = Command::new("xdg-mime")
                 .args(["default", "nexus-file-explorer.desktop", "inode/directory"])
                 .output();
         }
-        
+
         save_default_preference(true);
         Ok("Set as default file manager.".to_string())
     }
@@ -78,17 +76,15 @@ MimeType=inode/directory;
 /// Remove this app as the default file browser preference
 pub fn restore_default_file_browser() -> Result<String, String> {
     save_default_preference(false);
-    
+
     #[cfg(target_os = "macos")]
     {
         let script = r#"
             display dialog "To restore Finder as your default:" & return & return & "1. Right-click any folder" & return & "2. Select 'Get Info'" & return & "3. Under 'Open with:', select Finder" & return & "4. Click 'Change All...'" buttons {"OK"} default button "OK"
         "#;
-        let _ = Command::new("osascript")
-            .args(["-e", script])
-            .output();
+        let _ = Command::new("osascript").args(["-e", script]).output();
     }
-    
+
     Ok("Preference cleared.".to_string())
 }
 

@@ -92,7 +92,7 @@ impl FileDragData {
 impl Render for FileDragData {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         use gpui::{div, Styled};
-        
+
         let count = self.file_count();
         let label = if count == 1 {
             self.paths[0]
@@ -142,9 +142,15 @@ pub enum DropTarget {
 #[derive(Clone, Debug)]
 pub enum DropResult {
     /// Files should be copied to the target
-    Copy { sources: Vec<PathBuf>, target: PathBuf },
+    Copy {
+        sources: Vec<PathBuf>,
+        target: PathBuf,
+    },
     /// Files should be moved to the target
-    Move { sources: Vec<PathBuf>, target: PathBuf },
+    Move {
+        sources: Vec<PathBuf>,
+        target: PathBuf,
+    },
     /// A directory should be added to favorites
     AddToFavorites(PathBuf),
     /// Operation was cancelled or invalid
@@ -176,7 +182,7 @@ mod tests {
     fn test_file_drag_data_single() {
         let path = PathBuf::from("/home/user/file.txt");
         let data = FileDragData::single(path.clone());
-        
+
         assert_eq!(data.file_count(), 1);
         assert!(data.is_single());
         assert_eq!(data.first_path(), Some(&path));
@@ -190,7 +196,7 @@ mod tests {
             PathBuf::from("/home/user/file3.txt"),
         ];
         let data = FileDragData::multiple(paths.clone());
-        
+
         assert_eq!(data.file_count(), 3);
         assert!(!data.is_single());
         assert_eq!(data.first_path(), Some(&paths[0]));
@@ -198,17 +204,15 @@ mod tests {
 
     #[test]
     fn test_file_drag_data_with_source_window() {
-        let data = FileDragData::single(PathBuf::from("/test"))
-            .with_source_window(42);
-        
+        let data = FileDragData::single(PathBuf::from("/test")).with_source_window(42);
+
         assert_eq!(data.source_window_id, Some(42));
     }
 
     #[test]
     fn test_file_drag_data_with_position() {
-        let data = FileDragData::single(PathBuf::from("/test"))
-            .with_position(100.0, 200.0);
-        
+        let data = FileDragData::single(PathBuf::from("/test")).with_position(100.0, 200.0);
+
         assert_eq!(data.position, (100.0, 200.0));
     }
 
@@ -217,9 +221,12 @@ mod tests {
         let sources = vec![PathBuf::from("/src/file.txt")];
         let target = PathBuf::from("/dst");
         let result = DropResult::copy(sources.clone(), target.clone());
-        
+
         match result {
-            DropResult::Copy { sources: s, target: t } => {
+            DropResult::Copy {
+                sources: s,
+                target: t,
+            } => {
                 assert_eq!(s, sources);
                 assert_eq!(t, target);
             }
@@ -232,9 +239,12 @@ mod tests {
         let sources = vec![PathBuf::from("/src/file.txt")];
         let target = PathBuf::from("/dst");
         let result = DropResult::move_files(sources.clone(), target.clone());
-        
+
         match result {
-            DropResult::Move { sources: s, target: t } => {
+            DropResult::Move {
+                sources: s,
+                target: t,
+            } => {
                 assert_eq!(s, sources);
                 assert_eq!(t, target);
             }
@@ -246,7 +256,7 @@ mod tests {
     fn test_drop_result_add_favorite() {
         let path = PathBuf::from("/home/user/projects");
         let result = DropResult::add_favorite(path.clone());
-        
+
         match result {
             DropResult::AddToFavorites(p) => {
                 assert_eq!(p, path);

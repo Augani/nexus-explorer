@@ -5,16 +5,14 @@ use gpui::{
     InteractiveElement, IntoElement, KeyBinding, ParentElement, Render, Styled, Window,
 };
 
-use crate::models::{DualPane, DragPayload, FileEntry, PaneSide, theme_colors};
+use crate::models::{theme_colors, DragPayload, DualPane, FileEntry, PaneSide};
 use crate::views::FileListView;
 
 // Define actions for dual pane
-actions!(dual_pane, [
-    ToggleDualPane,
-    SwitchPane,
-    CopyToOther,
-    MoveToOther,
-]);
+actions!(
+    dual_pane,
+    [ToggleDualPane, SwitchPane, CopyToOther, MoveToOther,]
+);
 
 /// Data transferred during drag operations between panes
 #[derive(Clone, Debug)]
@@ -66,8 +64,14 @@ impl Render for PaneDragView {
 /// Pending operation from dual pane
 #[derive(Debug, Clone)]
 pub enum DualPaneAction {
-    CopyFiles { sources: Vec<PathBuf>, destination: PathBuf },
-    MoveFiles { sources: Vec<PathBuf>, destination: PathBuf },
+    CopyFiles {
+        sources: Vec<PathBuf>,
+        destination: PathBuf,
+    },
+    MoveFiles {
+        sources: Vec<PathBuf>,
+        destination: PathBuf,
+    },
     NavigateLeft(PathBuf),
     NavigateRight(PathBuf),
 }
@@ -88,10 +92,10 @@ pub struct DualPaneView {
 impl DualPaneView {
     pub fn new(initial_path: PathBuf, cx: &mut Context<Self>) -> Self {
         let dual_pane = DualPane::new(initial_path.clone());
-        
+
         let left_file_list = cx.new(|cx| FileListView::new(cx));
         let right_file_list = cx.new(|cx| FileListView::new(cx));
-        
+
         Self {
             dual_pane,
             left_file_list,
@@ -106,10 +110,10 @@ impl DualPaneView {
 
     pub fn with_paths(left_path: PathBuf, right_path: PathBuf, cx: &mut Context<Self>) -> Self {
         let dual_pane = DualPane::with_paths(left_path, right_path);
-        
+
         let left_file_list = cx.new(|cx| FileListView::new(cx));
         let right_file_list = cx.new(|cx| FileListView::new(cx));
-        
+
         Self {
             dual_pane,
             left_file_list,
@@ -201,7 +205,12 @@ impl DualPaneView {
     }
 
     /// Sets entries for a specific pane
-    pub fn set_pane_entries(&mut self, side: PaneSide, entries: Vec<FileEntry>, cx: &mut Context<Self>) {
+    pub fn set_pane_entries(
+        &mut self,
+        side: PaneSide,
+        entries: Vec<FileEntry>,
+        cx: &mut Context<Self>,
+    ) {
         match side {
             PaneSide::Left => self.set_left_entries(entries, cx),
             PaneSide::Right => self.set_right_entries(entries, cx),
@@ -250,20 +259,36 @@ impl DualPaneView {
         self.switch_active(cx);
     }
 
-    fn handle_copy_to_other(&mut self, _: &CopyToOther, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_copy_to_other(
+        &mut self,
+        _: &CopyToOther,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let sources = self.dual_pane.copy_to_other();
         if !sources.is_empty() {
             let destination = self.dual_pane.destination_path().clone();
-            self.pending_action = Some(DualPaneAction::CopyFiles { sources, destination });
+            self.pending_action = Some(DualPaneAction::CopyFiles {
+                sources,
+                destination,
+            });
             cx.notify();
         }
     }
 
-    fn handle_move_to_other(&mut self, _: &MoveToOther, _window: &mut Window, cx: &mut Context<Self>) {
+    fn handle_move_to_other(
+        &mut self,
+        _: &MoveToOther,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let sources = self.dual_pane.move_to_other();
         if !sources.is_empty() {
             let destination = self.dual_pane.destination_path().clone();
-            self.pending_action = Some(DualPaneAction::MoveFiles { sources, destination });
+            self.pending_action = Some(DualPaneAction::MoveFiles {
+                sources,
+                destination,
+            });
             cx.notify();
         }
     }
@@ -296,7 +321,7 @@ impl DualPaneView {
     fn handle_pane_drop_left(&mut self, data: &PaneDragData, cx: &mut Context<Self>) {
         self.left_drop_hover = false;
         self.dragging_from = None;
-        
+
         if data.source_pane != PaneSide::Left {
             let destination = self.dual_pane.left_pane().path.clone();
             self.pending_action = Some(DualPaneAction::CopyFiles {
@@ -311,7 +336,7 @@ impl DualPaneView {
     fn handle_pane_drop_right(&mut self, data: &PaneDragData, cx: &mut Context<Self>) {
         self.right_drop_hover = false;
         self.dragging_from = None;
-        
+
         if data.source_pane != PaneSide::Right {
             let destination = self.dual_pane.right_pane().path.clone();
             self.pending_action = Some(DualPaneAction::CopyFiles {
@@ -355,7 +380,8 @@ impl DualPaneView {
 
     /// Returns the first selected entry name in the specified pane
     pub fn first_selected_name(&self, side: PaneSide) -> Option<String> {
-        self.dual_pane.pane(side)
+        self.dual_pane
+            .pane(side)
             .selected_entries()
             .first()
             .map(|e| e.name.clone())
@@ -364,13 +390,13 @@ impl DualPaneView {
     fn render_pane_header(&self, side: PaneSide, path: &PathBuf) -> impl IntoElement {
         let theme = theme_colors();
         let is_active = self.dual_pane.active_side() == side;
-        
+
         let bg_color = if is_active {
             theme.bg_selected
         } else {
             theme.bg_secondary
         };
-        
+
         let path_str = path.to_string_lossy().to_string();
         let display_path = if path_str.len() > 40 {
             format!("...{}", &path_str[path_str.len() - 37..])
@@ -390,9 +416,13 @@ impl DualPaneView {
                 div()
                     .text_sm()
                     .font_weight(gpui::FontWeight::MEDIUM)
-                    .text_color(if is_active { theme.text_primary } else { theme.text_muted })
+                    .text_color(if is_active {
+                        theme.text_primary
+                    } else {
+                        theme.text_muted
+                    })
                     .truncate()
-                    .child(display_path)
+                    .child(display_path),
             )
     }
 }
@@ -408,21 +438,25 @@ impl Render for DualPaneView {
         let theme = theme_colors();
         let is_enabled = self.dual_pane.is_enabled();
         let active_side = self.dual_pane.active_side();
-        
+
         let left_path = self.dual_pane.left_pane().path.clone();
         let right_path = self.dual_pane.right_pane().path.clone();
-        
+
         let left_drop_hover = self.left_drop_hover;
         let right_drop_hover = self.right_drop_hover;
-        
+
         let left_selected = self.dual_pane.left_pane().selected_paths();
         let right_selected = self.dual_pane.right_pane().selected_paths();
-        let left_first_name = self.dual_pane.left_pane()
+        let left_first_name = self
+            .dual_pane
+            .left_pane()
             .selected_entries()
             .first()
             .map(|e| e.name.clone())
             .unwrap_or_default();
-        let right_first_name = self.dual_pane.right_pane()
+        let right_first_name = self
+            .dual_pane
+            .right_pane()
             .selected_entries()
             .first()
             .map(|e| e.name.clone())
@@ -453,15 +487,18 @@ impl Render for DualPaneView {
                         })
                         .when(left_drop_hover, |s| {
                             s.bg(gpui::rgba(
-                                ((theme.bg_selected.r * 255.0) as u32) << 24 |
-                                ((theme.bg_selected.g * 255.0) as u32) << 16 |
-                                ((theme.bg_selected.b * 255.0) as u32) << 8 |
-                                0x4D
+                                ((theme.bg_selected.r * 255.0) as u32) << 24
+                                    | ((theme.bg_selected.g * 255.0) as u32) << 16
+                                    | ((theme.bg_selected.b * 255.0) as u32) << 8
+                                    | 0x4D,
                             ))
                         })
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|view, _, _, cx| {
-                            view.set_active(PaneSide::Left, cx);
-                        }))
+                        .on_mouse_down(
+                            gpui::MouseButton::Left,
+                            cx.listener(|view, _, _, cx| {
+                                view.set_active(PaneSide::Left, cx);
+                            }),
+                        )
                         // Drag support - drag selected files from left pane
                         .when(!left_selected.is_empty(), |s| {
                             let paths = left_selected.clone();
@@ -470,14 +507,19 @@ impl Render for DualPaneView {
                             s.on_drag(
                                 PaneDragData::new(paths, PaneSide::Left),
                                 move |_data, _position, _window, cx| {
-                                    cx.new(|_| PaneDragView { count, name: name.clone() })
-                                }
+                                    cx.new(|_| PaneDragView {
+                                        count,
+                                        name: name.clone(),
+                                    })
+                                },
                             )
                         })
                         // Drop support - accept drops from right pane
-                        .on_drag_move(cx.listener(|view, _event: &DragMoveEvent<PaneDragData>, _window, cx| {
-                            view.set_left_drop_hover(true, cx);
-                        }))
+                        .on_drag_move(cx.listener(
+                            |view, _event: &DragMoveEvent<PaneDragData>, _window, cx| {
+                                view.set_left_drop_hover(true, cx);
+                            },
+                        ))
                         .on_drop(cx.listener(|view, data: &PaneDragData, _window, cx| {
                             view.handle_pane_drop_left(data, cx);
                         }))
@@ -486,8 +528,8 @@ impl Render for DualPaneView {
                             div()
                                 .flex_1()
                                 .overflow_hidden()
-                                .child(self.left_file_list.clone())
-                        )
+                                .child(self.left_file_list.clone()),
+                        ),
                 )
                 .child(
                     div()
@@ -500,15 +542,18 @@ impl Render for DualPaneView {
                         })
                         .when(right_drop_hover, |s| {
                             s.bg(gpui::rgba(
-                                ((theme.bg_selected.r * 255.0) as u32) << 24 |
-                                ((theme.bg_selected.g * 255.0) as u32) << 16 |
-                                ((theme.bg_selected.b * 255.0) as u32) << 8 |
-                                0x4D
+                                ((theme.bg_selected.r * 255.0) as u32) << 24
+                                    | ((theme.bg_selected.g * 255.0) as u32) << 16
+                                    | ((theme.bg_selected.b * 255.0) as u32) << 8
+                                    | 0x4D,
                             ))
                         })
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|view, _, _, cx| {
-                            view.set_active(PaneSide::Right, cx);
-                        }))
+                        .on_mouse_down(
+                            gpui::MouseButton::Left,
+                            cx.listener(|view, _, _, cx| {
+                                view.set_active(PaneSide::Right, cx);
+                            }),
+                        )
                         // Drag support - drag selected files from right pane
                         .when(!right_selected.is_empty(), |s| {
                             let paths = right_selected.clone();
@@ -517,14 +562,19 @@ impl Render for DualPaneView {
                             s.on_drag(
                                 PaneDragData::new(paths, PaneSide::Right),
                                 move |_data, _position, _window, cx| {
-                                    cx.new(|_| PaneDragView { count, name: name.clone() })
-                                }
+                                    cx.new(|_| PaneDragView {
+                                        count,
+                                        name: name.clone(),
+                                    })
+                                },
                             )
                         })
                         // Drop support - accept drops from left pane
-                        .on_drag_move(cx.listener(|view, _event: &DragMoveEvent<PaneDragData>, _window, cx| {
-                            view.set_right_drop_hover(true, cx);
-                        }))
+                        .on_drag_move(cx.listener(
+                            |view, _event: &DragMoveEvent<PaneDragData>, _window, cx| {
+                                view.set_right_drop_hover(true, cx);
+                            },
+                        ))
                         .on_drop(cx.listener(|view, data: &PaneDragData, _window, cx| {
                             view.handle_pane_drop_right(data, cx);
                         }))
@@ -533,8 +583,8 @@ impl Render for DualPaneView {
                             div()
                                 .flex_1()
                                 .overflow_hidden()
-                                .child(self.right_file_list.clone())
-                        )
+                                .child(self.right_file_list.clone()),
+                        ),
                 )
             })
             .when(!is_enabled, |this| {
@@ -549,8 +599,8 @@ impl Render for DualPaneView {
                             div()
                                 .flex_1()
                                 .overflow_hidden()
-                                .child(self.left_file_list.clone())
-                        )
+                                .child(self.left_file_list.clone()),
+                        ),
                 )
             })
     }

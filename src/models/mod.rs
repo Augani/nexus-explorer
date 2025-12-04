@@ -2,6 +2,7 @@ mod ansi_parser;
 mod batch_rename;
 mod bookmarks;
 mod column_view;
+mod default_app;
 mod device_monitor;
 mod drag_drop;
 mod dual_pane;
@@ -10,28 +11,27 @@ mod file_operations;
 mod file_system;
 mod icon_cache;
 mod network_storage;
+pub mod open_with;
 mod pty_service;
 mod search_engine;
 mod settings;
 mod smart_folders;
 mod tabs;
 mod tags;
-mod default_app;
-pub mod open_with;
 mod terminal;
 mod theme;
 mod trash;
-mod typography;
 mod types;
+mod typography;
 mod window_manager;
 mod wsl;
 
+#[cfg(target_os = "linux")]
+mod device_monitor_linux;
 #[cfg(target_os = "macos")]
 mod device_monitor_macos;
 #[cfg(target_os = "windows")]
 mod device_monitor_windows;
-#[cfg(target_os = "linux")]
-mod device_monitor_linux;
 
 #[cfg(test)]
 mod ansi_parser_tests;
@@ -52,6 +52,7 @@ pub use ansi_parser::*;
 pub use batch_rename::*;
 pub use bookmarks::*;
 pub use column_view::*;
+pub use default_app::*;
 pub use device_monitor::*;
 pub use drag_drop::*;
 pub use dual_pane::*;
@@ -60,6 +61,7 @@ pub use file_operations::*;
 pub use file_system::*;
 pub use icon_cache::*;
 pub use network_storage::*;
+pub use open_with::*;
 pub use pty_service::*;
 pub use search_engine::*;
 pub use settings::*;
@@ -67,11 +69,9 @@ pub use smart_folders::*;
 pub use tabs::*;
 pub use tags::*;
 pub use terminal::*;
-pub use default_app::*;
-pub use open_with::*;
 pub use theme::*;
 pub use trash::*;
-pub use typography::*;
 pub use types::*;
+pub use typography::*;
 pub use window_manager::*;
 pub use wsl::*;

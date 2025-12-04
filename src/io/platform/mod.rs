@@ -1,11 +1,11 @@
 mod coalescer;
 mod linux;
 mod macos;
-mod windows;
 mod watcher;
+mod windows;
 
 pub use coalescer::EventCoalescer;
 pub use linux::*;
 pub use macos::*;
-pub use windows::*;
 pub use watcher::*;
+pub use windows::*;

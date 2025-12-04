@@ -19,29 +19,42 @@ mod toast;
 
 pub mod breadcrumb;
 
-pub use column_view::{ColumnViewComponent, NavigateToPath, SelectColumnEntry, NavigateUp, NavigateDown, NavigateLeft, NavigateRight};
-pub use dual_pane::{DualPaneView, DualPaneAction, ToggleDualPane, SwitchPane, CopyToOther, MoveToOther, PaneDragData, PaneDragView};
+pub use column_view::{
+    ColumnViewComponent, NavigateDown, NavigateLeft, NavigateRight, NavigateToPath, NavigateUp,
+    SelectColumnEntry,
+};
+pub use dual_pane::{
+    CopyToOther, DualPaneAction, DualPaneView, MoveToOther, PaneDragData, PaneDragView, SwitchPane,
+    ToggleDualPane,
+};
 pub use file_list::{
-    FileList, FileListView, RenderedEntry, VisibleRange, ContextMenuAction,
-    format_date, format_size, get_file_icon, get_file_icon_color,
-    DEFAULT_BUFFER_SIZE, DEFAULT_ROW_HEIGHT,
+    format_date, format_size, get_file_icon, get_file_icon_color, ContextMenuAction, FileList,
+    FileListView, RenderedEntry, VisibleRange, DEFAULT_BUFFER_SIZE, DEFAULT_ROW_HEIGHT,
 };
 pub use go_to_folder::GoToFolderView;
 pub use grid_view::{GridView, GridViewComponent};
+pub use network_dialog::{NetworkConnectionDialog, NetworkDialogAction};
 pub use preview::{
-    Preview, PreviewView, PreviewContent, FileMetadata,
-    calculate_directory_stats, format_hex_dump,
-    format_size as preview_format_size, format_date as preview_format_date,
+    calculate_directory_stats, format_date as preview_format_date, format_hex_dump,
+    format_size as preview_format_size, FileMetadata, Preview, PreviewContent, PreviewView,
 };
-pub use progress_panel::{ProgressPanelView, ProgressPanelAction};
+pub use progress_panel::{ProgressPanelAction, ProgressPanelView};
+pub use quick_look::{
+    CloseQuickLook, QuickLook, QuickLookContent, QuickLookNext, QuickLookPrevious, QuickLookView,
+    ToggleQuickLook,
+};
 pub use search_input::{SearchInput, SearchInputView};
-pub use sidebar::{Sidebar, SidebarView, SidebarItem, ToolAction};
-pub use status_bar::{StatusBarView, StatusBarState, StatusBarAction, detect_git_branch, format_size as status_bar_format_size};
-pub use quick_look::{QuickLook, QuickLookView, QuickLookContent, ToggleQuickLook, CloseQuickLook, QuickLookNext, QuickLookPrevious};
+pub use sidebar::{Sidebar, SidebarItem, SidebarView, ToolAction};
+pub use smart_folder_dialog::{QueryBuilderState, SmartFolderDialog, SmartFolderDialogAction};
+pub use status_bar::{
+    detect_git_branch, format_size as status_bar_format_size, StatusBarAction, StatusBarState,
+    StatusBarView,
+};
 pub use tab_bar::TabBarView;
-pub use tag_ui::{render_tag_dot, render_tag_dots, render_file_tag_dots, render_tag_filter_item, render_tag_context_menu, parse_tag_query};
+pub use tag_ui::{
+    parse_tag_query, render_file_tag_dots, render_tag_context_menu, render_tag_dot,
+    render_tag_dots, render_tag_filter_item,
+};
 pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};
-pub use network_dialog::{NetworkConnectionDialog, NetworkDialogAction};
-pub use smart_folder_dialog::{SmartFolderDialog, SmartFolderDialogAction, QueryBuilderState};
 pub use toast::{Toast, ToastManager, ToastVariant};

@@ -1,12 +1,11 @@
+use crate::models::terminal::{TerminalState, DEFAULT_COLS, DEFAULT_ROWS};
 /// **Feature: ui-enhancements, Property 21: Terminal Virtualization**
 /// **Validates: Requirements 6.8**
-/// 
+///
 /// *For any* terminal state with scrollback content exceeding the visible area,
 /// the visible_lines() iterator SHALL return exactly `rows` lines, and the
 /// visible line range SHALL be correctly bounded within the total line buffer.
-
 use proptest::prelude::*;
-use crate::models::terminal::{TerminalState, DEFAULT_COLS, DEFAULT_ROWS};
 
 /// Strategy for generating terminal dimensions
 fn terminal_dimensions() -> impl Strategy<Value = (usize, usize)> {
@@ -35,16 +34,16 @@ proptest! {
         line_count in line_count_strategy(),
     ) {
         let mut state = TerminalState::new(cols, rows);
-        
+
         // Write lines to the terminal (may exceed visible area)
         for i in 0..line_count {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         let visible: Vec<_> = state.visible_lines().collect();
         prop_assert_eq!(
-            visible.len(), 
+            visible.len(),
             rows,
             "visible_lines() should return exactly {} lines, got {}",
             rows,
@@ -60,28 +59,28 @@ proptest! {
         line_count in line_count_strategy(),
     ) {
         let mut state = TerminalState::new(cols, rows);
-        
+
         for i in 0..line_count {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         let total_lines = state.total_lines();
         let max_scroll = state.max_scroll_offset();
-        
+
         // Test various scroll positions
         for scroll in [0, max_scroll / 2, max_scroll] {
             if scroll <= max_scroll {
                 state.scroll_to_bottom();
                 state.scroll_viewport_up(scroll);
-                
+
                 prop_assert!(
                     state.scroll_offset() <= max_scroll,
                     "scroll_offset {} should be <= max_scroll_offset {}",
                     state.scroll_offset(),
                     max_scroll
                 );
-                
+
                 // Verify visible lines are valid
                 let visible: Vec<_> = state.visible_lines().collect();
                 prop_assert_eq!(visible.len(), rows);
@@ -97,24 +96,24 @@ proptest! {
         line_count in line_count_strategy(),
     ) {
         let mut state = TerminalState::new(cols, rows);
-        
+
         for i in 0..line_count {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         let total = state.total_lines();
         let scrollback = state.scrollback_lines();
-        
+
         if total > rows {
             prop_assert_eq!(
-                scrollback, 
+                scrollback,
                 total - rows,
                 "scrollback_lines should be total_lines - rows"
             );
         } else {
             prop_assert_eq!(
-                scrollback, 
+                scrollback,
                 0,
                 "scrollback_lines should be 0 when total <= rows"
             );
@@ -129,20 +128,20 @@ proptest! {
         line_count in line_count_strategy(),
     ) {
         let mut state = TerminalState::new(cols, rows);
-        
+
         for i in 0..line_count {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         // Scroll up some amount
         state.scroll_viewport_up(10);
-        
+
         // Scroll to bottom
         state.scroll_to_bottom();
-        
+
         prop_assert_eq!(
-            state.scroll_offset(), 
+            state.scroll_offset(),
             0,
             "scroll_to_bottom should set scroll_offset to 0"
         );
@@ -160,20 +159,20 @@ proptest! {
         line_count in 50usize..200,
     ) {
         let mut state = TerminalState::new(cols, rows);
-        
+
         for i in 0..line_count {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         let max_scroll = state.max_scroll_offset();
-        
+
         // Only test if we have scrollback
         if max_scroll > 0 {
             state.scroll_to_top();
-            
+
             prop_assert_eq!(
-                state.scroll_offset(), 
+                state.scroll_offset(),
                 max_scroll,
                 "scroll_to_top should set scroll_offset to max_scroll_offset"
             );
@@ -188,15 +187,15 @@ proptest! {
         line_count in 10usize..100,
     ) {
         let mut state = TerminalState::new(cols, rows);
-        
+
         // Write numbered lines
         for i in 0..line_count {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         let visible: Vec<_> = state.visible_lines().collect();
-        
+
         // Each visible line should have valid cells
         for line in visible {
             prop_assert!(
@@ -216,17 +215,17 @@ mod unit_tests {
     #[test]
     fn test_virtualization_with_scrollback() {
         let mut state = TerminalState::new(80, 5);
-        
+
         // Write 20 lines (15 in scrollback)
         for i in 0..20 {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         // Should have scrollback
         assert!(state.scrollback_lines() > 0);
         assert_eq!(state.total_lines(), 21);
-        
+
         // Visible lines should be exactly 5
         let visible: Vec<_> = state.visible_lines().collect();
         assert_eq!(visible.len(), 5);
@@ -235,22 +234,22 @@ mod unit_tests {
     #[test]
     fn test_scroll_viewport_up_down() {
         let mut state = TerminalState::new(80, 5);
-        
+
         for i in 0..20 {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         assert!(state.is_at_bottom());
         assert_eq!(state.scroll_offset(), 0);
-        
+
         state.scroll_viewport_up(5);
         assert_eq!(state.scroll_offset(), 5);
         assert!(!state.is_at_bottom());
-        
+
         state.scroll_viewport_down(3);
         assert_eq!(state.scroll_offset(), 2);
-        
+
         // Scroll to bottom
         state.scroll_to_bottom();
         assert!(state.is_at_bottom());
@@ -259,18 +258,18 @@ mod unit_tests {
     #[test]
     fn test_max_scroll_offset_clamping() {
         let mut state = TerminalState::new(80, 5);
-        
+
         // Write 10 lines (5 in scrollback)
         for i in 0..10 {
             state.write_str(&format!("Line {}", i));
             state.newline();
         }
-        
+
         let max = state.max_scroll_offset();
-        
+
         // Try to scroll beyond max
         state.scroll_viewport_up(100);
-        
+
         // Should be clamped to max
         assert_eq!(state.scroll_offset(), max);
     }

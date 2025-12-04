@@ -169,28 +169,28 @@ pub const SPACE_16: f32 = 64.0;
 pub mod sidebar {
     /// Sidebar width (280px as per design spec)
     pub const WIDTH: f32 = 280.0;
-    
+
     /// Item height in sidebar
     pub const ITEM_HEIGHT: f32 = 36.0;
-    
+
     /// Horizontal padding for items
     pub const ITEM_PADDING_X: f32 = 16.0;
-    
+
     /// Vertical padding for items
     pub const ITEM_PADDING_Y: f32 = 8.0;
-    
+
     /// Gap between sections
     pub const SECTION_GAP: f32 = 24.0;
-    
+
     /// Icon size in sidebar
     pub const ICON_SIZE: f32 = 18.0;
-    
+
     /// Gap between icon and text
     pub const ICON_GAP: f32 = 12.0;
-    
+
     /// Section header font size
     pub const HEADER_SIZE: f32 = 10.0;
-    
+
     /// Section header letter spacing
     pub const HEADER_TRACKING: f32 = 0.1;
 }
@@ -199,22 +199,22 @@ pub mod sidebar {
 pub mod file_list {
     /// Row height (40px as per design spec)
     pub const ROW_HEIGHT: f32 = 40.0;
-    
+
     /// Horizontal padding for rows
     pub const ROW_PADDING_X: f32 = 16.0;
-    
+
     /// Icon size in file list
     pub const ICON_SIZE: f32 = 20.0;
-    
+
     /// Gap between icon and text
     pub const ICON_GAP: f32 = 12.0;
-    
+
     /// Gap between columns
     pub const COLUMN_GAP: f32 = 8.0;
-    
+
     /// Header row height
     pub const HEADER_HEIGHT: f32 = 36.0;
-    
+
     /// Footer/status bar height
     pub const FOOTER_HEIGHT: f32 = 28.0;
 }
@@ -223,19 +223,19 @@ pub mod file_list {
 pub mod toolbar {
     /// Toolbar height (52px as per design spec)
     pub const HEIGHT: f32 = 52.0;
-    
+
     /// Button size
     pub const BUTTON_SIZE: f32 = 36.0;
-    
+
     /// Gap between buttons
     pub const BUTTON_GAP: f32 = 8.0;
-    
+
     /// Gap between toolbar sections
     pub const SECTION_GAP: f32 = 16.0;
-    
+
     /// Horizontal padding
     pub const PADDING_X: f32 = 16.0;
-    
+
     /// Breadcrumb segment padding
     pub const BREADCRUMB_PADDING: f32 = 8.0;
 }
@@ -244,16 +244,16 @@ pub mod toolbar {
 pub mod terminal_layout {
     /// Minimum terminal height
     pub const MIN_HEIGHT: f32 = 200.0;
-    
+
     /// Default terminal height
     pub const DEFAULT_HEIGHT: f32 = 300.0;
-    
+
     /// Line height multiplier
     pub const LINE_HEIGHT: f32 = 1.5;
-    
+
     /// Padding around terminal content
     pub const PADDING: f32 = 16.0;
-    
+
     /// Tab bar height
     pub const TAB_HEIGHT: f32 = 32.0;
 }
@@ -262,13 +262,13 @@ pub mod terminal_layout {
 pub mod preview {
     /// Preview panel width
     pub const WIDTH: f32 = 360.0;
-    
+
     /// Header height
     pub const HEADER_HEIGHT: f32 = 64.0;
-    
+
     /// Content padding
     pub const PADDING: f32 = 20.0;
-    
+
     /// Metadata row height
     pub const METADATA_ROW_HEIGHT: f32 = 28.0;
 }
@@ -277,16 +277,16 @@ pub mod preview {
 pub mod grid {
     /// Item width
     pub const ITEM_WIDTH: f32 = 120.0;
-    
+
     /// Item height
     pub const ITEM_HEIGHT: f32 = 140.0;
-    
+
     /// Icon size
     pub const ICON_SIZE: f32 = 64.0;
-    
+
     /// Gap between items
     pub const GAP: f32 = 16.0;
-    
+
     /// Minimum columns
     pub const MIN_COLUMNS: usize = 2;
 }
@@ -295,13 +295,13 @@ pub mod grid {
 pub mod tab_bar {
     /// Tab bar height
     pub const HEIGHT: f32 = 36.0;
-    
+
     /// Tab padding
     pub const TAB_PADDING_X: f32 = 16.0;
-    
+
     /// Close button size
     pub const CLOSE_BUTTON_SIZE: f32 = 16.0;
-    
+
     /// Gap between tabs
     pub const TAB_GAP: f32 = 2.0;
 }
@@ -310,13 +310,13 @@ pub mod tab_bar {
 pub mod status_bar {
     /// Status bar height
     pub const HEIGHT: f32 = 28.0;
-    
+
     /// Horizontal padding
     pub const PADDING_X: f32 = 16.0;
-    
+
     /// Gap between items
     pub const ITEM_GAP: f32 = 16.0;
-    
+
     /// Divider width
     pub const DIVIDER_WIDTH: f32 = 1.0;
 }
@@ -378,7 +378,7 @@ impl DisplayTypography {
         letter_spacing: TRACKING_TIGHT,
         line_height: LINE_HEIGHT_TIGHT,
     };
-    
+
     /// Page title
     pub const PAGE_TITLE: Self = Self {
         font_family: FONT_DISPLAY,
@@ -387,7 +387,7 @@ impl DisplayTypography {
         letter_spacing: TRACKING_TIGHT,
         line_height: LINE_HEIGHT_TIGHT,
     };
-    
+
     /// Section header
     pub const SECTION_HEADER: Self = Self {
         font_family: FONT_DISPLAY,
@@ -396,7 +396,7 @@ impl DisplayTypography {
         letter_spacing: TRACKING_NORMAL,
         line_height: LINE_HEIGHT_NORMAL,
     };
-    
+
     /// Panel header
     pub const PANEL_HEADER: Self = Self {
         font_family: FONT_BODY,
@@ -425,7 +425,7 @@ impl BodyTypography {
         letter_spacing: TRACKING_NORMAL,
         line_height: LINE_HEIGHT_NORMAL,
     };
-    
+
     /// Secondary body text (metadata)
     pub const SECONDARY: Self = Self {
         font_family: FONT_BODY,
@@ -434,7 +434,7 @@ impl BodyTypography {
         letter_spacing: TRACKING_NORMAL,
         line_height: LINE_HEIGHT_NORMAL,
     };
-    
+
     /// Label text (section headers)
     pub const LABEL: Self = Self {
         font_family: FONT_BODY,
@@ -443,7 +443,7 @@ impl BodyTypography {
         letter_spacing: TRACKING_WIDE,
         line_height: LINE_HEIGHT_TIGHT,
     };
-    
+
     /// Caption text (timestamps, hints)
     pub const CAPTION: Self = Self {
         font_family: FONT_BODY,
@@ -472,7 +472,7 @@ impl MonoTypography {
         letter_spacing: TRACKING_NORMAL,
         line_height: LINE_HEIGHT_RELAXED,
     };
-    
+
     /// Terminal text
     pub const TERMINAL: Self = Self {
         font_family: FONT_MONO,
@@ -481,7 +481,7 @@ impl MonoTypography {
         letter_spacing: TRACKING_NORMAL,
         line_height: 1.5,
     };
-    
+
     /// File size text
     pub const FILE_SIZE: Self = Self {
         font_family: FONT_MONO,
@@ -545,11 +545,11 @@ mod tests {
         assert_eq!(sidebar::WIDTH, 280.0);
         assert_eq!(sidebar::ITEM_PADDING_X, 16.0);
         assert_eq!(sidebar::SECTION_GAP, 24.0);
-        
+
         assert_eq!(file_list::ROW_HEIGHT, 40.0);
         assert_eq!(file_list::ICON_SIZE, 20.0);
         assert_eq!(file_list::ICON_GAP, 12.0);
-        
+
         assert_eq!(toolbar::HEIGHT, 52.0);
         assert_eq!(toolbar::BUTTON_SIZE, 36.0);
     }
@@ -559,7 +559,7 @@ mod tests {
         // At 14px font size, -0.02em tracking = -0.28px
         let result = tracking_to_px(TRACKING_TIGHT, SIZE_BASE);
         assert!((result - (-0.28)).abs() < 0.01);
-        
+
         // At 36px font size, 0.05em tracking = 1.8px
         let result = tracking_to_px(TRACKING_WIDE, SIZE_2XL);
         assert!((result - 1.8).abs() < 0.01);

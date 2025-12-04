@@ -82,7 +82,6 @@ impl PtyService {
         self.working_directory = path;
     }
 
-
     /// Start the PTY with the default shell
     pub fn start(&mut self) -> Result<(), PtyError> {
         if self.is_running() {
@@ -100,16 +99,16 @@ impl PtyService {
             .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
 
         let shell = get_default_shell();
-        
+
         let mut cmd = CommandBuilder::new(&shell);
         cmd.cwd(&self.working_directory);
-        
+
         if let Ok(term) = std::env::var("TERM") {
             cmd.env("TERM", term);
         } else {
             cmd.env("TERM", "xterm-256color");
         }
-        
+
         // Spawn the shell
         let _child = pty_pair
             .slave
@@ -169,7 +168,7 @@ impl PtyService {
     /// Stop the PTY
     pub fn stop(&mut self) {
         *self.is_running.lock().unwrap() = false;
-        
+
         // Drop writer to close the PTY
         self.writer = None;
         self.pty_pair = None;
@@ -246,7 +245,6 @@ impl Drop for PtyService {
     }
 }
 
-
 /// Get the default shell for the current platform
 fn get_default_shell() -> String {
     #[cfg(target_os = "windows")]
@@ -277,17 +275,17 @@ pub mod key_codes {
     pub const BACKSPACE: &[u8] = b"\x7f";
     pub const ESCAPE: &[u8] = b"\x1b";
     pub const DELETE: &[u8] = b"\x1b[3~";
-    
+
     pub const UP: &[u8] = b"\x1b[A";
     pub const DOWN: &[u8] = b"\x1b[B";
     pub const RIGHT: &[u8] = b"\x1b[C";
     pub const LEFT: &[u8] = b"\x1b[D";
-    
+
     pub const HOME: &[u8] = b"\x1b[H";
     pub const END: &[u8] = b"\x1b[F";
     pub const PAGE_UP: &[u8] = b"\x1b[5~";
     pub const PAGE_DOWN: &[u8] = b"\x1b[6~";
-    
+
     pub const CTRL_C: &[u8] = b"\x03";
     pub const CTRL_D: &[u8] = b"\x04";
     pub const CTRL_Z: &[u8] = b"\x1a";

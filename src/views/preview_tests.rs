@@ -285,7 +285,7 @@ fn test_format_size() {
 fn test_format_hex_dump() {
     let bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
     let lines = format_hex_dump(&bytes);
-    
+
     assert_eq!(lines.len(), 1);
     let (offset, hex, ascii) = &lines[0];
     assert_eq!(offset, "00000000");
@@ -297,7 +297,7 @@ fn test_format_hex_dump() {
 fn test_format_hex_dump_multiple_lines() {
     let bytes: Vec<u8> = (0..32).collect();
     let lines = format_hex_dump(&bytes);
-    
+
     assert_eq!(lines.len(), 2);
     assert_eq!(lines[0].0, "00000000");
     assert_eq!(lines[1].0, "00000010");
@@ -308,10 +308,10 @@ fn test_preview_clear() {
     let mut preview = Preview::new();
     let temp_dir = create_test_dir();
     let file_path = create_test_file(&temp_dir, "test.txt", b"content");
-    
+
     preview.load_file(&file_path);
     assert!(preview.metadata().is_some());
-    
+
     preview.clear();
     assert!(preview.metadata().is_none());
     assert!(matches!(preview.content(), PreviewContent::None));
@@ -327,9 +327,9 @@ fn test_file_metadata_has_all_fields() {
         permissions: "rw-r--r--".to_string(),
         is_dir: false,
     };
-    
+
     assert!(meta.has_all_fields());
-    
+
     let empty_meta = FileMetadata::default();
     assert!(!empty_meta.has_all_fields());
 }

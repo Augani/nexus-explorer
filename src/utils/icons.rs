@@ -1,10 +1,10 @@
 /// Icon decoding and BGRA swizzling utilities.
-/// 
+///
 /// GPUI and many GPU APIs expect pixel data in BGRA format, while most image
 /// libraries decode to RGBA. This module provides efficient conversion utilities.
 
 /// Converts a single RGBA pixel to BGRA format.
-/// 
+///
 /// Input: (r, g, b, a) - Red, Green, Blue, Alpha
 /// Output: (b, g, r, a) - Blue, Green, Red, Alpha (swapped R and B)
 #[inline]
@@ -13,7 +13,7 @@ pub fn rgba_to_bgra_pixel(r: u8, g: u8, b: u8, a: u8) -> (u8, u8, u8, u8) {
 }
 
 /// Converts RGBA pixel data to BGRA format in-place.
-/// 
+///
 /// The data must be a multiple of 4 bytes (one byte per channel).
 /// This function swaps the red and blue channels for each pixel.
 pub fn rgba_to_bgra_inplace(data: &mut [u8]) {
@@ -21,28 +21,28 @@ pub fn rgba_to_bgra_inplace(data: &mut [u8]) {
         data.len() % 4 == 0,
         "Data length must be a multiple of 4 (RGBA pixels)"
     );
-    
+
     for chunk in data.chunks_exact_mut(4) {
         chunk.swap(0, 2);
     }
 }
 
 /// Converts RGBA pixel data to BGRA format, returning a new Vec.
-/// 
+///
 /// The data must be a multiple of 4 bytes (one byte per channel).
 pub fn rgba_to_bgra(data: &[u8]) -> Vec<u8> {
     debug_assert!(
         data.len() % 4 == 0,
         "Data length must be a multiple of 4 (RGBA pixels)"
     );
-    
+
     let mut result = data.to_vec();
     rgba_to_bgra_inplace(&mut result);
     result
 }
 
 /// Converts BGRA pixel data back to RGBA format in-place.
-/// 
+///
 /// This is the inverse operation of `rgba_to_bgra_inplace`.
 pub fn bgra_to_rgba_inplace(data: &mut [u8]) {
     rgba_to_bgra_inplace(data);
@@ -110,11 +110,11 @@ mod proptests {
         #[test]
         fn prop_rgba_to_bgra_conversion(r in any::<u8>(), g in any::<u8>(), b in any::<u8>(), a in any::<u8>()) {
             let (out_b, out_g, out_r, out_a) = rgba_to_bgra_pixel(r, g, b, a);
-            
+
             // Red and Blue should be swapped
             prop_assert_eq!(out_b, b, "Blue channel should be original blue");
             prop_assert_eq!(out_r, r, "Red channel should be original red");
-            
+
             // Green and Alpha should be preserved
             prop_assert_eq!(out_g, g, "Green channel should be preserved");
             prop_assert_eq!(out_a, a, "Alpha channel should be preserved");
@@ -128,7 +128,7 @@ mod proptests {
         ) {
             let bgra = rgba_to_bgra(&pixels);
             let back = bgra_to_rgba(&bgra);
-            
+
             prop_assert_eq!(pixels, back, "Round trip should preserve original data");
         }
     }

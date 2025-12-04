@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 use super::{FileEntry, SortState};
 
@@ -87,7 +87,7 @@ impl PaneState {
         if index >= self.entries.len() {
             return;
         }
-        
+
         if let Some(pos) = self.selection.iter().position(|&i| i == index) {
             self.selection.remove(pos);
         } else {
@@ -118,7 +118,7 @@ impl Default for PaneState {
 }
 
 /// Dual pane mode state management
-/// 
+///
 /// Manages two independent file list panes that can be displayed side by side.
 /// Each pane maintains its own path, entries, selection, and sort state.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::ops::Range;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 
 use super::FileEntry;
 
@@ -66,7 +66,7 @@ impl Default for Column {
 }
 
 /// Miller Columns view state management
-/// 
+///
 /// Displays directories as cascading columns where selecting a directory
 /// in one column shows its contents in the next column to the right.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,10 +80,10 @@ pub struct ColumnView {
 impl ColumnView {
     /// Default column width in pixels
     pub const DEFAULT_COLUMN_WIDTH: f32 = 220.0;
-    
+
     /// Minimum column width
     pub const MIN_COLUMN_WIDTH: f32 = 150.0;
-    
+
     /// Maximum column width
     pub const MAX_COLUMN_WIDTH: f32 = 400.0;
 
@@ -154,7 +154,7 @@ impl ColumnView {
         let columns_per_viewport = (viewport_width / self.column_width).ceil() as usize;
         let start_column = (self.scroll_offset / self.column_width).floor() as usize;
         let end_column = (start_column + columns_per_viewport + 1).min(self.columns.len());
-        
+
         start_column.min(self.columns.len())..end_column
     }
 
@@ -195,7 +195,7 @@ impl ColumnView {
     }
 
     /// Selects an entry in a column and updates the view accordingly
-    /// 
+    ///
     /// When a directory is selected, a new column is added (or existing columns
     /// to the right are replaced). When a file is selected, columns to the right
     /// are removed.
@@ -203,7 +203,7 @@ impl ColumnView {
         if column_index >= self.columns.len() {
             return;
         }
-        
+
         let column = &self.columns[column_index];
         if entry_index >= column.entries.len() {
             return;
@@ -226,16 +226,16 @@ impl ColumnView {
     }
 
     /// Navigates right into the selected directory
-    /// 
+    ///
     /// If the current selection is a directory, moves focus to the next column.
     /// Returns true if navigation occurred.
     pub fn navigate_right(&mut self) -> bool {
         // Find the rightmost column with a selection
         let active_column_idx = self.find_active_column_index();
-        
+
         if let Some(col_idx) = active_column_idx {
             let column = &self.columns[col_idx];
-            
+
             if let Some(entry) = column.selected_entry() {
                 if entry.is_dir {
                     // If there's a column to the right, select its first entry
@@ -251,17 +251,17 @@ impl ColumnView {
                 }
             }
         }
-        
+
         false
     }
 
     /// Navigates left to the parent column
-    /// 
+    ///
     /// Moves focus to the column to the left of the current active column.
     /// Returns true if navigation occurred.
     pub fn navigate_left(&mut self) -> bool {
         let active_column_idx = self.find_active_column_index();
-        
+
         if let Some(col_idx) = active_column_idx {
             if col_idx > 0 {
                 // Clear selection in current column and move to parent
@@ -270,17 +270,17 @@ impl ColumnView {
                 return true;
             }
         }
-        
+
         false
     }
 
     /// Navigates up within the current column
-    /// 
+    ///
     /// Moves selection to the previous entry in the active column.
     /// Returns true if navigation occurred.
     pub fn navigate_up(&mut self) -> bool {
         let active_column_idx = self.find_active_column_index();
-        
+
         if let Some(col_idx) = active_column_idx {
             let column = &mut self.columns[col_idx];
             if let Some(current_idx) = column.selected_index {
@@ -296,25 +296,25 @@ impl ColumnView {
                 return true;
             }
         }
-        
+
         false
     }
 
     /// Navigates down within the current column
-    /// 
+    ///
     /// Moves selection to the next entry in the active column.
     /// Returns true if navigation occurred.
     pub fn navigate_down(&mut self) -> bool {
         let active_column_idx = self.find_active_column_index();
-        
+
         if let Some(col_idx) = active_column_idx {
             let column = &self.columns[col_idx];
             let entry_count = column.entries.len();
-            
+
             if entry_count == 0 {
                 return false;
             }
-            
+
             if let Some(current_idx) = column.selected_index {
                 if current_idx + 1 < entry_count {
                     let new_idx = current_idx + 1;
@@ -327,7 +327,7 @@ impl ColumnView {
                 return true;
             }
         }
-        
+
         false
     }
 
@@ -339,13 +339,13 @@ impl ColumnView {
                 return Some(idx);
             }
         }
-        
+
         for (idx, column) in self.columns.iter().enumerate().rev() {
             if !column.entries.is_empty() {
                 return Some(idx);
             }
         }
-        
+
         if !self.columns.is_empty() {
             Some(0)
         } else {
@@ -357,12 +357,12 @@ impl ColumnView {
     fn ensure_column_visible(&mut self, column_index: usize) {
         let column_start = column_index as f32 * self.column_width;
         let column_end = column_start + self.column_width;
-        
+
         // Scroll left if column is before visible area
         if column_start < self.scroll_offset {
             self.scroll_offset = column_start;
         }
-        
+
         // Note: We can't scroll right without knowing viewport width
     }
 
@@ -370,7 +370,7 @@ impl ColumnView {
     pub fn ensure_column_visible_in_viewport(&mut self, column_index: usize, viewport_width: f32) {
         let column_start = column_index as f32 * self.column_width;
         let column_end = column_start + self.column_width;
-        
+
         // Scroll left if column is before visible area
         if column_start < self.scroll_offset {
             self.scroll_offset = column_start;

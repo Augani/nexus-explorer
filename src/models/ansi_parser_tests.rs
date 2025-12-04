@@ -1,9 +1,9 @@
+use crate::models::ansi_parser::{color_from_256, AnsiParser, ParsedSegment, ANSI_COLORS};
 use proptest::prelude::*;
-use crate::models::ansi_parser::{AnsiParser, ParsedSegment, ANSI_COLORS, color_from_256};
 
 /// **Feature: ui-enhancements, Property 20: ANSI Color Parsing**
 /// **Validates: Requirements 6.4**
-/// 
+///
 /// *For any* valid ANSI SGR color code (0-255 for 256-color, or RGB values),
 /// the parser SHALL correctly interpret and apply the color to the current style.
 proptest! {
@@ -14,7 +14,7 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[{}m", color_code);
         parser.parse(escape_seq.as_bytes());
-        
+
         let expected_color = ANSI_COLORS[(color_code - 30) as usize];
         prop_assert_eq!(
             parser.current_style().foreground,
@@ -30,7 +30,7 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[{}m", color_code);
         parser.parse(escape_seq.as_bytes());
-        
+
         let expected_color = ANSI_COLORS[(color_code - 40) as usize];
         prop_assert_eq!(
             parser.current_style().background,
@@ -46,7 +46,7 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[{}m", color_code);
         parser.parse(escape_seq.as_bytes());
-        
+
         let expected_color = ANSI_COLORS[(color_code - 90 + 8) as usize];
         prop_assert_eq!(
             parser.current_style().foreground,
@@ -62,7 +62,7 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[{}m", color_code);
         parser.parse(escape_seq.as_bytes());
-        
+
         let expected_color = ANSI_COLORS[(color_code - 100 + 8) as usize];
         prop_assert_eq!(
             parser.current_style().background,
@@ -78,7 +78,7 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[38;5;{}m", color_index);
         parser.parse(escape_seq.as_bytes());
-        
+
         let expected_color = color_from_256(color_index as usize);
         prop_assert_eq!(
             parser.current_style().foreground,
@@ -93,7 +93,7 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[48;5;{}m", color_index);
         parser.parse(escape_seq.as_bytes());
-        
+
         let expected_color = color_from_256(color_index as usize);
         prop_assert_eq!(
             parser.current_style().background,
@@ -108,12 +108,12 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[38;2;{};{};{}m", r, g, b);
         parser.parse(escape_seq.as_bytes());
-        
+
         let style = parser.current_style();
         let expected_r = r as f32 / 255.0;
         let expected_g = g as f32 / 255.0;
         let expected_b = b as f32 / 255.0;
-        
+
         prop_assert!(
             (style.foreground.r - expected_r).abs() < 0.01,
             "RGB foreground red component should be {}, got {}",
@@ -139,12 +139,12 @@ proptest! {
         let mut parser = AnsiParser::new();
         let escape_seq = format!("\x1B[48;2;{};{};{}m", r, g, b);
         parser.parse(escape_seq.as_bytes());
-        
+
         let style = parser.current_style();
         let expected_r = r as f32 / 255.0;
         let expected_g = g as f32 / 255.0;
         let expected_b = b as f32 / 255.0;
-        
+
         prop_assert!(
             (style.background.r - expected_r).abs() < 0.01,
             "RGB background red component should be {}, got {}",
@@ -172,7 +172,7 @@ proptest! {
         underline in any::<bool>()
     ) {
         let mut parser = AnsiParser::new();
-        
+
         // Apply some styles
         if bold {
             parser.parse(b"\x1B[1m");
@@ -183,9 +183,9 @@ proptest! {
         if underline {
             parser.parse(b"\x1B[4m");
         }
-        
+
         parser.parse(b"\x1B[0m");
-        
+
         let style = parser.current_style();
         prop_assert!(!style.bold, "Bold should be reset");
         prop_assert!(!style.italic, "Italic should be reset");
@@ -195,20 +195,20 @@ proptest! {
     #[test]
     fn prop_text_preserves_style(text in "[a-zA-Z0-9 ]{1,50}") {
         let mut parser = AnsiParser::new();
-        
+
         parser.parse(b"\x1B[1;31m");
         let style_before = parser.current_style().clone();
-        
+
         // Parse some text
         let segments = parser.parse(text.as_bytes());
-        
+
         // Style should be preserved
         prop_assert_eq!(
             parser.current_style(),
             &style_before,
             "Style should be preserved after parsing text"
         );
-        
+
         // Text segment should have the style
         if !text.is_empty() {
             prop_assert!(!segments.is_empty(), "Should have at least one segment");

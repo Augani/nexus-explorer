@@ -30,7 +30,7 @@ impl SearchEngine {
     pub fn new() -> Self {
         let config = Config::DEFAULT.match_paths();
         let nucleo = Nucleo::new(config, Arc::new(|| {}), None, 1);
-        
+
         Self {
             nucleo,
             pattern: String::new(),
@@ -56,7 +56,7 @@ impl SearchEngine {
     pub fn set_pattern(&mut self, pattern: &str) {
         self.pattern = pattern.to_string();
         self.active = !pattern.is_empty();
-        
+
         self.nucleo.pattern.reparse(
             0,
             pattern,
@@ -79,17 +79,17 @@ impl SearchEngine {
     /// Takes a snapshot of current search results with match positions
     pub fn snapshot(&mut self) -> SearchSnapshot {
         self.nucleo.tick(10);
-        
+
         let snapshot = self.nucleo.snapshot();
         let total_items = snapshot.item_count() as usize;
-        
+
         let mut matcher = Matcher::new(Config::DEFAULT);
-        
+
         let matches: Vec<MatchedItem> = snapshot
             .matched_items(0..snapshot.matched_item_count().min(1000))
             .map(|item| {
                 let path = item.data.clone();
-                
+
                 let mut indices: Vec<u32> = Vec::new();
                 let pattern = snapshot.pattern().column_pattern(0);
                 pattern.indices(
@@ -98,7 +98,7 @@ impl SearchEngine {
                     &mut indices,
                 );
                 let positions: Vec<usize> = indices.iter().map(|&i| i as usize).collect();
-                
+
                 MatchedItem {
                     path,
                     score: 0,
@@ -118,7 +118,7 @@ impl SearchEngine {
     pub fn clear(&mut self) {
         self.pattern.clear();
         self.active = false;
-        
+
         let config = Config::DEFAULT.match_paths();
         self.nucleo = Nucleo::new(config, Arc::new(|| {}), None, 1);
     }
