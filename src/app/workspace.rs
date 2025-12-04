@@ -570,6 +570,12 @@ impl Workspace {
             ContextMenuAction::OpenInNewWindow(path) => {
                 Self::open_new_window(path, cx);
             }
+            ContextMenuAction::OpenInNewTab(path) => {
+                self.tab_bar.update(cx, |tab_bar, cx| {
+                    tab_bar.open_tab(path.clone(), cx);
+                });
+                self.load_directory(path, cx);
+            }
             ContextMenuAction::GetInfo(path) => {
                 #[cfg(target_os = "macos")]
                 {
@@ -1233,6 +1239,13 @@ impl Workspace {
             view.update_from_entries(&entries, None, cx);
             view.set_current_directory(&path, cx);
         });
+        
+        if self.is_terminal_open {
+            let terminal_path = path.clone();
+            self.terminal.update(cx, |terminal, _| {
+                terminal.set_working_directory(terminal_path);
+            });
+        }
         
         cx.notify();
     }

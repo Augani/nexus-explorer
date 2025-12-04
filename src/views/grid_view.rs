@@ -6,7 +6,7 @@ use gpui::{
     SharedString, Styled, Window, MouseDownEvent,
 };
 
-use crate::models::{FileEntry, GridConfig};
+use crate::models::{FileEntry, GridConfig, theme_colors};
 use super::file_list::{get_file_icon, get_file_icon_color, ContextMenuAction};
 
 pub struct GridView {
@@ -177,17 +177,18 @@ impl Render for GridViewComponent {
         let context_menu_pos = self.context_menu_position;
         let _context_menu_idx = self.context_menu_index;
 
-        let bg_darker = gpui::rgb(0x010409);
-        let bg_dark = gpui::rgb(0x0d1117);
-        let border_color = gpui::rgb(0x30363d);
-        let border_subtle = gpui::rgb(0x21262d);
-        let text_gray = gpui::rgb(0x8b949e);
-        let text_light = gpui::rgb(0xc9d1d9);
-        let hover_bg = gpui::rgb(0x161b22);
-        let selected_bg = gpui::rgb(0x1f3a5f);
-        let folder_color = gpui::rgb(0x54aeff);
-        let folder_open_color = gpui::rgb(0x79c0ff);
-        let menu_bg = gpui::rgb(0x161b22);
+        let theme = theme_colors();
+        let bg_darker = theme.bg_void;
+        let bg_dark = theme.bg_secondary;
+        let border_color = theme.border_default;
+        let border_subtle = theme.border_subtle;
+        let text_gray = theme.text_muted;
+        let text_light = theme.text_primary;
+        let hover_bg = theme.bg_hover;
+        let selected_bg = theme.bg_selected;
+        let folder_color = theme.accent_primary;
+        let folder_open_color = theme.accent_secondary;
+        let menu_bg = theme.bg_tertiary;
 
         div()
             .id("grid-view")
@@ -314,7 +315,7 @@ impl Render for GridViewComponent {
                                                     .w_full()
                                                     .text_center()
                                                     .text_xs()
-                                                    .text_color(if is_selected { gpui::rgb(0xffffff) } else { text_light })
+                                                    .text_color(if is_selected { theme.text_primary } else { text_light })
                                                     .truncate()
                                                     .child(truncate_name(&name, 14))
                                             )
@@ -405,12 +406,25 @@ impl Render for GridViewComponent {
                                 ))
                                 .when(is_dir, |this| {
                                     let entity = entity.clone();
+                                    let entity2 = entity.clone();
                                     let entry = selected_entry.clone();
+                                    let entry2 = selected_entry.clone();
                                     this.child(render_context_menu_item("app-window", "Open in New Window", text_light, hover_bg, {
                                         move |_window, cx| {
                                             if let Some(ref e) = entry {
                                                 entity.update(cx, |view, cx| {
                                                     view.pending_context_action = Some(ContextMenuAction::OpenInNewWindow(e.path.clone()));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    }))
+                                    .child(render_context_menu_item("folder-plus", "Open in New Tab", text_light, hover_bg, {
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry2 {
+                                                entity2.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(ContextMenuAction::OpenInNewTab(e.path.clone()));
                                                     view.close_context_menu();
                                                     cx.notify();
                                                 });
@@ -576,7 +590,7 @@ impl Render for GridViewComponent {
                                     }
                                 }))
                                 .child(render_context_menu_divider(border_subtle))
-                                .child(render_context_menu_item("trash-2", "Move to Trash", gpui::rgb(0xf85149), hover_bg, {
+                                .child(render_context_menu_item("trash-2", "Move to Trash", theme.error, hover_bg, {
                                     let entity = entity.clone();
                                     let entry = selected_entry.clone();
                                     move |_window, cx| {
@@ -651,7 +665,7 @@ fn render_grid_open_with_submenu(
     show_submenu: bool,
     text_color: gpui::Rgba,
     hover_bg: gpui::Rgba,
-    menu_bg: gpui::Rgba,
+    _menu_bg: gpui::Rgba,
     border_color: gpui::Rgba,
     entity: gpui::Entity<GridViewComponent>,
 ) -> impl IntoElement {
@@ -661,174 +675,143 @@ fn render_grid_open_with_submenu(
     
     let has_apps = !apps.is_empty();
     let entry_for_other = selected_entry.clone();
-    let entity_for_show = entity.clone();
-    let entity_for_hide = entity.clone();
+    let entity_for_toggle = entity.clone();
     
     div()
         .id("grid-open-with-menu-wrapper")
         .flex()
+        .flex_col()
         .child(
             div()
-                .id("grid-open-with-menu")
-                .flex_1()
-                .on_mouse_move(move |_event, _window, cx| {
-                    entity_for_show.update(cx, |view, cx| {
-                        if !view.show_open_with_submenu {
-                            view.show_open_with_submenu = true;
-                            cx.notify();
-                        }
+                .id("grid-open-with-trigger")
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_3()
+                .px_3()
+                .py_1p5()
+                .mx_1()
+                .rounded_md()
+                .cursor_pointer()
+                .text_sm()
+                .text_color(text_color)
+                .hover(|s| s.bg(hover_bg))
+                .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                    entity_for_toggle.update(cx, |view, cx| {
+                        view.show_open_with_submenu = !view.show_open_with_submenu;
+                        cx.notify();
                     });
                 })
                 .child(
                     div()
-                        .id("grid-open-with-trigger")
                         .flex()
                         .items_center()
-                        .justify_between()
                         .gap_3()
-                        .px_3()
-                        .py_1p5()
-                        .mx_1()
-                        .rounded_md()
-                        .cursor_pointer()
-                        .text_sm()
-                        .text_color(text_color)
-                        .hover(|s| s.bg(hover_bg))
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_3()
-                                .child(
-                                    svg()
-                                        .path("assets/icons/external-link.svg")
-                                        .size(px(14.0))
-                                        .text_color(text_color),
-                                )
-                                .child("Open With")
-                        )
                         .child(
                             svg()
-                                .path("assets/icons/chevron-right.svg")
-                                .size(px(12.0))
+                                .path("assets/icons/external-link.svg")
+                                .size(px(14.0))
                                 .text_color(text_color),
                         )
+                        .child("Open With")
+                )
+                .child(
+                    svg()
+                        .path(if show_submenu { "assets/icons/chevron-down.svg" } else { "assets/icons/chevron-right.svg" })
+                        .size(px(12.0))
+                        .text_color(text_color),
                 )
         )
         .when(show_submenu, move |this| {
             this.child(
                 div()
-                    .id("grid-open-with-submenu")
-                    .on_hover(move |is_hovered, _window, cx| {
-                        if !*is_hovered {
-                            entity_for_hide.update(cx, |view, cx| {
-                                view.show_open_with_submenu = false;
-                                cx.notify();
-                            });
-                        }
-                    })
-                    .child(
-                        div()
-                            .w(px(220.0))
-                            .bg(menu_bg)
-                            .border_1()
-                            .border_color(border_color)
-                            .rounded_lg()
-                            .shadow_lg()
-                            .py_1()
-                            .when(has_apps, |submenu| {
-                                let mut submenu = submenu;
-                                for app in apps.iter().take(10) {
-                                    let app_name = app.name.clone();
-                                    let app_path = app.path.clone();
-                                    let file_path = selected_entry.as_ref().map(|e| e.path.clone());
-                                    let entity = entity.clone();
-                                    
-                                    submenu = submenu.child(
-                                        div()
-                                            .id(SharedString::from(format!("grid-app-{}", app_name)))
-                                            .flex()
-                                            .items_center()
-                                            .gap_2()
-                                            .px_3()
-                                            .py_1p5()
-                                            .mx_1()
-                                            .rounded_md()
-                                            .cursor_pointer()
-                                            .text_sm()
-                                            .text_color(text_color)
-                                            .hover(|s| s.bg(hover_bg))
-                                            .on_mouse_down(MouseButton::Left, {
-                                                let app_name = app_name.clone();
-                                                let app_path = app_path.clone();
-                                                move |_event, _window, cx| {
-                                                    if let Some(ref fp) = file_path {
-                                                        entity.update(cx, |view, cx| {
-                                                            view.pending_context_action = Some(ContextMenuAction::OpenWithApp {
-                                                                file_path: fp.clone(),
-                                                                app_path: app_path.clone(),
-                                                                app_name: app_name.clone(),
-                                                            });
-                                                            view.close_context_menu();
-                                                            cx.notify();
-                                                        });
-                                                    }
-                                                }
-                                            })
-                                            .child(
-                                                svg()
-                                                    .path("assets/icons/app-window.svg")
-                                                    .size(px(16.0))
-                                                    .text_color(text_color)
-                                            )
-                                            .child(app_name)
-                                    );
-                                }
-                                submenu
-                            })
-                            .when(has_apps, |submenu| {
-                                submenu.child(render_context_menu_divider(border_color))
-                            })
-                            .child({
-                                let entity = entity.clone();
+                    .id("grid-open-with-inline-list")
+                    .flex()
+                    .flex_col()
+                    .pl_4()
+                    .border_l_1()
+                    .border_color(border_color)
+                    .ml_4()
+                    .when(has_apps, |submenu| {
+                        let mut submenu = submenu;
+                        for app in apps.iter().take(10) {
+                            let app_name = app.name.clone();
+                            let app_path = app.path.clone();
+                            let file_path = selected_entry.as_ref().map(|e| e.path.clone());
+                            let entity = entity.clone();
+                            
+                            submenu = submenu.child(
                                 div()
-                                    .id("grid-open-with-other")
+                                    .id(SharedString::from(format!("grid-app-{}", app_name)))
                                     .flex()
                                     .items_center()
                                     .gap_2()
                                     .px_3()
                                     .py_1p5()
-                                    .mx_1()
                                     .rounded_md()
                                     .cursor_pointer()
                                     .text_sm()
                                     .text_color(text_color)
                                     .hover(|s| s.bg(hover_bg))
-                                    .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                                        if let Some(ref e) = entry_for_other {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::OpenWithOther(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                    .on_mouse_down(MouseButton::Left, {
+                                        let app_name = app_name.clone();
+                                        let app_path = app_path.clone();
+                                        move |_event, _window, cx| {
+                                            if let Some(ref fp) = file_path {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(ContextMenuAction::OpenWithApp {
+                                                        file_path: fp.clone(),
+                                                        app_path: app_path.clone(),
+                                                        app_name: app_name.clone(),
+                                                    });
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
                                     })
                                     .child(
-                                        div()
-                                            .size(px(18.0))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .child(
-                                                svg()
-                                                    .path("assets/icons/more-horizontal.svg")
-                                                    .size(px(16.0))
-                                                    .text_color(text_color),
-                                            )
+                                        svg()
+                                            .path("assets/icons/app-window.svg")
+                                            .size(px(14.0))
+                                            .text_color(text_color)
                                     )
-                                    .child("Other...")
+                                    .child(app_name)
+                            );
+                        }
+                        submenu
+                    })
+                    .child({
+                        let entity = entity.clone();
+                        div()
+                            .id("grid-open-with-other")
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .px_3()
+                            .py_1p5()
+                            .rounded_md()
+                            .cursor_pointer()
+                            .text_sm()
+                            .text_color(text_color)
+                            .hover(|s| s.bg(hover_bg))
+                            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                                if let Some(ref e) = entry_for_other {
+                                    entity.update(cx, |view, cx| {
+                                        view.pending_context_action = Some(ContextMenuAction::OpenWithOther(e.path.clone()));
+                                        view.close_context_menu();
+                                        cx.notify();
+                                    });
+                                }
                             })
-                    )
+                            .child(
+                                svg()
+                                    .path("assets/icons/more-horizontal.svg")
+                                    .size(px(14.0))
+                                    .text_color(text_color),
+                            )
+                            .child("Other...")
+                    })
             )
         })
 }
