@@ -1,6 +1,5 @@
 use crate::models::{CloudSyncStatus, FileEntry, FileType, IconKey};
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::SystemTime;
 
 /// Get the list of items in the system trash
@@ -127,11 +126,13 @@ fn list_trash_linux() -> Vec<FileEntry> {
 
 #[cfg(target_os = "windows")]
 fn list_trash_windows() -> Vec<FileEntry> {
+    use std::time::{Duration, UNIX_EPOCH};
+
     let mut entries = Vec::new();
 
     if let Ok(items) = trash::os_limited::list() {
         for item in items {
-            let name = item.name.clone();
+            let name = item.name.to_string_lossy().to_string();
             let path = item.original_parent.join(&item.name);
             let is_dir = std::fs::metadata(&item.id)
                 .map(|m| m.is_dir())
@@ -153,12 +154,18 @@ fn list_trash_windows() -> Vec<FileEntry> {
                     .unwrap_or(IconKey::GenericFile)
             };
 
+            let modified = if item.time_deleted >= 0 {
+                UNIX_EPOCH + Duration::from_secs(item.time_deleted as u64)
+            } else {
+                SystemTime::now()
+            };
+
             entries.push(FileEntry {
                 name,
                 path,
                 is_dir,
                 size: 0,
-                modified: item.time_deleted.into(),
+                modified,
                 file_type,
                 icon_key,
                 linux_permissions: None,

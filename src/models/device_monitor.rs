@@ -199,6 +199,11 @@ impl DeviceMonitor {
         &self.wsl_distributions
     }
 
+    /// Get mutable access to WSL distributions (Windows only)
+    pub fn wsl_distributions_mut(&mut self) -> &mut Vec<WslDistribution> {
+        &mut self.wsl_distributions
+    }
+
     /// Find a device by ID
     pub fn get_device(&self, id: DeviceId) -> Option<&Device> {
         self.devices.iter().find(|d| d.id == id)

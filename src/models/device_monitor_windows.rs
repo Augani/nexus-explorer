@@ -44,7 +44,7 @@ impl DeviceMonitor {
     /// Enumerate WSL distributions
     #[cfg(target_os = "windows")]
     fn enumerate_wsl_distributions(&mut self) {
-        self.wsl_distributions.clear();
+        self.wsl_distributions_mut().clear();
 
         // Try to list WSL distributions using wsl.exe
         if let Ok(output) = std::process::Command::new("wsl")
@@ -80,7 +80,7 @@ impl DeviceMonitor {
                             version,
                         };
 
-                        self.wsl_distributions.push(distro);
+                        self.wsl_distributions_mut().push(distro);
 
                         // Also add as a device if running
                         if is_running {
@@ -146,6 +146,13 @@ impl DeviceMonitor {
     }
 }
 
+// Windows drive type constants from GetDriveTypeW
+const DRIVE_REMOVABLE: u32 = 2;
+const DRIVE_FIXED: u32 = 3;
+const DRIVE_REMOTE: u32 = 4;
+const DRIVE_CDROM: u32 = 5;
+const DRIVE_RAMDISK: u32 = 6;
+
 /// Detect the type of Windows drive
 #[cfg(target_os = "windows")]
 fn detect_windows_drive_type(path: &PathBuf) -> DeviceType {
@@ -161,11 +168,11 @@ fn detect_windows_drive_type(path: &PathBuf) -> DeviceType {
         let drive_type = windows_sys::Win32::Storage::FileSystem::GetDriveTypeW(wide_path.as_ptr());
 
         match drive_type {
-            windows_sys::Win32::Storage::FileSystem::DRIVE_REMOVABLE => DeviceType::UsbDrive,
-            windows_sys::Win32::Storage::FileSystem::DRIVE_FIXED => DeviceType::InternalDrive,
-            windows_sys::Win32::Storage::FileSystem::DRIVE_REMOTE => DeviceType::NetworkDrive,
-            windows_sys::Win32::Storage::FileSystem::DRIVE_CDROM => DeviceType::OpticalDrive,
-            windows_sys::Win32::Storage::FileSystem::DRIVE_RAMDISK => DeviceType::DiskImage,
+            DRIVE_REMOVABLE => DeviceType::UsbDrive,
+            DRIVE_FIXED => DeviceType::InternalDrive,
+            DRIVE_REMOTE => DeviceType::NetworkDrive,
+            DRIVE_CDROM => DeviceType::OpticalDrive,
+            DRIVE_RAMDISK => DeviceType::DiskImage,
             _ => DeviceType::ExternalDrive,
         }
     }
