@@ -41,37 +41,73 @@ Each tab maintains its own terminal instance with full state preservation. The t
 
 ## Installation
 
+### macOS
+
+**Homebrew (recommended):**
+```bash
+brew tap augani/nexus-explorer
+brew install nexus-explorer
+```
+
+**Or download the DMG:**
+- [Apple Silicon (M1/M2/M3)](https://github.com/augani/nexus-explorer/releases/latest/download/NexusExplorer-aarch64-apple-darwin.dmg)
+- [Intel](https://github.com/augani/nexus-explorer/releases/latest/download/NexusExplorer-x86_64-apple-darwin.dmg)
+
+### Windows
+
+**Scoop:**
+```powershell
+scoop bucket add nexus https://github.com/augani/nexus-explorer
+scoop install nexus-explorer
+```
+
+**Or download:**
+- [MSI Installer](https://github.com/augani/nexus-explorer/releases/latest/download/NexusExplorer-windows-x86_64.msi) (recommended)
+- [ZIP Archive](https://github.com/augani/nexus-explorer/releases/latest/download/NexusExplorer-windows-x86_64.zip)
+
+### Linux
+
+**AppImage (universal):**
+```bash
+wget https://github.com/augani/nexus-explorer/releases/latest/download/NexusExplorer-linux-x86_64.AppImage
+chmod +x NexusExplorer-linux-x86_64.AppImage
+./NexusExplorer-linux-x86_64.AppImage
+```
+
+**Debian/Ubuntu:**
+```bash
+wget https://github.com/augani/nexus-explorer/releases/latest/download/NexusExplorer-linux-x86_64.deb
+sudo dpkg -i NexusExplorer-linux-x86_64.deb
+```
+
+**Manual install:**
+```bash
+wget https://github.com/augani/nexus-explorer/releases/latest/download/NexusExplorer-linux-x86_64.tar.gz
+tar -xzf NexusExplorer-linux-x86_64.tar.gz
+cd nexus-explorer
+sudo ./install.sh
+```
+
 ### From Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/augani/nexus-explorer.git
 cd nexus-explorer
-
-# Build in release mode
 cargo build --release
-
-# Run
 ./target/release/nexus-explorer
 ```
 
-### Requirements
+### Build Requirements
 
 - Rust 1.75 or later
 - macOS 12+, Windows 10+, or Linux with Vulkan support
 
-### macOS
-
-On macOS, you may need to install Xcode command line tools:
-
+**macOS:** Install Xcode command line tools:
 ```bash
 xcode-select --install
 ```
 
-### Linux
-
-On Linux, ensure you have the required dependencies:
-
+**Linux:** Install dependencies:
 ```bash
 # Ubuntu/Debian
 sudo apt install libxcb1-dev libxkbcommon-dev libvulkan-dev

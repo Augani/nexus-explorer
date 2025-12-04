@@ -77,7 +77,7 @@ jobs:
             cp -r assets "${APP_NAME}.app/Contents/Resources/"
           fi
 
-          cat > "${APP_NAME}.app/Contents/Info.plist" << EOF
+          cat > "${APP_NAME}.app/Contents/Info.plist" << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -93,9 +93,9 @@ jobs:
               <key>CFBundleIconFile</key>
               <string>AppIcon</string>
               <key>CFBundleVersion</key>
-              <string>${GITHUB_REF_NAME#v}</string>
+              <string>1.0.0</string>
               <key>CFBundleShortVersionString</key>
-              <string>${GITHUB_REF_NAME#v}</string>
+              <string>1.0.0</string>
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>LSMinimumSystemVersion</key>
@@ -106,11 +106,63 @@ jobs:
               <string>public.app-category.utilities</string>
           </dict>
           </plist>
-          EOF
+          PLIST
+
+          # Update version in plist
+          VERSION="${GITHUB_REF_NAME#v}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "${APP_NAME}.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "${APP_NAME}.app/Contents/Info.plist"
+
+      - name: Import signing certificate
+        if: ${{ env.MACOS_CERTIFICATE != '' }}
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PWD }}
+        run: |
+          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" build.keychain
+          rm certificate.p12
+
+      - name: Code sign app bundle
+        if: ${{ env.MACOS_CERTIFICATE != '' }}
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          codesign --force --options runtime --sign "$SIGNING_IDENTITY" --deep "Nexus Explorer.app"
+          codesign --verify --verbose "Nexus Explorer.app"
 
       - name: Create DMG
         run: |
           hdiutil create -volname "Nexus Explorer" -srcfolder "Nexus Explorer.app" -ov -format UDZO "NexusExplorer-${{ matrix.target }}.dmg"
+
+      - name: Code sign DMG
+        if: ${{ env.MACOS_CERTIFICATE != '' }}
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          codesign --force --sign "$SIGNING_IDENTITY" "NexusExplorer-${{ matrix.target }}.dmg"
+
+      - name: Notarize DMG
+        if: ${{ env.APPLE_ID != '' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit "NexusExplorer-${{ matrix.target }}.dmg" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PWD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          xcrun stapler staple "NexusExplorer-${{ matrix.target }}.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

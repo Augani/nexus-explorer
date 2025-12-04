@@ -43,9 +43,8 @@ impl AssetSource for Assets {
 }
 
 fn main() {
-    let app = Application::new().with_assets(Assets {
-        base: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-    });
+    let assets_base = get_assets_base_path();
+    let app = Application::new().with_assets(Assets { base: assets_base });
 
     app.run(|cx| {
         adabraka_ui::init(cx);
@@ -116,6 +115,43 @@ fn main() {
         window_manager.register_window(handle, home_dir);
         cx.set_global(window_manager);
     });
+}
+
+/// Determines the base path for assets based on the runtime environment.
+/// In development (cargo run), uses CARGO_MANIFEST_DIR.
+/// In release builds, resolves relative to the executable location.
+fn get_assets_base_path() -> PathBuf {
+    // For macOS app bundles, assets are in Contents/Resources
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe_path) = std::env::current_exe() {
+            // Check if we're in an app bundle: .app/Contents/MacOS/executable
+            if let Some(macos_dir) = exe_path.parent() {
+                if macos_dir.ends_with("MacOS") {
+                    if let Some(contents_dir) = macos_dir.parent() {
+                        let resources_dir = contents_dir.join("Resources");
+                        if resources_dir.exists() {
+                            return resources_dir;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For Windows/Linux or development, check relative to executable
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            // Check if assets folder exists next to executable
+            let assets_dir = exe_dir.join("assets");
+            if assets_dir.exists() {
+                return exe_dir.to_path_buf();
+            }
+        }
+    }
+
+    // Fallback to current directory (development mode)
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
 /// Spawns the Tokio runtime on a dedicated thread.
