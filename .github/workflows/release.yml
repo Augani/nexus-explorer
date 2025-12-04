@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 0.1.0, 0.2.0-beta.1)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as prerelease"
+        required: false
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -154,11 +165,80 @@ jobs:
       - name: Create ZIP
         run: Compress-Archive -Path dist/* -DestinationPath NexusExplorer-windows-x86_64.zip
 
-      - name: Upload artifact
+      - name: Install WiX Toolset
+        run: |
+          dotnet tool install --global wix --version 5.0.0
+          wix extension add WixToolset.UI.wixext/5.0.0 -g
+
+      - name: Create MSI installer
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          if ($version -match '-') { $version = $version.Split('-')[0] }
+
+          @"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+            <Package Name="Nexus Explorer" 
+                     Manufacturer="Nexus Explorer Team" 
+                     Version="$version" 
+                     UpgradeCode="6B29FC40-CA47-1067-B31D-00DD010662DA"
+                     Scope="perMachine">
+              
+              <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+              <MediaTemplate EmbedCab="yes" />
+              
+              <StandardDirectory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLFOLDER" Name="Nexus Explorer">
+                  <Component Id="MainExecutable" Guid="6B29FC40-CA47-1067-B31D-00DD010662DB">
+                    <File Id="NexusExplorerExe" Source="dist\Nexus Explorer.exe" KeyPath="yes" />
+                  </Component>
+                  <Component Id="AppIcon" Guid="6B29FC40-CA47-1067-B31D-00DD010662DC">
+                    <File Id="AppIconIco" Source="dist\app-icon.ico" />
+                  </Component>
+                </Directory>
+              </StandardDirectory>
+              
+              <StandardDirectory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Nexus Explorer">
+                  <Component Id="ApplicationShortcut" Guid="6B29FC40-CA47-1067-B31D-00DD010662DD">
+                    <Shortcut Id="ApplicationStartMenuShortcut"
+                              Name="Nexus Explorer"
+                              Target="[INSTALLFOLDER]Nexus Explorer.exe"
+                              WorkingDirectory="INSTALLFOLDER"
+                              Icon="AppIcon.ico" />
+                    <RemoveFolder Id="CleanUpShortCut" On="uninstall" />
+                    <RegistryValue Root="HKCU" Key="Software\NexusExplorer" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+                  </Component>
+                </Directory>
+              </StandardDirectory>
+              
+              <Icon Id="AppIcon.ico" SourceFile="dist\app-icon.ico" />
+              
+              <Feature Id="ProductFeature" Title="Nexus Explorer" Level="1">
+                <ComponentRef Id="MainExecutable" />
+                <ComponentRef Id="AppIcon" />
+                <ComponentRef Id="ApplicationShortcut" />
+              </Feature>
+              
+              <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+            </Package>
+          </Wix>
+          "@ | Out-File -FilePath "installer.wxs" -Encoding UTF8
+
+          wix build installer.wxs -o NexusExplorer-windows-x86_64.msi -ext WixToolset.UI.wixext
+
+      - name: Upload ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-windows-x86_64
+          name: nexus-windows-x86_64-zip
           path: NexusExplorer-windows-x86_64.zip
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-windows-x86_64-msi
+          path: NexusExplorer-windows-x86_64.msi
 
   build-linux:
     name: Build (Linux)
@@ -253,11 +333,78 @@ jobs:
 
           tar -czvf NexusExplorer-linux-x86_64.tar.gz -C dist nexus-explorer
 
-      - name: Upload artifact
+      - name: Create AppImage
+        run: |
+          # Download appimagetool
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+          # Create AppDir structure
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+
+          cp dist/nexus-explorer/nexus-explorer AppDir/usr/bin/
+          cp dist/nexus-explorer/nexus-explorer.desktop AppDir/
+          cp dist/nexus-explorer/nexus-explorer.desktop AppDir/usr/share/applications/
+          rsvg-convert -w 256 -h 256 assets/app-icon.svg -o AppDir/nexus-explorer.png
+          cp AppDir/nexus-explorer.png AppDir/usr/share/icons/hicolor/256x256/apps/
+
+          # Create AppRun
+          cat > AppDir/AppRun << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          export PATH="${HERE}/usr/bin:${PATH}"
+          exec "${HERE}/usr/bin/nexus-explorer" "$@"
+          APPRUN
+          chmod +x AppDir/AppRun
+
+          # Build AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir NexusExplorer-linux-x86_64.AppImage
+
+      - name: Create DEB package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p deb/DEBIAN
+          mkdir -p deb/usr/bin
+          mkdir -p deb/usr/share/applications
+          mkdir -p deb/usr/share/icons/hicolor/256x256/apps
+
+          cp dist/nexus-explorer/nexus-explorer deb/usr/bin/
+          cp dist/nexus-explorer/nexus-explorer.desktop deb/usr/share/applications/
+          rsvg-convert -w 256 -h 256 assets/app-icon.svg -o deb/usr/share/icons/hicolor/256x256/apps/nexus-explorer.png
+
+          cat > deb/DEBIAN/control << EOF
+          Package: nexus-explorer
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Nexus Explorer Team <augani@icloud.com>
+          Description: A blazing-fast, GPU-accelerated file explorer
+           Built with Rust and GPUI for maximum performance.
+          EOF
+
+          dpkg-deb --build deb NexusExplorer-linux-x86_64.deb
+
+      - name: Upload tarball artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-linux-x86_64
+          name: nexus-linux-x86_64-tar
           path: NexusExplorer-linux-x86_64.tar.gz
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-linux-x86_64-appimage
+          path: NexusExplorer-linux-x86_64.AppImage
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-linux-x86_64-deb
+          path: NexusExplorer-linux-x86_64.deb
 
   release:
     name: Create Release
@@ -271,14 +418,30 @@ jobs:
         with:
           path: artifacts
 
+      - name: Determine if prerelease
+        id: prerelease
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *"alpha"* ]] || [[ "$VERSION" == *"beta"* ]] || [[ "$VERSION" == *"rc"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             artifacts/nexus-macos-x86_64-apple-darwin/NexusExplorer-x86_64-apple-darwin.dmg
             artifacts/nexus-macos-aarch64-apple-darwin/NexusExplorer-aarch64-apple-darwin.dmg
-            artifacts/nexus-windows-x86_64/NexusExplorer-windows-x86_64.zip
-            artifacts/nexus-linux-x86_64/NexusExplorer-linux-x86_64.tar.gz
+            artifacts/nexus-windows-x86_64-zip/NexusExplorer-windows-x86_64.zip
+            artifacts/nexus-windows-x86_64-msi/NexusExplorer-windows-x86_64.msi
+            artifacts/nexus-linux-x86_64-tar/NexusExplorer-linux-x86_64.tar.gz
+            artifacts/nexus-linux-x86_64-appimage/NexusExplorer-linux-x86_64.AppImage
+            artifacts/nexus-linux-x86_64-deb/NexusExplorer-linux-x86_64.deb
           generate_release_notes: true
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          name: Nexus Explorer ${{ github.ref_name }}

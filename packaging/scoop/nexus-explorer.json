@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
+  "version": "0.1.0",
+  "description": "A blazing-fast, GPU-accelerated file explorer built with Rust and GPUI",
+  "homepage": "https://github.com/augani/nexus-explorer",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/augani/nexus-explorer/releases/download/v0.1.0/NexusExplorer-windows-x86_64.zip",
+      "hash": "PLACEHOLDER_SHA256"
+    }
+  },
+  "bin": "Nexus Explorer.exe",
+  "shortcuts": [["Nexus Explorer.exe", "Nexus Explorer"]],
+  "checkver": {
+    "github": "https://github.com/augani/nexus-explorer"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/augani/nexus-explorer/releases/download/v$version/NexusExplorer-windows-x86_64.zip"
+      }
+    }
+  }
+}

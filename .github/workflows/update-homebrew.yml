@@ -1,0 +1,67 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to update formula for (e.g., 0.1.0)"
+        required: true
+        type: string
+
+jobs:
+  update-formula:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download release assets and compute SHA256
+        id: sha256
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Download DMGs
+          curl -sL "https://github.com/augani/nexus-explorer/releases/download/v${VERSION}/NexusExplorer-aarch64-apple-darwin.dmg" -o arm64.dmg
+          curl -sL "https://github.com/augani/nexus-explorer/releases/download/v${VERSION}/NexusExplorer-x86_64-apple-darwin.dmg" -o x64.dmg
+
+          # Compute SHA256
+          SHA256_ARM64=$(sha256sum arm64.dmg | cut -d' ' -f1)
+          SHA256_X64=$(sha256sum x64.dmg | cut -d' ' -f1)
+
+          echo "sha256_arm64=$SHA256_ARM64" >> $GITHUB_OUTPUT
+          echo "sha256_x64=$SHA256_X64" >> $GITHUB_OUTPUT
+
+      - name: Update formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256_ARM64="${{ steps.sha256.outputs.sha256_arm64 }}"
+          SHA256_X64="${{ steps.sha256.outputs.sha256_x64 }}"
+
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" packaging/homebrew/nexus-explorer.rb
+          sed -i "s/PLACEHOLDER_SHA256_ARM64/${SHA256_ARM64}/" packaging/homebrew/nexus-explorer.rb
+          sed -i "s/PLACEHOLDER_SHA256_X64/${SHA256_X64}/" packaging/homebrew/nexus-explorer.rb
+
+          # Also update any existing sha256 values
+          sed -i "s/sha256 \"[a-f0-9]\{64\}\" # arm64/sha256 \"${SHA256_ARM64}\" # arm64/" packaging/homebrew/nexus-explorer.rb
+          sed -i "s/sha256 \"[a-f0-9]\{64\}\" # x64/sha256 \"${SHA256_X64}\" # x64/" packaging/homebrew/nexus-explorer.rb
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packaging/homebrew/nexus-explorer.rb
+          git commit -m "chore: update homebrew formula to v${{ steps.version.outputs.version }}" || exit 0
+          git push

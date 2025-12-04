@@ -1,0 +1,94 @@
+name: Version Bump & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+      prerelease_id:
+        description: "Prerelease identifier (for prerelease bump: alpha, beta, rc)"
+        required: false
+        type: string
+        default: "beta"
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Calculate new version
+        id: bump
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          PRERELEASE_ID="${{ github.event.inputs.prerelease_id }}"
+
+          # Extract base version (remove any prerelease suffix)
+          BASE_VERSION=$(echo "$CURRENT" | sed 's/-.*//')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+
+          case "$BUMP_TYPE" in
+            major)
+              NEW_VERSION="$((MAJOR + 1)).0.0"
+              ;;
+            minor)
+              NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
+              ;;
+            patch)
+              NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+              ;;
+            prerelease)
+              # Check if already a prerelease
+              if [[ "$CURRENT" == *"-${PRERELEASE_ID}."* ]]; then
+                # Increment prerelease number
+                PRE_NUM=$(echo "$CURRENT" | sed "s/.*-${PRERELEASE_ID}\.\([0-9]*\)/\1/")
+                NEW_VERSION="${BASE_VERSION}-${PRERELEASE_ID}.$((PRE_NUM + 1))"
+              else
+                # Start new prerelease
+                NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))-${PRERELEASE_ID}.1"
+              fi
+              ;;
+          esac
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+      - name: Update Cargo.toml
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ steps.bump.outputs.new_version }}"/' Cargo.toml
+
+      - name: Update Cargo.lock
+        run: cargo update --workspace
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml Cargo.lock
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
+          git tag "v${{ steps.bump.outputs.new_version }}"
+          git push origin main --tags
