@@ -1654,35 +1654,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "file-explorer"
-version = "0.1.0"
-dependencies = [
- "adabraka-ui",
- "bincode",
- "chrono",
- "dirs 5.0.1",
- "flume",
- "gpui",
- "image",
- "jwalk",
- "lazy_static",
- "libc",
- "lru",
- "notify",
- "nucleo",
- "portable-pty",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.17",
- "tokio",
- "trash",
- "windows-sys 0.52.0",
- "xattr 1.6.1",
-]
-
-[[package]]
 name = "filedescriptor"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3380,6 +3351,35 @@ name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
+
+[[package]]
+name = "nexus-explorer"
+version = "0.1.0"
+dependencies = [
+ "adabraka-ui",
+ "bincode",
+ "chrono",
+ "dirs 5.0.1",
+ "flume",
+ "gpui",
+ "image",
+ "jwalk",
+ "lazy_static",
+ "libc",
+ "lru",
+ "notify",
+ "nucleo",
+ "portable-pty",
+ "proptest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokio",
+ "trash",
+ "windows-sys 0.52.0",
+ "xattr 1.6.1",
+]
 
 [[package]]
 name = "nix"

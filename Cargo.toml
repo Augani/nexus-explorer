@@ -1,16 +1,23 @@
 [package]
-name = "file-explorer"
+name = "nexus-explorer"
 version = "0.1.0"
 edition = "2021"
-description = "A high-performance file explorer built with Rust and GPUI"
+description = "A blazing-fast, GPU-accelerated file explorer built with Rust and GPUI"
 license = "MIT"
+repository = "https://github.com/augani/nexus-explorer"
+homepage = "https://github.com/augani/nexus-explorer"
+readme = "README.md"
+keywords = ["file-explorer", "file-manager", "gpui", "gui", "desktop"]
+categories = ["gui", "filesystem"]
+authors = ["Augustus Otu <augani@icloud.com>"]
+rust-version = "1.75"
 
 [lib]
 name = "file_explorer"
 path = "src/lib.rs"
 
 [[bin]]
-name = "file-explorer"
+name = "nexus-explorer"
 path = "src/main.rs"
 
 [dependencies]
