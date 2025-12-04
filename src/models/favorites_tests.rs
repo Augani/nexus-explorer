@@ -162,7 +162,6 @@ fn test_favorites_reorder() {
     let temp = create_temp_dir();
     let mut favs = Favorites::new();
     
-    // Create and add 3 directories
     let paths: Vec<PathBuf> = (0..3)
         .map(|i| {
             let p = temp.path().join(format!("dir{}", i));
@@ -293,7 +292,6 @@ mod property_tests {
         let test_dir = temp.path().join("test_persistence");
         std::fs::create_dir(&test_dir).unwrap();
         
-        // Create favorites and add the path
         let mut favs = Favorites::new();
         favs.add(test_dir.clone()).unwrap();
         
@@ -302,7 +300,6 @@ mod property_tests {
         let json = serde_json::to_string_pretty(&favs).unwrap();
         std::fs::write(&config_path, &json).unwrap();
         
-        // Load from the custom location
         let loaded_json = std::fs::read_to_string(&config_path).unwrap();
         let mut loaded: Favorites = serde_json::from_str(&loaded_json).unwrap();
         loaded.validate_all();
@@ -325,7 +322,6 @@ mod property_tests {
             let temp = TempDir::new().unwrap();
             let mut favs = Favorites::new();
             
-            // Create directories and add them
             let mut paths = Vec::new();
             for i in 0..num_items {
                 let p = temp.path().join(format!("dir{}", i));
@@ -359,10 +355,9 @@ mod property_tests {
             let mut fav = Favorite {
                 name: "Test".to_string(),
                 path: invalid_path,
-                is_valid: true, // Start as valid
+                is_valid: true,
             };
             
-            // Validate should detect it's invalid
             let result = fav.validate();
             
             prop_assert!(!result);

@@ -274,7 +274,6 @@ impl BatchRename {
 
         // Add extension if not already included and original had one
         if !extension.is_empty() && !result.ends_with(&format!(".{}", extension)) {
-            // Check if pattern explicitly includes extension token
             let has_ext_token = tokens.iter().any(|t| matches!(t, RenameToken::Extension));
             if !has_ext_token {
                 result.push('.');
@@ -345,7 +344,6 @@ impl BatchRename {
     fn detect_conflicts(&mut self) {
         self.conflicts.clear();
 
-        // Check for duplicate new names
         for i in 0..self.preview.len() {
             for j in (i + 1)..self.preview.len() {
                 if self.preview[i].new_name == self.preview[j].new_name {
@@ -359,7 +357,6 @@ impl BatchRename {
             }
         }
 
-        // Check for conflicts with existing files in the same directory
         if let Some(first_file) = self.files.first() {
             if let Some(parent) = first_file.parent() {
                 for (index, preview) in self.preview.iter().enumerate() {
@@ -368,10 +365,8 @@ impl BatchRename {
                         continue;
                     }
 
-                    // Check if new name conflicts with existing file (not in our rename set)
                     let new_path = parent.join(&preview.new_name);
                     if new_path.exists() {
-                        // Check if it's one of our files being renamed
                         let is_our_file = self.files.iter().any(|f| f == &new_path);
                         if !is_our_file {
                             self.conflicts.push(index);

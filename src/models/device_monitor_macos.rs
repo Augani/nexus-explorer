@@ -9,7 +9,7 @@ impl DeviceMonitor {
         let root_path = PathBuf::from("/");
         if let Ok((total, free)) = get_disk_space(&root_path) {
             let root_device = Device::new(
-                DeviceId::new(0), // Will be reassigned
+                DeviceId::new(0),
                 "Macintosh HD".to_string(),
                 root_path,
                 DeviceType::InternalDrive,
@@ -51,12 +51,10 @@ impl DeviceMonitor {
                 )
                 .with_removable(is_removable);
                 
-                // Get space info
                 if let Ok((total, free)) = get_disk_space(&path) {
                     device = device.with_space(total, free);
                 }
                 
-                // Check if read-only
                 device = device.with_read_only(is_volume_read_only(&path));
                 
                 self.add_device(device);
@@ -120,14 +118,11 @@ impl DeviceMonitor {
 fn detect_macos_device_type(path: &PathBuf) -> DeviceType {
     let path_str = path.to_string_lossy();
     
-    // Check for disk images (.dmg mounted volumes often have specific patterns)
     if path_str.contains(".dmg") || path_str.contains("disk image") {
         return DeviceType::DiskImage;
     }
     
-    // Check for network volumes
     if path_str.starts_with("/Volumes/") {
-        // Try to detect network mounts by checking mount info
         if let Ok(output) = std::process::Command::new("mount").output() {
             let mount_info = String::from_utf8_lossy(&output.stdout);
             let path_escaped = path_str.replace(' ', "\\ ");
@@ -138,7 +133,6 @@ fn detect_macos_device_type(path: &PathBuf) -> DeviceType {
                         return DeviceType::NetworkDrive;
                     }
                     if line.contains("devfs") || line.contains("disk") {
-                        // Check if it's external by looking at disk info
                         if is_external_disk(path) {
                             return DeviceType::ExternalDrive;
                         }
@@ -155,7 +149,6 @@ fn detect_macos_device_type(path: &PathBuf) -> DeviceType {
 /// Check if a disk is external
 #[cfg(target_os = "macos")]
 fn is_external_disk(path: &PathBuf) -> bool {
-    // Use diskutil to check if the disk is external
     if let Ok(output) = std::process::Command::new("diskutil")
         .args(["info", path.to_str().unwrap_or("")])
         .output()
@@ -172,7 +165,6 @@ fn is_volume_read_only(path: &PathBuf) -> bool {
     use std::os::unix::fs::MetadataExt;
     
     if let Ok(metadata) = std::fs::metadata(path) {
-        // Check if the volume is mounted read-only
         let mode = metadata.mode();
         // If no write permission for owner, consider it read-only
         return (mode & 0o200) == 0;

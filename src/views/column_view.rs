@@ -195,7 +195,6 @@ impl Render for ColumnViewComponent {
         let column_width = self.column_view.column_width();
         let context_menu_pos = self.context_menu_position;
 
-        // Theme colors
         let bg_darker = gpui::rgb(0x010409);
         let bg_dark = gpui::rgb(0x0d1117);
         let border_color = gpui::rgb(0x30363d);
@@ -227,7 +226,6 @@ impl Render for ColumnViewComponent {
                 view.close_context_menu();
                 cx.notify();
             }))
-            // Header
             .child(
                 div()
                     .flex()
@@ -272,7 +270,6 @@ impl Render for ColumnViewComponent {
                             )
                     )
             )
-            // Footer
             .child(
                 div()
                     .h(px(28.0))
@@ -299,7 +296,6 @@ impl Render for ColumnViewComponent {
                             .child("Column View"),
                     )
             )
-            // Context Menu
             .when_some(context_menu_pos, |this, pos| {
                 let entity = cx.entity().clone();
                 let selected_entry = self.context_menu_column
@@ -410,7 +406,6 @@ fn render_column(
         .border_r_1()
         .border_color(border_color)
         .bg(bg_dark)
-        // Column header
         .child(
             div()
                 .h(px(28.0))
@@ -425,7 +420,6 @@ fn render_column(
                 .truncate()
                 .child(column_name)
         )
-        // Column entries
         .child(
             div()
                 .flex_1()
@@ -491,14 +485,12 @@ fn render_column(
                                         });
                                     }
                                 })
-                                // Icon
                                 .child(
                                     svg()
                                         .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
                                         .size(px(16.0))
                                         .text_color(icon_color)
                                 )
-                                // Name
                                 .child(
                                     div()
                                         .flex_1()
@@ -582,7 +574,6 @@ mod tests {
 
     #[test]
     fn test_column_view_component_creation() {
-        // Basic test to ensure the component can be created
         let column_view = ColumnView::new(PathBuf::from("/test"));
         assert_eq!(column_view.column_count(), 1);
     }

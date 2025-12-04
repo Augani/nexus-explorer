@@ -134,7 +134,6 @@ impl TagManager {
             next_id: 1,
         };
         
-        // Create default color tags
         for color in TagColor::all() {
             let _ = manager.create_tag(color.display_name().to_string(), *color);
         }
@@ -144,7 +143,6 @@ impl TagManager {
 
     /// Creates a new tag with the given name and color
     pub fn create_tag(&mut self, name: String, color: TagColor) -> TagResult<TagId> {
-        // Check for duplicate names
         if self.tags.values().any(|t| t.name.eq_ignore_ascii_case(&name)) {
             return Err(TagError::DuplicateName(name));
         }
@@ -269,7 +267,6 @@ impl TagManager {
 
     /// Renames a tag
     pub fn rename_tag(&mut self, id: TagId, new_name: String) -> TagResult<()> {
-        // Check for duplicate names (excluding the tag being renamed)
         if self.tags.values().any(|t| t.id != id && t.name.eq_ignore_ascii_case(&new_name)) {
             return Err(TagError::DuplicateName(new_name));
         }
@@ -381,7 +378,6 @@ impl TagManager {
             next_id: config.next_id,
         };
 
-        // Restore tags
         for entry in config.tags {
             let tag = Tag::new(TagId::new(entry.id), entry.name, entry.color);
             manager.tags.insert(tag.id, tag);
@@ -425,7 +421,7 @@ pub mod xattr_storage {
     #[cfg(target_os = "linux")]
     const ENOTSUP: i32 = 95;
     #[cfg(target_os = "windows")]
-    const ENOTSUP: i32 = 129; // Windows doesn't really use this
+    const ENOTSUP: i32 = 129;
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     const ENOTSUP: i32 = 95;
     
@@ -528,7 +524,6 @@ impl TagManager {
         // First remove from in-memory state
         self.remove_tag(path, tag_id)?;
         
-        // Try to update xattr (best effort)
         let tag_ids: Vec<u64> = self.file_tags
             .get(path)
             .map(|ids| ids.iter().map(|id| id.0).collect())
@@ -549,7 +544,6 @@ impl TagManager {
                 if tag_ids.is_empty() {
                     self.file_tags.remove(path);
                 } else {
-                    // Only include tag IDs that exist in our tag definitions
                     let valid_ids: HashSet<TagId> = tag_ids
                         .into_iter()
                         .map(TagId::new)

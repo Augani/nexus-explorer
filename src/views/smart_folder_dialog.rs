@@ -69,7 +69,7 @@ impl QueryBuilderState {
         let (size_filter_type, size_filter_value) = match &query.size_filter {
             Some(SizeFilter::SmallerThan(s)) => (SizeFilterType::SmallerThan, *s),
             Some(SizeFilter::LargerThan(s)) => (SizeFilterType::LargerThan, *s),
-            _ => (SizeFilterType::None, 1024 * 1024), // 1MB default
+            _ => (SizeFilterType::None, 1024 * 1024),
         };
 
         Self {
@@ -338,7 +338,6 @@ impl Render for SmartFolderDialog {
                     .on_mouse_down(MouseButton::Left, |_event, _window, _cx| {
                         // Prevent click from propagating to overlay
                     })
-                    // Header
                     .child(
                         div()
                             .px_4()
@@ -385,7 +384,6 @@ impl Render for SmartFolderDialog {
                                     )
                             )
                     )
-                    // Content
                     .child(
                         div()
                             .flex_1()
@@ -394,7 +392,6 @@ impl Render for SmartFolderDialog {
                             .flex()
                             .flex_col()
                             .gap_4()
-                            // Name field
                             .child(
                                 div()
                                     .flex()
@@ -472,7 +469,6 @@ impl Render for SmartFolderDialog {
                                             .child(if file_types.is_empty() { "e.g., rs, toml, md".to_string() } else { file_types })
                                     )
                             )
-                            // Date filter
                             .child(
                                 div()
                                     .flex()
@@ -516,7 +512,6 @@ impl Render for SmartFolderDialog {
                                             )
                                     )
                             )
-                            // Size filter
                             .child(
                                 div()
                                     .flex()
@@ -560,7 +555,6 @@ impl Render for SmartFolderDialog {
                                             )
                                     )
                             )
-                            // Checkboxes
                             .child(
                                 div()
                                     .flex()
@@ -572,7 +566,6 @@ impl Render for SmartFolderDialog {
                                     .child(self.render_checkbox("files-only", "Files only", files_only, cx))
                             )
                     )
-                    // Footer
                     .child(
                         div()
                             .px_4()

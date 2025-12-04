@@ -163,7 +163,6 @@ impl Workspace {
             let file_system = cx.new(|_| file_system);
             let icon_cache = cx.new(|_| IconCache::new());
             
-            // Create search engine and inject initial entries
             let search_engine_inner = SearchEngine::new();
             for entry in &cached_entries {
                 search_engine_inner.inject(entry.path.clone());
@@ -172,7 +171,6 @@ impl Workspace {
 
             let file_list = cx.new(|cx| FileListView::with_file_list(file_list_inner, cx));
             
-            // Create grid view with same entries
             let mut grid_view_inner = GridView::with_config(GridConfig::default());
             grid_view_inner.set_entries(cached_entries.clone());
             let grid_view = cx.new(|cx| GridViewComponent::with_grid_view(grid_view_inner, cx));
@@ -187,18 +185,17 @@ impl Workspace {
                 SearchInputView::new(cx).with_search_engine(search_engine.clone())
             });
 
-            // Load persisted settings
             let settings = GlobalSettings::load();
             let view_mode = settings.view_mode;
             let show_hidden_files = settings.show_hidden_files;
             let current_theme_id = settings.theme_id;
+            
+            crate::models::set_current_theme(current_theme_id);
 
-            // Create theme picker
             let theme_picker = cx.new(|cx| {
                 ThemePickerView::new(cx).with_selected_theme(current_theme_id)
             });
 
-            // Create status bar and initialize with current directory info
             let status_bar = cx.new(|cx| {
                 let mut status_bar_view = StatusBarView::new(cx);
                 status_bar_view.update_from_entries(&cached_entries, None, cx);
@@ -207,46 +204,38 @@ impl Workspace {
                 status_bar_view
             });
 
-            // Create terminal view with initial working directory
             let terminal = cx.new(|cx| {
                 TerminalView::new(cx).with_working_directory(initial_path.clone())
             });
 
-            // Create Quick Look view
             let quick_look = cx.new(|cx| QuickLookView::new(cx));
 
-            // Create Toast Manager for notifications
             let toast_manager = cx.new(|cx| ToastManager::new(cx));
 
             // Observe file list for navigation requests and selection changes
             let sidebar_for_file_list = sidebar.clone();
             let status_bar_for_file_list = status_bar.clone();
             cx.observe(&file_list, move |workspace: &mut Workspace, file_list, cx| {
-                // Check for parent navigation request (Backspace key)
                 let wants_parent = file_list.update(cx, |view, _| view.take_pending_parent_navigation());
                 if wants_parent {
                     workspace.navigate_up(cx);
                 }
                 
-                // Check for directory navigation request (Enter key or double-click)
                 let nav_path = file_list.update(cx, |view, _| view.take_pending_navigation());
                 if let Some(path) = nav_path {
                     workspace.navigate_to(path, cx);
                 }
                 
-                // Update sidebar with selection count (single selection for now)
                 let selected_index = file_list.read(cx).inner().selected_index();
                 let selection_count = if selected_index.is_some() { 1 } else { 0 };
                 sidebar_for_file_list.update(cx, |view, _| {
                     view.set_selected_file_count(selection_count);
                 });
                 
-                // Update status bar with selection
                 status_bar_for_file_list.update(cx, |view, cx| {
                     view.update_from_entries(&workspace.cached_entries, selected_index, cx);
                 });
                 
-                // Update preview panel when a file is selected
                 workspace.update_preview_for_selection(cx);
             })
             .detach();
@@ -260,19 +249,16 @@ impl Workspace {
                     workspace.navigate_to(path, cx);
                 }
                 
-                // Update sidebar with selection count
                 let selected_index = grid_view.read(cx).inner().selected_index();
                 let selection_count = if selected_index.is_some() { 1 } else { 0 };
                 sidebar_for_grid.update(cx, |view, _| {
                     view.set_selected_file_count(selection_count);
                 });
                 
-                // Update status bar with selection
                 status_bar_for_grid.update(cx, |view, cx| {
                     view.update_from_entries(&workspace.cached_entries, selected_index, cx);
                 });
                 
-                // Update preview panel when a file is selected
                 workspace.update_preview_for_selection(cx);
             })
             .detach();
@@ -291,7 +277,6 @@ impl Workspace {
                     workspace.handle_tool_action(action, cx);
                 }
                 
-                // Also check for navigation from favorites
                 let nav_path = sidebar.update(cx, |view, _| view.take_pending_navigation());
                 if let Some(path) = nav_path {
                     workspace.navigate_to(path, cx);
@@ -374,13 +359,11 @@ impl Workspace {
                 cx.notify();
             }
             ToolAction::ToggleHiddenFiles => {
-                // Get the new state from sidebar
                 let show_hidden = self.sidebar.read(cx).show_hidden_files();
                 self.show_hidden_files = show_hidden;
                 self.refresh_current_directory(cx);
             }
             ToolAction::CopyPath => {
-                // Already handled in sidebar
             }
             ToolAction::Copy => {
                 if let Some(entry) = self.get_selected_entry(cx) {
@@ -452,7 +435,6 @@ impl Workspace {
                 }
             }
             ToolAction::SetAsDefault => {
-                // Handled by sidebar
             }
         }
     }
@@ -512,7 +494,6 @@ impl Workspace {
                 }
             }).join().unwrap_or_else(|_| Err(std::io::Error::new(std::io::ErrorKind::Other, "Thread panic")));
 
-            // Handle result on main thread
             let _ = this.update(cx, |workspace, cx| {
                 match result {
                     Ok(()) => {
@@ -722,6 +703,21 @@ impl Workspace {
                         workspace.toast_manager.update(cx, |toast, cx| {
                             toast.show_success("Trash emptied".to_string(), cx);
                         });
+                        
+                        if crate::models::is_trash_path(&workspace.current_path) {
+                            workspace.file_list.update(cx, |list, cx| {
+                                list.inner_mut().set_entries(Vec::new());
+                                cx.notify();
+                            });
+                            workspace.grid_view.update(cx, |grid, cx| {
+                                grid.inner_mut().set_entries(Vec::new());
+                                cx.notify();
+                            });
+                            workspace.status_bar.update(cx, |status, cx| {
+                                status.update_from_entries(&[], None, cx);
+                            });
+                        }
+                        
                         workspace.refresh_current_directory(cx);
                     }
                     Err(e) => {
@@ -827,7 +823,6 @@ impl Workspace {
             fs.finalize_load(request_id, start.elapsed());
         });
 
-        // Update sync status for cloud storage paths
         let cloud_manager = self.sidebar.read(cx).sidebar().cloud_manager().clone();
         self.file_system.update(cx, |fs, _| {
             fs.update_sync_status(&cloud_manager);
@@ -836,12 +831,10 @@ impl Workspace {
         let entries = self.file_system.read(cx).entries().to_vec();
         self.cached_entries = entries.clone();
         
-        // Clear search and update file list
         self.search_input.update(cx, |view, cx| {
             view.clear(cx);
         });
         
-        // Update both views with new entries
         self.file_list.update(cx, |view, _| {
             view.inner_mut().set_entries(entries.clone());
         });
@@ -861,12 +854,10 @@ impl Workspace {
         self.path_history.push(path.clone());
         self.current_path = path.clone();
         
-        // Update sidebar with current directory for tools context
         self.sidebar.update(cx, |view, _| {
             view.set_current_directory(path.clone());
         });
         
-        // Update status bar with new entries and git branch
         self.status_bar.update(cx, |view, cx| {
             view.update_from_entries(&entries, None, cx);
             view.set_current_directory(&path, cx);
@@ -906,12 +897,10 @@ impl Workspace {
                 let entries = self.file_system.read(cx).entries().to_vec();
                 self.cached_entries = entries.clone();
                 
-                // Clear search and update file list
                 self.search_input.update(cx, |view, cx| {
                     view.clear(cx);
                 });
                 
-                // Update both views with new entries
                 self.file_list.update(cx, |view, _| {
                     view.inner_mut().set_entries(entries.clone());
                 });
@@ -930,12 +919,10 @@ impl Workspace {
 
                 self.current_path = prev_path.clone();
                 
-                // Update sidebar with current directory
                 self.sidebar.update(cx, |view, _| {
                     view.set_current_directory(prev_path.clone());
                 });
                 
-                // Update status bar with new entries and git branch
                 self.status_bar.update(cx, |view, cx| {
                     view.update_from_entries(&entries, None, cx);
                     view.set_current_directory(&prev_path, cx);
@@ -973,7 +960,6 @@ impl Workspace {
             });
         }
         
-        // Update status bar terminal state
         self.status_bar.update(cx, |view, cx| {
             view.set_terminal_open(self.is_terminal_open, cx);
         });
@@ -989,7 +975,8 @@ impl Workspace {
 
     pub fn set_theme(&mut self, theme_id: ThemeId, cx: &mut Context<Self>) {
         self.current_theme_id = theme_id;
-        // Persist the theme selection
+        crate::models::set_current_theme(theme_id);
+        
         let mut settings = GlobalSettings::load();
         settings.theme_id = theme_id;
         let _ = settings.save();
@@ -1027,10 +1014,8 @@ impl Workspace {
             }
         }
 
-        // Persist view mode setting
         self.save_settings();
 
-        // Update status bar view mode
         self.status_bar.update(cx, |view, cx| {
             view.set_view_mode(self.view_mode, cx);
         });
@@ -1045,9 +1030,7 @@ impl Workspace {
     pub fn set_view_mode(&mut self, mode: ViewMode, cx: &mut Context<Self>) {
         if self.view_mode != mode {
             self.view_mode = mode;
-            // Persist view mode setting
             self.save_settings();
-            // Update status bar view mode
             self.status_bar.update(cx, |view, cx| {
                 view.set_view_mode(mode, cx);
             });
@@ -1105,7 +1088,6 @@ impl Workspace {
         let _ = settings.save();
     }
 
-    // Global keyboard shortcut handlers
     
     /// Handle Cmd+T - New Tab (opens new window for now)
     fn handle_new_tab(&mut self, _: &NewTab, _window: &mut Window, cx: &mut Context<Self>) {
@@ -1152,7 +1134,6 @@ impl Workspace {
 
     /// Handle Space - Toggle Quick Look
     fn handle_quick_look_toggle(&mut self, _: &QuickLookToggle, _window: &mut Window, cx: &mut Context<Self>) {
-        // Get the currently selected file from the active view
         let selected_entry = match self.view_mode {
             ViewMode::List | ViewMode::Details => {
                 let idx = self.file_list.read(cx).inner().selected_index();
@@ -1254,7 +1235,6 @@ impl Focusable for Workspace {
 
 impl Render for Workspace {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Get theme colors
         let theme = theme_colors();
         let bg_dark = theme.bg_secondary;
         let bg_darker = theme.bg_void;
@@ -1266,7 +1246,6 @@ impl Render for Workspace {
         let is_terminal_open = self.is_terminal_open;
         let can_go_back = self.path_history.len() > 1;
 
-        // Get current theme for background effects
         let current = current_theme();
         let content_bg = current.content_background();
         
@@ -1340,7 +1319,7 @@ impl Render for Workspace {
                             .flex()
                             .items_center()
                             .gap_2()
-                            .pl(px(70.0)) // Space for macOS traffic lights
+                            .pl(px(70.0))
                             .child(
                                 svg()
                                     .path("assets/icons/hard-drive.svg")
@@ -1425,24 +1404,24 @@ impl Render for Workspace {
                             // Toolbar with RPG styling - 52px height, themed dividers
                             .child(
                                 div()
-                                    .h(px(crate::models::toolbar::HEIGHT))  // 52px
+                                    .h(px(crate::models::toolbar::HEIGHT))
                                     .bg(bg_dark)
                                     .border_b_1()
                                     .border_color(border_color)
                                     .flex()
                                     .items_center()
                                     .justify_between()
-                                    .px(px(crate::models::toolbar::PADDING_X))  // 16px
+                                    .px(px(crate::models::toolbar::PADDING_X))
                                     .child(
                                         div()
                                             .flex()
                                             .items_center()
-                                            .gap(px(crate::models::toolbar::BUTTON_GAP))  // 8px
+                                            .gap(px(crate::models::toolbar::BUTTON_GAP))
                                             .child(
                                                 // Back button with 36px size
                                                 div()
                                                     .id("back-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
                                                     .flex()
                                                     .items_center()
                                                     .justify_center()
@@ -1480,12 +1459,12 @@ impl Render for Workspace {
                                         div()
                                             .flex()
                                             .items_center()
-                                            .gap(px(crate::models::toolbar::BUTTON_GAP))  // 8px
+                                            .gap(px(crate::models::toolbar::BUTTON_GAP))
                                             .child(
                                                 // Terminal toggle button - 36px
                                                 div()
                                                     .id("terminal-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
                                                     .flex()
                                                     .items_center()
                                                     .justify_center()
@@ -1510,7 +1489,6 @@ impl Render for Workspace {
                                                             .text_color(if is_terminal_open { theme.accent_primary } else { text_gray }),
                                                     ),
                                             )
-                                            // Themed divider
                                             .child(
                                                 div()
                                                     .h(px(20.0))
@@ -1522,7 +1500,7 @@ impl Render for Workspace {
                                                 // Copy button - 36px
                                                 div()
                                                     .id("copy-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
                                                     .flex()
                                                     .items_center()
                                                     .justify_center()
@@ -1540,7 +1518,7 @@ impl Render for Workspace {
                                                 // Trash button - 36px
                                                 div()
                                                     .id("trash-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))  // 36px
+                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
                                                     .flex()
                                                     .items_center()
                                                     .justify_center()
@@ -1646,7 +1624,6 @@ impl Render for Workspace {
                                 let terminal_height = self.terminal_height;
                                 let handle_color = theme.border_default;
                                 this
-                                    // Resize handle
                                     .child(
                                         div()
                                             .id("terminal-resize-handle")
@@ -1672,7 +1649,6 @@ impl Render for Workspace {
                                                     .bg(handle_color),
                                             ),
                                     )
-                                    // Terminal panel
                                     .child(
                                         div()
                                             .h(px(terminal_height))
@@ -1692,7 +1668,6 @@ impl Render for Workspace {
                             div()
                                 .flex()
                                 .h_full()
-                                // Resize handle
                                 .child(
                                     div()
                                         .id("preview-resize-handle")
@@ -1735,7 +1710,6 @@ impl Render for Workspace {
             )
             // Status bar at the bottom
             .child(self.status_bar.clone())
-            // Dialog overlay
             .when(!matches!(self.dialog_state, DialogState::None), |this| {
                 this.child(self.render_dialog_overlay(cx))
             })
@@ -1788,7 +1762,6 @@ impl Workspace {
                                     .flex()
                                     .items_center()
                                     .gap(px(crate::models::toolbar::BUTTON_GAP))
-                                    // Up button
                                     .child(
                                         div()
                                             .id("dest-up-btn")
@@ -1938,7 +1911,7 @@ impl Workspace {
             .gap_1()
             .overflow_x_hidden()
             .children(parts.into_iter().enumerate().map(|(i, (name, path))| {
-                let is_last = i == 0; // After reverse, check differently
+                let is_last = i == 0;
                 div()
                     .flex()
                     .items_center()

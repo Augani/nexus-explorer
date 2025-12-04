@@ -47,23 +47,18 @@ fn main() {
         });
     
     app.run(|cx| {
-        // Initialize adabraka-ui components and set icon path
         adabraka_ui::init(cx);
         adabraka_ui::set_icon_base_path("assets/icons");
         
-        // Register GlobalSettings as GPUI global state
         cx.set_global(GlobalSettings::default());
         
-        // Initialize WindowManager as global state
         let mut window_manager = WindowManager::new();
         
         // Spawn Tokio runtime on a dedicated thread for I/O operations
         let _tokio_runtime = spawn_tokio_runtime();
         
-        // Pre-load default icons into IconCache
         let _icon_cache = preload_default_icons();
         
-        // Set up window close handler to save state and quit when last window closes
         cx.on_window_closed(|cx| {
             // Save window state before potentially quitting
             if cx.has_global::<WindowManager>() {
@@ -77,7 +72,6 @@ fn main() {
         })
         .detach();
         
-        // Check if we should restore previous windows
         let settings = GlobalSettings::load();
         let should_restore = settings.restore_windows_on_start();
         
@@ -91,10 +85,8 @@ fn main() {
             }
         }
         
-        // Detect user's home directory for initial window
         let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
         
-        // Create the main window
         let bounds = Bounds::centered(None, size(px(1200.0), px(800.0)), cx);
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -118,7 +110,6 @@ fn main() {
         })
         .expect("Failed to open window");
         
-        // Register the initial window with the WindowManager
         window_manager.register_window(handle, home_dir);
         cx.set_global(window_manager);
     });
@@ -135,7 +126,6 @@ fn spawn_tokio_runtime() -> Arc<Runtime> {
 fn preload_default_icons() -> IconCache {
     let mut cache = IconCache::new();
     
-    // Pre-load common icons that will be used frequently
     let default_keys = [
         IconKey::Directory,
         IconKey::GenericFile,
@@ -159,7 +149,6 @@ fn preload_default_icons() -> IconCache {
         IconKey::Extension("zip".to_string()),
     ];
     
-    // Request icons to be loaded (they'll use defaults initially)
     for key in default_keys {
         cache.get_or_default(&key);
     }

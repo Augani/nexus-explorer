@@ -48,7 +48,6 @@ impl Breadcrumb {
 
         while let Some(p) = current {
             let name = if p.parent().is_none() {
-                // Root path
                 #[cfg(target_os = "windows")]
                 {
                     p.to_str().unwrap_or("C:").to_string()
@@ -70,7 +69,6 @@ impl Breadcrumb {
             current = p.parent();
         }
 
-        // Reverse to get root-to-leaf order
         paths_collected.reverse();
 
         for (i, (p, name)) in paths_collected.into_iter().enumerate() {
@@ -133,7 +131,7 @@ impl Breadcrumb {
 
     /// Set maximum visible segments
     pub fn set_max_visible(&mut self, max: usize) {
-        self.max_visible = max.max(2); // At least 2 (root + current)
+        self.max_visible = max.max(2);
     }
 
     /// Toggle ellipsis menu visibility
@@ -227,7 +225,6 @@ impl Focusable for BreadcrumbView {
 
 impl Render for BreadcrumbView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Get theme colors for RPG styling
         let colors = theme_colors();
         
         let text_gray = colors.text_secondary;

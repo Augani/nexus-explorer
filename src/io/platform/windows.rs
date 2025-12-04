@@ -94,7 +94,6 @@ impl MftIndex {
 
     /// Insert a file node into the index
     pub fn insert(&mut self, frn: FileReferenceNumber, node: FileNode) {
-        // Invalidate path cache for this entry and any children
         self.path_cache.remove(&frn);
         self.files.insert(frn, node);
     }
@@ -130,7 +129,6 @@ impl MftIndex {
     /// Traverses parent references up to the root to build the complete path.
     /// Results are cached for performance.
     pub fn reconstruct_path(&mut self, frn: &FileReferenceNumber) -> Option<PathBuf> {
-        // Check cache first
         if let Some(cached) = self.path_cache.get(frn) {
             return Some(cached.clone());
         }
@@ -148,14 +146,12 @@ impl MftIndex {
 
         // Traverse up to root, collecting path components
         loop {
-            // Prevent infinite loops from corrupted data
             if !visited.insert(current) {
                 return None;
             }
 
             let node = self.files.get(&current)?;
             
-            // Root directory check (FRN 5 is always root in NTFS)
             if current == FileReferenceNumber::ROOT {
                 break;
             }
@@ -250,7 +246,7 @@ impl MftParser {
         // Open volume with read access
         let volume_handle = OpenOptions::new()
             .read(true)
-            .custom_flags(0x80000000) // FILE_FLAG_BACKUP_SEMANTICS
+            .custom_flags(0x80000000)
             .open(&self.volume_path)
             .map_err(|e| FileSystemError::Platform(format!("Failed to open volume: {}", e)))?;
 
@@ -266,15 +262,13 @@ impl MftParser {
                 0,
                 0,
                 0,
-                0x10, // FILE_ATTRIBUTE_DIRECTORY
+                0x10,
             ),
         );
 
         // In a real implementation, we would:
-        // 1. Use FSCTL_GET_NTFS_VOLUME_DATA to get MFT location
         // 2. Read MFT records directly
         // 3. Parse FILE_NAME attributes to build the index
-        // 
         // For now, we use a simplified approach that works with the USN Journal
         // which is more practical for real-time monitoring
 
@@ -376,12 +370,9 @@ impl UsnJournalMonitor {
     #[cfg(target_os = "windows")]
     pub fn read_journal(&mut self) -> Result<Vec<UsnRecord>> {
         // In a real implementation, this would:
-        // 1. Open the volume handle
         // 2. Use FSCTL_READ_USN_JOURNAL to read records
         // 3. Parse USN_RECORD_V2/V3 structures
-        // 4. Update the cursor position
         
-        // For now, return empty - actual implementation requires Windows APIs
         Ok(Vec::new())
     }
 
@@ -401,7 +392,7 @@ impl UsnJournalMonitor {
                     FileNode::new(
                         record.file_name.clone(),
                         record.parent_frn,
-                        record.file_attributes & 0x10 != 0, // FILE_ATTRIBUTE_DIRECTORY
+                        record.file_attributes & 0x10 != 0,
                         0,
                         0,
                         0,
@@ -411,8 +402,6 @@ impl UsnJournalMonitor {
             } else if record.reason.is_delete() {
                 index.remove(&record.frn);
             } else if record.reason.is_rename() {
-                // For renames, we get two records: old name and new name
-                // Update the node with the new name
                 if let Some(node) = index.files.get_mut(&record.frn) {
                     node.name = record.file_name.clone();
                     node.parent = record.parent_frn;
@@ -421,7 +410,6 @@ impl UsnJournalMonitor {
             }
         }
 
-        // Update cursor to latest record
         if let Some(last) = records.last() {
             index.set_usn_cursor(last.usn);
         }
@@ -440,7 +428,6 @@ impl UsnJournalMonitor {
                 } else if record.reason.is_modify() {
                     events.push(FsEvent::Modified(path));
                 }
-                // Renames are handled separately as they need both old and new paths
             }
         }
 
@@ -546,7 +533,6 @@ impl Watcher for WindowsWatcher {
             }
         }
 
-        // Return coalesced events
         events.extend(self.coalescer.poll_ready());
         events
     }

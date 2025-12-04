@@ -96,7 +96,6 @@ pub fn detect_git_branch(path: &Path) -> Option<String> {
                 if let Some(branch) = content.strip_prefix("ref: refs/heads/") {
                     return Some(branch.to_string());
                 } else if content.len() >= 7 {
-                    // Detached HEAD - return short commit hash
                     return Some(content[..7].to_string());
                 }
             }
@@ -470,7 +469,7 @@ mod tests {
 
         assert_eq!(state.total_items, 3);
         assert_eq!(state.selected_count, 2);
-        assert_eq!(state.selected_size, 400); // 100 + 300
+        assert_eq!(state.selected_size, 400);
     }
 
     #[test]
@@ -524,7 +523,6 @@ mod tests {
 
     #[test]
     fn test_detect_git_branch_non_git_dir() {
-        // Test with a directory that's definitely not a git repo
         let temp_dir = std::env::temp_dir();
         let branch = detect_git_branch(&temp_dir);
         
@@ -536,9 +534,9 @@ mod tests {
     /// Generate arbitrary file entries for property testing
     fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
         (
-            "[a-zA-Z0-9_]{1,20}",  // name
-            prop::bool::ANY,       // is_dir
-            0u64..10_000_000_000,  // size (up to ~10GB)
+            "[a-zA-Z0-9_]{1,20}",
+            prop::bool::ANY,
+            0u64..10_000_000_000,
         )
             .prop_map(|(name, is_dir, size)| {
                 let actual_size = if is_dir { 0 } else { size };

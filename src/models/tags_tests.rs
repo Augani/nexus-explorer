@@ -18,7 +18,7 @@ fn test_create_duplicate_tag_fails() {
     let mut manager = TagManager::empty();
     
     manager.create_tag("Work".to_string(), TagColor::Blue).unwrap();
-    let result = manager.create_tag("work".to_string(), TagColor::Red); // case-insensitive
+    let result = manager.create_tag("work".to_string(), TagColor::Red);
     
     assert!(matches!(result, Err(TagError::DuplicateName(_))));
 }
@@ -114,7 +114,7 @@ fn test_get_tag_by_name() {
     
     let id = manager.create_tag("Work".to_string(), TagColor::Blue).unwrap();
     
-    let tag = manager.get_tag_by_name("work").unwrap(); // case-insensitive
+    let tag = manager.get_tag_by_name("work").unwrap();
     assert_eq!(tag.id, id);
     
     assert!(manager.get_tag_by_name("nonexistent").is_none());
@@ -177,7 +177,6 @@ fn test_default_manager_has_color_tags() {
     // Should have 7 default color tags
     assert_eq!(manager.tag_count(), 7);
     
-    // Check each color tag exists
     for color in TagColor::all() {
         assert!(manager.get_tag_by_name(color.display_name()).is_some());
     }
@@ -230,7 +229,6 @@ proptest! {
         tag_color in arb_tag_color(),
         file_path in arb_file_path(),
     ) {
-        // Create a manager and add a tag
         let mut manager = TagManager::empty();
         let tag_id = manager.create_tag(tag_name.clone(), tag_color).unwrap();
         
@@ -240,7 +238,6 @@ proptest! {
         // Serialize to JSON (simulating save)
         let json = serde_json::to_string(&manager).expect("Failed to serialize TagManager");
         
-        // Deserialize from JSON (simulating load)
         let loaded: TagManager = serde_json::from_str(&json).expect("Failed to deserialize TagManager");
         
         // Property 1: The tag should still exist
@@ -269,7 +266,6 @@ proptest! {
             file_path, tag_id
         );
         
-        // Property 4: tags_for_file should return the tag
         let file_tags = loaded.tags_for_file(&file_path);
         prop_assert!(
             file_tags.iter().any(|t| t.id == tag_id),
@@ -299,14 +295,12 @@ proptest! {
         let mut manager = TagManager::empty();
         let mut tag_ids = Vec::new();
         
-        // Create tags
         for (i, name) in unique_tag_names.iter().enumerate() {
             let color = TagColor::all()[i % TagColor::all().len()];
             let id = manager.create_tag(name.clone(), color).unwrap();
             tag_ids.push(id);
         }
         
-        // Apply tags to files (each file gets all tags)
         for path in &file_paths {
             for &tag_id in &tag_ids {
                 manager.apply_tag(path, tag_id).unwrap();
@@ -351,11 +345,9 @@ proptest! {
     ) {
         let mut manager = TagManager::empty();
         
-        // Create a tag
         let tag_id = manager.create_tag(tag_name.clone(), tag_color).unwrap();
         prop_assert_eq!(manager.tag_count(), 1);
         
-        // Apply to file
         manager.apply_tag(&file_path, tag_id).unwrap();
         prop_assert!(manager.has_tag(&file_path, tag_id));
         prop_assert_eq!(manager.tagged_file_count(), 1);
@@ -365,7 +357,6 @@ proptest! {
         prop_assert!(!manager.has_tag(&file_path, tag_id));
         prop_assert_eq!(manager.tagged_file_count(), 0);
         
-        // Re-apply
         manager.apply_tag(&file_path, tag_id).unwrap();
         prop_assert!(manager.has_tag(&file_path, tag_id));
         

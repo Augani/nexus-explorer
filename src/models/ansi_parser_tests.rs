@@ -184,7 +184,6 @@ proptest! {
             parser.parse(b"\x1B[4m");
         }
         
-        // Reset
         parser.parse(b"\x1B[0m");
         
         let style = parser.current_style();
@@ -197,7 +196,6 @@ proptest! {
     fn prop_text_preserves_style(text in "[a-zA-Z0-9 ]{1,50}") {
         let mut parser = AnsiParser::new();
         
-        // Set a style
         parser.parse(b"\x1B[1;31m");
         let style_before = parser.current_style().clone();
         

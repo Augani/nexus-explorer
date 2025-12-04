@@ -99,13 +99,11 @@ impl PtyService {
             })
             .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
 
-        // Get the default shell
         let shell = get_default_shell();
         
         let mut cmd = CommandBuilder::new(&shell);
         cmd.cwd(&self.working_directory);
         
-        // Set environment variables
         if let Ok(term) = std::env::var("TERM") {
             cmd.env("TERM", term);
         } else {
@@ -118,19 +116,16 @@ impl PtyService {
             .spawn_command(cmd)
             .map_err(|e| PtyError::SpawnFailed(e.to_string()))?;
 
-        // Get writer for sending input
         let writer = pty_pair
             .master
             .take_writer()
             .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
 
-        // Get reader for receiving output
         let mut reader = pty_pair
             .master
             .try_clone_reader()
             .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
 
-        // Set running flag
         *self.is_running.lock().unwrap() = true;
         let is_running = Arc::clone(&self.is_running);
         let output_sender = self.output_sender.clone();
@@ -145,7 +140,6 @@ impl PtyService {
 
                 match reader.read(&mut buffer) {
                     Ok(0) => {
-                        // EOF - process exited
                         *is_running.lock().unwrap() = false;
                         break;
                     }

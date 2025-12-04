@@ -224,10 +224,7 @@ mod tests {
     }
 
     // **Feature: file-explorer-core, Property 17: Event Coalescing**
-    // **Validates: Requirements 6.5**
-    //
     // *For any* sequence of N events on the same path within a coalescing window,
-    // the number of UI updates triggered SHALL be less than N.
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
@@ -257,7 +254,6 @@ mod tests {
         }
     }
 
-    // Additional property: events on different paths are not coalesced together
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         

@@ -777,7 +777,6 @@ impl FileOperationsManager {
         match &operation.op_type {
             UndoableOperationType::Copy { copied_paths: _ } => {
                 // Redo copy: we can't easily redo a copy without the original source paths
-                // For now, we'll return an error - in a full implementation, we'd store source paths too
                 Err(UndoError::OperationNotReversible(
                     "Copy operations cannot be redone after undo".to_string()
                 ))
@@ -1244,7 +1243,6 @@ impl FileOperationExecutor {
     ) -> std::io::Result<()> {
         progress_tx.send(ProgressUpdate::Started { id }).ok();
 
-        // Helper to handle errors with optional user interaction
         let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
             progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
             
@@ -1278,8 +1276,7 @@ impl FileOperationExecutor {
                     progress_tx.send(ProgressUpdate::FileCompleted { id }).ok();
                 }
                 Err(rename_err) => {
-                    // Check if it's a cross-device error (need copy+delete)
-                    if rename_err.raw_os_error() == Some(18) || // EXDEV on Unix
+                    if rename_err.raw_os_error() == Some(18) ||
                        rename_err.kind() == std::io::ErrorKind::CrossesDevices ||
                        rename_err.to_string().contains("cross-device") {
                         // Fall back to copy + delete for cross-filesystem moves
@@ -1366,7 +1363,6 @@ impl FileOperationExecutor {
     ) -> std::io::Result<()> {
         progress_tx.send(ProgressUpdate::Started { id }).ok();
 
-        // Helper to handle errors with optional user interaction
         let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
             progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
             
@@ -1468,7 +1464,6 @@ impl FileOperationExecutor {
 
         progress_tx.send(ProgressUpdate::FileStarted { id, file: file_name.clone() }).ok();
 
-        // Helper to handle errors with optional user interaction
         let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
             progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
             
@@ -1476,7 +1471,7 @@ impl FileOperationExecutor {
                 // Wait for user response with timeout
                 match rx.recv_timeout(std::time::Duration::from_secs(300)) {
                     Ok(response) => response.action,
-                    Err(_) => ErrorAction::Skip, // Timeout - default to skip
+                    Err(_) => ErrorAction::Skip,
                 }
             } else {
                 // Non-interactive mode - auto-skip
@@ -1506,7 +1501,6 @@ impl FileOperationExecutor {
             }
         };
 
-        // Create destination file
         let mut dst_file = match std::fs::File::create(dest) {
             Ok(f) => f,
             Err(e) => {
@@ -1527,7 +1521,7 @@ impl FileOperationExecutor {
             }
         };
 
-        let mut buffer = vec![0u8; 64 * 1024]; // 64KB buffer
+        let mut buffer = vec![0u8; 64 * 1024];
         
         loop {
             if cancel_token.is_cancelled() {
@@ -1538,7 +1532,7 @@ impl FileOperationExecutor {
             }
 
             let bytes_read = match src_file.read(&mut buffer) {
-                Ok(0) => break, // EOF
+                Ok(0) => break,
                 Ok(n) => n,
                 Err(e) => {
                     // Read error - clean up and report
@@ -1613,7 +1607,6 @@ impl FileOperationExecutor {
             .unwrap_or("unknown")
             .to_string();
 
-        // Helper to handle errors with optional user interaction
         let handle_error = |error: OperationError, progress_tx: &Sender<ProgressUpdate>, error_response_rx: &Option<ErrorResponseReceiver>| -> ErrorAction {
             progress_tx.send(ProgressUpdate::Error { id, error: error.clone() }).ok();
             
@@ -1627,7 +1620,6 @@ impl FileOperationExecutor {
             }
         };
 
-        // Create destination directory
         if let Err(e) = std::fs::create_dir_all(dest) {
             let error = OperationError::from_io_error(dest.clone(), &e);
             let action = handle_error(error, progress_tx, error_response_rx);
@@ -1672,7 +1664,7 @@ impl FileOperationExecutor {
 
             let entry = match entry {
                 Ok(e) => e,
-                Err(_) => continue, // Skip unreadable entries
+                Err(_) => continue,
             };
 
             let src_path = entry.path();
@@ -2221,11 +2213,9 @@ mod property_tests {
     /// Strategy to generate an UndoableOperation
     fn undoable_operation() -> impl Strategy<Value = UndoableOperation> {
         prop_oneof![
-            // Copy operation
             prop::collection::vec(valid_path(), 1..5).prop_map(|paths| {
                 UndoableOperation::new_copy(OperationId::new(1), paths)
             }),
-            // Move operation
             (prop::collection::vec(valid_path(), 1..5), prop::collection::vec(valid_path(), 1..5))
                 .prop_map(|(orig, new)| {
                     let len = orig.len().min(new.len());
@@ -2265,7 +2255,6 @@ mod property_tests {
         fn prop_undo_moves_operation_to_redo_stack(op in undoable_operation()) {
             let mut manager = FileOperationsManager::new();
             
-            // Get the operation description before pushing
             let original_description = op.description();
             
             // Push the operation
@@ -2278,7 +2267,6 @@ mod property_tests {
             prop_assert_eq!(manager.redo_stack().len(), 0);
             
             // The undo will fail because files don't exist, but we can test the stack behavior
-            // by checking the state before the actual file operation
             let undo_desc_before = manager.undo_description();
             prop_assert!(undo_desc_before.is_some());
             prop_assert_eq!(undo_desc_before.unwrap(), original_description);

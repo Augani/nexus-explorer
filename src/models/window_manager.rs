@@ -113,13 +113,11 @@ impl WindowManager {
     /// Sets the active window
     pub fn set_active(&mut self, id: AppWindowId) {
         if self.windows.contains_key(&id) {
-            // Update previous active window state
             if let Some(prev_id) = self.active_window {
                 if let Some(state) = self.window_states.get_mut(&prev_id) {
                     state.is_active = false;
                 }
             }
-            // Set new active window
             self.active_window = Some(id);
             if let Some(state) = self.window_states.get_mut(&id) {
                 state.is_active = true;
@@ -154,7 +152,6 @@ impl WindowManager {
             cx,
         );
         
-        // Offset the bounds for cascading effect
         let cascaded_bounds = Bounds {
             origin: gpui::Point {
                 x: bounds.origin.x + px(offset),
@@ -206,7 +203,6 @@ impl WindowManager {
         if let Some(handle) = self.windows.remove(&id) {
             self.window_states.remove(&id);
             
-            // Update active window if we closed the active one
             if self.active_window == Some(id) {
                 self.active_window = self.windows.keys().next().copied();
                 if let Some(new_active) = self.active_window {
@@ -217,7 +213,6 @@ impl WindowManager {
             }
             
             // Note: GPUI windows are closed when their handle is dropped
-            // The handle is removed from our map, which will drop it
             drop(handle);
         }
     }
@@ -335,7 +330,7 @@ impl WindowManager {
                 let window_options = WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     titlebar: None,
-                    focus: false, // Don't focus restored windows initially
+                    focus: false,
                     show: true,
                     kind: gpui::WindowKind::Normal,
                     is_movable: true,
@@ -361,7 +356,6 @@ impl WindowManager {
             }
         }
         
-        // Set active window
         if let Some(active_idx) = state.active_window_index {
             if let Some(id) = self.window_ids().get(active_idx).copied() {
                 self.set_active(id);

@@ -178,10 +178,8 @@ impl Preview {
         self.current_path = Some(path.to_path_buf());
         self.scroll_offset = 0.0;
 
-        // Load metadata
         self.metadata = FileMetadata::from_path(path);
 
-        // Determine content type and load appropriately
         if path.is_dir() {
             self.load_directory_content(path);
         } else {
@@ -213,13 +211,11 @@ impl Preview {
             .and_then(|ext| ext.to_str())
             .map(|s| s.to_lowercase());
 
-        // Check if it's an image
         if is_image_extension(extension.as_deref()) {
             self.load_image_content(path, extension.as_deref());
             return;
         }
 
-        // Check if it's a text file
         if is_text_extension(extension.as_deref()) || is_likely_text_file(path) {
             self.load_text_content(path, extension);
             return;
@@ -260,7 +256,6 @@ impl Preview {
             .map(|e| e.to_uppercase())
             .unwrap_or_else(|| "Image".to_string());
 
-        // Try to get image dimensions
         let dimensions = get_image_dimensions(path);
 
         self.content = PreviewContent::Image {
@@ -343,7 +338,6 @@ fn is_text_extension(ext: Option<&str>) -> bool {
 fn is_likely_text_file(path: &Path) -> bool {
     if let Ok(data) = fs::read(path) {
         let sample: Vec<u8> = data.into_iter().take(512).collect();
-        // Check if content appears to be text (no null bytes, mostly printable)
         !sample.contains(&0) && sample.iter().filter(|&&b| b < 32 && b != 9 && b != 10 && b != 13).count() < sample.len() / 10
     } else {
         false
@@ -407,7 +401,6 @@ fn detect_language(ext: &str) -> Option<String> {
 /// Get image dimensions (basic implementation)
 fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
     // Try to read image dimensions using the image crate if available
-    // For now, return None - this can be enhanced with actual image loading
     let _ = path;
     None
 }
@@ -575,7 +568,6 @@ impl Render for PreviewView {
             )
             // Metadata header
             .child(self.render_metadata_header(bg_header, border_color, text_light, text_gray, accent))
-            // Content area
             .child(self.render_content(bg_dark, text_light, text_gray, accent))
             // Bottom info bar
             .child(self.render_info_bar(bg_dark, border_color, text_gray))
@@ -889,7 +881,6 @@ impl PreviewView {
                             ),
                     )
                     .child(
-                        // Content column
                         div()
                             .flex()
                             .flex_col()

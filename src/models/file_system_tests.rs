@@ -60,10 +60,8 @@ proptest! {
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         
-        // Begin load - state should transition to Loading
         let request_id = fs.begin_load(path.clone());
         
-        // Verify state is Loading with correct request_id
         match fs.state() {
             LoadState::Loading { request_id: state_id } => {
                 prop_assert_eq!(*state_id, request_id,
@@ -82,12 +80,10 @@ proptest! {
             }
         }
         
-        // Complete the load
         let mtime = SystemTime::now();
         let applied = fs.complete_load(request_id, entries.clone(), Duration::from_millis(50), mtime);
         prop_assert!(applied, "complete_load with valid request_id should succeed");
         
-        // Verify state transitioned to Loaded
         match fs.state() {
             LoadState::Loaded { count, .. } => {
                 prop_assert_eq!(*count, entries.len(),
@@ -113,10 +109,8 @@ proptest! {
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         
-        // Begin first load
         let id1 = fs.begin_load(path1.clone());
         
-        // Verify first loading state
         match fs.state() {
             LoadState::Loading { request_id } => {
                 prop_assert_eq!(*request_id, id1);
@@ -129,11 +123,9 @@ proptest! {
             }
         }
         
-        // Begin second load (supersedes first)
         let id2 = fs.begin_load(path2.clone());
         prop_assert!(id2 > id1, "Second request_id should be greater than first");
         
-        // Verify state transitioned to new Loading state
         match fs.state() {
             LoadState::Loading { request_id } => {
                 prop_assert_eq!(*request_id, id2,
@@ -175,7 +167,6 @@ proptest! {
             prop_assert!(new_id > prev_id, 
                 "Request ID {} should be greater than previous {}", new_id, prev_id);
             
-            // The current request_id should match what begin_load returned
             prop_assert_eq!(fs.request_id(), new_id);
             
             prev_id = new_id;
@@ -196,13 +187,10 @@ proptest! {
     ) {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         
-        // Start first load
         let id1 = fs.begin_load(path1.clone());
         
-        // Start second load (supersedes first)
         let id2 = fs.begin_load(path2.clone());
         
-        // Attempt to complete first load with stale ID - should be rejected
         let stale_applied = fs.complete_load(
             id1,
             entries1.clone(),
@@ -211,7 +199,6 @@ proptest! {
         );
         prop_assert!(!stale_applied, "Stale request should be rejected");
         
-        // State should still be Loading for id2
         match fs.state() {
             LoadState::Loading { request_id } => {
                 prop_assert_eq!(*request_id, id2);
@@ -224,7 +211,6 @@ proptest! {
             }
         }
         
-        // Complete second load with valid ID - should succeed
         let valid_applied = fs.complete_load(
             id2,
             entries2.clone(),
@@ -233,7 +219,6 @@ proptest! {
         );
         prop_assert!(valid_applied, "Valid request should be applied");
         
-        // Entries should match the second load
         prop_assert_eq!(fs.entries().len(), entries2.len());
     }
 
@@ -251,11 +236,9 @@ proptest! {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         let mtime = SystemTime::now();
         
-        // First load - populate cache
         let id1 = fs.begin_load(path.clone());
         fs.complete_load(id1, entries.clone(), Duration::from_millis(100), mtime);
         
-        // Navigate away
         let _ = fs.begin_load(PathBuf::from("/other"));
         
         // Navigate back - should hit cache
@@ -287,10 +270,8 @@ proptest! {
         let mut fs = FileSystem::new(PathBuf::from("/"));
         let mtime = SystemTime::now();
         
-        // Begin load and capture the request_id
         let request_id = fs.begin_load(path.clone());
         
-        // Complete the load
         fs.complete_load(request_id, entries.clone(), Duration::from_millis(50), mtime);
         
         // Retrieve cached entry and verify generation matches request_id
@@ -340,12 +321,6 @@ fn create_fs_with_entries(dir_path: &Path, filenames: &[&str]) -> FileSystem {
     fs
 }
 
-// **Feature: file-explorer-core, Property 16: File Event Updates Entries**
-// **Validates: Requirements 6.4**
-//
-// *For any* FsEvent::Created(path) received while monitoring, the FileSystem entries
-// SHALL contain an entry for path after processing. *For any* FsEvent::Deleted(path),
-// the entries SHALL NOT contain path after processing.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     
@@ -453,7 +428,7 @@ mod unit_tests {
         assert!(fs.is_valid_request(id1));
         
         let id2 = fs.begin_load(PathBuf::from("/path2"));
-        assert!(!fs.is_valid_request(id1)); // Old ID is now invalid
+        assert!(!fs.is_valid_request(id1));
         assert!(fs.is_valid_request(id2));
     }
 
@@ -500,7 +475,6 @@ mod unit_tests {
 
         let temp_dir = TempDir::new().unwrap();
         
-        // Create test files
         File::create(temp_dir.path().join("file_a.txt")).unwrap();
         File::create(temp_dir.path().join("file_b.txt")).unwrap();
         File::create(temp_dir.path().join("file_c.txt")).unwrap();
@@ -517,13 +491,12 @@ mod unit_tests {
         );
 
         assert!(result.is_ok());
-        assert_eq!(fs.entries().len(), 4); // 3 files + 1 dir
+        assert_eq!(fs.entries().len(), 4);
         
         // Verify sorted order (directories first)
         assert!(fs.entries()[0].is_dir);
         assert_eq!(fs.entries()[0].name, "subdir");
         
-        // Verify state is Loaded
         match fs.state() {
             LoadState::Loaded { count, .. } => {
                 assert_eq!(*count, 4);
@@ -543,7 +516,6 @@ mod unit_tests {
 
         let mut fs = FileSystem::new(PathBuf::from("/"));
         
-        // Start a load operation
         let op = fs.load_path(
             temp_dir.path().to_path_buf(),
             SortKey::Name,
@@ -552,7 +524,6 @@ mod unit_tests {
         );
         let request_id = op.request_id;
 
-        // Start another load (supersedes the first)
         let _op2 = fs.load_path(
             PathBuf::from("/other"),
             SortKey::Name,
@@ -560,7 +531,6 @@ mod unit_tests {
             false,
         );
 
-        // Process batches from first operation - should be rejected
         while let Ok(batch) = op.batch_receiver.recv_timeout(std::time::Duration::from_millis(100)) {
             let result = fs.process_batch(request_id, batch);
             assert!(result.is_none(), "Stale batch should be rejected");
@@ -594,6 +564,6 @@ mod unit_tests {
         let entries3 = vec![
             FileEntry::new("file3.txt".into(), PathBuf::from("/test/file3.txt"), false, 300, mtime),
         ];
-        assert!(!fs.append_entries(id, entries3)); // Should be rejected
+        assert!(!fs.append_entries(id, entries3));
     }
 }

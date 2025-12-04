@@ -580,7 +580,6 @@ impl gpui::Element for SearchTextElement {
             cx,
         );
 
-        // Render text
         let style = window.text_style();
         let font_size = style.font_size.to_pixels(window.rem_size());
         
@@ -617,7 +616,6 @@ impl gpui::Element for SearchTextElement {
             window.paint_quad(gpui::fill(selection_bounds, self.selection_bg));
         }
 
-        // Draw text
         let _ = line.paint(bounds.origin, window.line_height(), window, cx);
 
         // Draw cursor if focused and no selection

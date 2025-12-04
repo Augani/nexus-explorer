@@ -396,10 +396,8 @@ mod tests {
         // 800px viewport: (800 + 16) / 136 = 6.0 -> 6 columns
         assert_eq!(config.columns_for_width(800.0), 6);
         
-        // Very small viewport should return min_columns
         assert_eq!(config.columns_for_width(50.0), 2);
         
-        // Zero or negative viewport should return min_columns
         assert_eq!(config.columns_for_width(0.0), 2);
         assert_eq!(config.columns_for_width(-100.0), 2);
     }
@@ -444,11 +442,11 @@ mod tests {
 
     fn arb_grid_config() -> impl Strategy<Value = GridConfig> {
         (
-            16.0f32..128.0,   // icon_size
-            60.0f32..200.0,   // item_width
-            80.0f32..200.0,   // item_height
-            4.0f32..32.0,     // gap
-            1usize..5,        // min_columns (keep small to ensure valid configs)
+            16.0f32..128.0,
+            60.0f32..200.0,
+            80.0f32..200.0,
+            4.0f32..32.0,
+            1usize..5,
         )
             .prop_map(|(icon_size, item_width, item_height, gap, min_columns)| {
                 GridConfig {
@@ -644,7 +642,6 @@ mod tests {
             ],
             show_hidden in proptest::bool::ANY,
         ) {
-            // Create settings with the given view mode
             let mut settings = GlobalSettings::default();
             settings.view_mode = view_mode;
             settings.show_hidden_files = show_hidden;
@@ -652,7 +649,6 @@ mod tests {
             // Serialize to JSON (simulating save)
             let json = serde_json::to_string(&settings).expect("Failed to serialize settings");
             
-            // Deserialize from JSON (simulating load)
             let loaded: GlobalSettings = serde_json::from_str(&json).expect("Failed to deserialize settings");
             
             // Property: View mode should be preserved after round-trip serialization
@@ -662,7 +658,6 @@ mod tests {
                 view_mode, loaded.view_mode
             );
             
-            // Property: Other settings should also be preserved
             prop_assert_eq!(
                 loaded.show_hidden_files, show_hidden,
                 "show_hidden_files {} should be preserved after save/load, got {}",
@@ -680,11 +675,9 @@ mod tests {
         fn prop_hidden_files_toggle(
             initial_show_hidden in proptest::bool::ANY,
         ) {
-            // Create settings with the given initial state
             let mut settings = GlobalSettings::default();
             settings.set_show_hidden(initial_show_hidden);
             
-            // Property 1: Initial state should be set correctly
             prop_assert_eq!(
                 settings.show_hidden(), initial_show_hidden,
                 "Initial show_hidden should be {}",
@@ -699,7 +692,6 @@ mod tests {
                 !initial_show_hidden, initial_show_hidden
             );
             
-            // Property 3: Double toggle should return to original state (round-trip)
             settings.toggle_show_hidden();
             prop_assert_eq!(
                 settings.show_hidden(), initial_show_hidden,
@@ -707,7 +699,6 @@ mod tests {
                 initial_show_hidden
             );
             
-            // Property 4: Setting should persist through serialization
             settings.set_show_hidden(initial_show_hidden);
             let json = serde_json::to_string(&settings).expect("Failed to serialize settings");
             let loaded: GlobalSettings = serde_json::from_str(&json).expect("Failed to deserialize settings");

@@ -4,23 +4,23 @@ use crate::models::terminal::CellStyle;
 /// Standard ANSI color palette (16 colors)
 pub const ANSI_COLORS: [Rgba; 16] = [
     // Normal colors (0-7)
-    Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },       // 0: Black
-    Rgba { r: 0.8, g: 0.2, b: 0.2, a: 1.0 },       // 1: Red
-    Rgba { r: 0.2, g: 0.8, b: 0.2, a: 1.0 },       // 2: Green
-    Rgba { r: 0.8, g: 0.8, b: 0.2, a: 1.0 },       // 3: Yellow
-    Rgba { r: 0.2, g: 0.4, b: 0.8, a: 1.0 },       // 4: Blue
-    Rgba { r: 0.8, g: 0.2, b: 0.8, a: 1.0 },       // 5: Magenta
-    Rgba { r: 0.2, g: 0.8, b: 0.8, a: 1.0 },       // 6: Cyan
-    Rgba { r: 0.8, g: 0.8, b: 0.8, a: 1.0 },       // 7: White
+    Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
+    Rgba { r: 0.8, g: 0.2, b: 0.2, a: 1.0 },
+    Rgba { r: 0.2, g: 0.8, b: 0.2, a: 1.0 },
+    Rgba { r: 0.8, g: 0.8, b: 0.2, a: 1.0 },
+    Rgba { r: 0.2, g: 0.4, b: 0.8, a: 1.0 },
+    Rgba { r: 0.8, g: 0.2, b: 0.8, a: 1.0 },
+    Rgba { r: 0.2, g: 0.8, b: 0.8, a: 1.0 },
+    Rgba { r: 0.8, g: 0.8, b: 0.8, a: 1.0 },
     // Bright colors (8-15)
-    Rgba { r: 0.4, g: 0.4, b: 0.4, a: 1.0 },       // 8: Bright Black
-    Rgba { r: 1.0, g: 0.4, b: 0.4, a: 1.0 },       // 9: Bright Red
-    Rgba { r: 0.4, g: 1.0, b: 0.4, a: 1.0 },       // 10: Bright Green
-    Rgba { r: 1.0, g: 1.0, b: 0.4, a: 1.0 },       // 11: Bright Yellow
-    Rgba { r: 0.4, g: 0.6, b: 1.0, a: 1.0 },       // 12: Bright Blue
-    Rgba { r: 1.0, g: 0.4, b: 1.0, a: 1.0 },       // 13: Bright Magenta
-    Rgba { r: 0.4, g: 1.0, b: 1.0, a: 1.0 },       // 14: Bright Cyan
-    Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },       // 15: Bright White
+    Rgba { r: 0.4, g: 0.4, b: 0.4, a: 1.0 },
+    Rgba { r: 1.0, g: 0.4, b: 0.4, a: 1.0 },
+    Rgba { r: 0.4, g: 1.0, b: 0.4, a: 1.0 },
+    Rgba { r: 1.0, g: 1.0, b: 0.4, a: 1.0 },
+    Rgba { r: 0.4, g: 0.6, b: 1.0, a: 1.0 },
+    Rgba { r: 1.0, g: 0.4, b: 1.0, a: 1.0 },
+    Rgba { r: 0.4, g: 1.0, b: 1.0, a: 1.0 },
+    Rgba { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
 ];
 
 /// Default foreground color
@@ -67,10 +67,10 @@ pub enum ParsedSegment {
 /// Clear mode for screen/line clearing
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClearMode {
-    ToEnd,      // 0: Clear from cursor to end
-    ToStart,    // 1: Clear from start to cursor
-    All,        // 2: Clear all
-    Scrollback, // 3: Clear scrollback (screen only)
+    ToEnd,
+    ToStart,
+    All,
+    Scrollback,
 }
 
 impl ClearMode {
@@ -191,7 +191,6 @@ impl AnsiParser {
         text_buffer: &mut String,
         segments: &mut Vec<ParsedSegment>,
     ) {
-        // Handle UTF-8 continuation bytes
         if self.utf8_remaining > 0 {
             if (byte & 0xC0) == 0x80 {
                 // Valid continuation byte
@@ -206,7 +205,6 @@ impl AnsiParser {
                 }
                 return;
             } else {
-                // Invalid continuation - discard buffer and process this byte
                 self.utf8_buffer.clear();
                 self.utf8_remaining = 0;
             }
@@ -224,7 +222,6 @@ impl AnsiParser {
                 self.state = ParserState::Escape;
             }
             0x07 => {
-                // BEL
                 if !text_buffer.is_empty() {
                     segments.push(ParsedSegment::Text(
                         std::mem::take(text_buffer),
@@ -234,7 +231,6 @@ impl AnsiParser {
                 segments.push(ParsedSegment::Bell);
             }
             0x08 => {
-                // BS
                 if !text_buffer.is_empty() {
                     segments.push(ParsedSegment::Text(
                         std::mem::take(text_buffer),
@@ -244,7 +240,6 @@ impl AnsiParser {
                 segments.push(ParsedSegment::Backspace);
             }
             0x09 => {
-                // HT (Tab)
                 if !text_buffer.is_empty() {
                     segments.push(ParsedSegment::Text(
                         std::mem::take(text_buffer),
@@ -254,7 +249,6 @@ impl AnsiParser {
                 segments.push(ParsedSegment::Tab);
             }
             0x0A => {
-                // LF
                 if !text_buffer.is_empty() {
                     segments.push(ParsedSegment::Text(
                         std::mem::take(text_buffer),
@@ -264,7 +258,6 @@ impl AnsiParser {
                 segments.push(ParsedSegment::LineFeed);
             }
             0x0D => {
-                // CR
                 if !text_buffer.is_empty() {
                     segments.push(ParsedSegment::Text(
                         std::mem::take(text_buffer),
@@ -312,23 +305,19 @@ impl AnsiParser {
     ) {
         match byte {
             b'[' => {
-                // CSI
                 self.state = ParserState::CsiEntry;
                 self.params.clear();
                 self.intermediate.clear();
             }
             b']' => {
-                // OSC
                 self.state = ParserState::OscString;
                 self.osc_string.clear();
             }
             b'7' => {
-                // Save cursor
                 segments.push(ParsedSegment::CursorSave);
                 self.state = ParserState::Ground;
             }
             b'8' => {
-                // Restore cursor
                 segments.push(ParsedSegment::CursorRestore);
                 self.state = ParserState::Ground;
             }
@@ -343,7 +332,6 @@ impl AnsiParser {
                 self.state = ParserState::Ground;
             }
             b'c' => {
-                // Reset
                 self.reset();
                 self.state = ParserState::Ground;
             }
@@ -415,8 +403,6 @@ impl AnsiParser {
         _text_buffer: &mut String,
         _segments: &mut Vec<ParsedSegment>,
     ) {
-        // Handle DEC private mode sequences like ?2004h (bracketed paste)
-        // We just consume these silently - they're terminal mode settings
         match byte {
             b'0'..=b'9' | b';' => {
                 // Continue consuming parameters
@@ -447,7 +433,6 @@ impl AnsiParser {
                 self.state = ParserState::Ground;
             }
             _ => {
-                // Invalid
                 text_buffer.push_str("\x1B[");
                 self.state = ParserState::Ground;
             }
@@ -484,7 +469,6 @@ impl AnsiParser {
             let arg = &self.osc_string[idx + 1..];
             match cmd {
                 "0" | "2" => {
-                    // Set window title
                     segments.push(ParsedSegment::SetTitle(arg.to_string()));
                 }
                 _ => {}
@@ -534,7 +518,6 @@ impl AnsiParser {
                 segments.push(ParsedSegment::ClearLine(mode));
             }
             b'S' => {
-                // SU - Scroll Up
                 segments.push(ParsedSegment::ScrollUp(param_or(&self.params, 0, 1)));
             }
             b'T' => {
@@ -569,7 +552,6 @@ impl AnsiParser {
             let code = self.params[i] as usize;
             match code {
                 0 => {
-                    // Reset
                     self.current_style = CellStyle {
                         foreground: self.default_fg,
                         background: self.default_bg,
@@ -683,7 +665,6 @@ pub fn color_from_256(n: usize) -> Rgba {
             }
         }
         232..=255 => {
-            // Grayscale
             let gray = ((n - 232) * 10 + 8) as f32 / 255.0;
             Rgba { r: gray, g: gray, b: gray, a: 1.0 }
         }
@@ -782,21 +763,21 @@ mod tests {
     fn test_sgr_foreground_color() {
         let mut parser = AnsiParser::new();
         parser.parse(b"\x1B[31m");
-        assert_eq!(parser.current_style().foreground, ANSI_COLORS[1]); // Red
+        assert_eq!(parser.current_style().foreground, ANSI_COLORS[1]);
     }
 
     #[test]
     fn test_sgr_background_color() {
         let mut parser = AnsiParser::new();
         parser.parse(b"\x1B[44m");
-        assert_eq!(parser.current_style().background, ANSI_COLORS[4]); // Blue
+        assert_eq!(parser.current_style().background, ANSI_COLORS[4]);
     }
 
     #[test]
     fn test_sgr_bright_colors() {
         let mut parser = AnsiParser::new();
         parser.parse(b"\x1B[91m");
-        assert_eq!(parser.current_style().foreground, ANSI_COLORS[9]); // Bright Red
+        assert_eq!(parser.current_style().foreground, ANSI_COLORS[9]);
     }
 
     #[test]

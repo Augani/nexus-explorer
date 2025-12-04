@@ -52,7 +52,6 @@ pub fn render_tag_dots(tags: &[&Tag]) -> impl IntoElement {
 /// Renders tag dots for a file path using the TagManager
 pub fn render_file_tag_dots(tags: Vec<&Tag>) -> impl IntoElement {
     if tags.is_empty() {
-        // Return an empty div with fixed width to maintain alignment
         div().w(px(0.0)).flex().items_center()
     } else {
         let mut container = div()
@@ -143,7 +142,6 @@ pub fn render_tag_context_menu(
         .min_w(px(160.0))
         .shadow_lg();
     
-    // Header
     menu = menu.child(
         div()
             .px_3()
@@ -153,7 +151,6 @@ pub fn render_tag_context_menu(
             .child("Tags")
     );
     
-    // Tag items
     for tag in tag_manager.all_tags() {
         let has_tag = file_tag_ids.contains(&tag.id);
         

@@ -89,7 +89,6 @@ impl DualPaneView {
     pub fn new(initial_path: PathBuf, cx: &mut Context<Self>) -> Self {
         let dual_pane = DualPane::new(initial_path.clone());
         
-        // Create file lists for both panes
         let left_file_list = cx.new(|cx| FileListView::new(cx));
         let right_file_list = cx.new(|cx| FileListView::new(cx));
         
@@ -243,7 +242,6 @@ impl DualPaneView {
         &self.dual_pane.active_pane().path
     }
 
-    // Action handlers
     fn handle_toggle(&mut self, _: &ToggleDualPane, _window: &mut Window, cx: &mut Context<Self>) {
         self.toggle(cx);
     }
@@ -299,7 +297,6 @@ impl DualPaneView {
         self.left_drop_hover = false;
         self.dragging_from = None;
         
-        // Only process if dropping from the other pane
         if data.source_pane != PaneSide::Left {
             let destination = self.dual_pane.left_pane().path.clone();
             self.pending_action = Some(DualPaneAction::CopyFiles {
@@ -315,7 +312,6 @@ impl DualPaneView {
         self.right_drop_hover = false;
         self.dragging_from = None;
         
-        // Only process if dropping from the other pane
         if data.source_pane != PaneSide::Right {
             let destination = self.dual_pane.right_pane().path.clone();
             self.pending_action = Some(DualPaneAction::CopyFiles {
@@ -419,7 +415,6 @@ impl Render for DualPaneView {
         let left_drop_hover = self.left_drop_hover;
         let right_drop_hover = self.right_drop_hover;
         
-        // Get selected paths for drag operations
         let left_selected = self.dual_pane.left_pane().selected_paths();
         let right_selected = self.dual_pane.right_pane().selected_paths();
         let left_first_name = self.dual_pane.left_pane()
@@ -446,7 +441,6 @@ impl Render for DualPaneView {
             .bg(theme.bg_void)
             .when(is_enabled, |this| {
                 this.child(
-                    // Left pane
                     div()
                         .id("left-pane")
                         .flex_1()
@@ -462,7 +456,7 @@ impl Render for DualPaneView {
                                 ((theme.bg_selected.r * 255.0) as u32) << 24 |
                                 ((theme.bg_selected.g * 255.0) as u32) << 16 |
                                 ((theme.bg_selected.b * 255.0) as u32) << 8 |
-                                0x4D // 0.3 * 255 = ~77 = 0x4D
+                                0x4D
                             ))
                         })
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|view, _, _, cx| {
@@ -496,7 +490,6 @@ impl Render for DualPaneView {
                         )
                 )
                 .child(
-                    // Right pane
                     div()
                         .id("right-pane")
                         .flex_1()
@@ -510,7 +503,7 @@ impl Render for DualPaneView {
                                 ((theme.bg_selected.r * 255.0) as u32) << 24 |
                                 ((theme.bg_selected.g * 255.0) as u32) << 16 |
                                 ((theme.bg_selected.b * 255.0) as u32) << 8 |
-                                0x4D // 0.3 * 255 = ~77 = 0x4D
+                                0x4D
                             ))
                         })
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|view, _, _, cx| {

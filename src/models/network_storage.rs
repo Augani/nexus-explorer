@@ -320,7 +320,6 @@ impl NetworkStorageManager {
         // Remove if already exists (to move to front)
         self.recent_servers.retain(|c| c.to_url() != config.to_url());
         
-        // Add to front
         self.recent_servers.insert(0, config);
         
         // Trim to max size
@@ -334,7 +333,6 @@ impl NetworkStorageManager {
 
     /// Connect to a network location (placeholder - actual implementation depends on platform)
     pub fn connect(&mut self, id: NetworkLocationId) -> NetworkResult<()> {
-        // First, get the config and update state to connecting
         let config = {
             let location = self.get_location_mut(id)
                 .ok_or(NetworkError::LocationNotFound(id))?;
@@ -345,12 +343,11 @@ impl NetworkStorageManager {
         // Add to recent servers
         self.add_to_recent(config);
         
-        // Now update the location to connected state
         if let Some(location) = self.get_location_mut(id) {
             // Actual connection would be implemented here
             // For now, we just mark as connected (placeholder)
             location.state = ConnectionState::Connected;
-            location.latency_ms = Some(50); // Placeholder latency
+            location.latency_ms = Some(50);
         }
         
         Ok(())
@@ -506,7 +503,7 @@ impl CloudProvider {
     pub fn default_path(&self) -> Option<PathBuf> {
         let home = dirs::home_dir()?;
         match self {
-            CloudProvider::ICloud => None, // Not available on Linux
+            CloudProvider::ICloud => None,
             CloudProvider::Dropbox => Some(home.join("Dropbox")),
             CloudProvider::GoogleDrive => Some(home.join("Google Drive")),
             CloudProvider::OneDrive => Some(home.join("OneDrive")),
@@ -643,7 +640,6 @@ impl CloudStorageManager {
     /// Get sync status for a file (placeholder - actual implementation depends on provider APIs)
     pub fn get_sync_status(&self, _path: &PathBuf) -> Option<SyncStatus> {
         // This would need to query provider-specific APIs
-        // For now, return None (unknown status)
         None
     }
 }
@@ -734,7 +730,7 @@ pub struct RemoteFileEntry {
     pub path: String,
     pub is_directory: bool,
     pub size: u64,
-    pub modified: Option<u64>, // Unix timestamp
+    pub modified: Option<u64>,
     pub permissions: Option<String>,
     pub is_loading: bool,
 }
@@ -1162,13 +1158,11 @@ impl CloudStorageManager {
         use std::fs;
         
         if let Some(home) = dirs::home_dir() {
-            // iCloud Drive
             let icloud_path = home.join("Library/Mobile Documents/com~apple~CloudDocs");
             if icloud_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::ICloud, icloud_path));
             }
             
-            // Dropbox
             let dropbox_path = home.join("Dropbox");
             if dropbox_path.exists() {
                 let mut location = CloudLocation::new(CloudProvider::Dropbox, dropbox_path);
@@ -1185,44 +1179,36 @@ impl CloudStorageManager {
                 self.locations.push(location);
             }
             
-            // Google Drive
             let gdrive_path = home.join("Google Drive");
             if gdrive_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::GoogleDrive, gdrive_path));
             }
-            // Also check for "My Drive" subfolder pattern
             let gdrive_my_drive = home.join("Google Drive/My Drive");
             if gdrive_my_drive.exists() {
-                // Update path to point to My Drive
                 if let Some(loc) = self.locations.iter_mut().find(|l| l.provider == CloudProvider::GoogleDrive) {
                     loc.path = gdrive_my_drive;
                 }
             }
             
-            // OneDrive
             let onedrive_path = home.join("OneDrive");
             if onedrive_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::OneDrive, onedrive_path));
             }
-            // Also check for OneDrive - Personal
             let onedrive_personal = home.join("OneDrive - Personal");
             if onedrive_personal.exists() && !self.locations.iter().any(|l| l.provider == CloudProvider::OneDrive) {
                 self.locations.push(CloudLocation::new(CloudProvider::OneDrive, onedrive_personal));
             }
             
-            // Box
             let box_path = home.join("Box");
             if box_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::Box, box_path));
             }
             
-            // MEGA
             let mega_path = home.join("MEGA");
             if mega_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::Mega, mega_path));
             }
             
-            // NextCloud
             let nextcloud_path = home.join("Nextcloud");
             if nextcloud_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
@@ -1239,19 +1225,16 @@ impl CloudStorageManager {
                 self.locations.push(CloudLocation::new(CloudProvider::ICloud, icloud_path));
             }
             
-            // Dropbox
             let dropbox_path = home.join("Dropbox");
             if dropbox_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::Dropbox, dropbox_path));
             }
             
-            // Google Drive
             let gdrive_path = home.join("Google Drive");
             if gdrive_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::GoogleDrive, gdrive_path));
             }
             
-            // OneDrive - check multiple possible locations
             let onedrive_paths = [
                 home.join("OneDrive"),
                 home.join("OneDrive - Personal"),
@@ -1263,19 +1246,16 @@ impl CloudStorageManager {
                 }
             }
             
-            // Box
             let box_path = home.join("Box");
             if box_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::Box, box_path));
             }
             
-            // MEGA
             let mega_path = home.join("MEGA");
             if mega_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::Mega, mega_path));
             }
             
-            // NextCloud
             let nextcloud_path = home.join("Nextcloud");
             if nextcloud_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
@@ -1286,7 +1266,6 @@ impl CloudStorageManager {
     #[cfg(target_os = "linux")]
     fn detect_linux_providers(&mut self) {
         if let Some(home) = dirs::home_dir() {
-            // Dropbox
             let dropbox_path = home.join("Dropbox");
             if dropbox_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::Dropbox, dropbox_path));
@@ -1310,13 +1289,11 @@ impl CloudStorageManager {
                 self.locations.push(CloudLocation::new(CloudProvider::OneDrive, onedrive_path));
             }
             
-            // MEGA
             let mega_path = home.join("MEGA");
             if mega_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::Mega, mega_path));
             }
             
-            // NextCloud
             let nextcloud_path = home.join("Nextcloud");
             if nextcloud_path.exists() {
                 self.locations.push(CloudLocation::new(CloudProvider::NextCloud, nextcloud_path));
@@ -1328,7 +1305,6 @@ impl CloudStorageManager {
     pub fn get_file_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
         let cloud_location = self.is_cloud_path(path)?;
         
-        // Check for provider-specific sync status indicators
         match cloud_location.provider {
             CloudProvider::Dropbox => self.get_dropbox_sync_status(path),
             CloudProvider::ICloud => self.get_icloud_sync_status(path),
@@ -1341,7 +1317,6 @@ impl CloudStorageManager {
     fn get_dropbox_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
         // Dropbox uses extended attributes on macOS/Linux
         // On Windows, it uses overlay icons
-        // This is a simplified check - real implementation would use Dropbox SDK
         
         #[cfg(unix)]
         {
@@ -1379,7 +1354,6 @@ impl CloudStorageManager {
             return Some(SyncStatus::CloudOnly);
         }
         
-        // Check for .icloud version of the file
         let parent = path.parent()?;
         let icloud_name = format!(".{}.icloud", file_name);
         let icloud_path = parent.join(&icloud_name);

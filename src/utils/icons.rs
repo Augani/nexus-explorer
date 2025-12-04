@@ -23,7 +23,7 @@ pub fn rgba_to_bgra_inplace(data: &mut [u8]) {
     );
     
     for chunk in data.chunks_exact_mut(4) {
-        chunk.swap(0, 2); // Swap R and B
+        chunk.swap(0, 2);
     }
 }
 
@@ -45,7 +45,6 @@ pub fn rgba_to_bgra(data: &[u8]) -> Vec<u8> {
 /// 
 /// This is the inverse operation of `rgba_to_bgra_inplace`.
 pub fn bgra_to_rgba_inplace(data: &mut [u8]) {
-    // The operation is symmetric - swapping R and B twice returns to original
     rgba_to_bgra_inplace(data);
 }
 

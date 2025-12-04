@@ -86,17 +86,14 @@ impl Favorites {
     
     /// Add a new favorite from a path
     pub fn add(&mut self, path: PathBuf) -> Result<(), FavoritesError> {
-        // Check if already at max
         if self.items.len() >= self.max_count {
             return Err(FavoritesError::MaxReached(self.max_count));
         }
         
-        // Check if path already exists
         if self.items.iter().any(|f| f.path == path) {
             return Err(FavoritesError::AlreadyExists);
         }
         
-        // Validate path exists
         if !path.exists() {
             return Err(FavoritesError::InvalidPath(path.display().to_string()));
         }
@@ -219,10 +216,8 @@ impl Favorites {
         let mut favorites: Favorites = serde_json::from_str(&json)
             .map_err(|e| FavoritesError::Serialization(e.to_string()))?;
         
-        // Set max_count since it's skipped in serialization
         favorites.max_count = MAX_FAVORITES;
         
-        // Validate all paths on load
         favorites.validate_all();
         
         Ok(favorites)

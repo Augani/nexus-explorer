@@ -54,7 +54,6 @@ impl DeviceMonitor {
                 .with_removable(is_removable)
                 .with_read_only(is_read_only);
                 
-                // Get space info
                 if let Ok((total, free)) = get_disk_space(&path) {
                     device = device.with_space(total, free);
                 }
@@ -86,7 +85,6 @@ impl DeviceMonitor {
                     continue;
                 }
                 
-                // Check if it's a mount point
                 if !is_mount_point(&path) {
                     continue;
                 }
@@ -215,19 +213,16 @@ fn detect_linux_device_type(device: &str, fs_type: &str, mount_point: &str) -> D
         return DeviceType::NetworkDrive;
     }
     
-    // Optical drives
     if device.contains("sr") || device.contains("cdrom") || fs_type == "iso9660" {
         return DeviceType::OpticalDrive;
     }
     
-    // USB drives (check sysfs)
     if device.starts_with("/dev/sd") {
         if is_linux_removable(device) {
             return DeviceType::UsbDrive;
         }
     }
     
-    // Check mount point location
     if mount_point.starts_with("/media") || mount_point.starts_with("/mnt") {
         return DeviceType::ExternalDrive;
     }
@@ -238,7 +233,6 @@ fn detect_linux_device_type(device: &str, fs_type: &str, mount_point: &str) -> D
 /// Get a friendly name for a Linux device
 #[cfg(target_os = "linux")]
 fn get_linux_device_name(path: &PathBuf, device: &str) -> String {
-    // Try to get label from /dev/disk/by-label
     if let Ok(entries) = std::fs::read_dir("/dev/disk/by-label") {
         for entry in entries.flatten() {
             if let Ok(target) = std::fs::read_link(entry.path()) {
@@ -267,7 +261,6 @@ fn is_linux_removable(device: &str) -> bool {
         .trim_start_matches("/dev/")
         .trim_end_matches(char::is_numeric);
     
-    // Check sysfs for removable flag
     let removable_path = format!("/sys/block/{}/removable", base_device);
     if let Ok(content) = std::fs::read_to_string(&removable_path) {
         return content.trim() == "1";

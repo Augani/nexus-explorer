@@ -12,7 +12,6 @@ pub fn is_default_file_browser() -> bool {
 pub fn set_as_default_file_browser() -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
-        // On macOS, show instructions since programmatic setting is complex
         let script = r#"
             display dialog "To set Nexus as your default file browser:" & return & return & "1. Right-click any folder in Finder" & return & "2. Select 'Get Info'" & return & "3. Under 'Open with:', select Nexus" & return & "4. Click 'Change All...'" & return & return & "Alternatively, drag folders onto the Nexus icon in your Dock." buttons {"Open System Settings", "OK"} default button "OK"
             if button returned of result is "Open System Settings" then
@@ -32,7 +31,6 @@ pub fn set_as_default_file_browser() -> Result<String, String> {
 
     #[cfg(target_os = "windows")]
     {
-        // On Windows, open Default Apps settings
         let _ = Command::new("cmd")
             .args(["/c", "start", "ms-settings:defaultapps"])
             .output();
@@ -43,11 +41,9 @@ pub fn set_as_default_file_browser() -> Result<String, String> {
 
     #[cfg(target_os = "linux")]
     {
-        // On Linux, try to set via xdg-mime
         let exe_path = std::env::current_exe()
             .map_err(|e| format!("Failed to get executable path: {}", e))?;
         
-        // Create .desktop file
         let desktop_entry = format!(
             r#"[Desktop Entry]
 Name=Nexus File Explorer

@@ -144,7 +144,6 @@ impl NetworkConnectionDialog {
     /// Set protocol
     pub fn set_protocol(&mut self, protocol: NetworkProtocol) {
         self.protocol = protocol;
-        // Update port placeholder based on protocol
         if self.port.is_empty() {
             // Keep empty to use default
         }

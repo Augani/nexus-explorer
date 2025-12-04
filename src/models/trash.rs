@@ -30,7 +30,6 @@ pub fn list_trash_items() -> Vec<FileEntry> {
 fn list_trash_macos() -> Vec<FileEntry> {
     let mut entries = Vec::new();
 
-    // Use AppleScript to get trash items via Finder
     let script = r#"
         tell application "Finder"
             set trashItems to every item of trash
@@ -245,28 +244,82 @@ pub fn is_trash_path(path: &PathBuf) -> bool {
 pub fn empty_trash() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        let script = r#"
-            tell application "Finder"
-                empty trash
-            end tell
-        "#;
+        use std::fs;
         
-        let output = Command::new("osascript")
-            .args(["-e", script])
-            .output()
-            .map_err(|e| format!("Failed to run osascript: {}", e))?;
+        let trash_path = get_trash_path();
         
-        if output.status.success() {
-            Ok(())
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(format!("Failed to empty trash: {}", stderr))
+        if !trash_path.exists() {
+            return Ok(());
         }
+        
+        let entries: Vec<_> = fs::read_dir(&trash_path)
+            .map_err(|e| format!("Failed to read trash: {}", e))?
+            .filter_map(|e| e.ok())
+            .collect();
+        
+        if entries.is_empty() {
+            return Ok(());
+        }
+        
+        for entry in entries {
+            let path = entry.path();
+            if path.is_dir() {
+                fs::remove_dir_all(&path)
+                    .map_err(|e| format!("Failed to remove {}: {}", path.display(), e))?;
+            } else {
+                fs::remove_file(&path)
+                    .map_err(|e| format!("Failed to remove {}: {}", path.display(), e))?;
+            }
+        }
+        
+        Ok(())
     }
     
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "linux")]
     {
-        // On other platforms, use the trash crate
+        use std::fs;
+        
+        let trash_files = dirs::data_local_dir()
+            .map(|d| d.join("Trash/files"))
+            .unwrap_or_else(|| {
+                dirs::home_dir()
+                    .map(|h| h.join(".local/share/Trash/files"))
+                    .unwrap_or_else(|| PathBuf::from("/tmp"))
+            });
+        
+        let trash_info = dirs::data_local_dir()
+            .map(|d| d.join("Trash/info"))
+            .unwrap_or_else(|| {
+                dirs::home_dir()
+                    .map(|h| h.join(".local/share/Trash/info"))
+                    .unwrap_or_else(|| PathBuf::from("/tmp"))
+            });
+        
+        for trash_dir in [&trash_files, &trash_info] {
+            if trash_dir.exists() {
+                if let Ok(entries) = fs::read_dir(trash_dir) {
+                    for entry in entries.filter_map(|e| e.ok()) {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            let _ = fs::remove_dir_all(&path);
+                        } else {
+                            let _ = fs::remove_file(&path);
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        Err("Empty trash not implemented for Windows - use system Recycle Bin".to_string())
+    }
+    
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
         Err("Empty trash not implemented for this platform".to_string())
     }
 }

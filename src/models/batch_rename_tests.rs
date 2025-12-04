@@ -155,10 +155,8 @@ fn test_rename_count() {
     ];
     let mut batch = BatchRename::new(files);
     
-    // No pattern set, names unchanged
     assert_eq!(batch.rename_count(), 0);
     
-    // Set pattern
     batch.set_pattern("new_{n}");
     assert_eq!(batch.rename_count(), 2);
 }
@@ -482,7 +480,6 @@ fn test_no_conflict_when_names_differ() {
     let mut batch = BatchRename::new(files);
     batch.set_pattern("doc_{n}");
     
-    // Each file gets a unique name
     assert!(!batch.has_conflicts());
     for preview in batch.preview() {
         assert!(!preview.has_conflict);

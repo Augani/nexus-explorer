@@ -136,8 +136,8 @@ pub fn max_batches_for_items(item_count: usize, batch_size: usize) -> usize {
     if batch_size == 0 {
         return 0;
     }
-    let size_based = (item_count + batch_size - 1) / batch_size; // ceil division
-    size_based + 1 // +1 for potential time-based flush
+    let size_based = (item_count + batch_size - 1) / batch_size;
+    size_based + 1
 }
 
 #[cfg(test)]
@@ -151,7 +151,7 @@ mod tests {
     fn test_batch_aggregator_size_threshold() {
         let config = BatchConfig {
             batch_size: 10,
-            flush_interval: Duration::from_secs(10), // Long timeout to test size-based flush
+            flush_interval: Duration::from_secs(10),
         };
 
         let (entry_tx, batch_rx, handle) = create_batch_pipeline(config);
@@ -219,7 +219,6 @@ mod tests {
 
         let (entry_tx, batch_rx, handle) = create_batch_pipeline(config);
 
-        // Send 7 items
         for i in 0..7 {
             let entry = FileEntry::new(
                 format!("file_{}.txt", i),
@@ -331,7 +330,6 @@ mod tests {
 
             let (entry_tx, batch_rx, handle) = create_batch_pipeline(config);
 
-            // Send items
             for i in 0..item_count {
                 entry_tx.send(make_test_entry(i)).unwrap();
             }
@@ -350,7 +348,6 @@ mod tests {
             // Wait for aggregator to finish
             let processed = handle.join().unwrap();
 
-            // Verify all items were processed
             prop_assert_eq!(processed, item_count);
             prop_assert_eq!(total_items, item_count);
 

@@ -84,12 +84,10 @@ fn test_breadcrumb_path_for_segment() {
     let path = PathBuf::from("/home/user/documents");
     let breadcrumb = Breadcrumb::from_path(&path);
     
-    // Each segment index should return a valid path
     for i in 0..breadcrumb.segment_count() {
         assert!(breadcrumb.path_for_segment(i).is_some());
     }
     
-    // Out of bounds should return None
     assert!(breadcrumb.path_for_segment(100).is_none());
 }
 
@@ -112,7 +110,6 @@ fn test_breadcrumb_set_max_visible_minimum() {
     let path = PathBuf::from("/home/user");
     let mut breadcrumb = Breadcrumb::from_path(&path);
     
-    // Setting max_visible to 0 or 1 should clamp to 2
     breadcrumb.set_max_visible(0);
     assert_eq!(breadcrumb.max_visible, 2);
     
@@ -134,8 +131,6 @@ fn test_path_segment_creation() {
 }
 
 // **Feature: ui-enhancements, Property 4: Breadcrumb Segment Count**
-// **Validates: Requirements 2.1**
-//
 // *For any* path with N components, the Breadcrumb SHALL render exactly N clickable segments
 // (or N-k visible + ellipsis if truncated).
 proptest! {
@@ -155,7 +150,7 @@ proptest! {
         
         // Property 1: Segment count should equal path depth + 1 (for root)
         // On Unix, "/" is the root, then each component adds one segment
-        let expected_count = depth + 1; // root + depth directories
+        let expected_count = depth + 1;
         prop_assert_eq!(
             breadcrumb.segment_count(), expected_count,
             "Path {:?} should have {} segments, got {}",
@@ -230,8 +225,6 @@ proptest! {
 }
 
 // **Feature: ui-enhancements, Property 5: Breadcrumb Path Reconstruction**
-// **Validates: Requirements 2.2, 2.6**
-//
 // *For any* breadcrumb segment at index I, clicking it SHALL navigate to the path
 // formed by joining segments 0..=I.
 proptest! {
@@ -302,7 +295,6 @@ proptest! {
         
         let breadcrumb = Breadcrumb::from_path(&path);
         
-        // Property: current_path() should return the original input path
         let current = breadcrumb.current_path();
         prop_assert!(current.is_some(), "Current path should exist");
         prop_assert_eq!(
@@ -314,8 +306,6 @@ proptest! {
 }
 
 // **Feature: ui-enhancements, Property 6: Breadcrumb Truncation**
-// **Validates: Requirements 2.4**
-//
 // *For any* path with more than max_visible segments, the Breadcrumb SHALL display
 // an ellipsis containing the hidden middle segments.
 proptest! {

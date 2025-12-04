@@ -201,7 +201,6 @@ impl Render for GoToFolderView {
                     .on_mouse_down(MouseButton::Left, |_event, _window, _cx| {
                         // Prevent click from closing dialog
                     })
-                    // Header
                     .child(
                         div()
                             .px_4()
@@ -236,7 +235,6 @@ impl Render for GoToFolderView {
                                     )
                             )
                     )
-                    // Input field
                     .child(
                         div()
                             .px_4()

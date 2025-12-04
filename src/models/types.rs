@@ -45,12 +45,12 @@ impl CloudSyncStatus {
     pub fn color(&self) -> Option<u32> {
         match self {
             CloudSyncStatus::None => None,
-            CloudSyncStatus::Synced => Some(0x3fb950),    // Green
-            CloudSyncStatus::Syncing => Some(0x58a6ff),   // Blue
-            CloudSyncStatus::Pending => Some(0xd29922),   // Yellow
-            CloudSyncStatus::Error => Some(0xf85149),     // Red
-            CloudSyncStatus::CloudOnly => Some(0x8b949e), // Gray
-            CloudSyncStatus::LocalOnly => Some(0x8b949e), // Gray
+            CloudSyncStatus::Synced => Some(0x3fb950),
+            CloudSyncStatus::Syncing => Some(0x58a6ff),
+            CloudSyncStatus::Pending => Some(0xd29922),
+            CloudSyncStatus::Error => Some(0xf85149),
+            CloudSyncStatus::CloudOnly => Some(0x8b949e),
+            CloudSyncStatus::LocalOnly => Some(0x8b949e),
         }
     }
 }
@@ -114,7 +114,7 @@ impl LinuxFilePermissions {
 
     /// Format as full permission string like "-rwxr-xr-x owner group"
     pub fn format_full(&self) -> String {
-        let type_char = '-'; // Regular file, could be 'd' for directory
+        let type_char = '-';
         format!("{}{} {} {}", type_char, self.format_mode(), self.owner, self.group)
     }
 }

@@ -172,7 +172,6 @@ mod property_tests {
             let windows_path_str = format!("{}:\\{}", drive, path_suffix);
             let windows_path = PathBuf::from(&windows_path_str);
             
-            // Windows -> WSL
             let wsl_path = WslManager::windows_to_wsl_path(&windows_path);
             prop_assert!(wsl_path.is_ok(), "Failed to convert Windows path to WSL: {:?}", windows_path);
             let wsl_path = wsl_path.unwrap();

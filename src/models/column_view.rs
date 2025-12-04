@@ -200,7 +200,6 @@ impl ColumnView {
     /// to the right are replaced). When a file is selected, columns to the right
     /// are removed.
     pub fn select(&mut self, column_index: usize, entry_index: usize) {
-        // Validate indices
         if column_index >= self.columns.len() {
             return;
         }
@@ -210,10 +209,8 @@ impl ColumnView {
             return;
         }
 
-        // Update selection in the column
         self.columns[column_index].selected_index = Some(entry_index);
 
-        // Get the selected entry info
         let selected_entry = &self.columns[column_index].entries[entry_index];
         let is_dir = selected_entry.is_dir;
         let entry_path = selected_entry.path.clone();
@@ -239,7 +236,6 @@ impl ColumnView {
         if let Some(col_idx) = active_column_idx {
             let column = &self.columns[col_idx];
             
-            // Check if selected entry is a directory
             if let Some(entry) = column.selected_entry() {
                 if entry.is_dir {
                     // If there's a column to the right, select its first entry
@@ -290,7 +286,6 @@ impl ColumnView {
             if let Some(current_idx) = column.selected_index {
                 if current_idx > 0 {
                     let new_idx = current_idx - 1;
-                    // Re-select to trigger column updates
                     self.select(col_idx, new_idx);
                     return true;
                 }
@@ -345,14 +340,12 @@ impl ColumnView {
             }
         }
         
-        // If no selection, return the last column with entries
         for (idx, column) in self.columns.iter().enumerate().rev() {
             if !column.entries.is_empty() {
                 return Some(idx);
             }
         }
         
-        // Return first column if it exists
         if !self.columns.is_empty() {
             Some(0)
         } else {
@@ -371,7 +364,6 @@ impl ColumnView {
         }
         
         // Note: We can't scroll right without knowing viewport width
-        // This will be handled by the view layer
     }
 
     /// Ensures a column is visible within the given viewport width

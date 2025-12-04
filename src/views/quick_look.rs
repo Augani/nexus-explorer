@@ -131,7 +131,7 @@ impl QuickLook {
             }
             next_idx = (next_idx + 1) % entries.len();
             if next_idx == start_idx {
-                break; // Wrapped around, no files found
+                break;
             }
         }
     }
@@ -161,7 +161,7 @@ impl QuickLook {
                 prev_idx - 1
             };
             if prev_idx == start_idx {
-                break; // Wrapped around, no files found
+                break;
             }
         }
     }
@@ -182,7 +182,6 @@ impl QuickLook {
     }
 
     fn load_content(&mut self, path: &Path) {
-        // Load file metadata
         if let Ok(metadata) = fs::metadata(path) {
             self.file_size = metadata.len();
             self.modified = metadata.modified().ok();
@@ -199,13 +198,11 @@ impl QuickLook {
             .and_then(|ext| ext.to_str())
             .map(|s| s.to_lowercase());
 
-        // Check if it's an image
         if is_image_extension(extension.as_deref()) {
             self.load_image_content(path, extension.as_deref());
             return;
         }
 
-        // Check if it's a text file
         if is_text_extension(extension.as_deref()) || is_likely_text_file(path) {
             self.load_text_content(path, extension);
             return;
@@ -222,7 +219,6 @@ impl QuickLook {
             .map(|e| e.to_uppercase())
             .unwrap_or_else(|| "Image".to_string());
 
-        // Try to get image dimensions
         let dimensions = get_image_dimensions(path);
 
         self.content = QuickLookContent::Image {
@@ -435,7 +431,6 @@ impl QuickLookView {
                 self.quick_look.show(self.entries[next_idx].path.clone());
             } else {
                 self.quick_look.next(&self.entries, idx);
-                // Update current_index to match
                 if let Some(path) = self.quick_look.current_path() {
                     self.current_index = self.entries.iter().position(|e| &e.path == path);
                 }
@@ -993,7 +988,6 @@ mod tests {
     fn test_quick_look_zoom_limits() {
         let mut ql = QuickLook::new();
         
-        // Zoom in to max
         for _ in 0..20 {
             ql.zoom_in();
         }

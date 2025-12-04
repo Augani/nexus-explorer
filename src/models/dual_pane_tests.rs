@@ -43,7 +43,7 @@ fn test_pane_state_set_entries() {
     pane.set_entries(entries.clone());
     
     assert_eq!(pane.entries.len(), 2);
-    assert!(pane.selection.is_empty()); // Selection cleared
+    assert!(pane.selection.is_empty());
 }
 
 #[test]
@@ -70,7 +70,6 @@ fn test_pane_state_selection() {
         create_test_entry("file3.txt", false),
     ];
     
-    // Single select
     pane.select(1);
     assert_eq!(pane.selection, vec![1]);
     assert!(pane.is_selected(1));
@@ -259,7 +258,6 @@ proptest! {
             PathBuf::from(format!("/{}", right_path)),
         );
         
-        // Set up left pane
         let left_entries: Vec<FileEntry> = (0..left_entries_count)
             .map(|i| create_test_entry(&format!("left_{}.txt", i), false))
             .collect();
@@ -270,7 +268,6 @@ proptest! {
             }
         }
         
-        // Set up right pane
         let right_entries: Vec<FileEntry> = (0..right_entries_count)
             .map(|i| create_test_entry(&format!("right_{}.txt", i), false))
             .collect();

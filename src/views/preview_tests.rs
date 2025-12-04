@@ -4,12 +4,10 @@ use std::fs::{self, File};
 use std::io::Write;
 use tempfile::TempDir;
 
-// Helper to create a temp directory with test files
 fn create_test_dir() -> TempDir {
     tempfile::tempdir().expect("Failed to create temp dir")
 }
 
-// Helper to create a test file with content
 fn create_test_file(dir: &TempDir, name: &str, content: &[u8]) -> PathBuf {
     let path = dir.path().join(name);
     let mut file = File::create(&path).expect("Failed to create test file");
@@ -17,7 +15,6 @@ fn create_test_file(dir: &TempDir, name: &str, content: &[u8]) -> PathBuf {
     path
 }
 
-// Helper to create a test directory
 fn create_test_subdir(dir: &TempDir, name: &str) -> PathBuf {
     let path = dir.path().join(name);
     fs::create_dir(&path).expect("Failed to create test subdir");
@@ -26,7 +23,6 @@ fn create_test_subdir(dir: &TempDir, name: &str) -> PathBuf {
 
 // ============================================================================
 // Property 22: Preview Metadata Completeness
-// Validates: Requirements 7.1
 // For any valid file path, the preview metadata SHALL contain name, size, type, date, and permissions
 // ============================================================================
 
@@ -41,7 +37,6 @@ proptest! {
         let temp_dir = create_test_dir();
         let file_path = create_test_file(&temp_dir, &file_name, &content);
 
-        // Load metadata from the file
         let metadata = FileMetadata::from_path(&file_path);
 
         // Property: Metadata must be present for valid files
@@ -64,14 +59,12 @@ proptest! {
         // Property: is_dir should be false for files
         prop_assert!(!meta.is_dir, "is_dir should be false for files");
 
-        // Property: has_all_fields should return true
         prop_assert!(meta.has_all_fields(), "has_all_fields should return true");
     }
 }
 
 // ============================================================================
 // Property 23: Preview Text Line Numbers
-// Validates: Requirements 7.2
 // For any text file, the preview SHALL display line numbers matching the actual line count
 // ============================================================================
 
@@ -109,7 +102,6 @@ proptest! {
 
 // ============================================================================
 // Property 24: Preview Image Dimensions
-// Validates: Requirements 7.3
 // For any image file, the preview SHALL display format information
 // ============================================================================
 
@@ -121,7 +113,6 @@ proptest! {
         ext in prop::sample::select(vec!["png", "jpg", "jpeg", "gif", "bmp", "webp"])
     ) {
         let temp_dir = create_test_dir();
-        // Create a minimal valid-looking file (not a real image, but tests format detection)
         let file_name = format!("test.{}", ext);
         let file_path = create_test_file(&temp_dir, &file_name, b"fake image data");
 
@@ -146,7 +137,6 @@ proptest! {
 
 // ============================================================================
 // Property 25: Preview Hex Dump Size
-// Validates: Requirements 7.5
 // For any binary file, the hex dump SHALL show at most 256 bytes
 // ============================================================================
 
@@ -203,7 +193,6 @@ proptest! {
 
 // ============================================================================
 // Property 26: Preview Directory Statistics
-// Validates: Requirements 7.6
 // For any directory, the preview SHALL show correct item count, total size, and subdirectory count
 // ============================================================================
 
@@ -218,7 +207,6 @@ proptest! {
     ) {
         let temp_dir = create_test_dir();
 
-        // Create files
         let actual_file_count = file_count.min(file_sizes.len());
         let mut total_size = 0u64;
         for i in 0..actual_file_count {
@@ -228,7 +216,6 @@ proptest! {
             total_size += size;
         }
 
-        // Create subdirectories
         for i in 0..subdir_count {
             create_test_subdir(&temp_dir, &format!("subdir{}", i));
         }
@@ -282,7 +269,6 @@ proptest! {
 }
 
 // ============================================================================
-// Unit Tests
 // ============================================================================
 
 #[test]
@@ -297,7 +283,7 @@ fn test_format_size() {
 
 #[test]
 fn test_format_hex_dump() {
-    let bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f]; // "Hello"
+    let bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f];
     let lines = format_hex_dump(&bytes);
     
     assert_eq!(lines.len(), 1);

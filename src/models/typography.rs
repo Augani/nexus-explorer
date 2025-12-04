@@ -17,7 +17,6 @@
 use gpui::SharedString;
 
 // ============================================================================
-// Font Families
 // ============================================================================
 
 /// Display font for headers, titles, and decorative text
@@ -117,7 +116,6 @@ pub const TRACKING_WIDE: f32 = 0.05;
 pub const TRACKING_ULTRA: f32 = 0.15;
 
 // ============================================================================
-// Line Heights
 // ============================================================================
 
 /// Tight line height for compact UI elements
@@ -324,7 +322,6 @@ pub mod status_bar {
 }
 
 // ============================================================================
-// Border Radii
 // ============================================================================
 
 /// Small border radius for buttons and inputs
@@ -545,17 +542,14 @@ mod tests {
 
     #[test]
     fn test_component_spacing() {
-        // Sidebar
         assert_eq!(sidebar::WIDTH, 280.0);
         assert_eq!(sidebar::ITEM_PADDING_X, 16.0);
         assert_eq!(sidebar::SECTION_GAP, 24.0);
         
-        // File list
         assert_eq!(file_list::ROW_HEIGHT, 40.0);
         assert_eq!(file_list::ICON_SIZE, 20.0);
         assert_eq!(file_list::ICON_GAP, 12.0);
         
-        // Toolbar
         assert_eq!(toolbar::HEIGHT, 52.0);
         assert_eq!(toolbar::BUTTON_SIZE, 36.0);
     }

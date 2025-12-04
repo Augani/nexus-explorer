@@ -44,13 +44,11 @@ proptest! {
         
         engine.inject(path.clone());
         
-        // Give nucleo time to process the injection
         std::thread::sleep(std::time::Duration::from_millis(50));
         
         // Search for the exact filename
         engine.set_pattern(&filename);
         
-        // Give nucleo time to process the pattern
         std::thread::sleep(std::time::Duration::from_millis(50));
         
         let snapshot = engine.snapshot();
@@ -78,14 +76,12 @@ proptest! {
         let path = PathBuf::from(format!("/test/{}", filename));
         engine.inject(path.clone());
         
-        // Give nucleo time to process
         std::thread::sleep(std::time::Duration::from_millis(50));
         
         // Search for a substring of the filename (first 3 chars)
         let search_pattern = &filename[0..3.min(filename.len())];
         engine.set_pattern(search_pattern);
         
-        // Give nucleo time to process
         std::thread::sleep(std::time::Duration::from_millis(50));
         
         let snapshot = engine.snapshot();
@@ -163,7 +159,6 @@ mod unit_tests {
         engine.inject(PathBuf::from("/home/user/downloads/image.png"));
         engine.inject(PathBuf::from("/home/user/documents/notes.txt"));
         
-        // Give nucleo time to process
         std::thread::sleep(std::time::Duration::from_millis(100));
         
         engine.set_pattern("report");

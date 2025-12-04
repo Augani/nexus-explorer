@@ -115,7 +115,6 @@ impl WslManager {
     /// Detect WSL distributions on Windows
     #[cfg(target_os = "windows")]
     fn detect_wsl_windows(&mut self) {
-        // First check if WSL is installed by running wsl --status
         let status_check = std::process::Command::new("wsl")
             .args(["--status"])
             .output();
@@ -124,7 +123,6 @@ impl WslManager {
             return;
         }
 
-        // Get list of distributions with verbose output
         let output = match std::process::Command::new("wsl")
             .args(["--list", "--verbose"])
             .output()
@@ -139,7 +137,6 @@ impl WslManager {
 
         self.is_available = true;
 
-        // WSL outputs UTF-16LE on Windows, need to handle that
         let stdout = decode_wsl_output(&output.stdout);
         
         self.parse_wsl_list_output(&stdout);
@@ -193,15 +190,14 @@ impl WslManager {
     pub fn windows_to_wsl_path(windows_path: &Path) -> WslResult<String> {
         let path_str = windows_path.to_string_lossy();
         
-        // Handle UNC paths like \\wsl$\Ubuntu\home\user or \\wsl.localhost\Ubuntu\home\user
         let wsl_prefix = "\\\\wsl$\\";
         let wsl_localhost_prefix = "\\\\wsl.localhost\\";
         
         if path_str.starts_with(wsl_prefix) || path_str.starts_with(wsl_localhost_prefix) {
             let without_prefix = if path_str.starts_with(wsl_prefix) {
-                &path_str[wsl_prefix.len()..] // Remove \\wsl$\
+                &path_str[wsl_prefix.len()..]
             } else {
-                &path_str[wsl_localhost_prefix.len()..] // Remove \\wsl.localhost\
+                &path_str[wsl_localhost_prefix.len()..]
             };
             
             // Find the distribution name (first path component)
@@ -215,7 +211,6 @@ impl WslManager {
             }
         }
         
-        // Handle regular Windows paths like C:\Users\...
         if path_str.len() >= 2 && path_str.chars().nth(1) == Some(':') {
             if let Some(drive_letter) = path_str.chars().next() {
                 let rest = &path_str[2..].replace('\\', "/");
@@ -231,7 +226,6 @@ impl WslManager {
 
     /// Translate a WSL path to a Windows path for a specific distribution
     pub fn wsl_to_windows_path(distro_name: &str, wsl_path: &str) -> WslResult<PathBuf> {
-        // Handle /mnt/c/... style paths
         if wsl_path.starts_with("/mnt/") && wsl_path.len() >= 6 {
             if let Some(drive_letter) = wsl_path.chars().nth(5) {
                 let rest = &wsl_path[6..];
@@ -240,7 +234,6 @@ impl WslManager {
             }
         }
         
-        // Handle regular Linux paths - convert to UNC path
         // Build the path manually to avoid PathBuf::join issues with UNC paths
         let linux_path = wsl_path.replace('/', "\\");
         let linux_path = linux_path.trim_start_matches('\\');
@@ -270,7 +263,6 @@ impl WslManager {
             None
         }?;
         
-        // Get the first path component (distribution name)
         let end = without_prefix.find('\\').unwrap_or(without_prefix.len());
         Some(without_prefix[..end].to_string())
     }
@@ -450,7 +442,6 @@ fn decode_wsl_output(bytes: &[u8]) -> String {
             .filter_map(|r| r.ok())
             .collect()
     } else {
-        // Assume UTF-8
         String::from_utf8_lossy(bytes).to_string()
     }
 }

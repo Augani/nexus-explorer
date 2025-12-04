@@ -190,7 +190,6 @@ fn test_device_monitor_update_device() {
     
     let id = monitor.add_device(device);
     
-    // Update the device
     let mut updated = monitor.get_device(id).unwrap().clone();
     updated.free_space = 300;
     monitor.update_device(updated);
@@ -273,7 +272,6 @@ mod property_tests {
     }
 
     // **Feature: ui-enhancements, Property 45: Device Detection Completeness**
-    // **Validates: Requirements 26.1, 26.2, 26.3**
     proptest! {
         #[test]
         fn prop_device_detection_completeness(devices in prop::collection::vec(arb_device(), 0..20)) {
@@ -297,7 +295,6 @@ mod property_tests {
     }
 
     // **Feature: ui-enhancements, Property 46: Device Event Ordering**
-    // **Validates: Requirements 26.1, 26.7, 28.2, 28.3**
     proptest! {
         #[test]
         fn prop_device_event_ordering(devices in prop::collection::vec(arb_device(), 1..10)) {
@@ -347,7 +344,6 @@ mod property_tests {
     }
 
     // **Feature: ui-enhancements, Property 48: Device Space Accuracy**
-    // **Validates: Requirements 26.2**
     proptest! {
         #[test]
         fn prop_device_space_accuracy(

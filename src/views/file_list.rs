@@ -23,11 +23,11 @@ pub const DEFAULT_ROW_HEIGHT: f32 = file_list_spacing::ROW_HEIGHT;
 pub const DEFAULT_BUFFER_SIZE: usize = 5;
 
 // RPG styling constants
-const ICON_SIZE: f32 = file_list_spacing::ICON_SIZE;  // 20px
-const ICON_GAP: f32 = file_list_spacing::ICON_GAP;    // 12px
-const ROW_PADDING_X: f32 = file_list_spacing::ROW_PADDING_X;  // 16px
-const HEADER_HEIGHT: f32 = file_list_spacing::HEADER_HEIGHT;  // 36px
-const FOOTER_HEIGHT: f32 = file_list_spacing::FOOTER_HEIGHT;  // 28px
+const ICON_SIZE: f32 = file_list_spacing::ICON_SIZE;
+const ICON_GAP: f32 = file_list_spacing::ICON_GAP;
+const ROW_PADDING_X: f32 = file_list_spacing::ROW_PADDING_X;
+const HEADER_HEIGHT: f32 = file_list_spacing::HEADER_HEIGHT;
+const FOOTER_HEIGHT: f32 = file_list_spacing::FOOTER_HEIGHT;
 
 pub struct FileList {
     entries: Vec<FileEntry>,
@@ -143,8 +143,8 @@ impl FileListView {
 
         let new_index = match self.file_list.selected_index {
             Some(current) if current > 0 => current - 1,
-            Some(_) => 0, // Already at top, stay there
-            None => 0, // No selection, select first item
+            Some(_) => 0,
+            None => 0,
         };
 
         self.file_list.selected_index = Some(new_index);
@@ -162,8 +162,8 @@ impl FileListView {
         let max_index = item_count.saturating_sub(1);
         let new_index = match self.file_list.selected_index {
             Some(current) if current < max_index => current + 1,
-            Some(current) => current, // Already at bottom, stay there
-            None => 0, // No selection, select first item
+            Some(current) => current,
+            None => 0,
         };
 
         self.file_list.selected_index = Some(new_index);
@@ -174,7 +174,6 @@ impl FileListView {
     /// Open the selected item (navigate into directory)
     fn handle_open_selected(&mut self, _: &OpenSelected, _window: &mut Window, cx: &mut Context<Self>) {
         if let Some(index) = self.file_list.selected_index {
-            // Get entry from filtered or unfiltered list
             let entry = if let Some(filtered) = &self.file_list.filtered_entries {
                 filtered.get(index).map(|f| &f.entry)
             } else {
@@ -250,7 +249,6 @@ impl Render for FileListView {
         let context_menu_pos = self.context_menu_position;
         let context_menu_idx = self.context_menu_index;
 
-        // Get theme colors for RPG styling
         let colors = theme_colors();
         
         // Background colors from theme
@@ -427,7 +425,6 @@ impl Render for FileListView {
                                 cx.processor(move |view, range, _window, _cx| {
                                     let mut items = Vec::new();
                                     for ix in range {
-                                        // Get entry from filtered or unfiltered list
                                         let (entry, match_positions) = if let Some(filtered) = view.file_list.get_filtered_entry(ix) {
                                             (filtered.entry.clone(), Some(filtered.match_positions.clone()))
                                         } else if let Some(entry) = view.file_list.entries.get(ix) {
@@ -523,11 +520,11 @@ impl Render for FileListView {
                                                                 div()
                                                                     .flex()
                                                                     .items_center()
-                                                                    .gap(px(ICON_GAP))  // 12px icon-to-text gap
+                                                                    .gap(px(ICON_GAP))
                                                                     .child(
                                                                         svg()
                                                                             .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                                                            .size(px(ICON_SIZE))  // 20px icon size
+                                                                            .size(px(ICON_SIZE))
                                                                             .text_color(icon_color)
                                                                             .flex_shrink_0(),
                                                                     )
@@ -638,7 +635,6 @@ impl Render for FileListView {
                             .child("List View"),
                     ),
             )
-            // Context Menu
             .when_some(context_menu_pos, |this, pos| {
                 let entity = cx.entity().clone();
                 let selected_entry = context_menu_idx.and_then(|idx| self.file_list.entries.get(idx).cloned());
@@ -930,21 +926,21 @@ pub fn get_file_icon(name: &str, is_dir: bool) -> &'static str {
 pub fn get_file_icon_color(name: &str) -> gpui::Rgba {
     let ext = name.rsplit('.').next().unwrap_or("");
     match ext.to_lowercase().as_str() {
-        "rs" => gpui::rgb(0xdea584),      // Rust orange
-        "ts" | "tsx" => gpui::rgb(0x3178c6), // TypeScript blue
-        "js" | "jsx" | "mjs" => gpui::rgb(0xf7df1e), // JavaScript yellow
-        "py" => gpui::rgb(0x3776ab),      // Python blue
-        "go" => gpui::rgb(0x00add8),      // Go cyan
-        "java" => gpui::rgb(0xb07219),    // Java brown
-        "json" => gpui::rgb(0xf5a623),    // JSON orange
-        "yaml" | "yml" => gpui::rgb(0xcb171e), // YAML red
-        "toml" => gpui::rgb(0x9c4221),    // TOML brown
-        "md" | "markdown" => gpui::rgb(0x519aba), // Markdown blue
-        "html" | "htm" => gpui::rgb(0xe34c26), // HTML orange
-        "css" | "scss" | "sass" => gpui::rgb(0x563d7c), // CSS purple
-        "png" | "jpg" | "jpeg" | "gif" | "svg" => gpui::rgb(0xa855f7), // Image purple
-        "zip" | "tar" | "gz" => gpui::rgb(0xf59e0b), // Archive amber
-        _ => gpui::rgb(0x8b949e),          // Default gray
+        "rs" => gpui::rgb(0xdea584),
+        "ts" | "tsx" => gpui::rgb(0x3178c6),
+        "js" | "jsx" | "mjs" => gpui::rgb(0xf7df1e),
+        "py" => gpui::rgb(0x3776ab),
+        "go" => gpui::rgb(0x00add8),
+        "java" => gpui::rgb(0xb07219),
+        "json" => gpui::rgb(0xf5a623),
+        "yaml" | "yml" => gpui::rgb(0xcb171e),
+        "toml" => gpui::rgb(0x9c4221),
+        "md" | "markdown" => gpui::rgb(0x519aba),
+        "html" | "htm" => gpui::rgb(0xe34c26),
+        "css" | "scss" | "sass" => gpui::rgb(0x563d7c),
+        "png" | "jpg" | "jpeg" | "gif" | "svg" => gpui::rgb(0xa855f7),
+        "zip" | "tar" | "gz" => gpui::rgb(0xf59e0b),
+        _ => gpui::rgb(0x8b949e),
     }
 }
 

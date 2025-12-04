@@ -180,17 +180,14 @@ impl BookmarkManager {
 
     /// Add a new bookmark from a path
     pub fn add(&mut self, path: PathBuf) -> Result<BookmarkId, BookmarkError> {
-        // Check if already at max
         if self.bookmarks.len() >= self.max_bookmarks {
             return Err(BookmarkError::MaxReached(self.max_bookmarks));
         }
 
-        // Check if path already exists
         if self.bookmarks.iter().any(|b| b.path == path) {
             return Err(BookmarkError::AlreadyExists);
         }
 
-        // Validate path exists
         if !path.exists() {
             return Err(BookmarkError::InvalidPath(path.display().to_string()));
         }
@@ -203,17 +200,14 @@ impl BookmarkManager {
 
     /// Add a bookmark with a custom name
     pub fn add_with_name(&mut self, path: PathBuf, name: String) -> Result<BookmarkId, BookmarkError> {
-        // Check if already at max
         if self.bookmarks.len() >= self.max_bookmarks {
             return Err(BookmarkError::MaxReached(self.max_bookmarks));
         }
 
-        // Check if path already exists
         if self.bookmarks.iter().any(|b| b.path == path) {
             return Err(BookmarkError::AlreadyExists);
         }
 
-        // Validate path exists
         if !path.exists() {
             return Err(BookmarkError::InvalidPath(path.display().to_string()));
         }
@@ -245,7 +239,6 @@ impl BookmarkManager {
 
     /// Set a keyboard shortcut for a bookmark
     pub fn set_shortcut(&mut self, id: BookmarkId, shortcut: Option<KeyBinding>) -> Result<(), BookmarkError> {
-        // If setting a shortcut, first clear it from any other bookmark
         if let Some(ref new_shortcut) = shortcut {
             for bookmark in &mut self.bookmarks {
                 if let Some(ref existing) = bookmark.shortcut {
@@ -322,7 +315,6 @@ impl BookmarkManager {
         // Remove if already exists (to move to front)
         self.recent_locations.retain(|p| p != &path);
 
-        // Add to front
         self.recent_locations.push_front(path);
 
         // Trim to max size
@@ -380,7 +372,6 @@ impl BookmarkManager {
         let mut manager: BookmarkManager =
             serde_json::from_str(&json).map_err(|e| BookmarkError::Serialization(e.to_string()))?;
 
-        // Set runtime fields since they're skipped in serialization
         manager.max_bookmarks = MAX_BOOKMARKS;
         manager.max_recent = MAX_RECENT_LOCATIONS;
 
@@ -393,7 +384,6 @@ impl BookmarkManager {
             .unwrap_or(0)
             + 1;
 
-        // Validate all paths on load
         manager.validate_all();
 
         Ok(manager)
@@ -513,7 +503,7 @@ mod tests {
 
         manager.add_recent(PathBuf::from("/path/1"));
         manager.add_recent(PathBuf::from("/path/2"));
-        manager.add_recent(PathBuf::from("/path/1")); // Duplicate
+        manager.add_recent(PathBuf::from("/path/1"));
 
         assert_eq!(manager.recent().len(), 2);
         // /path/1 should now be first (most recent)

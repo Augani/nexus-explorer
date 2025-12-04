@@ -99,7 +99,6 @@ pub struct Sidebar {
 
 impl Sidebar {
     pub fn new() -> Self {
-        // Try to load favorites from disk, fall back to defaults
         let favorites = Favorites::load().unwrap_or_else(|_| {
             let mut favs = Favorites::new();
             // Add default favorites
@@ -111,21 +110,17 @@ impl Sidebar {
             favs
         });
 
-        // Try to load bookmarks from disk
         let bookmarks = BookmarkManager::load().unwrap_or_else(|_| BookmarkManager::new());
 
-        // Load network locations
         let network_manager = NetworkStorageManager::load();
 
         // Detect cloud storage providers
         let mut cloud_manager = CloudStorageManager::new();
         cloud_manager.detect_all_providers();
 
-        // Initialize device monitor and enumerate devices
         let mut device_monitor = DeviceMonitor::new();
         device_monitor.start_monitoring();
 
-        // Load smart folders
         let smart_folders = SmartFolderManager::load().unwrap_or_else(|_| SmartFolderManager::new());
 
         Self {
@@ -683,10 +678,8 @@ impl SidebarView {
                 self.sidebar.toggle_hidden_files();
             }
             ToolAction::SetAsDefault => {
-                // Handled by toggle_default_browser
             }
             _ => {
-                // Other actions are handled by workspace
             }
         }
         self.pending_action = Some(action);
@@ -738,7 +731,6 @@ impl SidebarView {
     }
 
     fn get_icon_for_favorite(&self, index: usize, path: &PathBuf) -> &'static str {
-        // Check for common directories
         if let Some(home) = dirs::home_dir() {
             if path == &home {
                 return "house";
@@ -822,7 +814,6 @@ impl Render for SidebarView {
                     .flex_col()
                     .flex_shrink_0()
                     .min_h_full()
-                    // Tools Section
                     .child(
                         div()
                             .mb(section_gap)
@@ -886,7 +877,6 @@ impl Render for SidebarView {
                                             icon_blue,
                                             cx,
                                         ))
-                                        // Divider
                                         .child(
                                             div()
                                                 .h(px(1.0))
@@ -945,7 +935,6 @@ impl Render for SidebarView {
                                             gpui::rgb(0xf85149),
                                             cx,
                                         ))
-                                        // Divider
                                         .child(
                                             div()
                                                 .h(px(1.0))
@@ -965,7 +954,6 @@ impl Render for SidebarView {
                                             icon_blue,
                                             cx,
                                         ))
-                                        // Copy Path
                                         .child(self.render_tool_button(
                                             "copy-path",
                                             "clipboard-paste",
@@ -978,7 +966,6 @@ impl Render for SidebarView {
                                             icon_blue,
                                             cx,
                                         ))
-                                        // Refresh
                                         .child(self.render_tool_button(
                                             "refresh",
                                             "refresh-cw",
@@ -991,7 +978,6 @@ impl Render for SidebarView {
                                             icon_blue,
                                             cx,
                                         ))
-                                        // Divider
                                         .child(
                                             div()
                                                 .h(px(1.0))
@@ -1040,7 +1026,6 @@ impl Render for SidebarView {
                                                     )
                                                 })
                                         )
-                                        // Set as Default File Browser toggle
                                         .child({
                                             let is_default = crate::models::is_default_file_browser();
                                             div()
@@ -1267,7 +1252,6 @@ impl Render for SidebarView {
                                 )
                             }),
                     )
-                    // Trash item
                     .child({
                         let trash_path = Self::get_trash_path();
                         let is_trash_selected = selected_path.as_ref() == Some(&trash_path);
@@ -1300,32 +1284,7 @@ impl Render for SidebarView {
                                     .text_color(if is_trash_selected { text_light } else { text_gray }),
                             )
                             .child("Trash")
-                    })
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(gpui::FontWeight::BOLD)
-                            .text_color(label_color)
-                            .mb_2()
-                            .mt_3()
-                            .px_2()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child("WORKSPACE")
-                            .child(
-                                svg()
-                                    .path("assets/icons/chevron-down.svg")
-                                    .size(px(12.0))
-                                    .text_color(label_color),
-                            ),
-                    ),
-            )
-            .child(
-                div()
-                    .overflow_hidden()
-                    .pb(px(100.0)) // Extra bottom padding for scrolling
-                    .child(self.render_workspace_tree(cx)),
+                    }),
             )
     }
 }
@@ -1500,7 +1459,6 @@ impl SidebarView {
                                     )
                             }),
                         )
-                        // Create Smart Folder button
                         .child(
                             div()
                                 .id("create-smart-folder-btn")
@@ -1937,7 +1895,6 @@ impl SidebarView {
                         .flex_col()
                         .gap_0p5()
                         .p_1()
-                        // Render devices
                         .children(
                             devices.iter().map(|device| {
                                 let is_selected = selected_path.as_ref() == Some(&device.path);
@@ -2017,7 +1974,7 @@ impl SidebarView {
                                     .when(space_info.is_some(), |s| {
                                         s.child(
                                             div()
-                                                .pl(px(26.0)) // Align with text after icon
+                                                .pl(px(26.0))
                                                 .text_xs()
                                                 .text_color(text_gray)
                                                 .opacity(0.7)
@@ -2095,9 +2052,9 @@ impl SidebarView {
                                                         .h(px(6.0))
                                                         .rounded_full()
                                                         .bg(if is_running { 
-                                                            gpui::rgb(0x3fb950) // Green for running
+                                                            gpui::rgb(0x3fb950)
                                                         } else { 
-                                                            gpui::rgb(0x6e7681) // Gray for stopped
+                                                            gpui::rgb(0x6e7681)
                                                         })
                                                 )
                                                 .child(
@@ -2127,58 +2084,4 @@ impl SidebarView {
             })
     }
 
-    fn render_workspace_tree(&self, _cx: &mut Context<Self>) -> impl IntoElement {
-        let text_gray = gpui::rgb(0x8b949e);
-        let hover_bg = gpui::rgb(0x21262d);
-        let text_light = gpui::rgb(0xe6edf3);
-        let folder_color = gpui::rgb(0x54aeff);
-
-        if let Some(ref root) = self.sidebar.workspace_root {
-            div()
-                .flex()
-                .flex_col()
-                .child(
-                    div()
-                        .id("workspace-root")
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .px_3()
-                        .py_1p5()
-                        .cursor_pointer()
-                        .text_sm()
-                        .text_color(text_gray)
-                        .hover(|s| s.bg(hover_bg).text_color(text_light))
-                        .child(
-                            svg()
-                                .path("assets/icons/chevron-right.svg")
-                                .size(px(14.0))
-                                .text_color(gpui::rgb(0x6e7681)),
-                        )
-                        .child(
-                            svg()
-                                .path("assets/icons/folder.svg")
-                                .size(px(14.0))
-                                .text_color(folder_color),
-                        )
-                        .child(root.name.clone()),
-                )
-        } else {
-            div()
-                .px_3()
-                .py_2()
-                .text_sm()
-                .text_color(text_gray)
-                .flex()
-                .items_center()
-                .gap_2()
-                .child(
-                    svg()
-                        .path("assets/icons/folder-x.svg")
-                        .size(px(14.0))
-                        .text_color(text_gray),
-                )
-                .child("No workspace open")
-        }
-    }
 }

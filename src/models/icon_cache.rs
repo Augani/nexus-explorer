@@ -105,7 +105,6 @@ impl IconCache {
     /// Returns None if the icon is not cached.
     pub fn get_icon(&mut self, key: &IconKey) -> Option<&RenderImage> {
         if self.textures.contains_key(key) {
-            // Update LRU tracking
             self.lru.get(key);
             self.textures.get(key)
         } else {
@@ -124,7 +123,6 @@ impl IconCache {
             if !self.pending.contains(key) {
                 self.pending.insert(key.clone());
             }
-            // Return appropriate default based on key type
             match key {
                 IconKey::Directory => &self.folder_icon,
                 _ => &self.default_icon,

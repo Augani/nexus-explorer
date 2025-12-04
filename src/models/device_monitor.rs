@@ -267,7 +267,6 @@ impl DeviceMonitor {
         }
         self.is_monitoring.store(true, Ordering::SeqCst);
         
-        // Initial enumeration
         self.enumerate_devices();
     }
 

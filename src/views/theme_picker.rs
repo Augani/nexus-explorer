@@ -112,8 +112,8 @@ impl ThemePickerView {
                 TransitionState::new(id).with_from(self.selected_theme)
             );
             self.selected_theme = id;
-            // Update the global theme
             crate::models::set_current_theme(id);
+            crate::models::save_theme_selection(id);
             cx.notify();
         }
     }
@@ -200,7 +200,6 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
                         .flex()
                         .flex_col()
                         .child(
-                            // Toolbar
                             div()
                                 .h(px(16.0))
                                 .bg(colors.bg_tertiary)
@@ -214,7 +213,6 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
                                 .child(div().w(px(40.0)).h(px(6.0)).bg(colors.bg_hover).rounded_sm())
                         )
                         .child(
-                            // File list
                             div()
                                 .flex_1()
                                 .bg(colors.bg_primary)
@@ -489,7 +487,6 @@ impl Render for ThemePickerView {
                         div()
                             .flex()
                             .flex_col()
-                            // Header
                             .child(
                                 div()
                                     .px_6()
@@ -543,12 +540,13 @@ impl Render for ThemePickerView {
                             // Theme cards grid
                             .child(
                                 div()
+                                    .id("theme-cards-container")
                                     .p_6()
                                     .flex()
                                     .flex_wrap()
                                     .gap_4()
                                     .justify_center()
-                                    .overflow_hidden()
+                                    .overflow_y_scroll()
                                     .max_h(px(450.0))
                                     .children(themes.iter().enumerate().map(|(idx, theme)| {
                                         let theme_id = theme.id;
@@ -558,7 +556,6 @@ impl Render for ThemePickerView {
                                             .id(("theme-card", idx))
                                             .on_mouse_down(MouseButton::Left, cx.listener(move |view, _, _, cx| {
                                                 view.set_selected_theme(theme_id, cx);
-                                                // Call the callback if set
                                                 if let Some(callback) = view.on_theme_select.take() {
                                                     callback(theme_id);
                                                     view.on_theme_select = Some(callback);

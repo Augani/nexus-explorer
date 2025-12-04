@@ -22,8 +22,8 @@ pub struct CellStyle {
 impl Default for CellStyle {
     fn default() -> Self {
         Self {
-            foreground: Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 }, // Default light text
-            background: Rgba { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },    // Transparent background
+            foreground: Rgba { r: 0.96, g: 0.91, b: 0.86, a: 1.0 },
+            background: Rgba { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
             bold: false,
             italic: false,
             underline: false,
@@ -251,7 +251,6 @@ impl TerminalState {
         self
     }
 
-    // Getters
     pub fn cols(&self) -> usize {
         self.cols
     }
@@ -301,7 +300,6 @@ impl TerminalState {
     }
 
 
-    // Setters
     pub fn set_running(&mut self, running: bool) {
         self.is_running = running;
     }
@@ -381,8 +379,8 @@ impl TerminalState {
                 '\r' => self.carriage_return(),
                 '\t' => self.tab(),
                 '\x08' => self.backspace(),
-                '\x07' => {} // Bell - ignore
-                c if c.is_control() => {} // Ignore other control chars
+                '\x07' => {}
+                c if c.is_control() => {}
                 c => self.write_char(c),
             }
         }
@@ -592,7 +590,6 @@ impl TerminalState {
         self.cursor.row = self.cursor.row.min(rows.saturating_sub(1));
         self.cursor.col = self.cursor.col.min(cols.saturating_sub(1));
 
-        // Clamp scroll offset
         self.scroll_offset = self.scroll_offset.min(self.max_scroll_offset());
     }
 

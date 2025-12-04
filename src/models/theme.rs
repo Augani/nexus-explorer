@@ -43,7 +43,6 @@ pub struct ThemeColors {
     pub bg_selected: Rgba,
     pub bg_active: Rgba,
 
-    // Text hierarchy
     pub text_primary: Rgba,
     pub text_secondary: Rgba,
     pub text_muted: Rgba,
@@ -104,7 +103,6 @@ pub struct ThemeTypography {
     pub font_mono: &'static str,
     pub font_mono_weight: u16,
 
-    // Size scale
     pub size_xs: f32,
     pub size_sm: f32,
     pub size_base: f32,
@@ -113,7 +111,6 @@ pub struct ThemeTypography {
     pub size_2xl: f32,
     pub size_3xl: f32,
 
-    // Letter spacing
     pub tracking_tight: f32,
     pub tracking_normal: f32,
     pub tracking_wide: f32,
@@ -290,7 +287,6 @@ impl Default for ThemeDecorations {
 impl ThemeColors {
     /// Check if all required color fields are set (non-transparent)
     pub fn is_complete(&self) -> bool {
-        // Check that essential colors are not transparent
         self.bg_primary.a > 0.0
             && self.bg_secondary.a > 0.0
             && self.text_primary.a > 0.0
@@ -483,7 +479,6 @@ impl Theme {
                 accent_secondary: rgba_from_hex(0xf4b842),
                 accent_glow: rgba_from_hex_alpha(0xd43f3f, 0.4),
 
-                // Semantic
                 success: rgba_from_hex(0x4ade80),
                 warning: rgba_from_hex(0xf4b842),
                 error: rgba_from_hex(0xef4444),
@@ -495,7 +490,6 @@ impl Theme {
                 border_emphasis: rgba_from_hex(0xf4b842),
                 border_ornate: rgba_from_hex(0xf4b842),
 
-                // File colors
                 folder_color: rgba_from_hex(0xf4b842),
                 folder_open_color: rgba_from_hex(0xffd700),
                 file_code: rgba_from_hex(0x60a5fa),
@@ -504,7 +498,6 @@ impl Theme {
                 file_archive: rgba_from_hex(0xa78bfa),
                 file_document: rgba_from_hex(0xfbbf24),
 
-                // Terminal
                 terminal_bg: rgba_from_hex(0x0d0a0a),
                 terminal_fg: rgba_from_hex(0xf4e8dc),
                 terminal_cursor: rgba_from_hex(0xf4b842),
@@ -575,7 +568,6 @@ impl Theme {
                 accent_secondary: rgba_from_hex(0xb48aff),
                 accent_glow: rgba_from_hex_alpha(0x6bd4ff, 0.4),
 
-                // Semantic
                 success: rgba_from_hex(0x4ade80),
                 warning: rgba_from_hex(0xfbbf24),
                 error: rgba_from_hex(0xf87171),
@@ -587,7 +579,6 @@ impl Theme {
                 border_emphasis: rgba_from_hex(0x6bd4ff),
                 border_ornate: rgba_from_hex(0xb48aff),
 
-                // File colors
                 folder_color: rgba_from_hex(0x6bd4ff),
                 folder_open_color: rgba_from_hex(0x8be0ff),
                 file_code: rgba_from_hex(0xb48aff),
@@ -596,7 +587,6 @@ impl Theme {
                 file_archive: rgba_from_hex(0xa78bfa),
                 file_document: rgba_from_hex(0xfbbf24),
 
-                // Terminal
                 terminal_bg: rgba_from_hex(0x0a1628),
                 terminal_fg: rgba_from_hex(0xe8f4ff),
                 terminal_cursor: rgba_from_hex(0x6bd4ff),
@@ -668,7 +658,6 @@ impl Theme {
                 accent_secondary: rgba_from_hex(0x8b4513),
                 accent_glow: rgba_from_hex_alpha(0xd4af37, 0.3),
 
-                // Semantic
                 success: rgba_from_hex(0x6b8e23),
                 warning: rgba_from_hex(0xd4af37),
                 error: rgba_from_hex(0x8b0000),
@@ -680,7 +669,6 @@ impl Theme {
                 border_emphasis: rgba_from_hex(0xd4af37),
                 border_ornate: rgba_from_hex(0xd4af37),
 
-                // File colors
                 folder_color: rgba_from_hex(0x8b4513),
                 folder_open_color: rgba_from_hex(0xa0522d),
                 file_code: rgba_from_hex(0x4682b4),
@@ -689,7 +677,6 @@ impl Theme {
                 file_archive: rgba_from_hex(0x654321),
                 file_document: rgba_from_hex(0xd4af37),
 
-                // Terminal
                 terminal_bg: rgba_from_hex(0x1a1510),
                 terminal_fg: rgba_from_hex(0xf5e6c8),
                 terminal_cursor: rgba_from_hex(0xd4af37),
@@ -761,7 +748,6 @@ impl Theme {
                 accent_secondary: rgba_from_hex(0x4a0080),
                 accent_glow: rgba_from_hex_alpha(0x9966ff, 0.5),
 
-                // Semantic
                 success: rgba_from_hex(0x00ff88),
                 warning: rgba_from_hex(0xff9900),
                 error: rgba_from_hex(0xff3366),
@@ -773,7 +759,6 @@ impl Theme {
                 border_emphasis: rgba_from_hex(0x9966ff),
                 border_ornate: rgba_from_hex(0x9966ff),
 
-                // File colors
                 folder_color: rgba_from_hex(0x9966ff),
                 folder_open_color: rgba_from_hex(0xb388ff),
                 file_code: rgba_from_hex(0x00ccff),
@@ -782,7 +767,6 @@ impl Theme {
                 file_archive: rgba_from_hex(0x6633cc),
                 file_document: rgba_from_hex(0xff9900),
 
-                // Terminal
                 terminal_bg: rgba_from_hex(0x050508),
                 terminal_fg: rgba_from_hex(0xe8e0ff),
                 terminal_cursor: rgba_from_hex(0x9966ff),
@@ -853,7 +837,6 @@ impl Theme {
                 accent_secondary: rgba_from_hex(0xc0c0c0),
                 accent_glow: rgba_from_hex_alpha(0x228b22, 0.3),
 
-                // Semantic
                 success: rgba_from_hex(0x32cd32),
                 warning: rgba_from_hex(0xdaa520),
                 error: rgba_from_hex(0xcd5c5c),
@@ -865,7 +848,6 @@ impl Theme {
                 border_emphasis: rgba_from_hex(0x228b22),
                 border_ornate: rgba_from_hex(0xc0c0c0),
 
-                // File colors
                 folder_color: rgba_from_hex(0x228b22),
                 folder_open_color: rgba_from_hex(0x32cd32),
                 file_code: rgba_from_hex(0x87ceeb),
@@ -874,7 +856,6 @@ impl Theme {
                 file_archive: rgba_from_hex(0x8b4513),
                 file_document: rgba_from_hex(0xc0c0c0),
 
-                // Terminal
                 terminal_bg: rgba_from_hex(0x050a08),
                 terminal_fg: rgba_from_hex(0xe8f0e8),
                 terminal_cursor: rgba_from_hex(0xc0c0c0),
@@ -1115,14 +1096,12 @@ mod tests {
         fn prop_theme_color_completeness(theme_id in arb_theme_id()) {
             let theme = Theme::from_id(theme_id);
             
-            // All themes must have complete color definitions
             prop_assert!(
                 theme.colors.is_complete(),
                 "Theme {:?} must have complete color definitions",
                 theme_id
             );
             
-            // Verify specific critical colors are set
             prop_assert!(
                 theme.colors.bg_primary.a > 0.0,
                 "Theme {:?} must have bg_primary set",
@@ -1149,10 +1128,8 @@ mod tests {
         fn prop_theme_persistence_round_trip(theme_id in arb_theme_id()) {
             let mut manager = ThemeManager::new();
             
-            // Set the theme
             manager.set_theme(theme_id);
             
-            // Verify the theme was set correctly
             prop_assert_eq!(
                 manager.current_id(),
                 theme_id,
@@ -1865,7 +1842,7 @@ impl ThemeColors {
 use std::sync::atomic::{AtomicU8, Ordering};
 
 /// Global storage for current theme ID (atomic for thread safety)
-static CURRENT_THEME_ID: AtomicU8 = AtomicU8::new(1); // 1 = Dark (default)
+static CURRENT_THEME_ID: AtomicU8 = AtomicU8::new(1);
 
 /// Convert ThemeId to u8 for atomic storage
 fn theme_id_to_u8(id: ThemeId) -> u8 {
@@ -1922,4 +1899,46 @@ pub fn theme_typography() -> ThemeTypography {
 /// Get the current theme decorations
 pub fn theme_decorations() -> ThemeDecorations {
     current_theme().decorations
+}
+
+/// Save theme selection to config file
+pub fn save_theme_selection(id: ThemeId) {
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("nexus-explorer");
+    
+    if std::fs::create_dir_all(&config_dir).is_err() {
+        return;
+    }
+    
+    let config_path = config_dir.join("theme.json");
+    let config = serde_json::json!({
+        "theme_id": id
+    });
+    
+    if let Ok(json) = serde_json::to_string_pretty(&config) {
+        let _ = std::fs::write(config_path, json);
+    }
+}
+
+/// Load theme selection from config file
+pub fn load_theme_selection() -> ThemeId {
+    let config_path = dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("nexus-explorer")
+        .join("theme.json");
+    
+    if config_path.exists() {
+        if let Ok(json) = std::fs::read_to_string(&config_path) {
+            if let Ok(config) = serde_json::from_str::<serde_json::Value>(&json) {
+                if let Some(theme_id) = config.get("theme_id") {
+                    if let Ok(id) = serde_json::from_value::<ThemeId>(theme_id.clone()) {
+                        return id;
+                    }
+                }
+            }
+        }
+    }
+    
+    ThemeId::default()
 }

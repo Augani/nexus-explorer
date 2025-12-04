@@ -297,15 +297,12 @@ mod tests {
     fn create_test_directory() -> TempDir {
         let temp_dir = TempDir::new().unwrap();
         
-        // Create some test files
         File::create(temp_dir.path().join("file_a.txt")).unwrap();
         File::create(temp_dir.path().join("file_b.txt")).unwrap();
         File::create(temp_dir.path().join("file_c.txt")).unwrap();
         
-        // Create a subdirectory
         fs::create_dir(temp_dir.path().join("subdir")).unwrap();
         
-        // Create a hidden file
         File::create(temp_dir.path().join(".hidden")).unwrap();
         
         temp_dir
@@ -440,18 +437,16 @@ mod tests {
             return true;
         }
 
-        // First check: directories should come before files
         let mut seen_file = false;
         for entry in entries {
             if entry.is_dir && seen_file {
-                return false; // Directory after file
+                return false;
             }
             if !entry.is_dir {
                 seen_file = true;
             }
         }
 
-        // Check sorting within directories and files separately
         let dirs: Vec<_> = entries.iter().filter(|e| e.is_dir).collect();
         let files: Vec<_> = entries.iter().filter(|e| !e.is_dir).collect();
 
@@ -504,20 +499,16 @@ mod tests {
                 _ => SortOrder::Descending,
             };
 
-            // Create a temp directory with random files
             let temp_dir = TempDir::new().unwrap();
             
-            // Create files with varying sizes
             for i in 0..file_count {
                 let file_path = temp_dir.path().join(format!("file_{:03}.txt", i));
                 let mut file = File::create(&file_path).unwrap();
-                // Write varying amounts of data to create different sizes
                 use std::io::Write;
                 let content = vec![b'x'; (i + 1) * 10];
                 file.write_all(&content).unwrap();
             }
 
-            // Create some directories
             let dir_count = file_count / 3;
             for i in 0..dir_count {
                 fs::create_dir(temp_dir.path().join(format!("dir_{:03}", i))).unwrap();

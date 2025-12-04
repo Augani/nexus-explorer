@@ -55,7 +55,7 @@ fn test_visible_range_empty_list() {
 fn test_visible_range_calculation() {
     let mut list = FileList::with_config(24.0, 2);
     list.set_entries(create_test_entries(100));
-    list.set_viewport_height(240.0); // 10 visible rows
+    list.set_viewport_height(240.0);
     list.set_scroll_offset(0.0);
     
     let range = list.calculate_visible_range();
@@ -69,8 +69,8 @@ fn test_visible_range_calculation() {
 fn test_visible_range_with_scroll() {
     let mut list = FileList::with_config(24.0, 2);
     list.set_entries(create_test_entries(100));
-    list.set_viewport_height(240.0); // 10 visible rows
-    list.set_scroll_offset(240.0); // Scrolled down 10 rows
+    list.set_viewport_height(240.0);
+    list.set_scroll_offset(240.0);
     
     let range = list.calculate_visible_range();
     // start_raw = 240/24 = 10, start = 10 - 2 = 8
@@ -171,7 +171,7 @@ fn test_rendered_entry_highlighting() {
 #[test]
 fn test_max_rendered_items() {
     let mut list = FileList::with_config(24.0, 5);
-    list.set_viewport_height(240.0); // 10 visible rows
+    list.set_viewport_height(240.0);
     
     // max = ceil(240/24) + 2*5 = 10 + 10 = 20
     assert_eq!(list.max_rendered_items(), 20);
@@ -181,7 +181,7 @@ fn test_max_rendered_items() {
 fn test_render_visible_items() {
     let mut list = FileList::with_config(24.0, 1);
     list.set_entries(create_test_entries(100));
-    list.set_viewport_height(72.0); // 3 visible rows
+    list.set_viewport_height(72.0);
     list.set_scroll_offset(0.0);
     
     let visible = list.render_visible_items();
@@ -196,8 +196,6 @@ fn test_render_visible_items() {
 use proptest::prelude::*;
 
 // **Feature: file-explorer-core, Property 5: Virtualization Bounds**
-// **Validates: Requirements 2.1**
-// 
 // *For any* file list with N total items, viewport height H, and row height R, 
 // the number of rendered items SHALL be at most `ceil(H / R) + buffer_size`, regardless of N.
 proptest! {
@@ -240,9 +238,6 @@ proptest! {
 }
 
 // **Feature: file-explorer-core, Property 7: Visible Range Calculation**
-// **Validates: Requirements 2.4**
-// 
-// *For any* viewport height H, row height R, scroll offset S, and total items N, 
 // the calculated visible range `[start, end)` SHALL satisfy: 
 // start = floor(S / R) - buffer (clamped to 0), 
 // end = min(start_raw + ceil(H / R) + buffer, N).
@@ -255,13 +250,12 @@ proptest! {
         viewport_height in 1.0f32..2000.0,
         row_height in 1.0f32..100.0,
         buffer_size in 0usize..20,
-        scroll_factor in 0.0f32..1.0  // Fraction of total scrollable area
+        scroll_factor in 0.0f32..1.0
     ) {
         let mut list = FileList::with_config(row_height, buffer_size);
         list.set_entries(create_test_entries(total_items));
         list.set_viewport_height(viewport_height);
         
-        // Calculate max scroll offset
         let total_height = total_items as f32 * row_height;
         let max_scroll = (total_height - viewport_height).max(0.0);
         let scroll_offset = scroll_factor * max_scroll;
@@ -296,8 +290,6 @@ proptest! {
 
 
 // **Feature: file-explorer-core, Property 6: Rendered Entry Completeness**
-// **Validates: Requirements 2.3**
-// 
 // *For any* FileEntry, the rendered representation SHALL contain the file name, 
 // formatted size, formatted modification date, and an icon reference.
 proptest! {
@@ -308,7 +300,7 @@ proptest! {
         name in "[a-zA-Z0-9_.-]{1,50}",
         is_dir in proptest::bool::ANY,
         size in 0u64..10_000_000_000,
-        days_since_epoch in 0u64..20000  // ~55 years from epoch
+        days_since_epoch in 0u64..20000
     ) {
         use std::time::{Duration, UNIX_EPOCH};
         
@@ -400,9 +392,9 @@ fn test_search_result_highlighting_integration() {
     // "dat" matches positions 0,1,2 in "data.csv"
     // "read" matches positions 0,1,2,3 in "readme.md"
     let highlight_positions = vec![
-        vec![0, 1, 2],      // document.txt
-        vec![0, 1, 2],      // data.csv
-        vec![0, 1, 2, 3],   // readme.md
+        vec![0, 1, 2],
+        vec![0, 1, 2],
+        vec![0, 1, 2, 3],
     ];
     list.set_highlight_positions(Some(highlight_positions));
     
@@ -418,7 +410,6 @@ fn test_search_result_highlighting_integration() {
     let rendered = list.render_item(2).unwrap();
     assert_eq!(rendered.highlight_positions, vec![0, 1, 2, 3]);
     
-    // Verify name_with_highlights returns correct flags
     let highlights = rendered.name_with_highlights();
     assert_eq!(highlights[0], ('r', true));
     assert_eq!(highlights[1], ('e', true));
@@ -432,7 +423,6 @@ fn test_search_result_highlighting_cleared() {
     let mut list = FileList::new();
     list.set_entries(vec![create_test_entry("test.txt", false, 100)]);
     
-    // Set highlights
     list.set_highlight_positions(Some(vec![vec![0, 1]]));
     let rendered = list.render_item(0).unwrap();
     assert_eq!(rendered.highlight_positions, vec![0, 1]);
@@ -448,7 +438,6 @@ fn test_search_result_highlighting_empty_positions() {
     let mut list = FileList::new();
     list.set_entries(vec![create_test_entry("test.txt", false, 100)]);
     
-    // Set empty highlight positions (no matches)
     list.set_highlight_positions(Some(vec![vec![]]));
     let rendered = list.render_item(0).unwrap();
     assert!(rendered.highlight_positions.is_empty());
@@ -456,10 +445,7 @@ fn test_search_result_highlighting_empty_positions() {
 }
 
 // **Feature: ui-enhancements, Property 1: Search Filter Correctness**
-// **Validates: Requirements 1.2, 1.4**
-// 
 // *For any* file list with entries and a search query, when filtering is applied,
-// all returned entries SHALL contain the search query as a substring (case-insensitive fuzzy match),
 // and the filtered count SHALL be less than or equal to the original count.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -561,8 +547,8 @@ fn test_apply_search_filter() {
     // 0: config.json, 1: data.csv, 2: document.txt, 3: readme.md
     // Apply filter matching entries at sorted indices
     let matches = vec![
-        (2, vec![0, 1, 2], 100),  // document.txt (sorted index 2)
-        (1, vec![0, 1, 2], 90),   // data.csv (sorted index 1)
+        (2, vec![0, 1, 2], 100),
+        (1, vec![0, 1, 2], 90),
     ];
     list.apply_search_filter("d", matches);
     
@@ -586,11 +572,9 @@ fn test_clear_search_filter() {
         create_test_entry("data.csv", false, 2048),
     ]);
     
-    // Apply filter
     list.apply_search_filter("doc", vec![(0, vec![0, 1, 2], 100)]);
     assert_eq!(list.item_count(), 1);
     
-    // Clear filter
     list.clear_search_filter();
     assert_eq!(list.item_count(), 2);
     assert!(!list.is_filtered());
@@ -612,8 +596,6 @@ fn test_empty_query_clears_filter() {
 }
 
 // **Feature: ui-enhancements, Property 2: Search Highlight Positions Validity**
-// **Validates: Requirements 1.3**
-// 
 // *For any* filtered entry with match positions, all highlight positions SHALL be
 // valid indices within the entry name (0 <= position < name.len()).
 proptest! {
@@ -651,7 +633,6 @@ proptest! {
             }
         }
         
-        // Verify get_match_positions returns the same positions
         if let Some(match_positions) = list.get_match_positions(0) {
             prop_assert_eq!(
                 match_positions.len(), positions.len(),
@@ -667,7 +648,7 @@ fn test_highlight_positions_within_bounds() {
     list.set_entries(vec![create_test_entry("test.txt", false, 100)]);
     
     // Apply filter with valid positions
-    let matches = vec![(0, vec![0, 1, 2, 3], 100)];  // "test" in "test.txt"
+    let matches = vec![(0, vec![0, 1, 2, 3], 100)];
     list.apply_search_filter("test", matches);
     
     let positions = list.get_match_positions(0).unwrap();
@@ -693,9 +674,6 @@ fn test_highlight_positions_empty_for_no_match() {
 }
 
 
-// **Feature: ui-enhancements, Property 3: Empty Search Returns All**
-// **Validates: Requirements 1.5**
-// 
 // *For any* file list with N entries, when the search query is empty or cleared,
 // the FileList SHALL display all N original entries.
 proptest! {
@@ -718,7 +696,6 @@ proptest! {
         let mut list = FileList::new();
         list.set_entries(entries.clone());
         
-        // Verify initial state shows all entries
         prop_assert_eq!(
             list.item_count(), original_count,
             "Initial count {} doesn't match original {}",
@@ -795,14 +772,13 @@ fn test_clear_search_filter_restores_all() {
     ];
     list.set_entries(entries.clone());
     
-    // Verify initial count
     assert_eq!(list.item_count(), 5);
     
     // After sorting by name, order is: alpha, beta, delta, epsilon, gamma
     // Apply filter that matches only some entries (using sorted indices)
     let matches = vec![
-        (0, vec![0, 1], 100),  // alpha (sorted index 0)
-        (2, vec![0, 1], 90),   // delta (sorted index 2)
+        (0, vec![0, 1], 100),
+        (2, vec![0, 1], 90),
     ];
     list.apply_search_filter("a", matches);
     
@@ -838,7 +814,6 @@ fn test_escape_clears_search_restores_entries() {
     ];
     list.set_entries(entries.clone());
     
-    // Apply filter
     let matches = vec![(0, vec![0, 1, 2], 100)];
     list.apply_search_filter("doc", matches);
     assert_eq!(list.item_count(), 1);
@@ -853,8 +828,6 @@ fn test_escape_clears_search_restores_entries() {
 
 
 // **Feature: ui-enhancements, Property 33: Keyboard Selection Movement**
-// **Validates: Requirements 13.1**
-// 
 // *For any* file list with N items and current selection index S, pressing Up arrow
 // SHALL move selection to max(0, S-1), and pressing Down arrow SHALL move selection
 // to min(N-1, S+1). If no selection exists, both actions SHALL select index 0.
@@ -876,7 +849,6 @@ proptest! {
         let mut list = FileList::new();
         list.set_entries(entries);
         
-        // Set initial selection (clamped to valid range)
         let clamped_initial = initial_selection.map(|s| s.min(entry_count.saturating_sub(1)));
         list.set_selected_index(clamped_initial);
         
@@ -1087,11 +1059,9 @@ fn test_move_selection_with_no_initial_selection() {
 #[test]
 fn test_move_selection_empty_list() {
     let mut list = FileList::new();
-    // Empty list
     assert_eq!(list.item_count(), 0);
     
     // Move operations should not crash on empty list
-    // The actual FileListView checks for empty list before modifying selection
     if list.item_count() > 0 {
         list.set_selected_index(Some(0));
     }
@@ -1101,8 +1071,6 @@ fn test_move_selection_empty_list() {
 
 
 // **Feature: ui-enhancements, Property 34: Parent Navigation**
-// **Validates: Requirements 13.3**
-// 
 // *For any* path P with a parent directory, navigating to parent SHALL result in
 // the parent path of P. For root paths, parent navigation SHALL have no effect.
 proptest! {
@@ -1125,7 +1093,6 @@ proptest! {
             })
             .collect();
         
-        // Build the path
         let mut path = PathBuf::from("/");
         for segment in &segments {
             path.push(segment);
@@ -1163,7 +1130,7 @@ proptest! {
         // Property 3: Multiple parent navigations should eventually reach root
         let mut current = path.clone();
         let mut iterations = 0;
-        let max_iterations = depth + 5; // Safety limit
+        let max_iterations = depth + 5;
         
         while let Some(parent) = current.parent() {
             if parent == Path::new("") || parent == Path::new("/") {

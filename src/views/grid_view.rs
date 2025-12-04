@@ -166,7 +166,6 @@ impl Render for GridViewComponent {
         let context_menu_pos = self.context_menu_position;
         let _context_menu_idx = self.context_menu_index;
 
-        // Colors
         let bg_darker = gpui::rgb(0x010409);
         let bg_dark = gpui::rgb(0x0d1117);
         let border_color = gpui::rgb(0x30363d);
@@ -190,7 +189,6 @@ impl Render for GridViewComponent {
                 view.close_context_menu();
                 cx.notify();
             }))
-            // Header
             .child(
                 div()
                     .flex()
@@ -205,7 +203,6 @@ impl Render for GridViewComponent {
                     .text_color(text_gray)
                     .child(format!("{} items", total_items))
             )
-            // Grid content
             .child(
                 div()
                     .flex_1()
@@ -295,14 +292,12 @@ impl Render for GridViewComponent {
                                                     });
                                                 }
                                             })
-                                            // Icon
                                             .child(
                                                 svg()
                                                     .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
                                                     .size(px(config.icon_size))
                                                     .text_color(icon_color)
                                             )
-                                            // File name
                                             .child(
                                                 div()
                                                     .w_full()
@@ -317,7 +312,6 @@ impl Render for GridViewComponent {
                         )
                     })
             )
-            // Footer
             .child(
                 div()
                     .h(px(28.0))
@@ -351,7 +345,6 @@ impl Render for GridViewComponent {
                             .child("Grid View"),
                     ),
             )
-            // Context Menu
             .when_some(context_menu_pos, |this, pos| {
                 let entity = cx.entity().clone();
                 let selected_entry = self.context_menu_index.and_then(|idx| self.grid_view.entries.get(idx).cloned());

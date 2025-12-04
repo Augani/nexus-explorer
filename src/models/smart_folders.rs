@@ -48,7 +48,7 @@ pub enum DateFilter {
     /// Files modified within the last N months
     LastMonths(u32),
     /// Files modified between two dates
-    Between(u64, u64), // Unix timestamps
+    Between(u64, u64),
     /// Files modified before a date
     Before(u64),
     /// Files modified after a date
@@ -228,7 +228,6 @@ impl SearchQuery {
 
     /// Checks if a file entry matches this query
     pub fn matches(&self, entry: &FileEntry, file_tags: &HashSet<TagId>) -> bool {
-        // Check text pattern (fuzzy match on name)
         if let Some(ref pattern) = self.text {
             let name_lower = entry.name.to_lowercase();
             let pattern_lower = pattern.to_lowercase();
@@ -237,7 +236,6 @@ impl SearchQuery {
             }
         }
 
-        // Check file types (extension)
         if !self.file_types.is_empty() {
             let ext = entry
                 .path
@@ -250,21 +248,18 @@ impl SearchQuery {
             }
         }
 
-        // Check date filter
         if let Some(ref date_filter) = self.date_filter {
             if !date_filter.matches(entry.modified) {
                 return false;
             }
         }
 
-        // Check size filter (only for files)
         if let Some(ref size_filter) = self.size_filter {
             if !entry.is_dir && !size_filter.matches(entry.size) {
                 return false;
             }
         }
 
-        // Check tags
         if !self.tags.is_empty() {
             let has_matching_tag = self.tags.iter().any(|tag| file_tags.contains(tag));
             if !has_matching_tag {
@@ -272,17 +267,14 @@ impl SearchQuery {
             }
         }
 
-        // Check hidden files
         if !self.include_hidden && entry.name.starts_with('.') {
             return false;
         }
 
-        // Check directories only
         if self.directories_only && !entry.is_dir {
             return false;
         }
 
-        // Check files only
         if self.files_only && entry.is_dir {
             return false;
         }
@@ -417,7 +409,6 @@ impl SmartFolderManager {
 
     /// Creates a new smart folder with the given name and query
     pub fn create(&mut self, name: String, query: SearchQuery) -> SmartFolderResult<SmartFolderId> {
-        // Check for duplicate names
         if self.folders.iter().any(|f| f.name.eq_ignore_ascii_case(&name)) {
             return Err(SmartFolderError::DuplicateName(name));
         }
@@ -452,7 +443,6 @@ impl SmartFolderManager {
 
     /// Renames a smart folder
     pub fn rename(&mut self, id: SmartFolderId, new_name: String) -> SmartFolderResult<()> {
-        // Check for duplicate names (excluding the folder being renamed)
         if self.folders.iter().any(|f| f.id != id && f.name.eq_ignore_ascii_case(&new_name)) {
             return Err(SmartFolderError::DuplicateName(new_name));
         }
@@ -646,7 +636,7 @@ mod tests {
         let query = SearchQuery::new();
 
         manager.create("Test".to_string(), query.clone()).unwrap();
-        let result = manager.create("test".to_string(), query); // Case-insensitive
+        let result = manager.create("test".to_string(), query);
 
         assert!(matches!(result, Err(SmartFolderError::DuplicateName(_))));
     }

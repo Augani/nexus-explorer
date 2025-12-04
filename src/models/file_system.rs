@@ -88,9 +88,7 @@ impl FileSystem {
         self.request_id = self.request_id.wrapping_add(1);
         self.current_path = path.clone();
         
-        // Check cache first
         if let Some(cached) = self.cache.get(&path) {
-            // Check if cache is still valid (not stale based on mtime)
             let is_stale = std::fs::metadata(&path)
                 .and_then(|m| m.modified())
                 .map(|mtime| mtime > cached.mtime)
@@ -101,7 +99,6 @@ impl FileSystem {
             return self.request_id;
         }
         
-        // No cache hit - clear entries and start loading
         self.entries.clear();
         self.state = LoadState::Loading { request_id: self.request_id };
         
@@ -215,7 +212,6 @@ impl FileSystem {
     ) -> LoadOperation {
         let request_id = self.begin_load(path.clone());
 
-        // Check if this is the trash folder - use special handling
         if super::is_trash_path(&path) {
             let batch_config = BatchConfig::default();
             let (entry_tx, batch_rx, _batch_handle) = create_batch_pipeline(batch_config);
@@ -283,7 +279,6 @@ impl FileSystem {
 
         let count = self.entries.len();
         
-        // Get directory mtime for cache staleness detection
         let mtime = std::fs::metadata(&self.current_path)
             .and_then(|m| m.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH);
@@ -299,7 +294,6 @@ impl FileSystem {
     /// Updates sync status for all entries based on cloud storage manager
     /// Call this after loading entries when the current path is in a cloud storage location
     pub fn update_sync_status(&mut self, cloud_manager: &super::CloudStorageManager) {
-        // Check if current path is within a cloud storage location
         if cloud_manager.is_cloud_path(&self.current_path).is_some() {
             for entry in &mut self.entries {
                 if let Some(status) = cloud_manager.get_file_sync_status(&entry.path) {
@@ -337,7 +331,6 @@ pub fn load_directory_sync(
     let op = fs.load_path(path, sort_key, sort_order, include_hidden);
     let request_id = op.request_id;
 
-    // Process all batches
     while let Ok(batch) = op.batch_receiver.recv() {
         fs.process_batch(request_id, batch);
     }

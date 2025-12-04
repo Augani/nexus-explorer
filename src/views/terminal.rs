@@ -224,7 +224,7 @@ impl TerminalView {
                 ClearMode::All | ClearMode::Scrollback => self.state.clear_line(),
             },
             ParsedSegment::SetTitle(title) => self.state.set_title(Some(title)),
-            ParsedSegment::Bell => {} // Could trigger a visual bell
+            ParsedSegment::Bell => {}
             ParsedSegment::Backspace => self.state.backspace(),
             ParsedSegment::Tab => self.state.tab(),
             ParsedSegment::LineFeed => self.state.newline(),
@@ -357,10 +357,8 @@ impl TerminalView {
         // Auto-scroll to bottom on input
         self.scroll_to_bottom();
 
-        // Get the key name (lowercase in GPUI)
         let key = event.keystroke.key.as_str();
         
-        // Handle special keys first
         let handled = match key {
             "enter" => { self.send_input(key_codes::ENTER); true }
             "tab" => { self.send_input(key_codes::TAB); true }
@@ -393,7 +391,6 @@ impl TerminalView {
         };
         
         if !handled {
-            // Handle regular characters and modifier combinations
             if let Some(key_char) = &event.keystroke.key_char {
                 if event.keystroke.modifiers.platform {
                     // Platform modifier (Cmd on macOS, Ctrl on Windows/Linux)
@@ -443,7 +440,6 @@ impl TerminalView {
             }
         }
         
-        // Reset cursor blink on input
         self.reset_cursor_blink();
     }
 
@@ -500,7 +496,7 @@ impl TerminalView {
     /// Convert mouse position to terminal line/column
     fn position_from_mouse(&self, position: gpui::Point<gpui::Pixels>) -> (usize, usize) {
         let x = f32::from(position.x) - TERMINAL_PADDING;
-        let y = f32::from(position.y) - TERMINAL_PADDING - 36.0; // Account for header
+        let y = f32::from(position.y) - TERMINAL_PADDING - 36.0;
         
         let col = (x / CHAR_WIDTH).max(0.0) as usize;
         let row = (y / LINE_HEIGHT).max(0.0) as usize;
@@ -643,7 +639,6 @@ impl TerminalView {
         let cursor_fg = theme.terminal_bg;
         let selection_bg = theme.terminal_selection;
         
-        // Check if this line has any selection
         let has_selection = self.has_selection() && {
             let (start, end) = (self.selection_start.unwrap(), self.selection_end.unwrap());
             let (s_line, e_line) = if start.0 <= end.0 { (start.0, end.0) } else { (end.0, start.0) };
@@ -664,7 +659,6 @@ impl TerminalView {
                 .child(line_text);
         }
         
-        // Need to handle cursor or selection - build spans
         let chars: Vec<char> = line_text.chars().collect();
         let line_len = chars.len();
         let mut spans: Vec<gpui::AnyElement> = Vec::new();
@@ -690,7 +684,6 @@ impl TerminalView {
                 // Flush any pending text
                 flush_span(&mut spans, &mut current_text, current_selected);
                 
-                // Render cursor
                 let cursor_char = chars.get(col).copied().unwrap_or(' ');
                 let cursor_span = div()
                     .bg(cursor_bg)
@@ -699,7 +692,6 @@ impl TerminalView {
                 spans.push(cursor_span.into_any_element());
                 current_selected = is_selected;
             } else if col < line_len {
-                // Check if selection state changed
                 if is_selected != current_selected && !current_text.is_empty() {
                     flush_span(&mut spans, &mut current_text, current_selected);
                 }
@@ -748,7 +740,6 @@ impl Focusable for TerminalView {
 
 impl Render for TerminalView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Process any pending output
         self.process_output();
 
         // Start polling task if terminal is running and polling hasn't started
@@ -789,7 +780,6 @@ impl Render for TerminalView {
             return div().id("terminal-hidden").size_0();
         }
 
-        // Get virtualized line range for efficient rendering
         let (render_start, render_end) = self.visible_line_range();
         let cursor_line = self.cursor_absolute_line();
         let total_lines = self.state.total_lines();
@@ -809,7 +799,6 @@ impl Render for TerminalView {
             })
             .collect();
 
-        // Update cursor blink state
         self.update_cursor_blink();
 
         div()
@@ -831,7 +820,6 @@ impl Render for TerminalView {
             .border_color(border_color)
             .flex()
             .flex_col()
-            // Header
             .child(
                 div()
                     .id("terminal-header")
@@ -893,9 +881,9 @@ impl Render for TerminalView {
                                     .h(px(8.0))
                                     .rounded_full()
                                     .bg(if self.is_running() {
-                                        gpui::rgb(0x4ade80) // Green when running
+                                        gpui::rgb(0x4ade80)
                                     } else {
-                                        gpui::rgb(0x8b7b6b) // Gray when stopped
+                                        gpui::rgb(0x8b7b6b)
                                     })
                             )
                     )
@@ -918,7 +906,6 @@ impl Render for TerminalView {
                             // Prevent scroll area from capturing key events
                             .on_key_down(cx.listener(Self::handle_key_down))
                             .child(
-                                // Render all lines - GPUI handles virtualization
                                 div()
                                     .flex()
                                     .flex_col()
@@ -991,7 +978,7 @@ mod tests {
     #[test]
     fn test_cursor_blink_interval() {
         assert!(CURSOR_BLINK_INTERVAL_MS > 0);
-        assert!(CURSOR_BLINK_INTERVAL_MS < 1000); // Should be less than 1 second
+        assert!(CURSOR_BLINK_INTERVAL_MS < 1000);
     }
 
     #[test]
@@ -1000,7 +987,6 @@ mod tests {
         let start = (5, 10);
         let end = (3, 5);
         
-        // Normalize
         let (start_line, start_col, end_line, end_col) = if start.0 > end.0 || 
             (start.0 == end.0 && start.1 > end.1) {
             (end.0, end.1, start.0, start.1)
@@ -1068,9 +1054,9 @@ mod tests {
         } else if line == start_line {
             col >= start_col
         } else if line == end_line {
-            true // Any column on end line before end_col
+            true
         } else {
-            true // Middle lines are fully selected
+            true
         };
         
         assert!(is_selected);

@@ -189,7 +189,6 @@ impl Render for TabBarView {
                         ),
                 )
             })
-            // Tab container
             .child(
                 div()
                     .flex_1()
@@ -232,14 +231,12 @@ impl Render for TabBarView {
                                             view.handle_tab_click(tab_id, cx);
                                         });
                                     })
-                                    // Folder icon
                                     .child(
                                         svg()
                                             .path("assets/icons/folder.svg")
                                             .size(px(14.0))
                                             .text_color(if is_active { accent } else { text_muted }),
                                     )
-                                    // Tab title
                                     .child(
                                         div()
                                             .text_xs()
@@ -260,7 +257,6 @@ impl Render for TabBarView {
                                                 .bg(theme.warning),
                                         )
                                     })
-                                    // Close button
                                     .child(
                                         div()
                                             .id(SharedString::from(format!("close-tab-{}", tab_id.0)))
@@ -306,7 +302,6 @@ impl Render for TabBarView {
                         ),
                 )
             })
-            // New tab button
             .child(
                 div()
                     .id("new-tab")
@@ -339,7 +334,6 @@ mod tests {
 
     #[test]
     fn test_tab_bar_creation() {
-        // Basic test - actual GPUI context tests would need more setup
         let state = TabState::new(PathBuf::from("/home"));
         assert_eq!(state.tab_count(), 1);
     }

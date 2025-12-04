@@ -137,7 +137,6 @@ proptest! {
     ) {
         let mut manager = SmartFolderManager::new();
         
-        // Create a smart folder with the query
         let id = manager.create(folder_name, query.clone()).unwrap();
         
         // Execute the query through the smart folder
@@ -155,7 +154,6 @@ proptest! {
             "Smart folder and manual query should return same number of results"
         );
         
-        // Check that all results match
         for (sf_entry, manual_entry) in smart_folder_results.iter().zip(manual_results.iter()) {
             prop_assert_eq!(
                 &sf_entry.path,
@@ -206,14 +204,12 @@ proptest! {
     ) {
         let manager = SmartFolderManager::new();
         
-        // Create queries with different cases
         let lower_query = SearchQuery::with_text(base_name.to_lowercase());
         let upper_query = SearchQuery::with_text(base_name.to_uppercase());
         
         let lower_results = manager.execute_query(&lower_query, &entries, |_| HashSet::new());
         let upper_results = manager.execute_query(&upper_query, &entries, |_| HashSet::new());
         
-        // Both should return the same results (case-insensitive matching)
         prop_assert_eq!(
             lower_results.len(),
             upper_results.len(),
@@ -227,7 +223,6 @@ proptest! {
     ) {
         let manager = SmartFolderManager::new();
         
-        // Empty query with include_hidden = true should return all entries
         let query = SearchQuery {
             include_hidden: true,
             ..Default::default()

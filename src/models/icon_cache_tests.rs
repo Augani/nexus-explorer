@@ -31,7 +31,6 @@ fn test_get_or_default_returns_default_for_missing() {
 
     let result = cache.get_or_default(&key);
     
-    // Should return default icon
     assert_eq!(result, &expected_default);
     // Should add to pending
     assert!(cache.is_pending(&key));
@@ -136,20 +135,16 @@ proptest! {
         // Ensure key is not in cache
         prop_assert!(!cache.contains(&key));
         
-        // Get expected default before mutable borrow
         let expected_default = match &key {
             IconKey::Directory => cache.folder_icon().clone(),
             _ => cache.default_icon().clone(),
         };
         
-        // Call get_or_default
         let result = cache.get_or_default(&key);
         
-        // Should return appropriate default icon
         prop_assert_eq!(result, &expected_default,
             "Cache miss should return default icon for key {:?}", key);
         
-        // Should add to pending set
         prop_assert!(cache.is_pending(&key),
             "Cache miss should add key {:?} to pending set", key);
     }
@@ -227,7 +222,6 @@ fn test_process_fetch_results() {
     let _ = cache.get_or_default(&key);
     assert!(cache.is_pending(&key));
     
-    // Process successful result
     let results = vec![IconFetchResult::success(key.clone(), RenderImage::default_placeholder())];
     let count = cache.process_fetch_results(results);
     
@@ -245,7 +239,6 @@ fn test_process_fetch_results_failure_removes_pending() {
     let _ = cache.get_or_default(&key);
     assert!(cache.is_pending(&key));
     
-    // Process failed result
     let results = vec![IconFetchResult::failure(key.clone(), "Error".to_string())];
     let count = cache.process_fetch_results(results);
     
@@ -262,7 +255,6 @@ fn test_icon_fetch_pipeline_default_icons() {
     pipeline.request_icon(IconKey::Directory, None);
     pipeline.request_icon(IconKey::GenericFile, None);
     
-    // Give worker time to process
     std::thread::sleep(std::time::Duration::from_millis(50));
     
     let results = pipeline.poll_results();
@@ -294,7 +286,6 @@ proptest! {
         let image = RenderImage::new(32, 32, vec![0u8; 32 * 32 * 4]);
         let result = IconFetchResult::success(key.clone(), image.clone());
         
-        // Process the fetch result
         let count = cache.process_fetch_results(vec![result]);
         
         // Verify: cache should contain the icon

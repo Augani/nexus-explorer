@@ -107,7 +107,6 @@ fn test_column_view_select_directory() {
     let root = PathBuf::from("/root");
     let mut view = ColumnView::new(root);
     
-    // Set up entries in first column
     let entries = create_test_entries();
     view.set_column_entries(0, entries);
     
@@ -124,7 +123,6 @@ fn test_column_view_select_file() {
     let root = PathBuf::from("/root");
     let mut view = ColumnView::new(root);
     
-    // Set up entries in first column
     let entries = create_test_entries();
     view.set_column_entries(0, entries);
     
@@ -185,7 +183,6 @@ fn test_column_view_navigate_up() {
     // Select second item
     view.select(0, 1);
     
-    // Navigate up
     assert!(view.navigate_up());
     assert_eq!(view.columns()[0].selected_index, Some(0));
     
@@ -307,8 +304,8 @@ use proptest::prelude::*;
 /// Generates a valid file entry for testing
 fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
     (
-        "[a-zA-Z0-9_]{1,20}",  // name
-        prop::bool::ANY,       // is_dir
+        "[a-zA-Z0-9_]{1,20}",
+        prop::bool::ANY,
     ).prop_map(|(name, is_dir)| {
         let ext = if is_dir { "" } else { ".txt" };
         let full_name = format!("{}{}", name, ext);
@@ -347,7 +344,6 @@ proptest! {
         let root = PathBuf::from("/root");
         let mut view = ColumnView::new(root);
         
-        // Set up entries in first column
         view.set_column_entries(0, entries.clone());
         
         // Find a directory to select
@@ -366,7 +362,6 @@ proptest! {
         // Select the directory
         view.select(0, dir_idx);
         
-        // Property 1: Selecting a directory creates a new column
         prop_assert_eq!(view.column_count(), 2, 
             "Selecting a directory should create a new column");
         
@@ -387,7 +382,6 @@ proptest! {
         let root = PathBuf::from("/root");
         let mut view = ColumnView::new(root);
         
-        // Set up entries in first column
         view.set_column_entries(0, entries.clone());
         
         // Find a file to select
@@ -406,7 +400,6 @@ proptest! {
         // Select the file
         view.select(0, file_idx);
         
-        // Property: Selecting a file should NOT create a new column
         prop_assert_eq!(view.column_count(), 1,
             "Selecting a file should not create a new column");
         
@@ -423,7 +416,6 @@ proptest! {
         let root = PathBuf::from("/root");
         let mut view = ColumnView::new(root);
         
-        // Set up entries in first column
         view.set_column_entries(0, entries1.clone());
         
         // Find directories in first column
@@ -437,7 +429,6 @@ proptest! {
             return Ok(());
         }
         
-        // Select first directory to create column 2
         view.select(0, dir_indices1[0]);
         view.set_column_entries(1, entries2.clone());
         
@@ -452,7 +443,6 @@ proptest! {
             return Ok(());
         }
         
-        // Select directory in column 2 to create column 3
         view.select(1, dir_indices2[0]);
         prop_assert_eq!(view.column_count(), 3, "Should have 3 columns");
         

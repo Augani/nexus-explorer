@@ -168,7 +168,6 @@ impl ProgressPanelView {
                             .flex()
                             .items_center()
                             .gap_2()
-                            // Operation icon
                             .child(
                                 svg()
                                     .path(match op_type {
@@ -187,7 +186,6 @@ impl ProgressPanelView {
                                     .text_color(text_primary)
                                     .child(format!("{}", op_type))
                             )
-                            // File count
                             .child(
                                 div()
                                     .text_xs()
@@ -214,7 +212,6 @@ impl ProgressPanelView {
                             .flex()
                             .items_center()
                             .gap_2()
-                            // Status text
                             .child(
                                 div()
                                     .text_xs()
@@ -390,7 +387,6 @@ impl ProgressPanelView {
                                         .child(user_msg)
                                 )
                         )
-                        // Action buttons
                         .child(
                             div()
                                 .flex()
@@ -437,7 +433,6 @@ impl ProgressPanelView {
                                             .child("Retry")
                                     )
                                 })
-                                // Cancel button
                                 .child(
                                     div()
                                         .id(SharedString::from(format!("cancel-err-{}", op_id.0)))
@@ -501,7 +496,6 @@ impl Render for ProgressPanelView {
             .flex()
             .flex_col()
             .overflow_hidden()
-            // Header
             .child(
                 div()
                     .id("progress-panel-header")

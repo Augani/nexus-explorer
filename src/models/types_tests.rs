@@ -116,7 +116,7 @@ proptest! {
         let mut sort_state = SortState::new();
         sort_state.column = SortColumn::Name;
         sort_state.direction = SortDirection::Ascending;
-        sort_state.directories_first = false; // Test pure name sorting
+        sort_state.directories_first = false;
         
         sort_state.sort_entries(&mut entries);
         
@@ -239,7 +239,6 @@ proptest! {
     ) {
         let mut sort_state = SortState::new();
         
-        // First click sets the column with default direction
         sort_state.toggle_column(column);
         let first_direction = sort_state.direction;
         
@@ -252,7 +251,6 @@ proptest! {
             "Clicking same column twice should reverse direction"
         );
         
-        // Third click should return to original direction
         sort_state.toggle_column(column);
         let third_direction = sort_state.direction;
         
@@ -330,7 +328,6 @@ proptest! {
     ) {
         use std::time::{Duration, UNIX_EPOCH};
         
-        // Create initial entries
         let mut entries: Vec<FileEntry> = (0..initial_count)
             .map(|i| {
                 let name = format!("file_{:04}.txt", i);
@@ -344,16 +341,13 @@ proptest! {
             })
             .collect();
         
-        // Set up sort state
         let mut sort_state = SortState::new();
         sort_state.column = column;
         sort_state.direction = if ascending { SortDirection::Ascending } else { SortDirection::Descending };
         sort_state.directories_first = false;
         
-        // Sort initial entries
         sort_state.sort_entries(&mut entries);
         
-        // Verify initial sort is correct
         verify_sort_order(&entries, column, sort_state.direction)?;
         
         // Add new entries
@@ -375,7 +369,6 @@ proptest! {
         // Re-sort with same sort state
         sort_state.sort_entries(&mut entries);
         
-        // Verify sort order is maintained after update
         verify_sort_order(&entries, column, sort_state.direction)?;
     }
 }

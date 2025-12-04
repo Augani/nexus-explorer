@@ -10,7 +10,6 @@ impl DeviceMonitor {
             let drive_path = format!("{}:\\", letter as char);
             let path = PathBuf::from(&drive_path);
             
-            // Check if the drive exists
             if !path.exists() {
                 continue;
             }
@@ -32,12 +31,10 @@ impl DeviceMonitor {
             )
             .with_removable(is_removable);
             
-            // Get space info
             if let Ok((total, free)) = get_disk_space(&path) {
                 device = device.with_space(total, free);
             }
             
-            // Check if read-only
             device = device.with_read_only(is_drive_read_only(&path));
             
             self.add_device(device);

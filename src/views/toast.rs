@@ -147,7 +147,7 @@ impl Render for ToastManager {
 
         div()
             .absolute()
-            .bottom(px(80.0)) // Above status bar
+            .bottom(px(80.0))
             .right(px(16.0))
             .flex()
             .flex_col_reverse()
