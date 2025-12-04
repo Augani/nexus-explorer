@@ -360,8 +360,9 @@ jobs:
           APPRUN
           chmod +x AppDir/AppRun
 
-          # Build AppImage
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir NexusExplorer-linux-x86_64.AppImage
+          # Extract appimagetool and run without FUSE
+          ./appimagetool-x86_64.AppImage --appimage-extract
+          ARCH=x86_64 ./squashfs-root/AppRun AppDir NexusExplorer-linux-x86_64.AppImage
 
       - name: Create DEB package
         run: |
