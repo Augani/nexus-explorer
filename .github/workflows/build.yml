@@ -3,15 +3,15 @@ name: Build
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
+  BINARY_NAME: nexus-explorer
 
 jobs:
   build-macos:
+    name: Build (macOS ${{ matrix.target }})
     runs-on: macos-latest
     strategy:
       matrix:
@@ -19,8 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-action@stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -46,21 +46,29 @@ jobs:
 
       - name: Create app bundle
         run: |
-          mkdir -p "Nexus.app/Contents/MacOS"
-          mkdir -p "Nexus.app/Contents/Resources"
-          cp target/${{ matrix.target }}/release/file-explorer "Nexus.app/Contents/MacOS/Nexus"
-          cp -r assets "Nexus.app/Contents/Resources/"
-          cat > "Nexus.app/Contents/Info.plist" << EOF
+          APP_NAME="Nexus Explorer"
+          mkdir -p "${APP_NAME}.app/Contents/MacOS"
+          mkdir -p "${APP_NAME}.app/Contents/Resources"
+
+          cp "target/${{ matrix.target }}/release/${BINARY_NAME}" "${APP_NAME}.app/Contents/MacOS/Nexus Explorer"
+
+          if [ -d "assets" ]; then
+            cp -r assets "${APP_NAME}.app/Contents/Resources/"
+          fi
+
+          cat > "${APP_NAME}.app/Contents/Info.plist" << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
               <key>CFBundleExecutable</key>
-              <string>Nexus</string>
+              <string>Nexus Explorer</string>
               <key>CFBundleIdentifier</key>
-              <string>com.nexus.file-explorer</string>
+              <string>com.nexus.explorer</string>
               <key>CFBundleName</key>
-              <string>Nexus</string>
+              <string>Nexus Explorer</string>
+              <key>CFBundleDisplayName</key>
+              <string>Nexus Explorer</string>
               <key>CFBundleVersion</key>
               <string>0.1.0</string>
               <key>CFBundleShortVersionString</key>
@@ -68,30 +76,92 @@ jobs:
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>LSMinimumSystemVersion</key>
-              <string>11.0</string>
+              <string>12.0</string>
               <key>NSHighResolutionCapable</key>
               <true/>
+              <key>LSApplicationCategoryType</key>
+              <string>public.app-category.utilities</string>
           </dict>
           </plist>
           EOF
 
       - name: Create DMG
         run: |
-          hdiutil create -volname "Nexus" -srcfolder "Nexus.app" -ov -format UDZO "Nexus-${{ matrix.target }}.dmg"
+          hdiutil create -volname "Nexus Explorer" -srcfolder "Nexus Explorer.app" -ov -format UDZO "NexusExplorer-${{ matrix.target }}.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexus-macos-${{ matrix.target }}
-          path: Nexus-${{ matrix.target }}.dmg
+          path: NexusExplorer-${{ matrix.target }}.dmg
 
   build-windows:
+    name: Build (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-action@stable
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Run tests
+        run: cargo test --release
+
+      - name: Create distribution
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/release/${BINARY_NAME}.exe" "dist/Nexus Explorer.exe"
+          if [ -d "assets" ]; then
+            cp -r assets dist/
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-windows-x86_64
+          path: dist/
+
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb1-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libwayland-dev \
+            libgtk-3-dev \
+            libssl-dev \
+            libvulkan-dev \
+            pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -114,88 +184,30 @@ jobs:
 
       - name: Create distribution
         run: |
-          mkdir dist
-          cp target/release/file-explorer.exe dist/Nexus.exe
-          cp -r assets dist/
-        shell: bash
+          mkdir -p dist/nexus-explorer
+          cp "target/release/${BINARY_NAME}" dist/nexus-explorer/nexus-explorer
+          chmod +x dist/nexus-explorer/nexus-explorer
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nexus-windows-x86_64
-          path: dist/
+          if [ -d "assets" ]; then
+            cp -r assets dist/nexus-explorer/
+          fi
 
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libxcb1-dev \
-            libxcb-render0-dev \
-            libxcb-shape0-dev \
-            libxcb-xfixes0-dev \
-            libxkbcommon-dev \
-            libxkbcommon-x11-dev \
-            libwayland-dev \
-            libgtk-3-dev \
-            libssl-dev \
-            pkg-config
-
-      - name: Install Rust
-        uses: dtolnay/rust-action@stable
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Build
-        run: cargo build --release
-
-      - name: Run tests
-        run: cargo test --release
-
-      - name: Create AppImage structure
-        run: |
-          mkdir -p AppDir/usr/bin
-          mkdir -p AppDir/usr/share/applications
-          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-          cp target/release/file-explorer AppDir/usr/bin/nexus
-          cp -r assets AppDir/usr/share/
-
-          cat > AppDir/usr/share/applications/nexus.desktop << EOF
+          cat > dist/nexus-explorer/nexus-explorer.desktop << 'EOF'
           [Desktop Entry]
-          Name=Nexus File Explorer
-          Exec=nexus
-          Icon=nexus
+          Name=Nexus Explorer
+          Comment=A blazing-fast file explorer
+          Exec=nexus-explorer
+          Icon=nexus-explorer
           Type=Application
-          Categories=System;FileManager;
+          Categories=System;FileManager;Utility;
           MimeType=inode/directory;
+          Terminal=false
           EOF
 
-          cp AppDir/usr/share/applications/nexus.desktop AppDir/
-
-          # Create a simple icon placeholder
-          echo "Icon placeholder" > AppDir/usr/share/icons/hicolor/256x256/apps/nexus.png
-
-      - name: Create tarball
-        run: |
-          tar -czvf nexus-linux-x86_64.tar.gz -C AppDir .
+          tar -czvf nexus-explorer-linux-x86_64.tar.gz -C dist nexus-explorer
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: nexus-linux-x86_64
-          path: nexus-linux-x86_64.tar.gz
+          path: nexus-explorer-linux-x86_64.tar.gz

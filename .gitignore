@@ -34,3 +34,8 @@ Desktop.ini
 # Temporary files
 *.tmp
 *.temp
+
+# External dependencies (local copies)
+/gpui/
+/adabaraka/
+/nexus-explorer/
