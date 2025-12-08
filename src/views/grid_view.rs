@@ -400,6 +400,8 @@ impl Render for GridViewComponent {
                                 .id("grid-view-context-menu")
                                 .occlude()
                                 .w(px(220.0))
+                                .max_h(px(400.0))
+                                .overflow_y_scroll()
                                 .bg(menu_bg)
                                 .border_1()
                                 .border_color(border_color)

@@ -14,7 +14,7 @@ use crate::models::{
 };
 use crate::views::sidebar::{DraggedFolder, DraggedFolderView};
 
-/
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContextMenuAction {
     Open(PathBuf),
@@ -42,11 +42,11 @@ pub enum ContextMenuAction {
     ExtractHere(PathBuf),
     ExtractToFolder(PathBuf),
     Share(PathBuf),
-    /
+
     ShareViaAirDrop(PathBuf),
-    /
+
     ShareViaNearbyShare(PathBuf),
-    /
+
     ShareViaNetwork(PathBuf),
     CopyPath(PathBuf),
     ShowInFinder(PathBuf),
@@ -92,7 +92,7 @@ pub struct FileList {
     sort_state: SortState,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct FilteredEntry {
     pub original_index: usize,
@@ -164,7 +164,7 @@ impl FileListView {
         self.pending_navigation.take()
     }
 
-    /
+
     pub fn take_pending_parent_navigation(&mut self) -> bool {
         let result = self.pending_parent_navigation;
         self.pending_parent_navigation = false;
@@ -185,7 +185,7 @@ impl FileListView {
         }
     }
 
-    /
+
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("up", MoveSelectionUp, Some("FileList")),
@@ -195,7 +195,7 @@ impl FileListView {
         ]);
     }
 
-    /
+
     fn handle_move_up(
         &mut self,
         _: &MoveSelectionUp,
@@ -218,7 +218,7 @@ impl FileListView {
         cx.notify();
     }
 
-    /
+
     fn handle_move_down(
         &mut self,
         _: &MoveSelectionDown,
@@ -242,7 +242,7 @@ impl FileListView {
         cx.notify();
     }
 
-    /
+
     fn handle_open_selected(
         &mut self,
         _: &OpenSelected,
@@ -265,7 +265,7 @@ impl FileListView {
         }
     }
 
-    /
+
     fn handle_navigate_to_parent(
         &mut self,
         _: &NavigateToParent,
@@ -276,13 +276,13 @@ impl FileListView {
         cx.notify();
     }
 
-    /
+
     fn scroll_to_index(&self, index: usize) {
         self.scroll_handle
             .scroll_to_item(index, ScrollStrategy::Center);
     }
 
-    /
+
     pub fn move_selection_up(&mut self) {
         let item_count = self.file_list.item_count();
         if item_count == 0 {
@@ -298,7 +298,7 @@ impl FileListView {
         self.file_list.selected_index = Some(new_index);
     }
 
-    /
+
     pub fn move_selection_down(&mut self) {
         let item_count = self.file_list.item_count();
         if item_count == 0 {
@@ -792,6 +792,8 @@ impl Render for FileListView {
                                 .id("file-list-context-menu")
                                 .occlude()
                                 .w(px(220.0))
+                                .max_h(px(400.0))
+                                .overflow_y_scroll()
                                 .bg(menu_bg)
                                 .border_1()
                                 .border_color(border_color)
@@ -1795,17 +1797,17 @@ impl FileList {
         &self.entries
     }
 
-    /
+
     pub fn selected_index(&self) -> Option<usize> {
         self.selected_index
     }
 
-    /
+
     pub fn set_selected_index(&mut self, index: Option<usize>) {
         self.selected_index = index;
     }
 
-    /
+
     pub fn visible_entries(&self) -> Vec<&FileEntry> {
         if let Some(filtered) = &self.filtered_entries {
             filtered.iter().map(|f| &f.entry).collect()
@@ -1814,7 +1816,7 @@ impl FileList {
         }
     }
 
-    /
+
     pub fn get_display_entry(&self, display_index: usize) -> Option<&FileEntry> {
         if let Some(filtered) = &self.filtered_entries {
             filtered.get(display_index).map(|f| &f.entry)
@@ -1823,12 +1825,12 @@ impl FileList {
         }
     }
 
-    /
+
     pub fn get_filtered_entry(&self, display_index: usize) -> Option<&FilteredEntry> {
         self.filtered_entries.as_ref()?.get(display_index)
     }
 
-    /
+
     pub fn apply_search_filter(&mut self, query: &str, matches: Vec<(usize, Vec<usize>, u32)>) {
         self.search_query = query.to_string();
 
@@ -1854,14 +1856,14 @@ impl FileList {
         self.scroll_offset = 0.0;
     }
 
-    /
+
     pub fn clear_search_filter(&mut self) {
         self.filtered_entries = None;
         self.search_query.clear();
         self.selected_index = None;
     }
 
-    /
+
     pub fn get_match_positions(&self, display_index: usize) -> Option<&[usize]> {
         self.filtered_entries
             .as_ref()?
@@ -2013,7 +2015,7 @@ pub fn format_date(time: SystemTime) -> String {
 #[path = "file_list_tests.rs"]
 mod tests;
 
-/
+
 pub fn is_disk_image_file(path: &std::path::Path) -> bool {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         let ext_lower = ext.to_lowercase();
