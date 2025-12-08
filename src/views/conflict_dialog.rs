@@ -1,5 +1,7 @@
 use crate::models::ConflictResolution;
-use gpui::*;
+use gpui::{
+    div, prelude::*, px, rgb, Context, FontWeight, IntoElement, MouseButton, Render, Window,
+};
 use std::path::PathBuf;
 
 /// Actions for the conflict resolution dialog

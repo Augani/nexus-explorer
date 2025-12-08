@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use gpui::{
-    actions, div, prelude::*, px, svg, App, Context, Entity, FocusHandle, Focusable,
+    actions, div, prelude::*, px, svg, App, AsyncApp, Context, Entity, FocusHandle, Focusable,
     InteractiveElement, IntoElement, KeyBinding, MouseButton, ParentElement, Render, SharedString,
-    Styled, Window,
+    Styled, WeakEntity, Window,
 };
 
 use crate::io::{SortKey, SortOrder};
@@ -1316,7 +1316,7 @@ impl Workspace {
 
         let toast_manager = self.toast_manager.clone();
 
-        cx.spawn(|workspace, mut cx| async move {
+        cx.spawn(async move |workspace, cx| {
             let result = cx.background_executor().spawn(async move {
                 #[cfg(target_os = "windows")]
                 {
@@ -1341,7 +1341,7 @@ impl Workspace {
                 }
             }).await;
 
-            cx.update(|_, cx| {
+            let _ = cx.update(|cx| {
                 match result {
                     Ok(mount_point) => {
                         toast_manager.update(cx, |toast, cx| {
@@ -1350,10 +1350,9 @@ impl Workspace {
                                 cx,
                             );
                         });
-                        // Navigate to the mount point
-                        workspace.update(cx, |ws, cx| {
+                        let _ = workspace.update(cx, |ws, cx| {
                             ws.navigate_to(mount_point, cx);
-                        }).ok();
+                        });
                     }
                     Err(e) => {
                         toast_manager.update(cx, |toast, cx| {
@@ -1361,7 +1360,7 @@ impl Workspace {
                         });
                     }
                 }
-            }).ok();
+            });
         })
         .detach();
     }
@@ -1379,7 +1378,7 @@ impl Workspace {
 
         let toast_manager = self.toast_manager.clone();
 
-        cx.spawn(|workspace, mut cx| async move {
+        cx.spawn(async move |workspace, cx| {
             let result = cx.background_executor().spawn({
                 let mount_point = mount_point.clone();
                 async move {
@@ -1407,20 +1406,19 @@ impl Workspace {
                 }
             }).await;
 
-            cx.update(|_, cx| {
+            let _ = cx.update(|cx| {
                 match result {
                     Ok(()) => {
                         toast_manager.update(cx, |toast, cx| {
                             toast.show_success(format!("{} unmounted successfully", name), cx);
                         });
-                        // Navigate to parent directory if we were in the mount point
-                        workspace.update(cx, |ws, cx| {
+                        let _ = workspace.update(cx, |ws, cx| {
                             if ws.current_path.starts_with(&mount_point) {
                                 if let Some(parent) = mount_point.parent() {
                                     ws.navigate_to(parent.to_path_buf(), cx);
                                 }
                             }
-                        }).ok();
+                        });
                     }
                     Err(e) => {
                         toast_manager.update(cx, |toast, cx| {
@@ -1428,7 +1426,7 @@ impl Workspace {
                         });
                     }
                 }
-            }).ok();
+            });
         })
         .detach();
     }
