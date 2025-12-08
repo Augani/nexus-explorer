@@ -65,6 +65,8 @@ mod terminal_tests;
 #[cfg(test)]
 mod wsl_tests;
 #[cfg(test)]
+mod trash_tests;
+#[cfg(test)]
 #[cfg(target_os = "windows")]
 mod windows_device_tests;
 

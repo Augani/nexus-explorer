@@ -10,7 +10,7 @@ use crate::models::{
     sidebar as sidebar_spacing, theme_colors, Bookmark, BookmarkId, BookmarkManager,
     CloudStorageManager, Device, DeviceId, DeviceMonitor, DeviceType, Favorite, Favorites, NetworkLocationId,
     NetworkSidebarState, NetworkStorageManager, SearchQuery, SmartFolder, SmartFolderId,
-    SmartFolderManager, WslDistribution,
+    SmartFolderManager, TrashManager, WslDistribution,
 };
 
 #[derive(Clone)]
@@ -95,6 +95,7 @@ pub struct Sidebar {
     network_manager: NetworkStorageManager,
     cloud_manager: CloudStorageManager,
     device_monitor: DeviceMonitor,
+    trash_manager: TrashManager,
 }
 
 impl Sidebar {
@@ -124,6 +125,9 @@ impl Sidebar {
         let smart_folders =
             SmartFolderManager::load().unwrap_or_else(|_| SmartFolderManager::new());
 
+        let mut trash_manager = TrashManager::new();
+        trash_manager.refresh();
+
         Self {
             favorites,
             bookmarks,
@@ -141,6 +145,7 @@ impl Sidebar {
             network_manager,
             cloud_manager,
             device_monitor,
+            trash_manager,
         }
     }
 
@@ -337,6 +342,18 @@ impl Sidebar {
 
     pub fn wsl_distributions(&self) -> &[WslDistribution] {
         self.device_monitor.wsl_distributions()
+    }
+
+    pub fn trash_manager(&self) -> &TrashManager {
+        &self.trash_manager
+    }
+
+    pub fn trash_manager_mut(&mut self) -> &mut TrashManager {
+        &mut self.trash_manager
+    }
+
+    pub fn refresh_trash(&mut self) {
+        self.trash_manager.refresh();
     }
 
     pub fn is_smart_folders_expanded(&self) -> bool {
@@ -2390,6 +2407,10 @@ impl SidebarView {
         let theme = theme_colors();
         let trash_path = Self::get_trash_path();
         let is_trash_selected = self.sidebar.selected_path.as_ref() == Some(&trash_path);
+        
+        let item_count = self.sidebar.trash_manager.item_count();
+        let is_large = self.sidebar.trash_manager.is_large();
+        let warning_color = theme.warning;
 
         div()
             .id("trash-item")
@@ -2416,15 +2437,52 @@ impl SidebarView {
                 })
             })
             .child(
-                svg()
-                    .path("assets/icons/trash-2.svg")
-                    .size(px(14.0))
-                    .text_color(if is_trash_selected {
-                        text_light
-                    } else {
-                        text_gray
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_1()
+                    .child(
+                        svg()
+                            .path("assets/icons/trash-2.svg")
+                            .size(px(14.0))
+                            .text_color(if is_large {
+                                warning_color
+                            } else if is_trash_selected {
+                                text_light
+                            } else {
+                                text_gray
+                            }),
+                    )
+                    .when(is_large, |s| {
+                        s.child(
+                            svg()
+                                .path("assets/icons/triangle-alert.svg")
+                                .size(px(10.0))
+                                .text_color(warning_color),
+                        )
                     }),
             )
-            .child("Trash")
+            .child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .justify_between()
+                    .child("Trash")
+                    .when(item_count > 0, |s| {
+                        s.child(
+                            div()
+                                .text_xs()
+                                .text_color(if is_large { warning_color } else { text_gray })
+                                .child(format!("{}", item_count)),
+                        )
+                    }),
+            )
+    }
+
+    /// Refresh the trash manager to update item count
+    pub fn refresh_trash(&mut self, cx: &mut Context<Self>) {
+        self.sidebar.refresh_trash();
+        cx.notify();
     }
 }
