@@ -410,6 +410,270 @@ mod macos_tests {
     }
 }
 
+// SMART data parsing tests
+#[test]
+fn test_health_status_default() {
+    assert_eq!(HealthStatus::default(), HealthStatus::Unknown);
+}
+
+#[test]
+fn test_health_status_icon_names() {
+    assert_eq!(HealthStatus::Good.icon_name(), "check");
+    assert_eq!(HealthStatus::Warning.icon_name(), "triangle-alert");
+    assert_eq!(HealthStatus::Critical.icon_name(), "triangle-alert");
+    assert_eq!(HealthStatus::Unknown.icon_name(), "circle-question-mark");
+}
+
+#[test]
+fn test_health_status_colors() {
+    assert_eq!(HealthStatus::Good.color(), 0x3fb950);
+    assert_eq!(HealthStatus::Warning.color(), 0xd29922);
+    assert_eq!(HealthStatus::Critical.color(), 0xf85149);
+    assert_eq!(HealthStatus::Unknown.color(), 0x8b949e);
+}
+
+#[test]
+fn test_health_status_requires_attention() {
+    assert!(!HealthStatus::Good.requires_attention());
+    assert!(HealthStatus::Warning.requires_attention());
+    assert!(HealthStatus::Critical.requires_attention());
+    assert!(!HealthStatus::Unknown.requires_attention());
+}
+
+#[test]
+fn test_smart_attribute_creation() {
+    let attr = SmartAttribute::new(
+        5,
+        "Reallocated Sectors Count".to_string(),
+        100,
+        100,
+        10,
+        "0".to_string(),
+    );
+
+    assert_eq!(attr.id, 5);
+    assert_eq!(attr.name, "Reallocated Sectors Count");
+    assert_eq!(attr.value, 100);
+    assert_eq!(attr.worst, 100);
+    assert_eq!(attr.threshold, 10);
+    assert_eq!(attr.raw_value, "0");
+}
+
+#[test]
+fn test_smart_attribute_is_failing() {
+    // Value below threshold - failing
+    let failing = SmartAttribute::new(5, "Test".to_string(), 5, 5, 10, "100".to_string());
+    assert!(failing.is_failing());
+
+    // Value at threshold - failing
+    let at_threshold = SmartAttribute::new(5, "Test".to_string(), 10, 10, 10, "100".to_string());
+    assert!(at_threshold.is_failing());
+
+    // Value above threshold - not failing
+    let healthy = SmartAttribute::new(5, "Test".to_string(), 100, 100, 10, "0".to_string());
+    assert!(!healthy.is_failing());
+
+    // Zero threshold - not failing
+    let no_threshold = SmartAttribute::new(5, "Test".to_string(), 100, 100, 0, "0".to_string());
+    assert!(!no_threshold.is_failing());
+}
+
+#[test]
+fn test_smart_attribute_is_warning() {
+    // Value close to threshold - warning
+    let warning = SmartAttribute::new(5, "Test".to_string(), 15, 15, 10, "50".to_string());
+    assert!(warning.is_warning());
+
+    // Value well above threshold - not warning
+    let healthy = SmartAttribute::new(5, "Test".to_string(), 100, 100, 10, "0".to_string());
+    assert!(!healthy.is_warning());
+
+    // Value at threshold - not warning (it's failing)
+    let failing = SmartAttribute::new(5, "Test".to_string(), 10, 10, 10, "100".to_string());
+    assert!(!failing.is_warning());
+}
+
+#[test]
+fn test_smart_attribute_standard_names() {
+    assert_eq!(SmartAttribute::get_standard_name(5), "Reallocated Sectors Count");
+    assert_eq!(SmartAttribute::get_standard_name(9), "Power-On Hours");
+    assert_eq!(SmartAttribute::get_standard_name(194), "Temperature");
+    assert_eq!(SmartAttribute::get_standard_name(197), "Current Pending Sector Count");
+    assert_eq!(SmartAttribute::get_standard_name(255), "Unknown Attribute");
+}
+
+#[test]
+fn test_smart_data_default() {
+    let data = SmartData::default();
+    assert_eq!(data.health_status, HealthStatus::Unknown);
+    assert!(data.temperature_celsius.is_none());
+    assert!(data.power_on_hours.is_none());
+    assert!(data.reallocated_sectors.is_none());
+    assert!(data.pending_sectors.is_none());
+    assert!(data.attributes.is_empty());
+}
+
+#[test]
+fn test_smart_data_from_attributes_healthy() {
+    let attributes = vec![
+        SmartAttribute::new(5, "Reallocated Sectors Count".to_string(), 100, 100, 10, "0".to_string()),
+        SmartAttribute::new(9, "Power-On Hours".to_string(), 99, 99, 0, "1234".to_string()),
+        SmartAttribute::new(194, "Temperature".to_string(), 65, 50, 0, "35".to_string()),
+        SmartAttribute::new(197, "Current Pending Sector Count".to_string(), 100, 100, 0, "0".to_string()),
+    ];
+
+    let data = SmartData::from_attributes(attributes);
+
+    assert_eq!(data.health_status, HealthStatus::Good);
+    assert_eq!(data.temperature_celsius, Some(35));
+    assert_eq!(data.power_on_hours, Some(1234));
+    assert_eq!(data.reallocated_sectors, Some(0));
+    assert_eq!(data.pending_sectors, Some(0));
+}
+
+#[test]
+fn test_smart_data_from_attributes_warning() {
+    let attributes = vec![
+        SmartAttribute::new(5, "Reallocated Sectors Count".to_string(), 100, 100, 10, "5".to_string()),
+        SmartAttribute::new(197, "Current Pending Sector Count".to_string(), 100, 100, 0, "0".to_string()),
+    ];
+
+    let data = SmartData::from_attributes(attributes);
+
+    // Should be warning because reallocated_sectors > 0
+    assert_eq!(data.health_status, HealthStatus::Warning);
+    assert_eq!(data.reallocated_sectors, Some(5));
+}
+
+#[test]
+fn test_smart_data_from_attributes_critical() {
+    let attributes = vec![
+        SmartAttribute::new(5, "Reallocated Sectors Count".to_string(), 100, 100, 10, "150".to_string()),
+        SmartAttribute::new(197, "Current Pending Sector Count".to_string(), 100, 100, 0, "20".to_string()),
+    ];
+
+    let data = SmartData::from_attributes(attributes);
+
+    // Should be critical because reallocated_sectors > 100 or pending_sectors > 10
+    assert_eq!(data.health_status, HealthStatus::Critical);
+}
+
+#[test]
+fn test_smart_data_determine_health_status_temperature() {
+    // High temperature warning
+    let mut data = SmartData::default();
+    data.temperature_celsius = Some(55);
+    assert_eq!(data.determine_health_status(), HealthStatus::Warning);
+
+    // Critical temperature
+    data.temperature_celsius = Some(65);
+    assert_eq!(data.determine_health_status(), HealthStatus::Critical);
+
+    // Normal temperature
+    data.temperature_celsius = Some(35);
+    assert_eq!(data.determine_health_status(), HealthStatus::Good);
+}
+
+#[test]
+fn test_smart_data_health_summary() {
+    let mut data = SmartData::default();
+    data.health_status = HealthStatus::Good;
+    assert_eq!(data.health_summary(), "Drive is healthy");
+
+    data.health_status = HealthStatus::Critical;
+    assert_eq!(data.health_summary(), "Drive health critical - backup data immediately!");
+
+    data.health_status = HealthStatus::Unknown;
+    assert_eq!(data.health_summary(), "Health data unavailable");
+
+    // Warning with reallocated sectors
+    data.health_status = HealthStatus::Warning;
+    data.reallocated_sectors = Some(5);
+    assert!(data.health_summary().contains("reallocated sectors"));
+}
+
+#[test]
+fn test_smart_data_get_attribute() {
+    let attributes = vec![
+        SmartAttribute::new(5, "Reallocated Sectors Count".to_string(), 100, 100, 10, "0".to_string()),
+        SmartAttribute::new(9, "Power-On Hours".to_string(), 99, 99, 0, "1234".to_string()),
+    ];
+
+    let data = SmartData::from_attributes(attributes);
+
+    let attr = data.get_attribute(5);
+    assert!(attr.is_some());
+    assert_eq!(attr.unwrap().id, 5);
+
+    let missing = data.get_attribute(194);
+    assert!(missing.is_none());
+}
+
+#[test]
+fn test_device_with_smart_status() {
+    let device = Device::new(
+        DeviceId::new(1),
+        "Test".to_string(),
+        PathBuf::from("/test"),
+        DeviceType::InternalDrive,
+    )
+    .with_smart_status(HealthStatus::Warning);
+
+    assert_eq!(device.smart_status, Some(HealthStatus::Warning));
+    assert!(device.has_health_warning());
+}
+
+#[test]
+fn test_device_has_health_warning() {
+    let good = Device::new(
+        DeviceId::new(1),
+        "Test".to_string(),
+        PathBuf::from("/test"),
+        DeviceType::InternalDrive,
+    )
+    .with_smart_status(HealthStatus::Good);
+    assert!(!good.has_health_warning());
+
+    let warning = Device::new(
+        DeviceId::new(2),
+        "Test".to_string(),
+        PathBuf::from("/test"),
+        DeviceType::InternalDrive,
+    )
+    .with_smart_status(HealthStatus::Warning);
+    assert!(warning.has_health_warning());
+
+    let critical = Device::new(
+        DeviceId::new(3),
+        "Test".to_string(),
+        PathBuf::from("/test"),
+        DeviceType::InternalDrive,
+    )
+    .with_smart_status(HealthStatus::Critical);
+    assert!(critical.has_health_warning());
+
+    let no_status = Device::new(
+        DeviceId::new(4),
+        "Test".to_string(),
+        PathBuf::from("/test"),
+        DeviceType::InternalDrive,
+    );
+    assert!(!no_status.has_health_warning());
+}
+
+#[test]
+fn test_device_with_encrypted() {
+    let device = Device::new(
+        DeviceId::new(1),
+        "Test".to_string(),
+        PathBuf::from("/test"),
+        DeviceType::InternalDrive,
+    )
+    .with_encrypted(true);
+
+    assert!(device.is_encrypted);
+}
+
 // Property-based tests using proptest
 #[cfg(test)]
 mod property_tests {

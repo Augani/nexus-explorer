@@ -9,7 +9,10 @@
  * Requirements: 1.7, 2.8, 26.6, 28.2, 28.3
  */
 
-use super::device_monitor::{get_disk_space, Device, DeviceEvent, DeviceId, DeviceType};
+use super::device_monitor::{
+    get_disk_space, Device, DeviceEvent, DeviceId, DeviceType, HealthStatus, SmartAttribute,
+    SmartData, smart_attributes,
+};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -1696,6 +1699,343 @@ mod tests {
         assert_eq!(get_parent_block_device("/dev/nvme0n1p2"), "/dev/nvme0n1");
         assert_eq!(get_parent_block_device("nvme0n1p1"), "/dev/nvme0n1");
     }
+
+/// SMART data reader for Linux using smartctl
+pub struct SmartDataReader;
+
+impl SmartDataReader {
+    /// Get SMART data for a device using smartctl
+    pub fn get_smart_data(device_node: &str) -> Option<SmartData> {
+        // Try smartctl first (most reliable)
+        Self::get_smart_data_smartctl(device_node)
+            .or_else(|| Self::get_smart_data_sysfs(device_node))
+    }
+
+    /// Get SMART data using smartctl command
+    fn get_smart_data_smartctl(device_node: &str) -> Option<SmartData> {
+        use std::process::Command;
+
+        // Get the parent block device (e.g., /dev/sda from /dev/sda1)
+        let parent_device = get_parent_block_device(device_node);
+
+        // Try to run smartctl with JSON output
+        let output = Command::new("smartctl")
+            .args(["-a", "-j", &parent_device])
+            .output()
+            .ok()?;
+
+        if !output.status.success() && output.stdout.is_empty() {
+            // Try without JSON for older smartctl versions
+            return Self::get_smart_data_smartctl_text(&parent_device);
+        }
+
+        let json_str = String::from_utf8_lossy(&output.stdout);
+        Self::parse_smartctl_json(&json_str)
+    }
+
+    /// Parse smartctl JSON output
+    fn parse_smartctl_json(json_str: &str) -> Option<SmartData> {
+        use serde_json::Value;
+
+        let json: Value = serde_json::from_str(json_str).ok()?;
+
+        let mut data = SmartData::default();
+
+        // Get overall health status
+        if let Some(smart_status) = json.get("smart_status") {
+            if let Some(passed) = smart_status.get("passed").and_then(|v| v.as_bool()) {
+                data.health_status = if passed {
+                    HealthStatus::Good
+                } else {
+                    HealthStatus::Critical
+                };
+            }
+        }
+
+        // Get temperature
+        if let Some(temp) = json.get("temperature") {
+            if let Some(current) = temp.get("current").and_then(|v| v.as_u64()) {
+                data.temperature_celsius = Some(current.min(255) as u8);
+            }
+        }
+
+        // Get power on hours
+        if let Some(power_on) = json.get("power_on_time") {
+            if let Some(hours) = power_on.get("hours").and_then(|v| v.as_u64()) {
+                data.power_on_hours = Some(hours);
+            }
+        }
+
+        // Parse ATA SMART attributes
+        if let Some(ata_attrs) = json.get("ata_smart_attributes") {
+            if let Some(table) = ata_attrs.get("table").and_then(|v| v.as_array()) {
+                for attr in table {
+                    let id = attr.get("id").and_then(|v| v.as_u64()).unwrap_or(0) as u8;
+                    if id == 0 {
+                        continue;
+                    }
+
+                    let name = attr
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_else(|| SmartAttribute::get_standard_name(id))
+                        .to_string();
+
+                    let value = attr.get("value").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let worst = attr.get("worst").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let thresh = attr.get("thresh").and_then(|v| v.as_u64()).unwrap_or(0);
+
+                    let raw_value = attr
+                        .get("raw")
+                        .and_then(|v| v.get("value"))
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v.to_string())
+                        .unwrap_or_default();
+
+                    let smart_attr = SmartAttribute::new(id, name, value, worst, thresh, raw_value.clone());
+                    data.attributes.push(smart_attr);
+
+                    // Extract key metrics
+                    match id {
+                        smart_attributes::REALLOCATED_SECTORS_COUNT => {
+                            data.reallocated_sectors = raw_value.parse().ok();
+                        }
+                        smart_attributes::CURRENT_PENDING_SECTOR_COUNT => {
+                            data.pending_sectors = raw_value.parse().ok();
+                        }
+                        smart_attributes::TEMPERATURE_CELSIUS | smart_attributes::TEMPERATURE_CELSIUS_ALT => {
+                            if data.temperature_celsius.is_none() {
+                                data.temperature_celsius = raw_value.parse::<u64>().ok().map(|v| v.min(255) as u8);
+                            }
+                        }
+                        smart_attributes::POWER_ON_HOURS => {
+                            if data.power_on_hours.is_none() {
+                                data.power_on_hours = raw_value.parse().ok();
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // Recalculate health status based on attributes
+        if data.health_status == HealthStatus::Good {
+            data.health_status = data.determine_health_status();
+        }
+
+        Some(data)
+    }
+
+    /// Parse smartctl text output (fallback for older versions)
+    fn get_smart_data_smartctl_text(device_node: &str) -> Option<SmartData> {
+        use std::process::Command;
+
+        let output = Command::new("smartctl")
+            .args(["-a", device_node])
+            .output()
+            .ok()?;
+
+        let text = String::from_utf8_lossy(&output.stdout);
+        Self::parse_smartctl_text(&text)
+    }
+
+    /// Parse smartctl text output
+    fn parse_smartctl_text(text: &str) -> Option<SmartData> {
+        let mut data = SmartData::default();
+
+        // Check overall health
+        for line in text.lines() {
+            if line.contains("SMART overall-health self-assessment test result:") {
+                if line.contains("PASSED") {
+                    data.health_status = HealthStatus::Good;
+                } else if line.contains("FAILED") {
+                    data.health_status = HealthStatus::Critical;
+                }
+            }
+        }
+
+        // Parse attribute table
+        let mut in_attr_section = false;
+        for line in text.lines() {
+            if line.contains("ID#") && line.contains("ATTRIBUTE_NAME") {
+                in_attr_section = true;
+                continue;
+            }
+
+            if in_attr_section {
+                if line.trim().is_empty() {
+                    break;
+                }
+
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 10 {
+                    if let Ok(id) = parts[0].parse::<u8>() {
+                        let name = parts[1].replace("_", " ");
+                        let value = parts[3].parse::<u64>().unwrap_or(0);
+                        let worst = parts[4].parse::<u64>().unwrap_or(0);
+                        let thresh = parts[5].parse::<u64>().unwrap_or(0);
+                        let raw_value = parts[9].to_string();
+
+                        let attr = SmartAttribute::new(id, name, value, worst, thresh, raw_value.clone());
+                        data.attributes.push(attr);
+
+                        // Extract key metrics
+                        match id {
+                            smart_attributes::REALLOCATED_SECTORS_COUNT => {
+                                data.reallocated_sectors = raw_value.parse().ok();
+                            }
+                            smart_attributes::CURRENT_PENDING_SECTOR_COUNT => {
+                                data.pending_sectors = raw_value.parse().ok();
+                            }
+                            smart_attributes::TEMPERATURE_CELSIUS | smart_attributes::TEMPERATURE_CELSIUS_ALT => {
+                                if data.temperature_celsius.is_none() {
+                                    data.temperature_celsius = raw_value.parse::<u64>().ok().map(|v| v.min(255) as u8);
+                                }
+                            }
+                            smart_attributes::POWER_ON_HOURS => {
+                                if data.power_on_hours.is_none() {
+                                    data.power_on_hours = raw_value.parse().ok();
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recalculate health status
+        if data.health_status == HealthStatus::Good || data.health_status == HealthStatus::Unknown {
+            data.health_status = data.determine_health_status();
+        }
+
+        if data.attributes.is_empty() && data.health_status == HealthStatus::Unknown {
+            return None;
+        }
+
+        Some(data)
+    }
+
+    /// Try to get basic health info from sysfs (limited data)
+    fn get_smart_data_sysfs(device_node: &str) -> Option<SmartData> {
+        let parent_device = get_parent_block_device(device_node);
+        let device_name = parent_device.trim_start_matches("/dev/");
+
+        // Try to read from /sys/block/<device>/device/
+        let sysfs_path = format!("/sys/block/{}/device", device_name);
+
+        if !std::path::Path::new(&sysfs_path).exists() {
+            return None;
+        }
+
+        let mut data = SmartData::default();
+
+        // Try to read state
+        if let Ok(state) = std::fs::read_to_string(format!("{}/state", sysfs_path)) {
+            let state = state.trim();
+            data.health_status = match state {
+                "running" => HealthStatus::Good,
+                "offline" | "blocked" => HealthStatus::Warning,
+                _ => HealthStatus::Unknown,
+            };
+        }
+
+        // Try to read temperature from hwmon
+        let hwmon_path = format!("{}/hwmon", sysfs_path);
+        if let Ok(entries) = std::fs::read_dir(&hwmon_path) {
+            for entry in entries.flatten() {
+                let temp_path = entry.path().join("temp1_input");
+                if let Ok(temp_str) = std::fs::read_to_string(&temp_path) {
+                    if let Ok(temp_millicelsius) = temp_str.trim().parse::<u64>() {
+                        data.temperature_celsius = Some((temp_millicelsius / 1000).min(255) as u8);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if data.health_status == HealthStatus::Unknown && data.temperature_celsius.is_none() {
+            return None;
+        }
+
+        Some(data)
+    }
+}
+
+impl LinuxDeviceMonitor {
+    /// Get SMART data for a device
+    pub fn get_smart_data(&self, device_node: &str) -> Option<SmartData> {
+        SmartDataReader::get_smart_data(device_node)
+    }
+}
+
+#[cfg(test)]
+mod smart_tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_smartctl_json_healthy() {
+        let json = r#"{
+            "smart_status": {"passed": true},
+            "temperature": {"current": 35},
+            "power_on_time": {"hours": 1000},
+            "ata_smart_attributes": {
+                "table": [
+                    {"id": 5, "name": "Reallocated_Sector_Ct", "value": 100, "worst": 100, "thresh": 10, "raw": {"value": 0}},
+                    {"id": 9, "name": "Power_On_Hours", "value": 99, "worst": 99, "thresh": 0, "raw": {"value": 1000}},
+                    {"id": 194, "name": "Temperature_Celsius", "value": 65, "worst": 50, "thresh": 0, "raw": {"value": 35}}
+                ]
+            }
+        }"#;
+
+        let result = SmartDataReader::parse_smartctl_json(json);
+        assert!(result.is_some());
+        let data = result.unwrap();
+        assert_eq!(data.health_status, HealthStatus::Good);
+        assert_eq!(data.temperature_celsius, Some(35));
+        assert_eq!(data.power_on_hours, Some(1000));
+        assert_eq!(data.reallocated_sectors, Some(0));
+    }
+
+    #[test]
+    fn test_parse_smartctl_json_failing() {
+        let json = r#"{
+            "smart_status": {"passed": false},
+            "ata_smart_attributes": {
+                "table": [
+                    {"id": 5, "name": "Reallocated_Sector_Ct", "value": 1, "worst": 1, "thresh": 10, "raw": {"value": 500}}
+                ]
+            }
+        }"#;
+
+        let result = SmartDataReader::parse_smartctl_json(json);
+        assert!(result.is_some());
+        let data = result.unwrap();
+        assert_eq!(data.health_status, HealthStatus::Critical);
+    }
+
+    #[test]
+    fn test_parse_smartctl_text() {
+        let text = r#"
+smartctl 7.2 2020-12-30 r5155 [x86_64-linux-5.10.0] (local build)
+SMART overall-health self-assessment test result: PASSED
+
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
+  9 Power_On_Hours          0x0032   099   099   000    Old_age   Always       -       1234
+194 Temperature_Celsius     0x0022   065   050   000    Old_age   Always       -       35
+"#;
+
+        let result = SmartDataReader::parse_smartctl_text(text);
+        assert!(result.is_some());
+        let data = result.unwrap();
+        assert_eq!(data.health_status, HealthStatus::Good);
+        assert_eq!(data.power_on_hours, Some(1234));
+        assert_eq!(data.temperature_celsius, Some(35));
+        assert_eq!(data.reallocated_sectors, Some(0));
+    }
+}
 
     #[test]
     fn test_get_parent_block_device_whole_disk() {

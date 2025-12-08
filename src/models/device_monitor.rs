@@ -54,6 +54,8 @@ pub struct Device {
     pub is_removable: bool,
     pub is_read_only: bool,
     pub is_mounted: bool,
+    pub is_encrypted: bool,
+    pub smart_status: Option<HealthStatus>,
 }
 
 impl Device {
@@ -68,6 +70,8 @@ impl Device {
             is_removable: false,
             is_read_only: false,
             is_mounted: true,
+            is_encrypted: false,
+            smart_status: None,
         }
     }
 
@@ -87,6 +91,16 @@ impl Device {
         self
     }
 
+    pub fn with_encrypted(mut self, encrypted: bool) -> Self {
+        self.is_encrypted = encrypted;
+        self
+    }
+
+    pub fn with_smart_status(mut self, status: HealthStatus) -> Self {
+        self.smart_status = Some(status);
+        self
+    }
+
     /// Calculate used space
     pub fn used_space(&self) -> u64 {
         self.total_space.saturating_sub(self.free_space)
@@ -99,6 +113,14 @@ impl Device {
         } else {
             self.used_space() as f64 / self.total_space as f64
         }
+    }
+
+    /// Check if the device has a health warning or critical status
+    pub fn has_health_warning(&self) -> bool {
+        matches!(
+            self.smart_status,
+            Some(HealthStatus::Warning) | Some(HealthStatus::Critical)
+        )
     }
 }
 
@@ -147,6 +169,68 @@ impl Default for HealthStatus {
     }
 }
 
+impl HealthStatus {
+    /// Get the icon name for this health status
+    pub fn icon_name(&self) -> &'static str {
+        match self {
+            HealthStatus::Good => "check",
+            HealthStatus::Warning => "triangle-alert",
+            HealthStatus::Critical => "triangle-alert",
+            HealthStatus::Unknown => "circle-question-mark",
+        }
+    }
+
+    /// Get the color for this health status (as hex RGB)
+    pub fn color(&self) -> u32 {
+        match self {
+            HealthStatus::Good => 0x3fb950,    // Green
+            HealthStatus::Warning => 0xd29922, // Yellow/Orange
+            HealthStatus::Critical => 0xf85149, // Red
+            HealthStatus::Unknown => 0x8b949e, // Gray
+        }
+    }
+
+    /// Get a human-readable description
+    pub fn description(&self) -> &'static str {
+        match self {
+            HealthStatus::Good => "Good",
+            HealthStatus::Warning => "Warning",
+            HealthStatus::Critical => "Critical",
+            HealthStatus::Unknown => "Unknown",
+        }
+    }
+
+    /// Check if this status requires user attention
+    pub fn requires_attention(&self) -> bool {
+        matches!(self, HealthStatus::Warning | HealthStatus::Critical)
+    }
+}
+
+/// Well-known SMART attribute IDs
+pub mod smart_attributes {
+    pub const RAW_READ_ERROR_RATE: u8 = 1;
+    pub const THROUGHPUT_PERFORMANCE: u8 = 2;
+    pub const SPIN_UP_TIME: u8 = 3;
+    pub const START_STOP_COUNT: u8 = 4;
+    pub const REALLOCATED_SECTORS_COUNT: u8 = 5;
+    pub const SEEK_ERROR_RATE: u8 = 7;
+    pub const POWER_ON_HOURS: u8 = 9;
+    pub const SPIN_RETRY_COUNT: u8 = 10;
+    pub const POWER_CYCLE_COUNT: u8 = 12;
+    pub const SOFT_READ_ERROR_RATE: u8 = 13;
+    pub const CURRENT_PENDING_SECTOR_COUNT: u8 = 197;
+    pub const OFFLINE_UNCORRECTABLE: u8 = 198;
+    pub const UDMA_CRC_ERROR_COUNT: u8 = 199;
+    pub const TEMPERATURE_CELSIUS: u8 = 194;
+    pub const TEMPERATURE_CELSIUS_ALT: u8 = 190;
+    pub const WEAR_LEVELING_COUNT: u8 = 177;
+    pub const USED_RESERVED_BLOCK_COUNT: u8 = 180;
+    pub const PROGRAM_FAIL_COUNT: u8 = 181;
+    pub const ERASE_FAIL_COUNT: u8 = 182;
+    pub const TOTAL_LBAS_WRITTEN: u8 = 241;
+    pub const TOTAL_LBAS_READ: u8 = 242;
+}
+
 /// Individual SMART attribute
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SmartAttribute {
@@ -156,6 +240,60 @@ pub struct SmartAttribute {
     pub worst: u64,
     pub threshold: u64,
     pub raw_value: String,
+}
+
+impl SmartAttribute {
+    pub fn new(id: u8, name: String, value: u64, worst: u64, threshold: u64, raw_value: String) -> Self {
+        Self {
+            id,
+            name,
+            value,
+            worst,
+            threshold,
+            raw_value,
+        }
+    }
+
+    /// Check if this attribute is below its threshold (failing)
+    pub fn is_failing(&self) -> bool {
+        self.value > 0 && self.threshold > 0 && self.value <= self.threshold
+    }
+
+    /// Check if this attribute is approaching its threshold (warning)
+    pub fn is_warning(&self) -> bool {
+        if self.threshold == 0 {
+            return false;
+        }
+        let warning_threshold = self.threshold.saturating_add(10);
+        self.value > self.threshold && self.value <= warning_threshold
+    }
+
+    /// Get the attribute name from ID if not provided
+    pub fn get_standard_name(id: u8) -> &'static str {
+        match id {
+            smart_attributes::RAW_READ_ERROR_RATE => "Raw Read Error Rate",
+            smart_attributes::THROUGHPUT_PERFORMANCE => "Throughput Performance",
+            smart_attributes::SPIN_UP_TIME => "Spin Up Time",
+            smart_attributes::START_STOP_COUNT => "Start/Stop Count",
+            smart_attributes::REALLOCATED_SECTORS_COUNT => "Reallocated Sectors Count",
+            smart_attributes::SEEK_ERROR_RATE => "Seek Error Rate",
+            smart_attributes::POWER_ON_HOURS => "Power-On Hours",
+            smart_attributes::SPIN_RETRY_COUNT => "Spin Retry Count",
+            smart_attributes::POWER_CYCLE_COUNT => "Power Cycle Count",
+            smart_attributes::SOFT_READ_ERROR_RATE => "Soft Read Error Rate",
+            smart_attributes::CURRENT_PENDING_SECTOR_COUNT => "Current Pending Sector Count",
+            smart_attributes::OFFLINE_UNCORRECTABLE => "Offline Uncorrectable",
+            smart_attributes::UDMA_CRC_ERROR_COUNT => "UDMA CRC Error Count",
+            smart_attributes::TEMPERATURE_CELSIUS | smart_attributes::TEMPERATURE_CELSIUS_ALT => "Temperature",
+            smart_attributes::WEAR_LEVELING_COUNT => "Wear Leveling Count",
+            smart_attributes::USED_RESERVED_BLOCK_COUNT => "Used Reserved Block Count",
+            smart_attributes::PROGRAM_FAIL_COUNT => "Program Fail Count",
+            smart_attributes::ERASE_FAIL_COUNT => "Erase Fail Count",
+            smart_attributes::TOTAL_LBAS_WRITTEN => "Total LBAs Written",
+            smart_attributes::TOTAL_LBAS_READ => "Total LBAs Read",
+            _ => "Unknown Attribute",
+        }
+    }
 }
 
 /// SMART health data for a storage device
@@ -179,6 +317,137 @@ impl Default for SmartData {
             pending_sectors: None,
             attributes: Vec::new(),
         }
+    }
+}
+
+impl SmartData {
+    /// Create SmartData from a list of attributes, extracting key metrics
+    pub fn from_attributes(attributes: Vec<SmartAttribute>) -> Self {
+        let mut data = SmartData {
+            attributes: attributes.clone(),
+            ..Default::default()
+        };
+
+        for attr in &attributes {
+            match attr.id {
+                smart_attributes::TEMPERATURE_CELSIUS | smart_attributes::TEMPERATURE_CELSIUS_ALT => {
+                    if let Ok(temp) = attr.raw_value.parse::<u64>() {
+                        data.temperature_celsius = Some(temp.min(255) as u8);
+                    }
+                }
+                smart_attributes::POWER_ON_HOURS => {
+                    if let Ok(hours) = attr.raw_value.parse::<u64>() {
+                        data.power_on_hours = Some(hours);
+                    }
+                }
+                smart_attributes::REALLOCATED_SECTORS_COUNT => {
+                    if let Ok(sectors) = attr.raw_value.parse::<u64>() {
+                        data.reallocated_sectors = Some(sectors);
+                    }
+                }
+                smart_attributes::CURRENT_PENDING_SECTOR_COUNT => {
+                    if let Ok(sectors) = attr.raw_value.parse::<u64>() {
+                        data.pending_sectors = Some(sectors);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        data.health_status = data.determine_health_status();
+        data
+    }
+
+    /// Determine overall health status based on attributes
+    pub fn determine_health_status(&self) -> HealthStatus {
+        // Check for critical conditions
+        if let Some(reallocated) = self.reallocated_sectors {
+            if reallocated > 100 {
+                return HealthStatus::Critical;
+            }
+        }
+
+        if let Some(pending) = self.pending_sectors {
+            if pending > 10 {
+                return HealthStatus::Critical;
+            }
+        }
+
+        // Check for any failing attributes
+        for attr in &self.attributes {
+            if attr.is_failing() {
+                return HealthStatus::Critical;
+            }
+        }
+
+        // Check for warning conditions
+        if let Some(reallocated) = self.reallocated_sectors {
+            if reallocated > 0 {
+                return HealthStatus::Warning;
+            }
+        }
+
+        if let Some(pending) = self.pending_sectors {
+            if pending > 0 {
+                return HealthStatus::Warning;
+            }
+        }
+
+        // Check for attributes approaching threshold
+        for attr in &self.attributes {
+            if attr.is_warning() {
+                return HealthStatus::Warning;
+            }
+        }
+
+        // Check temperature (warning if > 50°C, critical if > 60°C)
+        if let Some(temp) = self.temperature_celsius {
+            if temp > 60 {
+                return HealthStatus::Critical;
+            }
+            if temp > 50 {
+                return HealthStatus::Warning;
+            }
+        }
+
+        HealthStatus::Good
+    }
+
+    /// Get a human-readable summary of the health status
+    pub fn health_summary(&self) -> String {
+        match self.health_status {
+            HealthStatus::Good => "Drive is healthy".to_string(),
+            HealthStatus::Warning => {
+                let mut issues = Vec::new();
+                if let Some(reallocated) = self.reallocated_sectors {
+                    if reallocated > 0 {
+                        issues.push(format!("{} reallocated sectors", reallocated));
+                    }
+                }
+                if let Some(pending) = self.pending_sectors {
+                    if pending > 0 {
+                        issues.push(format!("{} pending sectors", pending));
+                    }
+                }
+                if let Some(temp) = self.temperature_celsius {
+                    if temp > 50 {
+                        issues.push(format!("High temperature ({}°C)", temp));
+                    }
+                }
+                if issues.is_empty() {
+                    "Drive health warning".to_string()
+                } else {
+                    format!("Warning: {}", issues.join(", "))
+                }
+            }
+            HealthStatus::Critical => "Drive health critical - backup data immediately!".to_string(),
+            HealthStatus::Unknown => "Health data unavailable".to_string(),
+        }
+    }
+
+    /// Get an attribute by ID
+    pub fn get_attribute(&self, id: u8) -> Option<&SmartAttribute> {
+        self.attributes.iter().find(|a| a.id == id)
     }
 }
 

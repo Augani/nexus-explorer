@@ -1,7 +1,10 @@
-//! Windows WMI-based device enumeration
+//! Windows WMI-based device enumeration and SMART data reading
 #![cfg(target_os = "windows")]
 
-use super::device_monitor::{get_disk_space, Device, DeviceId, DeviceType};
+use super::device_monitor::{
+    get_disk_space, Device, DeviceId, DeviceType, HealthStatus, SmartAttribute, SmartData,
+    smart_attributes,
+};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -209,4 +212,208 @@ fn get_volume_name(path: &PathBuf) -> Option<String> {
         }
     }
     None
+}
+
+/// SMART data reader for Windows using WMI
+pub struct SmartDataReader;
+
+impl SmartDataReader {
+    /// Get SMART data for a physical drive using WMI
+    /// Note: This requires the drive to support SMART and may need admin privileges
+    pub fn get_smart_data(drive_letter: &str) -> Option<SmartData> {
+        Self::get_smart_data_wmi(drive_letter)
+            .or_else(|| Self::get_basic_disk_info(drive_letter))
+    }
+
+    /// Try to get SMART data via WMI MSStorageDriver classes
+    fn get_smart_data_wmi(drive_letter: &str) -> Option<SmartData> {
+        use serde::Deserialize;
+        use wmi::{COMLibrary, WMIConnection};
+
+        // First, get the physical drive number for this logical drive
+        let physical_drive = Self::get_physical_drive_number(drive_letter)?;
+
+        // Try to get failure prediction status
+        #[derive(Deserialize, Debug)]
+        #[serde(rename = "MSStorageDriver_FailurePredictStatus")]
+        #[serde(rename_all = "PascalCase")]
+        struct FailurePredictStatus {
+            #[serde(rename = "PredictFailure")]
+            predict_failure: bool,
+            #[serde(rename = "Reason")]
+            reason: Option<u32>,
+        }
+
+        let com_con = COMLibrary::new().ok()?;
+        let wmi_con = WMIConnection::with_namespace_path("root\\WMI", com_con).ok()?;
+
+        // Query for failure prediction status
+        let instance_name = format!("_0"); // Physical drive 0
+        let query = format!(
+            "SELECT * FROM MSStorageDriver_FailurePredictStatus WHERE InstanceName LIKE '%{}%'",
+            physical_drive
+        );
+
+        let results: Vec<FailurePredictStatus> = wmi_con.raw_query(&query).ok()?;
+
+        if let Some(status) = results.into_iter().next() {
+            let health_status = if status.predict_failure {
+                HealthStatus::Critical
+            } else {
+                HealthStatus::Good
+            };
+
+            return Some(SmartData {
+                health_status,
+                ..Default::default()
+            });
+        }
+
+        None
+    }
+
+    /// Get basic disk information when SMART is not available
+    fn get_basic_disk_info(drive_letter: &str) -> Option<SmartData> {
+        use serde::Deserialize;
+        use wmi::{COMLibrary, WMIConnection};
+
+        #[derive(Deserialize, Debug)]
+        #[serde(rename = "Win32_DiskDrive")]
+        #[serde(rename_all = "PascalCase")]
+        struct Win32DiskDrive {
+            #[serde(rename = "Status")]
+            status: Option<String>,
+            #[serde(rename = "Model")]
+            model: Option<String>,
+            #[serde(rename = "MediaType")]
+            media_type: Option<String>,
+        }
+
+        let physical_drive = Self::get_physical_drive_number(drive_letter)?;
+        
+        let com_con = COMLibrary::new().ok()?;
+        let wmi_con = WMIConnection::new(com_con).ok()?;
+
+        let query = format!(
+            "SELECT Status, Model, MediaType FROM Win32_DiskDrive WHERE DeviceID LIKE '%{}%'",
+            physical_drive
+        );
+
+        let results: Vec<Win32DiskDrive> = wmi_con.raw_query(&query).ok()?;
+
+        if let Some(disk) = results.into_iter().next() {
+            let health_status = match disk.status.as_deref() {
+                Some("OK") => HealthStatus::Good,
+                Some("Degraded") | Some("Pred Fail") => HealthStatus::Warning,
+                Some("Error") => HealthStatus::Critical,
+                _ => HealthStatus::Unknown,
+            };
+
+            return Some(SmartData {
+                health_status,
+                ..Default::default()
+            });
+        }
+
+        None
+    }
+
+    /// Get the physical drive number for a logical drive letter
+    fn get_physical_drive_number(drive_letter: &str) -> Option<String> {
+        use serde::Deserialize;
+        use wmi::{COMLibrary, WMIConnection};
+
+        #[derive(Deserialize, Debug)]
+        #[serde(rename = "Win32_LogicalDiskToPartition")]
+        #[serde(rename_all = "PascalCase")]
+        struct LogicalDiskToPartition {
+            #[serde(rename = "Antecedent")]
+            antecedent: String,
+            #[serde(rename = "Dependent")]
+            dependent: String,
+        }
+
+        let drive = drive_letter.trim_end_matches(':').trim_end_matches('\\');
+        
+        let com_con = COMLibrary::new().ok()?;
+        let wmi_con = WMIConnection::new(com_con).ok()?;
+
+        let query = format!(
+            "SELECT * FROM Win32_LogicalDiskToPartition WHERE Dependent LIKE '%{}:%'",
+            drive
+        );
+
+        let results: Vec<LogicalDiskToPartition> = wmi_con.raw_query(&query).ok()?;
+
+        if let Some(mapping) = results.into_iter().next() {
+            // Extract disk number from antecedent like "Win32_DiskPartition.DeviceID=\"Disk #0, Partition #0\""
+            if let Some(disk_part) = mapping.antecedent.split("Disk #").nth(1) {
+                if let Some(disk_num) = disk_part.split(',').next() {
+                    return Some(format!("PHYSICALDRIVE{}", disk_num));
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Parse SMART attributes from raw data (512 bytes)
+    pub fn parse_smart_attributes(raw_data: &[u8]) -> Vec<SmartAttribute> {
+        let mut attributes = Vec::new();
+
+        // SMART attribute data starts at offset 2 and each attribute is 12 bytes
+        // Format: ID (1) | Flags (2) | Value (1) | Worst (1) | Raw (6) | Reserved (1)
+        if raw_data.len() < 362 {
+            return attributes;
+        }
+
+        for i in 0..30 {
+            let offset = 2 + (i * 12);
+            if offset + 12 > raw_data.len() {
+                break;
+            }
+
+            let id = raw_data[offset];
+            if id == 0 {
+                continue;
+            }
+
+            let value = raw_data[offset + 3] as u64;
+            let worst = raw_data[offset + 4] as u64;
+            let threshold = 0u64; // Threshold is in a separate structure
+
+            // Raw value is 6 bytes, little-endian
+            let raw_bytes = &raw_data[offset + 5..offset + 11];
+            let raw_value = u64::from_le_bytes([
+                raw_bytes[0],
+                raw_bytes[1],
+                raw_bytes[2],
+                raw_bytes[3],
+                raw_bytes[4],
+                raw_bytes[5],
+                0,
+                0,
+            ]);
+
+            let name = SmartAttribute::get_standard_name(id).to_string();
+
+            attributes.push(SmartAttribute::new(
+                id,
+                name,
+                value,
+                worst,
+                threshold,
+                raw_value.to_string(),
+            ));
+        }
+
+        attributes
+    }
+}
+
+impl WmiDeviceEnumerator {
+    /// Get SMART data for a device by drive letter
+    pub fn get_smart_data(&self, drive_letter: &str) -> Option<SmartData> {
+        SmartDataReader::get_smart_data(drive_letter)
+    }
 }

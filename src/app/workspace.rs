@@ -2395,16 +2395,6 @@ impl Render for Workspace {
         }
 
         let theme = theme_colors();
-        let bg_dark = theme.bg_secondary;
-        let bg_darker = theme.bg_void;
-        let border_color = theme.border_default;
-        let text_gray = theme.text_muted;
-        let hover_bg = theme.bg_hover;
-        let blue_active = theme.accent_primary;
-
-        let is_terminal_open = self.is_terminal_open;
-        let can_go_back = self.path_history.len() > 1;
-
         let current = current_theme();
         let content_bg = current.content_background();
 
@@ -2433,494 +2423,494 @@ impl Render for Workspace {
                     }
                 }),
             )
-            .on_mouse_move(
-                cx.listener(|view, event: &gpui::MouseMoveEvent, window, cx| {
-                    if view.is_resizing_terminal {
-                        let bounds = window.bounds();
-                        let mouse_y = event.position.y;
-                        let window_height = bounds.size.height;
-                        let new_height = f32::from(window_height) - f32::from(mouse_y) - 30.0;
-                        view.terminal_height = new_height.clamp(150.0, 600.0);
-                        cx.notify();
-                    }
-                    if view.is_resizing_preview {
-                        let bounds = window.bounds();
-                        let mouse_x = event.position.x;
-                        let window_width = bounds.size.width;
-                        // Preview is on the right, so width = window_width - mouse_x
-                        let new_width = f32::from(window_width) - f32::from(mouse_x);
-                        view.preview_width = new_width.clamp(200.0, 600.0);
-                        cx.notify();
-                    }
-                }),
-            )
+            .on_mouse_move(cx.listener(Self::handle_resize_mouse_move))
             .size_full()
             .flex()
             .flex_col()
-            // Apply layered background with gradient effect
             .bg(content_bg.base_color)
             .text_color(theme.text_primary)
             .font_family(".SystemUIFont")
-            // Titlebar - draggable for window movement and double-click to zoom
-            .child(
-                div()
-                    .id("titlebar")
-                    .h(px(52.0))
-                    .bg(bg_darker)
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px_5()
-                    .py_2()
-                    .border_b_1()
-                    .border_color(border_color)
-                    .on_click(|event, window, _cx| {
-                        if event.click_count() == 2 {
-                            window.titlebar_double_click();
-                        }
-                    })
-                    // Left side - leave space for traffic lights on macOS
-                    .child(
-                        div().flex().items_center().pl(px(70.0)).child(
-                            svg()
-                                .path("assets/icons/logo.svg")
-                                .size(px(20.0))
-                                .text_color(theme.accent_primary),
-                        ),
-                    )
-                    // Center - search input
-                    .child(
-                        div()
-                            .relative()
-                            .w_1_3()
-                            .max_w(px(500.0))
-                            .child(self.search_input.clone()),
-                    )
-                    .child(
-                        div().flex().items_center().gap_3().child(
-                            div()
-                                .id("theme-picker-btn")
-                                .px_2()
-                                .py_1()
-                                .rounded_md()
-                                .cursor_pointer()
-                                .flex()
-                                .items_center()
-                                .gap_1p5()
-                                .hover(|h| h.bg(hover_bg))
-                                .on_mouse_down(
-                                    MouseButton::Left,
-                                    cx.listener(|view, _event, _window, cx| {
-                                        view.toggle_theme_picker(cx);
-                                    }),
-                                )
-                                .child(
-                                    svg()
-                                        .path("assets/icons/sparkles.svg")
-                                        .size(px(14.0))
-                                        .text_color(theme.accent_primary),
-                                )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(theme.text_secondary)
-                                        .child("Themes"),
-                                ),
-                        ),
-                    ),
-            )
+            .child(self.render_titlebar(cx))
             .when(self.tabs_enabled, |this| this.child(self.tab_bar.clone()))
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .overflow_hidden()
-                    .child(
-                        div()
-                            .w(px(crate::models::sidebar::WIDTH))
-                            .bg(bg_dark)
-                            .border_r_1()
-                            .border_color(border_color)
-                            .flex()
-                            .flex_col()
-                            .child(self.sidebar.clone()),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .flex()
-                            .flex_col()
-                            .bg(bg_darker)
-                            .min_w_0()
-                            .child(
-                                div()
-                                    .h(px(crate::models::toolbar::HEIGHT))
-                                    .bg(bg_dark)
-                                    .border_b_1()
-                                    .border_color(border_color)
-                                    .flex()
-                                    .items_center()
-                                    .justify_between()
-                                    .px(px(crate::models::toolbar::PADDING_X))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap(px(crate::models::toolbar::BUTTON_GAP))
-                                            .child(
-                                                // Back button with 36px size
-                                                div()
-                                                    .id("back-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .rounded_md()
-                                                    .cursor_pointer()
-                                                    .when(can_go_back, |s| {
-                                                        s.hover(|h| h.bg(hover_bg))
-                                                    })
-                                                    .when(!can_go_back, |s| s.opacity(0.3))
-                                                    .on_mouse_down(
-                                                        MouseButton::Left,
-                                                        cx.listener(|view, _event, _window, cx| {
-                                                            view.navigate_back(cx);
-                                                        }),
-                                                    )
-                                                    .child(
-                                                        svg()
-                                                            .path("assets/icons/arrow-left.svg")
-                                                            .size(px(18.0))
-                                                            .text_color(text_gray),
-                                                    ),
-                                            )
-                                            // Themed divider between toolbar sections
-                                            .child(
-                                                div()
-                                                    .h(px(20.0))
-                                                    .w(px(1.0))
-                                                    .bg(theme.border_subtle)
-                                                    .mx(px(crate::models::toolbar::BUTTON_GAP)),
-                                            )
-                                            .child(self.render_breadcrumbs(cx)),
-                                    )
-                                    // Right side toolbar buttons with RPG styling
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap(px(crate::models::toolbar::BUTTON_GAP))
-                                            .child(
-                                                // Terminal toggle button - 36px
-                                                div()
-                                                    .id("terminal-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .rounded_md()
-                                                    .cursor_pointer()
-                                                    .when(is_terminal_open, |s| {
-                                                        s.bg(theme.bg_selected)
-                                                    })
-                                                    .when(!is_terminal_open, |s| {
-                                                        s.hover(|h| h.bg(hover_bg))
-                                                    })
-                                                    .on_mouse_down(
-                                                        MouseButton::Left,
-                                                        cx.listener(|view, _event, _window, cx| {
-                                                            view.toggle_terminal(cx);
-                                                        }),
-                                                    )
-                                                    .child(
-                                                        svg()
-                                                            .path("assets/icons/terminal.svg")
-                                                            .size(px(18.0))
-                                                            .text_color(if is_terminal_open {
-                                                                theme.accent_primary
-                                                            } else {
-                                                                text_gray
-                                                            }),
-                                                    ),
-                                            )
-                                            .child(
-                                                div()
-                                                    .h(px(20.0))
-                                                    .w(px(1.0))
-                                                    .bg(theme.border_subtle)
-                                                    .mx(px(crate::models::toolbar::BUTTON_GAP)),
-                                            )
-                                            .child(
-                                                // Copy button - 36px
-                                                div()
-                                                    .id("copy-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .rounded_md()
-                                                    .cursor_pointer()
-                                                    .hover(|h| h.bg(hover_bg))
-                                                    .child(
-                                                        svg()
-                                                            .path("assets/icons/copy.svg")
-                                                            .size(px(18.0))
-                                                            .text_color(text_gray),
-                                                    ),
-                                            )
-                                            .child(
-                                                // Trash button - 36px
-                                                div()
-                                                    .id("trash-btn")
-                                                    .size(px(crate::models::toolbar::BUTTON_SIZE))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .rounded_md()
-                                                    .cursor_pointer()
-                                                    .hover(|h| h.bg(hover_bg))
-                                                    .child(
-                                                        svg()
-                                                            .path("assets/icons/trash-2.svg")
-                                                            .size(px(16.0))
-                                                            .text_color(text_gray),
-                                                    ),
-                                            )
-                                            // Empty Trash button - only shown when in Trash folder
-                                            .when(
-                                                crate::models::is_trash_path(&self.current_path),
-                                                |toolbar| {
-                                                    toolbar.child(
-                                                        div()
-                                                            .id("empty-trash-btn")
-                                                            .px_3()
-                                                            .py(px(6.0))
-                                                            .bg(gpui::rgb(0xda3633))
-                                                            .text_color(gpui::rgb(0xffffff))
-                                                            .rounded_md()
-                                                            .text_xs()
-                                                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                            .cursor_pointer()
-                                                            .hover(|h| h.bg(gpui::rgb(0xb62324)))
-                                                            .on_mouse_down(
-                                                                MouseButton::Left,
-                                                                cx.listener(|view, _, _, cx| {
-                                                                    view.empty_trash(cx);
-                                                                }),
-                                                            )
-                                                            .child("Empty Trash"),
-                                                    )
-                                                },
-                                            )
-                                            .child(
-                                                div()
-                                                    .h(px(16.0))
-                                                    .w(px(1.0))
-                                                    .bg(theme.border_subtle)
-                                                    .mx_2(),
-                                            )
-                                            .child({
-                                                let is_grid =
-                                                    matches!(self.view_mode, ViewMode::Grid);
-                                                div()
-                                                    .flex()
-                                                    .bg(theme.bg_tertiary)
-                                                    .rounded_lg()
-                                                    .p_0p5()
-                                                    .child(
-                                                        div()
-                                                            .id("grid-view-btn")
-                                                            .p_1()
-                                                            .rounded_md()
-                                                            .cursor_pointer()
-                                                            .when(is_grid, |s| s.bg(theme.bg_hover))
-                                                            .on_mouse_down(
-                                                                MouseButton::Left,
-                                                                cx.listener(
-                                                                    |view, _event, _window, cx| {
-                                                                        view.set_view_mode(
-                                                                            ViewMode::Grid,
-                                                                            cx,
-                                                                        );
-                                                                    },
-                                                                ),
-                                                            )
-                                                            .child(
-                                                                svg()
-                                                                    .path(
-                                                                        "assets/icons/grid-2x2.svg",
-                                                                    )
-                                                                    .size(px(14.0))
-                                                                    .text_color(if is_grid {
-                                                                        theme.text_primary
-                                                                    } else {
-                                                                        text_gray
-                                                                    }),
-                                                            ),
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .id("list-view-btn")
-                                                            .p_1()
-                                                            .rounded_md()
-                                                            .cursor_pointer()
-                                                            .when(!is_grid, |s| {
-                                                                s.bg(theme.bg_hover)
-                                                            })
-                                                            .on_mouse_down(
-                                                                MouseButton::Left,
-                                                                cx.listener(
-                                                                    |view, _event, _window, cx| {
-                                                                        view.set_view_mode(
-                                                                            ViewMode::List,
-                                                                            cx,
-                                                                        );
-                                                                    },
-                                                                ),
-                                                            )
-                                                            .child(
-                                                                svg()
-                                                                    .path("assets/icons/list.svg")
-                                                                    .size(px(14.0))
-                                                                    .text_color(if !is_grid {
-                                                                        theme.text_primary
-                                                                    } else {
-                                                                        text_gray
-                                                                    }),
-                                                            ),
-                                                    )
-                                            }),
-                                    ),
-                            )
-                            .child({
-                                let is_grid = matches!(self.view_mode, ViewMode::Grid);
-                                div()
-                                    .flex_1()
-                                    .bg(bg_darker)
-                                    .overflow_hidden()
-                                    .min_h(px(100.0))
-                                    .when(self.copy_move_mode, |d| d.opacity(0.5))
-                                    .when(is_grid, |this| this.child(self.grid_view.clone()))
-                                    .when(!is_grid, |this| this.child(self.file_list.clone()))
-                            })
-                            .when(is_terminal_open, |this| {
-                                let terminal_height = self.terminal_height;
-                                let handle_color = theme.border_default;
-                                let active_terminal = self.active_terminal(cx);
-                                this.child(
-                                    div()
-                                        .id("terminal-resize-handle")
-                                        .w_full()
-                                        .h(px(6.0))
-                                        .cursor_row_resize()
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .bg(bg_dark)
-                                        .border_t_1()
-                                        .border_color(handle_color)
-                                        .hover(|h| h.bg(theme.bg_hover))
-                                        .on_mouse_down(
-                                            MouseButton::Left,
-                                            cx.listener(|view, _, _, cx| {
-                                                view.is_resizing_terminal = true;
-                                                cx.notify();
-                                            }),
-                                        )
-                                        .child(
-                                            div()
-                                                .w(px(40.0))
-                                                .h(px(3.0))
-                                                .rounded_full()
-                                                .bg(handle_color),
-                                        ),
-                                )
-                                .when_some(
-                                    active_terminal,
-                                    |this, terminal| {
-                                        this.child(
-                                            div()
-                                                .h(px(terminal_height))
-                                                .min_h(px(150.0))
-                                                .max_h(px(600.0))
-                                                .child(terminal),
-                                        )
-                                    },
-                                )
-                            }),
-                    )
-                    .when(self.copy_move_mode, |this| {
-                        this.child(self.render_destination_pane(cx))
-                    })
-                    .when(!self.copy_move_mode, |this| {
-                        this.children(self.preview.clone().map(|preview| {
-                            let preview_width = self.preview_width;
-                            let handle_color = border_color;
-                            div()
-                                .flex()
-                                .h_full()
-                                .child(
-                                    div()
-                                        .id("preview-resize-handle")
-                                        .w(px(6.0))
-                                        .h_full()
-                                        .cursor_col_resize()
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .bg(bg_dark)
-                                        .border_l_1()
-                                        .border_color(handle_color)
-                                        .hover(|h| h.bg(theme.bg_hover))
-                                        .on_mouse_down(
-                                            MouseButton::Left,
-                                            cx.listener(|view, _, _, cx| {
-                                                view.is_resizing_preview = true;
-                                                cx.notify();
-                                            }),
-                                        )
-                                        .child(
-                                            div()
-                                                .w(px(3.0))
-                                                .h(px(40.0))
-                                                .rounded_full()
-                                                .bg(handle_color),
-                                        ),
-                                )
-                                // Preview content
-                                .child(
-                                    div()
-                                        .w(px(preview_width))
-                                        .min_w(px(200.0))
-                                        .max_w(px(600.0))
-                                        .h_full()
-                                        .bg(bg_dark)
-                                        .flex()
-                                        .flex_col()
-                                        .child(preview),
-                                )
-                        }))
-                    }),
-            )
-            // Status bar at the bottom
+            .child(self.render_main_content(cx))
             .child(self.status_bar.clone())
             .when(!matches!(self.dialog_state, DialogState::None), |this| {
                 this.child(self.render_dialog_overlay(cx))
             })
-            // Smart folder dialog overlay
             .when(self.show_smart_folder_dialog, |this| {
                 this.child(self.smart_folder_dialog.clone())
             })
-            // Conflict dialog overlay
             .when(self.conflict_dialog.is_some(), |this| {
                 this.child(self.render_conflict_dialog_overlay(cx))
             })
-            // Theme picker overlay
             .child(self.theme_picker.clone())
-            // Quick Look overlay
             .child(self.quick_look.clone())
-            // Toast notifications
             .child(self.toast_manager.clone())
+    }
+}
+
+impl Workspace {
+    fn handle_resize_mouse_move(
+        &mut self,
+        event: &gpui::MouseMoveEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.is_resizing_terminal {
+            let bounds = window.bounds();
+            let mouse_y = event.position.y;
+            let window_height = bounds.size.height;
+            let new_height = f32::from(window_height) - f32::from(mouse_y) - 30.0;
+            self.terminal_height = new_height.clamp(150.0, 600.0);
+            cx.notify();
+        }
+        if self.is_resizing_preview {
+            let bounds = window.bounds();
+            let mouse_x = event.position.x;
+            let window_width = bounds.size.width;
+            let new_width = f32::from(window_width) - f32::from(mouse_x);
+            self.preview_width = new_width.clamp(200.0, 600.0);
+            cx.notify();
+        }
+    }
+
+    fn render_titlebar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .id("titlebar")
+            .h(px(52.0))
+            .bg(theme.bg_void)
+            .flex()
+            .items_center()
+            .justify_between()
+            .px_5()
+            .py_2()
+            .border_b_1()
+            .border_color(theme.border_default)
+            .on_click(|event, window, _cx| {
+                if event.click_count() == 2 {
+                    window.titlebar_double_click();
+                }
+            })
+            .child(
+                div().flex().items_center().pl(px(70.0)).child(
+                    svg()
+                        .path("assets/icons/logo.svg")
+                        .size(px(20.0))
+                        .text_color(theme.accent_primary),
+                ),
+            )
+            .child(
+                div()
+                    .relative()
+                    .w_1_3()
+                    .max_w(px(500.0))
+                    .child(self.search_input.clone()),
+            )
+            .child(
+                div().flex().items_center().gap_3().child(
+                    div()
+                        .id("theme-picker-btn")
+                        .px_2()
+                        .py_1()
+                        .rounded_md()
+                        .cursor_pointer()
+                        .flex()
+                        .items_center()
+                        .gap_1p5()
+                        .hover(|h| h.bg(theme.bg_hover))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(|view, _event, _window, cx| {
+                                view.toggle_theme_picker(cx);
+                            }),
+                        )
+                        .child(
+                            svg()
+                                .path("assets/icons/sparkles.svg")
+                                .size(px(14.0))
+                                .text_color(theme.accent_primary),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(theme.text_secondary)
+                                .child("Themes"),
+                        ),
+                ),
+            )
+    }
+
+    fn render_main_content(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .flex()
+            .flex_1()
+            .overflow_hidden()
+            .child(self.render_sidebar())
+            .child(self.render_content_area(cx))
+            .when(self.copy_move_mode, |this| {
+                this.child(self.render_destination_pane(cx))
+            })
+            .when(!self.copy_move_mode, |this| {
+                this.children(self.preview.clone().map(|p| self.render_preview_pane(p, cx)))
+            })
+    }
+
+    fn render_sidebar(&self) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .w(px(crate::models::sidebar::WIDTH))
+            .bg(theme.bg_secondary)
+            .border_r_1()
+            .border_color(theme.border_default)
+            .flex()
+            .flex_col()
+            .child(self.sidebar.clone())
+    }
+
+    fn render_content_area(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let is_terminal_open = self.is_terminal_open;
+
+        div()
+            .flex_1()
+            .flex()
+            .flex_col()
+            .bg(theme.bg_void)
+            .min_w_0()
+            .child(self.render_toolbar(cx))
+            .child(self.render_file_view())
+            .when(is_terminal_open, |this| {
+                this.child(self.render_terminal_section(cx))
+            })
+    }
+
+    fn render_toolbar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let can_go_back = self.path_history.len() > 1;
+        let is_terminal_open = self.is_terminal_open;
+
+        div()
+            .h(px(crate::models::toolbar::HEIGHT))
+            .bg(theme.bg_secondary)
+            .border_b_1()
+            .border_color(theme.border_default)
+            .flex()
+            .items_center()
+            .justify_between()
+            .px(px(crate::models::toolbar::PADDING_X))
+            .child(self.render_toolbar_left(can_go_back, cx))
+            .child(self.render_toolbar_right(is_terminal_open, cx))
+    }
+
+    fn render_toolbar_left(&self, can_go_back: bool, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .flex()
+            .items_center()
+            .gap(px(crate::models::toolbar::BUTTON_GAP))
+            .child(
+                div()
+                    .id("back-btn")
+                    .size(px(crate::models::toolbar::BUTTON_SIZE))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded_md()
+                    .cursor_pointer()
+                    .when(can_go_back, |s| s.hover(|h| h.bg(theme.bg_hover)))
+                    .when(!can_go_back, |s| s.opacity(0.3))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.navigate_back(cx);
+                        }),
+                    )
+                    .child(
+                        svg()
+                            .path("assets/icons/arrow-left.svg")
+                            .size(px(18.0))
+                            .text_color(theme.text_muted),
+                    ),
+            )
+            .child(
+                div()
+                    .h(px(20.0))
+                    .w(px(1.0))
+                    .bg(theme.border_subtle)
+                    .mx(px(crate::models::toolbar::BUTTON_GAP)),
+            )
+            .child(self.render_breadcrumbs(cx))
+    }
+
+    fn render_toolbar_right(&self, is_terminal_open: bool, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let is_grid = matches!(self.view_mode, ViewMode::Grid);
+        let is_trash = crate::models::is_trash_path(&self.current_path);
+
+        div()
+            .flex()
+            .items_center()
+            .gap(px(crate::models::toolbar::BUTTON_GAP))
+            .child(self.render_terminal_button(is_terminal_open, cx))
+            .child(div().h(px(20.0)).w(px(1.0)).bg(theme.border_subtle).mx(px(crate::models::toolbar::BUTTON_GAP)))
+            .child(self.render_copy_button())
+            .child(self.render_trash_button())
+            .when(is_trash, |this| this.child(self.render_empty_trash_button(cx)))
+            .child(div().h(px(16.0)).w(px(1.0)).bg(theme.border_subtle).mx_2())
+            .child(self.render_view_mode_toggle(is_grid, cx))
+    }
+
+    fn render_terminal_button(&self, is_terminal_open: bool, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .id("terminal-btn")
+            .size(px(crate::models::toolbar::BUTTON_SIZE))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded_md()
+            .cursor_pointer()
+            .when(is_terminal_open, |s| s.bg(theme.bg_selected))
+            .when(!is_terminal_open, |s| s.hover(|h| h.bg(theme.bg_hover)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.toggle_terminal(cx);
+                }),
+            )
+            .child(
+                svg()
+                    .path("assets/icons/terminal.svg")
+                    .size(px(18.0))
+                    .text_color(if is_terminal_open { theme.accent_primary } else { theme.text_muted }),
+            )
+    }
+
+    fn render_copy_button(&self) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .id("copy-btn")
+            .size(px(crate::models::toolbar::BUTTON_SIZE))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded_md()
+            .cursor_pointer()
+            .hover(|h| h.bg(theme.bg_hover))
+            .child(
+                svg()
+                    .path("assets/icons/copy.svg")
+                    .size(px(18.0))
+                    .text_color(theme.text_muted),
+            )
+    }
+
+    fn render_trash_button(&self) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .id("trash-btn")
+            .size(px(crate::models::toolbar::BUTTON_SIZE))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded_md()
+            .cursor_pointer()
+            .hover(|h| h.bg(theme.bg_hover))
+            .child(
+                svg()
+                    .path("assets/icons/trash-2.svg")
+                    .size(px(16.0))
+                    .text_color(theme.text_muted),
+            )
+    }
+
+    fn render_empty_trash_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .id("empty-trash-btn")
+            .px_3()
+            .py(px(6.0))
+            .bg(gpui::rgb(0xda3633))
+            .text_color(gpui::rgb(0xffffff))
+            .rounded_md()
+            .text_xs()
+            .font_weight(gpui::FontWeight::SEMIBOLD)
+            .cursor_pointer()
+            .hover(|h| h.bg(gpui::rgb(0xb62324)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _, cx| {
+                    view.empty_trash(cx);
+                }),
+            )
+            .child("Empty Trash")
+    }
+
+    fn render_view_mode_toggle(&self, is_grid: bool, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+
+        div()
+            .flex()
+            .bg(theme.bg_tertiary)
+            .rounded_lg()
+            .p_0p5()
+            .child(
+                div()
+                    .id("grid-view-btn")
+                    .p_1()
+                    .rounded_md()
+                    .cursor_pointer()
+                    .when(is_grid, |s| s.bg(theme.bg_hover))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.set_view_mode(ViewMode::Grid, cx);
+                        }),
+                    )
+                    .child(
+                        svg()
+                            .path("assets/icons/grid-2x2.svg")
+                            .size(px(14.0))
+                            .text_color(if is_grid { theme.text_primary } else { theme.text_muted }),
+                    ),
+            )
+            .child(
+                div()
+                    .id("list-view-btn")
+                    .p_1()
+                    .rounded_md()
+                    .cursor_pointer()
+                    .when(!is_grid, |s| s.bg(theme.bg_hover))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.set_view_mode(ViewMode::List, cx);
+                        }),
+                    )
+                    .child(
+                        svg()
+                            .path("assets/icons/list.svg")
+                            .size(px(14.0))
+                            .text_color(if !is_grid { theme.text_primary } else { theme.text_muted }),
+                    ),
+            )
+    }
+
+    fn render_file_view(&self) -> impl IntoElement {
+        let theme = theme_colors();
+        let is_grid = matches!(self.view_mode, ViewMode::Grid);
+
+        div()
+            .flex_1()
+            .bg(theme.bg_void)
+            .overflow_hidden()
+            .min_h(px(100.0))
+            .when(self.copy_move_mode, |d| d.opacity(0.5))
+            .when(is_grid, |this| this.child(self.grid_view.clone()))
+            .when(!is_grid, |this| this.child(self.file_list.clone()))
+    }
+
+    fn render_terminal_section(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let terminal_height = self.terminal_height;
+        let active_terminal = self.active_terminal(cx);
+
+        div()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .id("terminal-resize-handle")
+                    .w_full()
+                    .h(px(6.0))
+                    .cursor_row_resize()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(theme.bg_secondary)
+                    .border_t_1()
+                    .border_color(theme.border_default)
+                    .hover(|h| h.bg(theme.bg_hover))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _, _, cx| {
+                            view.is_resizing_terminal = true;
+                            cx.notify();
+                        }),
+                    )
+                    .child(
+                        div()
+                            .w(px(40.0))
+                            .h(px(3.0))
+                            .rounded_full()
+                            .bg(theme.border_default),
+                    ),
+            )
+            .when_some(active_terminal, |this, terminal| {
+                this.child(
+                    div()
+                        .h(px(terminal_height))
+                        .min_h(px(150.0))
+                        .max_h(px(600.0))
+                        .child(terminal),
+                )
+            })
+    }
+
+    fn render_preview_pane(&self, preview: Entity<PreviewView>, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let preview_width = self.preview_width;
+
+        div()
+            .flex()
+            .h_full()
+            .child(
+                div()
+                    .id("preview-resize-handle")
+                    .w(px(6.0))
+                    .h_full()
+                    .cursor_col_resize()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(theme.bg_secondary)
+                    .border_l_1()
+                    .border_color(theme.border_default)
+                    .hover(|h| h.bg(theme.bg_hover))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _, _, cx| {
+                            view.is_resizing_preview = true;
+                            cx.notify();
+                        }),
+                    )
+                    .child(
+                        div()
+                            .w(px(3.0))
+                            .h(px(40.0))
+                            .rounded_full()
+                            .bg(theme.border_default),
+                    ),
+            )
+            .child(
+                div()
+                    .w(px(preview_width))
+                    .min_w(px(200.0))
+                    .max_w(px(600.0))
+                    .h_full()
+                    .bg(theme.bg_secondary)
+                    .flex()
+                    .flex_col()
+                    .child(preview),
+            )
     }
 }
 
