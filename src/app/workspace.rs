@@ -923,18 +923,107 @@ impl Workspace {
                 .detach();
             }
             ContextMenuAction::Share(path) => {
+                // Open the share dialog for network sharing
+                if path.is_dir() {
+                    let share_info = self.share_manager.get_share(&path).cloned();
+                    let is_shared = share_info.is_some();
+                    
+                    if is_shared {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_info("This folder is already shared".to_string(), cx);
+                        });
+                    } else {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_info("Use 'Network Share...' to share this folder".to_string(), cx);
+                        });
+                    }
+                } else {
+                    // For files, show platform-specific share options
+                    #[cfg(target_os = "macos")]
+                    {
+                        let _ = std::process::Command::new("open")
+                            .args(["-R"])
+                            .arg(&path)
+                            .spawn();
+                    }
+                }
+            }
+            ContextMenuAction::ShareViaAirDrop(path) => {
                 #[cfg(target_os = "macos")]
                 {
-                    let script = format!(
-                        "tell application \"Finder\" to activate\n\
-                         tell application \"System Events\"\n\
-                         keystroke \"i\" using {{command down, option down}}\n\
-                         end tell"
-                    );
-                    let _ = std::process::Command::new("open")
-                        .args(["-R"])
-                        .arg(&path)
-                        .spawn();
+                    match crate::models::share_via_airdrop(&[path.clone()]) {
+                        Ok(()) => {
+                            self.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success("AirDrop opened".to_string(), cx);
+                            });
+                        }
+                        Err(e) => {
+                            self.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error(format!("AirDrop failed: {}", e), cx);
+                            });
+                        }
+                    }
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_error("AirDrop is only available on macOS".to_string(), cx);
+                    });
+                }
+            }
+            ContextMenuAction::ShareViaNearbyShare(path) => {
+                #[cfg(target_os = "windows")]
+                {
+                    match crate::models::share_via_nearby_share(&[path.clone()]) {
+                        Ok(()) => {
+                            self.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success("Nearby Share opened".to_string(), cx);
+                            });
+                        }
+                        Err(e) => {
+                            self.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error(format!("Nearby Share failed: {}", e), cx);
+                            });
+                        }
+                    }
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_error("Nearby Share is only available on Windows".to_string(), cx);
+                    });
+                }
+            }
+            ContextMenuAction::ShareViaNetwork(path) => {
+                if path.is_dir() {
+                    // Show network share dialog for directories
+                    let share_info = self.share_manager.get_share(&path).cloned();
+                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Share");
+                    
+                    if let Some(info) = share_info {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_info(format!("'{}' is already shared as '{}'", name, info.share_name), cx);
+                        });
+                    } else {
+                        // Create a new share
+                        let config = crate::models::ShareConfig::new(name.to_string(), path.clone());
+                        match self.share_manager.create_share(config) {
+                            Ok(info) => {
+                                self.toast_manager.update(cx, |toast, cx| {
+                                    toast.show_success(format!("Shared as '{}'", info.share_name), cx);
+                                });
+                            }
+                            Err(e) => {
+                                self.toast_manager.update(cx, |toast, cx| {
+                                    toast.show_error(format!("Failed to share: {}", e), cx);
+                                });
+                            }
+                        }
+                    }
+                } else {
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_error("Only folders can be shared over the network".to_string(), cx);
+                    });
                 }
             }
             ContextMenuAction::CopyPath(path) => {

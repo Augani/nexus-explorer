@@ -1,4 +1,8 @@
-use crate::models::{ShareConfig, ShareError, ShareInfo, SharePermission};
+use crate::models::{
+    ShareConfig, ShareInfo, SharePermission, 
+    PlatformShareMethod, get_available_share_methods, is_share_method_available,
+    get_share_method_unavailable_reason,
+};
 use std::path::PathBuf;
 
 /// Actions for the share dialog
@@ -11,10 +15,23 @@ pub enum ShareDialogAction {
     DescriptionChanged(String),
     PermissionChanged(SharePermission),
     MaxUsersChanged(Option<u32>),
+    /// Platform-specific sharing actions
+    ShareViaPlatform(PlatformShareMethod),
+    /// Switch between network share and platform share tabs
+    SwitchTab(ShareDialogTab),
+}
+
+/// Tabs in the share dialog
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum ShareDialogTab {
+    #[default]
+    PlatformShare,
+    NetworkShare,
 }
 
 /// State for the share dialog
 pub struct ShareDialog {
+    paths: Vec<PathBuf>,
     path: PathBuf,
     share_name: String,
     description: String,
@@ -27,6 +44,13 @@ pub struct ShareDialog {
     on_share: Option<Box<dyn Fn(ShareConfig) + Send + Sync>>,
     on_stop_sharing: Option<Box<dyn Fn(PathBuf) + Send + Sync>>,
     on_cancel: Option<Box<dyn Fn() + Send + Sync>>,
+    on_platform_share: Option<Box<dyn Fn(Vec<PathBuf>, PlatformShareMethod) + Send + Sync>>,
+    /// Current tab
+    current_tab: ShareDialogTab,
+    /// Available platform share methods
+    available_methods: Vec<PlatformShareMethod>,
+    /// Platform share status
+    platform_share_status: Option<String>,
 }
 
 impl ShareDialog {
@@ -37,7 +61,10 @@ impl ShareDialog {
             .unwrap_or("Share")
             .to_string();
 
+        let available_methods = get_available_share_methods();
+
         Self {
+            paths: vec![path.clone()],
             path,
             share_name: default_name,
             description: String::new(),
@@ -50,6 +77,46 @@ impl ShareDialog {
             on_share: None,
             on_stop_sharing: None,
             on_cancel: None,
+            on_platform_share: None,
+            current_tab: ShareDialogTab::PlatformShare,
+            available_methods,
+            platform_share_status: None,
+        }
+    }
+
+    /// Create a share dialog for multiple files
+    pub fn new_multi(paths: Vec<PathBuf>) -> Self {
+        let default_name = if paths.len() == 1 {
+            paths[0]
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Share")
+                .to_string()
+        } else {
+            format!("{} items", paths.len())
+        };
+
+        let first_path = paths.first().cloned().unwrap_or_default();
+        let available_methods = get_available_share_methods();
+
+        Self {
+            paths,
+            path: first_path,
+            share_name: default_name,
+            description: String::new(),
+            permission: SharePermission::ReadOnly,
+            max_users: None,
+            error_message: None,
+            is_sharing: false,
+            is_already_shared: false,
+            existing_share: None,
+            on_share: None,
+            on_stop_sharing: None,
+            on_cancel: None,
+            on_platform_share: None,
+            current_tab: ShareDialogTab::PlatformShare,
+            available_methods,
+            platform_share_status: None,
         }
     }
 
@@ -84,6 +151,14 @@ impl ShareDialog {
         F: Fn() + Send + Sync + 'static,
     {
         self.on_cancel = Some(Box::new(callback));
+        self
+    }
+
+    pub fn with_on_platform_share<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(Vec<PathBuf>, PlatformShareMethod) + Send + Sync + 'static,
+    {
+        self.on_platform_share = Some(Box::new(callback));
         self
     }
 
@@ -203,6 +278,41 @@ impl ShareDialog {
         self.existing_share = None;
     }
 
+    /// Execute platform-specific share
+    pub fn execute_platform_share(&mut self, method: PlatformShareMethod) {
+        if !is_share_method_available(method) {
+            if let Some(reason) = get_share_method_unavailable_reason(method) {
+                self.error_message = Some(reason);
+            } else {
+                self.error_message = Some(format!("{} is not available", method.display_name()));
+            }
+            return;
+        }
+
+        self.error_message = None;
+        self.platform_share_status = Some(format!("Opening {}...", method.display_name()));
+
+        if let Some(callback) = &self.on_platform_share {
+            callback(self.paths.clone(), method);
+        }
+    }
+
+    /// Set platform share result
+    pub fn set_platform_share_result(&mut self, success: bool, message: Option<String>) {
+        if success {
+            self.platform_share_status = message.or(Some("Share initiated".to_string()));
+        } else {
+            self.error_message = message;
+            self.platform_share_status = None;
+        }
+    }
+
+    /// Switch tab
+    pub fn set_tab(&mut self, tab: ShareDialogTab) {
+        self.current_tab = tab;
+        self.error_message = None;
+    }
+
     // Getters
     pub fn path(&self) -> &PathBuf {
         &self.path
@@ -238,6 +348,32 @@ impl ShareDialog {
 
     pub fn existing_share(&self) -> Option<&ShareInfo> {
         self.existing_share.as_ref()
+    }
+
+    pub fn current_tab(&self) -> ShareDialogTab {
+        self.current_tab
+    }
+
+    pub fn available_methods(&self) -> &[PlatformShareMethod] {
+        &self.available_methods
+    }
+
+    pub fn platform_share_status(&self) -> Option<&str> {
+        self.platform_share_status.as_deref()
+    }
+
+    pub fn paths(&self) -> &[PathBuf] {
+        &self.paths
+    }
+
+    /// Check if a specific share method is available
+    pub fn is_method_available(&self, method: PlatformShareMethod) -> bool {
+        is_share_method_available(method)
+    }
+
+    /// Get reason why a method is unavailable
+    pub fn get_method_unavailable_reason(&self, method: PlatformShareMethod) -> Option<String> {
+        get_share_method_unavailable_reason(method)
     }
 
     /// Get folder info summary
@@ -284,6 +420,38 @@ impl ShareDialog {
     /// Check if sharing is supported on this platform
     pub fn is_sharing_supported() -> bool {
         cfg!(any(target_os = "windows", target_os = "linux", target_os = "macos"))
+    }
+
+    /// Check if platform-specific sharing (AirDrop/Nearby Share) is available
+    pub fn has_platform_share_options() -> bool {
+        #[cfg(target_os = "macos")]
+        {
+            crate::models::is_airdrop_available()
+        }
+        #[cfg(target_os = "windows")]
+        {
+            crate::models::is_nearby_share_available()
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            false
+        }
+    }
+
+    /// Get the primary platform share method for this OS
+    pub fn primary_platform_method() -> Option<PlatformShareMethod> {
+        #[cfg(target_os = "macos")]
+        {
+            Some(PlatformShareMethod::AirDrop)
+        }
+        #[cfg(target_os = "windows")]
+        {
+            Some(PlatformShareMethod::NearbyShare)
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            None
+        }
     }
 }
 

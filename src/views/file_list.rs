@@ -42,6 +42,12 @@ pub enum ContextMenuAction {
     ExtractHere(PathBuf),
     ExtractToFolder(PathBuf),
     Share(PathBuf),
+    /// Share via AirDrop (macOS only)
+    ShareViaAirDrop(PathBuf),
+    /// Share via Nearby Share (Windows only)
+    ShareViaNearbyShare(PathBuf),
+    /// Share via network share dialog
+    ShareViaNetwork(PathBuf),
     CopyPath(PathBuf),
     ShowInFinder(PathBuf),
     QuickLook(PathBuf),
@@ -1012,19 +1018,14 @@ impl Render for FileListView {
                                         }
                                     }))
                                 })
-                                .child(render_context_menu_item("share-2", "Share...", text_light, hover_bg, {
-                                    let entity = entity.clone();
-                                    let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Share(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
-                                        }
-                                    }
-                                }))
+                                .child(render_share_submenu(
+                                    selected_entry.clone(),
+                                    text_light,
+                                    hover_bg,
+                                    menu_bg,
+                                    border_color,
+                                    entity.clone(),
+                                ))
                                 .child(render_context_menu_divider(border_subtle))
                                 .child(render_context_menu_item("link", "Copy Path", text_light, hover_bg, {
                                     let entity = entity.clone();
@@ -1443,6 +1444,195 @@ fn render_open_with_submenu(
                     }),
             )
         })
+}
+
+fn render_share_submenu(
+    selected_entry: Option<FileEntry>,
+    text_color: gpui::Rgba,
+    hover_bg: gpui::Rgba,
+    _menu_bg: gpui::Rgba,
+    border_color: gpui::Rgba,
+    entity: gpui::Entity<FileListView>,
+) -> impl IntoElement {
+    use crate::models::{get_available_share_methods, PlatformShareMethod};
+
+    let available_methods = get_available_share_methods();
+    let entry_for_share = selected_entry.clone();
+    let entry_for_airdrop = selected_entry.clone();
+    let entry_for_nearby = selected_entry.clone();
+    let entry_for_network = selected_entry.clone();
+    let entity_for_share = entity.clone();
+    let entity_for_airdrop = entity.clone();
+    let entity_for_nearby = entity.clone();
+    let entity_for_network = entity.clone();
+
+    // Check which platform-specific methods are available
+    let has_airdrop = available_methods.contains(&PlatformShareMethod::AirDrop);
+    let has_nearby = available_methods.contains(&PlatformShareMethod::NearbyShare);
+
+    div()
+        .id("share-menu-wrapper")
+        .flex()
+        .flex_col()
+        // Main Share option (opens share dialog)
+        .child(
+            div()
+                .id("share-trigger")
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_3()
+                .px_3()
+                .py_1p5()
+                .mx_1()
+                .rounded_md()
+                .cursor_pointer()
+                .text_sm()
+                .text_color(text_color)
+                .hover(|s| s.bg(hover_bg))
+                .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                    if let Some(ref e) = entry_for_share {
+                        entity_for_share.update(cx, |view, cx| {
+                            view.pending_context_action = Some(ContextMenuAction::Share(e.path.clone()));
+                            view.close_context_menu();
+                            cx.notify();
+                        });
+                    }
+                })
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            svg()
+                                .path("assets/icons/share-2.svg")
+                                .size(px(14.0))
+                                .text_color(text_color),
+                        )
+                        .child("Share..."),
+                ),
+        )
+        // Platform-specific share options
+        .child(
+            div()
+                .id("share-options-list")
+                .flex()
+                .flex_col()
+                .pl_4()
+                .border_l_1()
+                .border_color(border_color)
+                .ml_4()
+                // AirDrop (macOS only)
+                .when(has_airdrop, |submenu| {
+                    submenu.child(
+                        div()
+                            .id("share-airdrop")
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .px_3()
+                            .py_1p5()
+                            .rounded_md()
+                            .cursor_pointer()
+                            .text_sm()
+                            .text_color(text_color)
+                            .hover(|s| s.bg(hover_bg))
+                            .on_mouse_down(MouseButton::Left, {
+                                let entry = entry_for_airdrop.clone();
+                                let entity = entity_for_airdrop.clone();
+                                move |_event, _window, cx| {
+                                    if let Some(ref e) = entry {
+                                        entity.update(cx, |view, cx| {
+                                            view.pending_context_action = Some(ContextMenuAction::ShareViaAirDrop(e.path.clone()));
+                                            view.close_context_menu();
+                                            cx.notify();
+                                        });
+                                    }
+                                }
+                            })
+                            .child(
+                                svg()
+                                    .path("assets/icons/airplay.svg")
+                                    .size(px(14.0))
+                                    .text_color(text_color),
+                            )
+                            .child("AirDrop"),
+                    )
+                })
+                // Nearby Share (Windows only)
+                .when(has_nearby, |submenu| {
+                    submenu.child(
+                        div()
+                            .id("share-nearby")
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .px_3()
+                            .py_1p5()
+                            .rounded_md()
+                            .cursor_pointer()
+                            .text_sm()
+                            .text_color(text_color)
+                            .hover(|s| s.bg(hover_bg))
+                            .on_mouse_down(MouseButton::Left, {
+                                let entry = entry_for_nearby.clone();
+                                let entity = entity_for_nearby.clone();
+                                move |_event, _window, cx| {
+                                    if let Some(ref e) = entry {
+                                        entity.update(cx, |view, cx| {
+                                            view.pending_context_action = Some(ContextMenuAction::ShareViaNearbyShare(e.path.clone()));
+                                            view.close_context_menu();
+                                            cx.notify();
+                                        });
+                                    }
+                                }
+                            })
+                            .child(
+                                svg()
+                                    .path("assets/icons/share-2.svg")
+                                    .size(px(14.0))
+                                    .text_color(text_color),
+                            )
+                            .child("Nearby Share"),
+                    )
+                })
+                // Network Share (always available)
+                .child(
+                    div()
+                        .id("share-network")
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .px_3()
+                        .py_1p5()
+                        .rounded_md()
+                        .cursor_pointer()
+                        .text_sm()
+                        .text_color(text_color)
+                        .hover(|s| s.bg(hover_bg))
+                        .on_mouse_down(MouseButton::Left, {
+                            let entry = entry_for_network.clone();
+                            let entity = entity_for_network.clone();
+                            move |_event, _window, cx| {
+                                if let Some(ref e) = entry {
+                                    entity.update(cx, |view, cx| {
+                                        view.pending_context_action = Some(ContextMenuAction::ShareViaNetwork(e.path.clone()));
+                                        view.close_context_menu();
+                                        cx.notify();
+                                    });
+                                }
+                            }
+                        })
+                        .child(
+                            svg()
+                                .path("assets/icons/cloud.svg")
+                                .size(px(14.0))
+                                .text_color(text_color),
+                        )
+                        .child("Network Share..."),
+                ),
+        )
 }
 
 fn get_file_type(name: &str) -> String {
