@@ -9,6 +9,7 @@ mod device_monitor;
 mod drag_drop;
 mod dual_pane;
 mod favorites;
+mod file_hash;
 mod file_operations;
 mod file_system;
 mod icon_cache;
@@ -57,6 +58,8 @@ mod device_monitor_tests;
 #[cfg(test)]
 mod dual_pane_tests;
 #[cfg(test)]
+mod file_hash_tests;
+#[cfg(test)]
 mod permissions_tests;
 #[cfg(test)]
 mod smart_folders_tests;
@@ -81,6 +84,7 @@ pub use device_monitor::*;
 pub use drag_drop::*;
 pub use dual_pane::*;
 pub use favorites::*;
+pub use file_hash::*;
 pub use file_operations::*;
 pub use file_system::*;
 pub use icon_cache::*;

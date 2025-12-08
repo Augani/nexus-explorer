@@ -1,3 +1,4 @@
+mod checksum_dialog;
 mod column_view;
 mod conflict_dialog;
 mod dual_pane;
@@ -62,6 +63,7 @@ pub use tag_ui::{
 pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};
 pub use toast::{Toast, ToastManager, ToastVariant};
+pub use checksum_dialog::{ChecksumDialog, ChecksumDialogAction};
 pub use conflict_dialog::{ConflictDialog, ConflictDialogAction, ConflictInfo};
 pub use format_dialog::{FormatDialog, FormatDialogAction};
 pub use permissions_dialog::{PermissionsDialog, PermissionsDialogAction, PermissionsDialogView};
