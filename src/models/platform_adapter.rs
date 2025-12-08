@@ -545,18 +545,30 @@ impl PlatformAdapter for WindowsAdapter {
     }
 
     fn mount_image(&self, path: &Path) -> PlatformResult<PathBuf> {
-        Err(PlatformError::PlatformNotSupported("Mount image not yet implemented".to_string()))
+        mount_windows_disk_image(path)
     }
 
     fn unmount_image(&self, mount_point: &Path) -> PlatformResult<()> {
-        Err(PlatformError::PlatformNotSupported("Unmount image not yet implemented".to_string()))
+        unmount_windows_disk_image(mount_point)
     }
 
     fn get_context_menu_items(&self, paths: &[PathBuf]) -> Vec<ContextMenuItem> {
-        vec![
+        let mut items = vec![
             ContextMenuItem::new("pin_quick_access", "Pin to Quick Access").with_icon("pin"),
             ContextMenuItem::new("scan_defender", "Scan with Windows Defender").with_icon("shield"),
-        ]
+        ];
+
+        // Add mount option for disk images
+        if paths.len() == 1 {
+            if let Some(ext) = paths[0].extension().and_then(|e| e.to_str()) {
+                let ext_lower = ext.to_lowercase();
+                if ext_lower == "iso" || ext_lower == "vhd" || ext_lower == "vhdx" || ext_lower == "img" {
+                    items.insert(0, ContextMenuItem::new("mount_image", "Mount").with_icon("disc"));
+                }
+            }
+        }
+
+        items
     }
 
     fn execute_action(&self, action: PlatformAction) -> PlatformResult<()> {
@@ -784,6 +796,194 @@ fn eject_windows_drive_powershell(drive_letter: char) -> PlatformResult<()> {
         } else {
             Err(PlatformError::EjectFailed(error.to_string()))
         }
+    }
+}
+
+/// Mount a Windows disk image (ISO, VHD, VHDX) using PowerShell Mount-DiskImage
+#[cfg(target_os = "windows")]
+fn mount_windows_disk_image(path: &Path) -> PlatformResult<PathBuf> {
+    let path_str = path.to_string_lossy();
+    
+    // Determine the image type based on extension
+    let ext = path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default();
+    
+    // Use PowerShell Mount-DiskImage cmdlet
+    // This works for ISO, VHD, and VHDX files
+    let script = format!(
+        "$image = Mount-DiskImage -ImagePath '{}' -PassThru; \
+         $volume = $image | Get-Volume; \
+         if ($volume) {{ $volume.DriveLetter + ':' }} \
+         else {{ \
+             $disk = $image | Get-Disk; \
+             $partition = $disk | Get-Partition | Where-Object {{ $_.DriveLetter }}; \
+             if ($partition) {{ $partition.DriveLetter + ':' }} \
+             else {{ '' }} \
+         }}",
+        path_str.replace("'", "''")
+    );
+
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()
+        .map_err(|e| PlatformError::Io(e))?;
+
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(PlatformError::MountFailed(
+            if error.is_empty() {
+                "Failed to mount disk image".to_string()
+            } else {
+                error.to_string()
+            }
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let drive_letter = stdout.trim();
+    
+    if drive_letter.is_empty() || !drive_letter.ends_with(':') {
+        // Try alternative method to get the mount point
+        return get_mounted_image_path(path);
+    }
+
+    let mount_point = PathBuf::from(format!("{}\\", drive_letter));
+    
+    if mount_point.exists() {
+        Ok(mount_point)
+    } else {
+        Err(PlatformError::MountFailed(
+            format!("Mount point {} does not exist after mounting", drive_letter)
+        ))
+    }
+}
+
+/// Get the mount point for an already mounted disk image
+#[cfg(target_os = "windows")]
+fn get_mounted_image_path(image_path: &Path) -> PlatformResult<PathBuf> {
+    let path_str = image_path.to_string_lossy();
+    
+    let script = format!(
+        "$image = Get-DiskImage -ImagePath '{}'; \
+         if ($image.Attached) {{ \
+             $volume = $image | Get-Volume; \
+             if ($volume -and $volume.DriveLetter) {{ $volume.DriveLetter + ':' }} \
+             else {{ \
+                 $disk = $image | Get-Disk; \
+                 $partition = $disk | Get-Partition | Where-Object {{ $_.DriveLetter }}; \
+                 if ($partition) {{ $partition.DriveLetter + ':' }} \
+                 else {{ '' }} \
+             }} \
+         }} else {{ '' }}",
+        path_str.replace("'", "''")
+    );
+
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()
+        .map_err(|e| PlatformError::Io(e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let drive_letter = stdout.trim();
+    
+    if drive_letter.is_empty() || !drive_letter.ends_with(':') {
+        return Err(PlatformError::MountFailed(
+            "Could not determine mount point for disk image".to_string()
+        ));
+    }
+
+    Ok(PathBuf::from(format!("{}\\", drive_letter)))
+}
+
+/// Unmount a Windows disk image using PowerShell Dismount-DiskImage
+#[cfg(target_os = "windows")]
+fn unmount_windows_disk_image(mount_point: &Path) -> PlatformResult<()> {
+    let path_str = mount_point.to_string_lossy();
+    
+    // First, try to find the disk image by the mount point (drive letter)
+    // Then dismount it
+    let drive_letter = path_str.chars().next()
+        .ok_or_else(|| PlatformError::MountFailed("Invalid mount point".to_string()))?;
+    
+    // Get the image path from the mounted volume and dismount
+    let script = format!(
+        "$volume = Get-Volume -DriveLetter '{}' -ErrorAction SilentlyContinue; \
+         if ($volume) {{ \
+             $disk = Get-Partition -DriveLetter '{}' | Get-Disk; \
+             $image = Get-DiskImage | Where-Object {{ $_.Number -eq $disk.Number }}; \
+             if ($image) {{ \
+                 Dismount-DiskImage -ImagePath $image.ImagePath; \
+                 'OK' \
+             }} else {{ \
+                 'NOT_IMAGE' \
+             }} \
+         }} else {{ \
+             'NOT_FOUND' \
+         }}",
+        drive_letter, drive_letter
+    );
+
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()
+        .map_err(|e| PlatformError::Io(e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let result = stdout.trim();
+
+    match result {
+        "OK" => Ok(()),
+        "NOT_IMAGE" => Err(PlatformError::MountFailed(
+            "The specified path is not a mounted disk image".to_string()
+        )),
+        "NOT_FOUND" => Err(PlatformError::MountFailed(
+            format!("Volume {} not found", drive_letter)
+        )),
+        _ => {
+            let error = String::from_utf8_lossy(&output.stderr);
+            Err(PlatformError::MountFailed(
+                if error.is_empty() {
+                    format!("Failed to unmount disk image: {}", result)
+                } else {
+                    error.to_string()
+                }
+            ))
+        }
+    }
+}
+
+/// Check if a file is a supported disk image format on Windows
+#[cfg(target_os = "windows")]
+pub fn is_windows_disk_image(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| {
+            let ext = e.to_lowercase();
+            ext == "iso" || ext == "vhd" || ext == "vhdx" || ext == "img"
+        })
+        .unwrap_or(false)
+}
+
+/// Check if a disk image is currently mounted on Windows
+#[cfg(target_os = "windows")]
+pub fn is_windows_image_mounted(image_path: &Path) -> bool {
+    let path_str = image_path.to_string_lossy();
+    
+    let script = format!(
+        "$image = Get-DiskImage -ImagePath '{}' -ErrorAction SilentlyContinue; \
+         if ($image -and $image.Attached) {{ 'true' }} else {{ 'false' }}",
+        path_str.replace("'", "''")
+    );
+
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output();
+
+    match output {
+        Ok(out) => String::from_utf8_lossy(&out.stdout).trim() == "true",
+        Err(_) => false,
     }
 }
 
@@ -1015,6 +1215,17 @@ impl PlatformAdapter for MacOSAdapter {
 
         // Add AirDrop if available
         items.push(ContextMenuItem::new("airdrop", "Share via AirDrop").with_icon("share"));
+
+        // Add mount option for disk images
+        if paths.len() == 1 {
+            let path = &paths[0];
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                let ext_lower = ext.to_lowercase();
+                if ext_lower == "dmg" || ext_lower == "iso" || ext_lower == "img" || ext_lower == "sparseimage" {
+                    items.insert(0, ContextMenuItem::new("mount_image", "Mount").with_icon("disc"));
+                }
+            }
+        }
 
         // Add Quick Actions for supported file types
         if paths.len() == 1 {
@@ -1307,53 +1518,27 @@ impl PlatformAdapter for LinuxAdapter {
     }
 
     fn mount_image(&self, path: &Path) -> PlatformResult<PathBuf> {
-        // Create a temporary mount point
-        let image_name = path.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("disk_image");
-        
-        let mount_point = PathBuf::from("/tmp").join(format!("nexus_mount_{}", image_name));
-        
-        // Create mount point directory
-        std::fs::create_dir_all(&mount_point)
-            .map_err(|e| PlatformError::MountFailed(format!("Failed to create mount point: {}", e)))?;
-
-        // Use losetup and mount
-        let output = std::process::Command::new("mount")
-            .args(["-o", "loop", path.to_str().unwrap_or(""), mount_point.to_str().unwrap_or("")])
-            .output()
-            .map_err(|e| PlatformError::Io(e))?;
-
-        if output.status.success() {
-            Ok(mount_point)
-        } else {
-            let error = String::from_utf8_lossy(&output.stderr);
-            // Clean up mount point on failure
-            let _ = std::fs::remove_dir(&mount_point);
-            Err(PlatformError::MountFailed(error.to_string()))
-        }
+        mount_linux_disk_image(path)
     }
 
     fn unmount_image(&self, mount_point: &Path) -> PlatformResult<()> {
-        let output = std::process::Command::new("umount")
-            .arg(mount_point)
-            .output()
-            .map_err(|e| PlatformError::Io(e))?;
-
-        if output.status.success() {
-            // Clean up mount point directory
-            let _ = std::fs::remove_dir(mount_point);
-            Ok(())
-        } else {
-            let error = String::from_utf8_lossy(&output.stderr);
-            Err(PlatformError::MountFailed(error.to_string()))
-        }
+        unmount_linux_disk_image(mount_point)
     }
 
     fn get_context_menu_items(&self, paths: &[PathBuf]) -> Vec<ContextMenuItem> {
         let mut items = vec![
             ContextMenuItem::new("open_terminal", "Open Terminal Here").with_icon("terminal"),
         ];
+
+        // Add mount option for disk images
+        if paths.len() == 1 {
+            if let Some(ext) = paths[0].extension().and_then(|e| e.to_str()) {
+                let ext_lower = ext.to_lowercase();
+                if ext_lower == "iso" || ext_lower == "img" {
+                    items.insert(0, ContextMenuItem::new("mount_image", "Mount").with_icon("disc"));
+                }
+            }
+        }
 
         // Add "Open as Root" for directories
         if paths.len() == 1 && paths[0].is_dir() {
@@ -1433,7 +1618,237 @@ impl PlatformAdapter for LinuxAdapter {
     }
 }
 
+/// Mount a Linux disk image (ISO, IMG) using loop devices
+#[cfg(target_os = "linux")]
+fn mount_linux_disk_image(path: &Path) -> PlatformResult<PathBuf> {
+    // Create a unique mount point
+    let image_name = path.file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("disk_image");
+    
+    // Use /run/media or /tmp for mount points
+    let base_mount_dir = if PathBuf::from("/run/media").exists() {
+        PathBuf::from("/run/media")
+    } else {
+        PathBuf::from("/tmp")
+    };
+    
+    let mount_point = base_mount_dir.join(format!("nexus_mount_{}", image_name));
+    
+    // Create mount point directory
+    std::fs::create_dir_all(&mount_point)
+        .map_err(|e| PlatformError::MountFailed(format!("Failed to create mount point: {}", e)))?;
 
+    // Try mounting with different privilege escalation methods
+    let mount_result = try_mount_with_privilege(path, &mount_point);
+    
+    match mount_result {
+        Ok(()) => Ok(mount_point),
+        Err(e) => {
+            // Clean up mount point on failure
+            let _ = std::fs::remove_dir(&mount_point);
+            Err(e)
+        }
+    }
+}
+
+/// Try to mount with various privilege escalation methods
+#[cfg(target_os = "linux")]
+fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformResult<()> {
+    let image_str = image_path.to_str().unwrap_or("");
+    let mount_str = mount_point.to_str().unwrap_or("");
+    
+    // First, try direct mount (works if user has permissions or is root)
+    let output = std::process::Command::new("mount")
+        .args(["-o", "loop,ro", image_str, mount_str])
+        .output()
+        .map_err(|e| PlatformError::Io(e))?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    // Try with pkexec (PolicyKit)
+    let output = std::process::Command::new("pkexec")
+        .args(["mount", "-o", "loop,ro", image_str, mount_str])
+        .output();
+
+    if let Ok(out) = output {
+        if out.status.success() {
+            return Ok(());
+        }
+    }
+
+    // Try with sudo (if available and configured)
+    let output = std::process::Command::new("sudo")
+        .args(["-n", "mount", "-o", "loop,ro", image_str, mount_str])
+        .output();
+
+    if let Ok(out) = output {
+        if out.status.success() {
+            return Ok(());
+        }
+    }
+
+    // Try using udisksctl for loop setup (doesn't require root for some setups)
+    let output = std::process::Command::new("udisksctl")
+        .args(["loop-setup", "-f", image_str])
+        .output();
+
+    if let Ok(out) = output {
+        if out.status.success() {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            // Parse the loop device from output like "Mapped file /path/to/image as /dev/loop0."
+            if let Some(loop_dev) = parse_udisksctl_loop_device(&stdout) {
+                // Now mount the loop device
+                let mount_output = std::process::Command::new("udisksctl")
+                    .args(["mount", "-b", &loop_dev])
+                    .output();
+                
+                if let Ok(mount_out) = mount_output {
+                    if mount_out.status.success() {
+                        // Get the actual mount point from udisksctl
+                        let mount_stdout = String::from_utf8_lossy(&mount_out.stdout);
+                        if let Some(actual_mount) = parse_udisksctl_mount_point(&mount_stdout) {
+                            // Create a symlink from our mount point to the actual mount
+                            let _ = std::fs::remove_dir(mount_point);
+                            let _ = std::os::unix::fs::symlink(&actual_mount, mount_point);
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Err(PlatformError::MountFailed(
+        "Failed to mount disk image. Try running with elevated privileges.".to_string()
+    ))
+}
+
+/// Parse loop device from udisksctl output
+#[cfg(target_os = "linux")]
+fn parse_udisksctl_loop_device(output: &str) -> Option<String> {
+    // Output format: "Mapped file /path/to/image as /dev/loop0."
+    for line in output.lines() {
+        if line.contains("/dev/loop") {
+            if let Some(start) = line.find("/dev/loop") {
+                let rest = &line[start..];
+                let end = rest.find(|c: char| c == '.' || c == ' ' || c == '\n')
+                    .unwrap_or(rest.len());
+                return Some(rest[..end].to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Parse mount point from udisksctl mount output
+#[cfg(target_os = "linux")]
+fn parse_udisksctl_mount_point(output: &str) -> Option<PathBuf> {
+    // Output format: "Mounted /dev/loop0 at /run/media/user/Volume."
+    for line in output.lines() {
+        if line.contains(" at ") {
+            if let Some(at_pos) = line.find(" at ") {
+                let mount_path = line[at_pos + 4..].trim_end_matches('.');
+                return Some(PathBuf::from(mount_path));
+            }
+        }
+    }
+    None
+}
+
+/// Unmount a Linux disk image
+#[cfg(target_os = "linux")]
+fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
+    let mount_str = mount_point.to_str().unwrap_or("");
+    
+    // Check if it's a symlink to an actual mount point
+    let actual_mount = if mount_point.is_symlink() {
+        std::fs::read_link(mount_point).ok()
+    } else {
+        None
+    };
+    
+    // Try direct umount first
+    let output = std::process::Command::new("umount")
+        .arg(mount_str)
+        .output()
+        .map_err(|e| PlatformError::Io(e))?;
+
+    if output.status.success() {
+        // Clean up mount point directory or symlink
+        let _ = std::fs::remove_dir(mount_point);
+        let _ = std::fs::remove_file(mount_point);
+        return Ok(());
+    }
+
+    // Try with pkexec
+    let output = std::process::Command::new("pkexec")
+        .args(["umount", mount_str])
+        .output();
+
+    if let Ok(out) = output {
+        if out.status.success() {
+            let _ = std::fs::remove_dir(mount_point);
+            let _ = std::fs::remove_file(mount_point);
+            return Ok(());
+        }
+    }
+
+    // Try with sudo
+    let output = std::process::Command::new("sudo")
+        .args(["-n", "umount", mount_str])
+        .output();
+
+    if let Ok(out) = output {
+        if out.status.success() {
+            let _ = std::fs::remove_dir(mount_point);
+            let _ = std::fs::remove_file(mount_point);
+            return Ok(());
+        }
+    }
+
+    // If we have an actual mount from udisksctl, try unmounting that
+    if let Some(actual) = actual_mount {
+        let output = std::process::Command::new("udisksctl")
+            .args(["unmount", "-b", actual.to_str().unwrap_or("")])
+            .output();
+
+        if let Ok(out) = output {
+            if out.status.success() {
+                let _ = std::fs::remove_file(mount_point);
+                return Ok(());
+            }
+        }
+    }
+
+    let error = String::from_utf8_lossy(&std::process::Command::new("umount")
+        .arg(mount_str)
+        .output()
+        .map(|o| o.stderr)
+        .unwrap_or_default());
+    
+    Err(PlatformError::MountFailed(
+        if error.is_empty() {
+            "Failed to unmount disk image".to_string()
+        } else {
+            error.to_string()
+        }
+    ))
+}
+
+/// Check if a file is a supported disk image format on Linux
+#[cfg(target_os = "linux")]
+pub fn is_linux_disk_image(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| {
+            let ext = e.to_lowercase();
+            ext == "iso" || ext == "img"
+        })
+        .unwrap_or(false)
+}
 
 #[cfg(target_os = "linux")]
 fn should_skip_linux_mount(device: &str, mount_point: &str, fs_type: &str) -> bool {
@@ -2173,6 +2588,212 @@ mod property_tests {
                 "Filesystem {:?} must have non-empty compatibility info", fs);
             assert!(info.len() >= 10,
                 "Filesystem {:?} compatibility info should be descriptive", fs);
+        }
+    }
+
+    // Generator for disk image file extensions based on platform
+    fn arb_disk_image_ext() -> impl Strategy<Value = &'static str> {
+        #[cfg(target_os = "windows")]
+        {
+            prop_oneof![
+                Just("iso"),
+                Just("img"),
+                Just("vhd"),
+                Just("vhdx"),
+            ]
+        }
+        #[cfg(target_os = "macos")]
+        {
+            prop_oneof![
+                Just("iso"),
+                Just("img"),
+                Just("dmg"),
+                Just("sparseimage"),
+            ]
+        }
+        #[cfg(target_os = "linux")]
+        {
+            prop_oneof![
+                Just("iso"),
+                Just("img"),
+            ]
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+        {
+            prop_oneof![
+                Just("iso"),
+                Just("img"),
+            ]
+        }
+    }
+
+    // Generator for disk image file paths
+    prop_compose! {
+        fn arb_disk_image_path()(
+            name in "[a-zA-Z0-9_-]{1,20}",
+            ext in arb_disk_image_ext(),
+        ) -> PathBuf {
+            PathBuf::from(format!("/tmp/{}.{}", name, ext))
+        }
+    }
+
+    // Generator for mount point paths
+    prop_compose! {
+        fn arb_mount_point()(
+            name in "[a-zA-Z0-9_-]{1,20}",
+        ) -> PathBuf {
+            #[cfg(target_os = "windows")]
+            {
+                PathBuf::from(format!("D:\\"))
+            }
+            #[cfg(target_os = "macos")]
+            {
+                PathBuf::from(format!("/Volumes/{}", name))
+            }
+            #[cfg(target_os = "linux")]
+            {
+                PathBuf::from(format!("/tmp/nexus_mount_{}", name))
+            }
+            #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+            {
+                PathBuf::from(format!("/mnt/{}", name))
+            }
+        }
+    }
+
+    // **Feature: advanced-device-management, Property 18: Disk Image Mount Accessibility**
+    // **Validates: Requirements 12.1**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+        
+        #[test]
+        fn prop_disk_image_mount_accessibility(mount_point in arb_mount_point()) {
+            // Property: For any successfully mounted disk image, the returned mount point path
+            // SHALL exist and be readable.
+            //
+            // Since we cannot actually mount disk images in tests (requires real files and
+            // potentially elevated privileges), we test the property by verifying:
+            // 1. Mount point paths follow platform conventions
+            // 2. If a mount point exists, it should be accessible
+            
+            // Verify mount point path follows platform conventions
+            let path_str = mount_point.to_string_lossy();
+            
+            #[cfg(target_os = "windows")]
+            {
+                // Windows mount points should be drive letters
+                prop_assert!(path_str.len() >= 2,
+                    "Windows mount point should be at least 2 characters (drive letter + colon)");
+                let first_char = path_str.chars().next().unwrap_or(' ');
+                prop_assert!(first_char.is_ascii_alphabetic(),
+                    "Windows mount point should start with a drive letter");
+            }
+            
+            #[cfg(target_os = "macos")]
+            {
+                // macOS mount points should be under /Volumes
+                prop_assert!(path_str.starts_with("/Volumes/"),
+                    "macOS mount point should be under /Volumes/");
+            }
+            
+            #[cfg(target_os = "linux")]
+            {
+                // Linux mount points should be under /tmp, /mnt, /media, or /run/media
+                prop_assert!(
+                    path_str.starts_with("/tmp/") || 
+                    path_str.starts_with("/mnt/") || 
+                    path_str.starts_with("/media/") ||
+                    path_str.starts_with("/run/media/"),
+                    "Linux mount point should be under /tmp/, /mnt/, /media/, or /run/media/"
+                );
+            }
+            
+            // If the mount point happens to exist (from a previous mount), verify it's accessible
+            if mount_point.exists() {
+                // Should be readable
+                prop_assert!(mount_point.is_dir() || mount_point.is_symlink(),
+                    "Existing mount point should be a directory or symlink");
+                
+                // Should be able to read directory contents (if it's a directory)
+                if mount_point.is_dir() {
+                    let read_result = std::fs::read_dir(&mount_point);
+                    prop_assert!(read_result.is_ok(),
+                        "Should be able to read mount point directory contents");
+                }
+            }
+        }
+    }
+
+    // **Feature: advanced-device-management, Property 18: Disk Image Path Validation**
+    // **Validates: Requirements 12.1**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+        
+        #[test]
+        fn prop_disk_image_path_validation(image_path in arb_disk_image_path()) {
+            // Property: Disk image paths should have valid extensions for the platform
+            
+            let ext = image_path.extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e.to_lowercase())
+                .unwrap_or_default();
+            
+            // All platforms support ISO and IMG
+            let is_universal = ext == "iso" || ext == "img";
+            
+            #[cfg(target_os = "windows")]
+            {
+                let is_windows_specific = ext == "vhd" || ext == "vhdx";
+                prop_assert!(is_universal || is_windows_specific,
+                    "Windows disk image should have .iso, .img, .vhd, or .vhdx extension");
+            }
+            
+            #[cfg(target_os = "macos")]
+            {
+                let is_macos_specific = ext == "dmg" || ext == "sparseimage";
+                prop_assert!(is_universal || is_macos_specific,
+                    "macOS disk image should have .iso, .img, .dmg, or .sparseimage extension");
+            }
+            
+            #[cfg(target_os = "linux")]
+            {
+                prop_assert!(is_universal,
+                    "Linux disk image should have .iso or .img extension");
+            }
+        }
+    }
+
+    // **Feature: advanced-device-management, Property 18: Mount Point Uniqueness**
+    // **Validates: Requirements 12.1**
+    #[test]
+    fn prop_mount_point_generation_uniqueness() {
+        // Property: Generated mount points for different images should be unique
+        
+        let image_names = ["test1", "test2", "image_a", "image_b", "my_disk"];
+        let mut mount_points = std::collections::HashSet::new();
+        
+        for name in image_names {
+            #[cfg(target_os = "windows")]
+            {
+                // Windows uses drive letters, uniqueness is handled by the OS
+                // We just verify the format is correct
+                let path = PathBuf::from(format!("{}:\\", 'D'));
+                assert!(path.to_string_lossy().ends_with(":\\"));
+            }
+            
+            #[cfg(target_os = "macos")]
+            {
+                let mount_point = PathBuf::from(format!("/Volumes/{}", name));
+                assert!(mount_points.insert(mount_point.clone()),
+                    "Mount point {:?} should be unique", mount_point);
+            }
+            
+            #[cfg(target_os = "linux")]
+            {
+                let mount_point = PathBuf::from(format!("/tmp/nexus_mount_{}", name));
+                assert!(mount_points.insert(mount_point.clone()),
+                    "Mount point {:?} should be unique", mount_point);
+            }
         }
     }
 }

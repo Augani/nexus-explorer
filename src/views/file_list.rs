@@ -50,6 +50,8 @@ pub enum ContextMenuAction {
     NewFile,
     CreateSymlink(PathBuf),
     ShowSymlinkTarget(PathBuf),
+    MountImage(PathBuf),
+    UnmountImage(PathBuf),
 }
 
 // Define actions for keyboard navigation
@@ -768,6 +770,9 @@ impl Render for FileListView {
                 let is_archive = selected_entry.as_ref()
                     .map(|e| crate::models::ArchiveManager::new().is_archive(&e.path))
                     .unwrap_or(false);
+                let is_disk_image = selected_entry.as_ref()
+                    .map(|e| is_disk_image_file(&e.path))
+                    .unwrap_or(false);
 
                 this.child(
                     anchored()
@@ -967,6 +972,21 @@ impl Render for FileListView {
                                             if let Some(ref e) = entry2 {
                                                 entity2.update(cx, |view, cx| {
                                                     view.pending_context_action = Some(ContextMenuAction::ExtractToFolder(e.path.clone()));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    }))
+                                })
+                                .when(is_disk_image, |this| {
+                                    let entity = entity.clone();
+                                    let entry = selected_entry.clone();
+                                    this.child(render_context_menu_item("disc", "Mount", text_light, hover_bg, {
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(ContextMenuAction::MountImage(e.path.clone()));
                                                     view.close_context_menu();
                                                     cx.notify();
                                                 });
@@ -1811,3 +1831,16 @@ pub fn format_date(time: SystemTime) -> String {
 #[cfg(test)]
 #[path = "file_list_tests.rs"]
 mod tests;
+
+/// Check if a file is a disk image that can be mounted
+pub fn is_disk_image_file(path: &std::path::Path) -> bool {
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        let ext_lower = ext.to_lowercase();
+        matches!(
+            ext_lower.as_str(),
+            "iso" | "dmg" | "img" | "vhd" | "vhdx" | "sparseimage"
+        )
+    } else {
+        false
+    }
+}

@@ -1136,6 +1136,12 @@ impl Workspace {
             ContextMenuAction::ShowSymlinkTarget(path) => {
                 self.show_symlink_target(path, cx);
             }
+            ContextMenuAction::MountImage(path) => {
+                self.mount_disk_image(path, cx);
+            }
+            ContextMenuAction::UnmountImage(path) => {
+                self.unmount_disk_image(path, cx);
+            }
         }
     }
 
@@ -1295,6 +1301,136 @@ impl Workspace {
                 });
             }
         }
+    }
+
+    fn mount_disk_image(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("disk image")
+            .to_string();
+
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("Mounting {}...", name), cx);
+        });
+
+        let toast_manager = self.toast_manager.clone();
+
+        cx.spawn(|workspace, mut cx| async move {
+            let result = cx.background_executor().spawn(async move {
+                #[cfg(target_os = "windows")]
+                {
+                    let adapter = crate::models::WindowsAdapter::new();
+                    adapter.mount_image(&path)
+                }
+                #[cfg(target_os = "macos")]
+                {
+                    let adapter = crate::models::MacOSAdapter::new();
+                    adapter.mount_image(&path)
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    let adapter = crate::models::LinuxAdapter::new();
+                    adapter.mount_image(&path)
+                }
+                #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+                {
+                    Err(crate::models::PlatformError::PlatformNotSupported(
+                        "Disk image mounting not supported on this platform".to_string()
+                    ))
+                }
+            }).await;
+
+            cx.update(|_, cx| {
+                match result {
+                    Ok(mount_point) => {
+                        toast_manager.update(cx, |toast, cx| {
+                            toast.show_success(
+                                format!("Mounted at {}", mount_point.display()),
+                                cx,
+                            );
+                        });
+                        // Navigate to the mount point
+                        workspace.update(cx, |ws, cx| {
+                            ws.navigate_to(mount_point, cx);
+                        }).ok();
+                    }
+                    Err(e) => {
+                        toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to mount: {}", e), cx);
+                        });
+                    }
+                }
+            }).ok();
+        })
+        .detach();
+    }
+
+    fn unmount_disk_image(&mut self, mount_point: PathBuf, cx: &mut Context<Self>) {
+        let name = mount_point
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("disk image")
+            .to_string();
+
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("Unmounting {}...", name), cx);
+        });
+
+        let toast_manager = self.toast_manager.clone();
+
+        cx.spawn(|workspace, mut cx| async move {
+            let result = cx.background_executor().spawn({
+                let mount_point = mount_point.clone();
+                async move {
+                    #[cfg(target_os = "windows")]
+                    {
+                        let adapter = crate::models::WindowsAdapter::new();
+                        adapter.unmount_image(&mount_point)
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        let adapter = crate::models::MacOSAdapter::new();
+                        adapter.unmount_image(&mount_point)
+                    }
+                    #[cfg(target_os = "linux")]
+                    {
+                        let adapter = crate::models::LinuxAdapter::new();
+                        adapter.unmount_image(&mount_point)
+                    }
+                    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+                    {
+                        Err(crate::models::PlatformError::PlatformNotSupported(
+                            "Disk image unmounting not supported on this platform".to_string()
+                        ))
+                    }
+                }
+            }).await;
+
+            cx.update(|_, cx| {
+                match result {
+                    Ok(()) => {
+                        toast_manager.update(cx, |toast, cx| {
+                            toast.show_success(format!("{} unmounted successfully", name), cx);
+                        });
+                        // Navigate to parent directory if we were in the mount point
+                        workspace.update(cx, |ws, cx| {
+                            if ws.current_path.starts_with(&mount_point) {
+                                if let Some(parent) = mount_point.parent() {
+                                    ws.navigate_to(parent.to_path_buf(), cx);
+                                }
+                            }
+                        }).ok();
+                    }
+                    Err(e) => {
+                        toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(format!("Failed to unmount: {}", e), cx);
+                        });
+                    }
+                }
+            }).ok();
+        })
+        .detach();
     }
 
     fn refresh_current_directory(&mut self, cx: &mut Context<Self>) {
