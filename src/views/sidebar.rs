@@ -422,6 +422,7 @@ pub struct SidebarView {
     pending_smart_folder_click: Option<SmartFolderId>,
     pending_eject_device: Option<DeviceId>,
     pending_mount_device: Option<PathBuf>,
+    pending_format_device: Option<Device>,
 }
 
 impl SidebarView {
@@ -442,6 +443,7 @@ impl SidebarView {
             pending_smart_folder_click: None,
             pending_eject_device: None,
             pending_mount_device: None,
+            pending_format_device: None,
         }
     }
 
@@ -761,6 +763,15 @@ impl SidebarView {
 
     pub fn take_pending_mount_device(&mut self) -> Option<PathBuf> {
         self.pending_mount_device.take()
+    }
+
+    pub fn take_pending_format_device(&mut self) -> Option<Device> {
+        self.pending_format_device.take()
+    }
+
+    fn handle_device_format(&mut self, device: Device, cx: &mut Context<Self>) {
+        self.pending_format_device = Some(device);
+        cx.notify();
     }
 
     fn handle_tool_action(
@@ -1991,6 +2002,8 @@ impl SidebarView {
 
         let group_id = SharedString::from(format!("device-group-{}", device.id.0));
         let device_id = device.id;
+        let is_unmounted = device.path.starts_with("/dev/");
+        let device_for_format = device.clone();
 
         div()
             .id(SharedString::from(format!("device-{}", device.id.0)))
@@ -2010,7 +2023,15 @@ impl SidebarView {
                     view.handle_device_click(path_clone.clone(), window, cx);
                 }),
             )
-            .when(is_removable && !is_wsl, |s| {
+            .when(is_unmounted, |s| {
+                s.on_mouse_down(
+                    MouseButton::Right,
+                    cx.listener(move |view, _event, _window, cx| {
+                        view.handle_device_format(device_for_format.clone(), cx);
+                    }),
+                )
+            })
+            .when(is_removable && !is_wsl && !is_unmounted, |s| {
                 s.on_mouse_down(
                     MouseButton::Right,
                     cx.listener(move |view, _event, _window, cx| {

@@ -11,12 +11,12 @@ use gpui::{
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{
-    current_theme, theme_colors, DeviceId, FileSystem, GlobalSettings, GridConfig, IconCache,
-    PlatformAdapter, SearchEngine, ShareManager, ThemeId, ViewMode, WindowManager,
+    current_theme, theme_colors, Device, DeviceId, FileSystem, GlobalSettings, GridConfig,
+    IconCache, PlatformAdapter, SearchEngine, ShareManager, ThemeId, ViewMode, WindowManager,
 };
 use crate::views::{
-    create_symbolic_link, ContextMenuAction, FileList, FileListView, GridView, GridViewComponent,
-    PreviewView, QuickLookView, SearchInputView, SidebarView, SmartFolderDialog,
+    create_symbolic_link, ContextMenuAction, FileList, FileListView, FormatDialog, GridView,
+    GridViewComponent, PreviewView, QuickLookView, SearchInputView, SidebarView, SmartFolderDialog,
     SmartFolderDialogAction, StatusBarAction, StatusBarView, SymlinkDialog, SymlinkDialogAction,
     TerminalView, ThemePickerView, ToastManager, ToolAction, ConflictDialog, ConflictInfo,
 };
@@ -110,6 +110,8 @@ pub struct Workspace {
     pending_conflicts: Vec<(PathBuf, PathBuf)>,
     conflict_apply_to_all: Option<ConflictResolution>,
     symlink_dialog: Option<Entity<SymlinkDialog>>,
+    format_dialog: Option<(Device, FormatDialog, Entity<InputState>)>,
+    bootable_usb_dialog: Option<(PathBuf, Option<Device>)>,
     share_manager: ShareManager,
 }
 
@@ -374,6 +376,11 @@ impl Workspace {
                     workspace.handle_device_mount(device_path, cx);
                 }
 
+                let format_device = sidebar.update(cx, |view, _| view.take_pending_format_device());
+                if let Some(device) = format_device {
+                    workspace.handle_device_format(device, cx);
+                }
+
                 let show_dialog = sidebar.read(cx).is_smart_folder_dialog_visible();
                 if show_dialog {
                     sidebar.update(cx, |view, cx| view.hide_smart_folder_dialog(cx));
@@ -485,6 +492,8 @@ impl Workspace {
                 pending_conflicts: Vec::new(),
                 conflict_apply_to_all: None,
                 symlink_dialog: None,
+                format_dialog: None,
+                bootable_usb_dialog: None,
                 share_manager,
             }
         })
@@ -739,6 +748,242 @@ impl Workspace {
         }
     }
 
+    fn handle_device_format(&mut self, device: Device, cx: &mut Context<Self>) {
+        #[cfg(target_os = "windows")]
+        let adapter: Box<dyn PlatformAdapter> = Box::new(crate::models::WindowsAdapter::new());
+        #[cfg(target_os = "macos")]
+        let adapter: Box<dyn PlatformAdapter> = Box::new(crate::models::MacOSAdapter::new());
+        #[cfg(target_os = "linux")]
+        let adapter: Box<dyn PlatformAdapter> = Box::new(crate::models::LinuxAdapter::new());
+
+        let available_filesystems = adapter.available_filesystems();
+        let format_dialog = FormatDialog::new(device.clone(), available_filesystems);
+
+        let label_input = cx.new(|cx| {
+            let mut state = InputState::new(cx);
+            state.placeholder = "Enter volume name...".into();
+            state
+        });
+
+        self.format_dialog = Some((device, format_dialog, label_input));
+        cx.notify();
+    }
+
+    fn handle_format_confirm(&mut self, cx: &mut Context<Self>) {
+        let Some((device, mut dialog, label_input)) = self.format_dialog.take() else {
+            return;
+        };
+
+        let label = label_input.read(cx).content.to_string();
+        dialog.set_label(label);
+
+        if let Err(msg) = dialog.validate() {
+            self.toast_manager.update(cx, |toast, cx| {
+                toast.show_error(msg, cx);
+            });
+            self.format_dialog = Some((device, dialog, label_input));
+            return;
+        }
+
+        let options = dialog.build_options();
+        let device_name = device.name.clone();
+        let device_path = device.path.clone();
+
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("Formatting {}...", device_name), cx);
+        });
+
+        let format_result = self.execute_format(&device_path, &options);
+
+        match format_result {
+            Ok(()) => {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+
+                self.sidebar.update(cx, |view, cx| {
+                    view.refresh_devices(cx);
+                });
+
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_success(format!("Formatted: {}", device_name), cx);
+                });
+
+                cx.notify();
+            }
+            Err(e) => {
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_error(format!("Failed to format {}: {}", device_name, e), cx);
+                });
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn execute_format(
+        &self,
+        device_path: &PathBuf,
+        options: &crate::models::FormatOptions,
+    ) -> Result<(), String> {
+        use crate::models::FileSystemType;
+
+        let fs_format = match options.filesystem {
+            FileSystemType::Apfs => "APFS",
+            FileSystemType::HfsPlus => "HFS+",
+            FileSystemType::Fat32 => "FAT32",
+            FileSystemType::ExFat => "ExFAT",
+            _ => return Err(format!("Filesystem {:?} not supported on macOS", options.filesystem)),
+        };
+
+        let label = if options.label.is_empty() {
+            "Untitled".to_string()
+        } else {
+            options.label.clone()
+        };
+
+        let path_str = device_path.to_string_lossy();
+        let disk_identifier = if path_str.starts_with("/dev/") {
+            path_str.to_string()
+        } else {
+            path_str.to_string()
+        };
+
+        let output = std::process::Command::new("diskutil")
+            .args(["eraseDisk", fs_format, &label, &disk_identifier])
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            let error = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if error.is_empty() {
+                Err(stdout.to_string())
+            } else {
+                Err(error.to_string())
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn execute_format(
+        &self,
+        device_path: &PathBuf,
+        options: &crate::models::FormatOptions,
+    ) -> Result<(), String> {
+        use crate::models::FileSystemType;
+
+        let path_str = device_path.to_string_lossy();
+        let drive_letter = path_str
+            .chars()
+            .next()
+            .ok_or("Invalid drive path".to_string())?;
+
+        let fs_param = match options.filesystem {
+            FileSystemType::Ntfs => "NTFS",
+            FileSystemType::Fat32 => "FAT32",
+            FileSystemType::ExFat => "EXFAT",
+            FileSystemType::ReFS => "REFS",
+            _ => return Err(format!("Filesystem {:?} not supported on Windows", options.filesystem)),
+        };
+
+        let mut args = vec![
+            format!("{}:", drive_letter),
+            format!("/FS:{}", fs_param),
+            "/Y".to_string(),
+        ];
+
+        if !options.label.is_empty() {
+            args.push(format!("/V:{}", options.label));
+        } else {
+            args.push("/V:".to_string());
+        }
+
+        if options.quick_format {
+            args.push("/Q".to_string());
+        }
+
+        let output = std::process::Command::new("format.com")
+            .args(&args)
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            let error = String::from_utf8_lossy(&output.stderr);
+            Err(error.to_string())
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn execute_format(
+        &self,
+        device_path: &PathBuf,
+        options: &crate::models::FormatOptions,
+    ) -> Result<(), String> {
+        use crate::models::FileSystemType;
+
+        let mkfs_cmd = match options.filesystem {
+            FileSystemType::Ext4 => "mkfs.ext4",
+            FileSystemType::Fat32 => "mkfs.vfat",
+            FileSystemType::ExFat => "mkfs.exfat",
+            FileSystemType::Btrfs => "mkfs.btrfs",
+            FileSystemType::Xfs => "mkfs.xfs",
+            _ => return Err(format!("Filesystem {:?} not supported on Linux", options.filesystem)),
+        };
+
+        let path_str = device_path.to_string_lossy();
+        let mut args = vec![path_str.to_string()];
+
+        if !options.label.is_empty() {
+            match options.filesystem {
+                FileSystemType::Ext4 => {
+                    args.insert(0, "-L".to_string());
+                    args.insert(1, options.label.clone());
+                }
+                FileSystemType::Fat32 | FileSystemType::ExFat => {
+                    args.insert(0, "-n".to_string());
+                    args.insert(1, options.label.clone());
+                }
+                FileSystemType::Btrfs => {
+                    args.insert(0, "-L".to_string());
+                    args.insert(1, options.label.clone());
+                }
+                FileSystemType::Xfs => {
+                    args.insert(0, "-L".to_string());
+                    args.insert(1, options.label.clone());
+                }
+                _ => {}
+            }
+        }
+
+        let output = std::process::Command::new(mkfs_cmd)
+            .args(&args)
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            let error = String::from_utf8_lossy(&output.stderr);
+            Err(error.to_string())
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    fn execute_format(
+        &self,
+        _device_path: &PathBuf,
+        _options: &crate::models::FormatOptions,
+    ) -> Result<(), String> {
+        Err("Format not supported on this platform".to_string())
+    }
+
+    fn handle_format_cancel(&mut self, cx: &mut Context<Self>) {
+        self.format_dialog = None;
+        cx.notify();
+    }
+
     fn handle_context_menu_action(&mut self, action: ContextMenuAction, cx: &mut Context<Self>) {
         match action {
             ContextMenuAction::Open(path) => {
@@ -956,35 +1201,10 @@ impl Workspace {
                 .detach();
             }
             ContextMenuAction::Share(path) => {
-                if path.is_dir() {
-                    let share_info = self.share_manager.get_share(&path).cloned();
-                    let is_shared = share_info.is_some();
-                    
-                    if is_shared {
-                        self.toast_manager.update(cx, |toast, cx| {
-                            toast.show_info("This folder is already shared".to_string(), cx);
-                        });
-                    } else {
-                        self.toast_manager.update(cx, |toast, cx| {
-                            toast.show_info("Use 'Network Share...' to share this folder".to_string(), cx);
-                        });
-                    }
-                } else {
-                    #[cfg(target_os = "macos")]
-                    {
-                        let _ = std::process::Command::new("open")
-                            .args(["-R"])
-                            .arg(&path)
-                            .spawn();
-                    }
-                }
-            }
-            ContextMenuAction::ShareViaAirDrop(path) => {
                 #[cfg(target_os = "macos")]
                 {
-                    match crate::models::share_via_airdrop(&[path.clone()]) {
-                        Ok(()) => {
-                        }
+                    match crate::models::open_macos_share_sheet(&[path.clone()]) {
+                        Ok(()) => {}
                         Err(e) => {
                             self.toast_manager.update(cx, |toast, cx| {
                                 toast.show_error(format!("Share failed: {}", e), cx);
@@ -992,66 +1212,25 @@ impl Workspace {
                         }
                     }
                 }
-                #[cfg(not(target_os = "macos"))]
-                {
-                    self.toast_manager.update(cx, |toast, cx| {
-                        toast.show_error("AirDrop is only available on macOS".to_string(), cx);
-                    });
-                }
-            }
-            ContextMenuAction::ShareViaNearbyShare(path) => {
                 #[cfg(target_os = "windows")]
                 {
                     match crate::models::share_via_nearby_share(&[path.clone()]) {
-                        Ok(()) => {
-                            self.toast_manager.update(cx, |toast, cx| {
-                                toast.show_success("Nearby Share opened".to_string(), cx);
-                            });
-                        }
+                        Ok(()) => {}
                         Err(e) => {
                             self.toast_manager.update(cx, |toast, cx| {
-                                toast.show_error(format!("Nearby Share failed: {}", e), cx);
+                                toast.show_error(format!("Share failed: {}", e), cx);
                             });
                         }
                     }
                 }
-                #[cfg(not(target_os = "windows"))]
+                #[cfg(target_os = "linux")]
                 {
                     self.toast_manager.update(cx, |toast, cx| {
-                        toast.show_error("Nearby Share is only available on Windows".to_string(), cx);
+                        toast.show_info("Use your file manager to share files".to_string(), cx);
                     });
                 }
             }
-            ContextMenuAction::ShareViaNetwork(path) => {
-                if path.is_dir() {
-                    let share_info = self.share_manager.get_share(&path).cloned();
-                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Share");
-                    
-                    if let Some(info) = share_info {
-                        self.toast_manager.update(cx, |toast, cx| {
-                            toast.show_info(format!("'{}' is already shared as '{}'", name, info.share_name), cx);
-                        });
-                    } else {
-                        let config = crate::models::ShareConfig::new(name.to_string(), path.clone());
-                        match self.share_manager.create_share(config) {
-                            Ok(info) => {
-                                self.toast_manager.update(cx, |toast, cx| {
-                                    toast.show_success(format!("Shared as '{}'", info.share_name), cx);
-                                });
-                            }
-                            Err(e) => {
-                                self.toast_manager.update(cx, |toast, cx| {
-                                    toast.show_error(format!("Failed to share: {}", e), cx);
-                                });
-                            }
-                        }
-                    }
-                } else {
-                    self.toast_manager.update(cx, |toast, cx| {
-                        toast.show_error("Only folders can be shared over the network".to_string(), cx);
-                    });
-                }
-            }
+
             ContextMenuAction::CopyPath(path) => {
                 let path_str = path.to_string_lossy().to_string();
                 cx.write_to_clipboard(gpui::ClipboardItem::new_string(path_str.clone()));
@@ -1268,6 +1447,9 @@ impl Workspace {
             }
             ContextMenuAction::UnmountImage(path) => {
                 self.unmount_disk_image(path, cx);
+            }
+            ContextMenuAction::CreateBootableUSB(path) => {
+                self.show_bootable_usb_dialog(path, cx);
             }
         }
     }
@@ -1554,6 +1736,140 @@ impl Workspace {
             });
         })
         .detach();
+    }
+
+    fn show_bootable_usb_dialog(&mut self, iso_path: PathBuf, cx: &mut Context<Self>) {
+        self.bootable_usb_dialog = Some((iso_path, None));
+        self.sidebar.update(cx, |view, cx| {
+            view.refresh_devices(cx);
+        });
+        cx.notify();
+    }
+
+    fn handle_bootable_usb_device_select(&mut self, device: Device, cx: &mut Context<Self>) {
+        if let Some((iso_path, _)) = &self.bootable_usb_dialog {
+            self.bootable_usb_dialog = Some((iso_path.clone(), Some(device)));
+            cx.notify();
+        }
+    }
+
+    fn handle_bootable_usb_confirm(&mut self, cx: &mut Context<Self>) {
+        let Some((iso_path, Some(device))) = self.bootable_usb_dialog.take() else {
+            return;
+        };
+
+        let device_name = device.name.clone();
+        let device_path = device.path.clone();
+
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("Creating bootable USB on {}...", device_name), cx);
+        });
+
+        let result = self.execute_create_bootable(&iso_path, &device_path);
+
+        match result {
+            Ok(()) => {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+
+                self.sidebar.update(cx, |view, cx| {
+                    view.refresh_devices(cx);
+                });
+
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_success(format!("Bootable USB created on {}", device_name), cx);
+                });
+            }
+            Err(e) => {
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_error(format!("Failed to create bootable USB: {}", e), cx);
+                });
+            }
+        }
+    }
+
+    fn handle_bootable_usb_cancel(&mut self, cx: &mut Context<Self>) {
+        self.bootable_usb_dialog = None;
+        cx.notify();
+    }
+
+    #[cfg(target_os = "macos")]
+    fn execute_create_bootable(&self, iso_path: &PathBuf, device_path: &PathBuf) -> Result<(), String> {
+        let device_str = device_path.to_string_lossy();
+        let raw_device = if device_str.contains("disk") {
+            device_str.replace("/dev/disk", "/dev/rdisk")
+        } else {
+            format!("/dev/r{}", device_str.trim_start_matches("/dev/"))
+        };
+
+        let unmount_output = std::process::Command::new("diskutil")
+            .args(["unmountDisk", &device_str])
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if !unmount_output.status.success() {
+            let error = String::from_utf8_lossy(&unmount_output.stderr);
+            if !error.contains("not mounted") {
+                return Err(format!("Failed to unmount disk: {}", error));
+            }
+        }
+
+        let dd_output = std::process::Command::new("sudo")
+            .args([
+                "dd",
+                &format!("if={}", iso_path.to_string_lossy()),
+                &format!("of={}", raw_device),
+                "bs=1m",
+            ])
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if dd_output.status.success() {
+            let _ = std::process::Command::new("diskutil")
+                .args(["eject", &device_str])
+                .output();
+            Ok(())
+        } else {
+            let error = String::from_utf8_lossy(&dd_output.stderr);
+            Err(error.to_string())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn execute_create_bootable(&self, iso_path: &PathBuf, device_path: &PathBuf) -> Result<(), String> {
+        Err("Creating bootable USB on Windows requires administrator privileges. Please use a tool like Rufus.".to_string())
+    }
+
+    #[cfg(target_os = "linux")]
+    fn execute_create_bootable(&self, iso_path: &PathBuf, device_path: &PathBuf) -> Result<(), String> {
+        let device_str = device_path.to_string_lossy();
+
+        let umount_output = std::process::Command::new("umount")
+            .arg(&*device_str)
+            .output();
+
+        let dd_output = std::process::Command::new("sudo")
+            .args([
+                "dd",
+                &format!("if={}", iso_path.to_string_lossy()),
+                &format!("of={}", device_str),
+                "bs=4M",
+                "status=progress",
+            ])
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        if dd_output.status.success() {
+            let _ = std::process::Command::new("sync").output();
+            Ok(())
+        } else {
+            let error = String::from_utf8_lossy(&dd_output.stderr);
+            Err(error.to_string())
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    fn execute_create_bootable(&self, _iso_path: &PathBuf, _device_path: &PathBuf) -> Result<(), String> {
+        Err("Creating bootable USB is not supported on this platform".to_string())
     }
 
     fn refresh_current_directory(&mut self, cx: &mut Context<Self>) {
@@ -2493,28 +2809,8 @@ impl Workspace {
     }
 
 
-    fn update_preview_for_selection(&mut self, cx: &mut Context<Self>) {
-        let selected_entry = self.get_selected_entry(cx);
-
-        match selected_entry {
-            Some(entry) if !entry.is_dir => {
-                if self.preview.is_none() {
-                    self.preview = Some(cx.new(|cx| PreviewView::new(cx)));
-                }
-                if let Some(ref preview) = self.preview {
-                    preview.update(cx, |view, _| {
-                        view.load_file(&entry.path);
-                    });
-                }
-                cx.notify();
-            }
-            _ => {
-                if self.preview.is_some() {
-                    self.preview = None;
-                    cx.notify();
-                }
-            }
-        }
+    fn update_preview_for_selection(&mut self, _cx: &mut Context<Self>) {
+        // Preview panel disabled for now
     }
 
     fn save_settings(&self) {
@@ -2783,6 +3079,12 @@ impl Render for Workspace {
             })
             .when(self.symlink_dialog.is_some(), |this| {
                 this.child(self.render_symlink_dialog_overlay(cx))
+            })
+            .when(self.format_dialog.is_some(), |this| {
+                this.child(self.render_format_dialog_overlay(cx))
+            })
+            .when(self.bootable_usb_dialog.is_some(), |this| {
+                this.child(self.render_bootable_usb_dialog_overlay(cx))
             })
             .child(self.theme_picker.clone())
             .child(self.quick_look.clone())
@@ -3923,6 +4225,548 @@ impl Workspace {
                         .child(dialog),
                 )
             })
+    }
+
+    fn render_format_dialog_overlay(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let overlay_bg = gpui::rgba(0x00000099);
+
+        let Some((device, dialog, label_input)) = &self.format_dialog else {
+            return div().id("format-dialog-empty");
+        };
+
+        let device_name = device.name.clone();
+        let device_path = device.path.to_string_lossy().to_string();
+        let filesystem = dialog.filesystem();
+        let available_fs = dialog.available_filesystems().to_vec();
+        let quick_format = dialog.quick_format();
+        let error_message = dialog.error_message().map(|s| s.to_string());
+        let show_confirmation = dialog.show_confirmation();
+        let warning_text = dialog.format_warning();
+        let label_input_element = Input::new(label_input).placeholder("Enter volume name...");
+
+        div()
+            .id("format-dialog-overlay")
+            .absolute()
+            .inset_0()
+            .bg(overlay_bg)
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.handle_format_cancel(cx);
+                }),
+            )
+            .child(
+                div()
+                    .id("format-dialog-content")
+                    .occlude()
+                    .w(px(400.0))
+                    .bg(theme.bg_primary)
+                    .border_1()
+                    .border_color(theme.border_default)
+                    .rounded_lg()
+                    .shadow_lg()
+                    .p_4()
+                    .flex()
+                    .flex_col()
+                    .gap_4()
+                    .on_mouse_down(MouseButton::Left, |_, _, _| {})
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                svg()
+                                    .path("assets/icons/hard-drive.svg")
+                                    .size(px(20.0))
+                                    .text_color(theme.warning),
+                            )
+                            .child(
+                                div()
+                                    .text_base()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(theme.text_primary)
+                                    .child("Format Device"),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(theme.text_secondary)
+                            .child(format!("{} ({})", device_name, device_path)),
+                    )
+                    .when(show_confirmation, |this| {
+                        this.child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_4()
+                                .child(
+                                    div()
+                                        .p_3()
+                                        .bg(gpui::rgba(0xf8514922))
+                                        .border_1()
+                                        .border_color(theme.error)
+                                        .rounded_md()
+                                        .text_sm()
+                                        .text_color(theme.error)
+                                        .child(warning_text),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .gap_2()
+                                        .justify_end()
+                                        .child(
+                                            div()
+                                                .id("format-cancel-confirm")
+                                                .px_4()
+                                                .py_2()
+                                                .bg(theme.bg_tertiary)
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .hover(|s| s.bg(theme.bg_hover))
+                                                .text_sm()
+                                                .text_color(theme.text_primary)
+                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                    if let Some((_, dialog, _)) = &mut view.format_dialog {
+                                                        dialog.cancel_confirmation();
+                                                    }
+                                                    cx.notify();
+                                                }))
+                                                .child("Cancel"),
+                                        )
+                                        .child(
+                                            div()
+                                                .id("format-confirm-btn")
+                                                .px_4()
+                                                .py_2()
+                                                .bg(theme.error)
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .hover(|s| s.opacity(0.9))
+                                                .text_sm()
+                                                .text_color(theme.text_inverse)
+                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                    view.handle_format_confirm(cx);
+                                                }))
+                                                .child("Format"),
+                                        ),
+                                ),
+                        )
+                    })
+                    .when(!show_confirmation, |this| {
+                        this.child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_3()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_1()
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .font_weight(gpui::FontWeight::MEDIUM)
+                                                .text_color(theme.text_primary)
+                                                .child("File System"),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_wrap()
+                                                .gap_2()
+                                                .children(available_fs.iter().map(|fs| {
+                                                    let fs_clone = *fs;
+                                                    let is_selected = fs_clone == filesystem;
+                                                    div()
+                                                        .id(SharedString::from(format!("fs-{:?}", fs)))
+                                                        .px_3()
+                                                        .py_1p5()
+                                                        .rounded_md()
+                                                        .cursor_pointer()
+                                                        .text_sm()
+                                                        .when(is_selected, |s| {
+                                                            s.bg(theme.accent_primary)
+                                                                .text_color(theme.text_inverse)
+                                                        })
+                                                        .when(!is_selected, |s| {
+                                                            s.bg(theme.bg_tertiary)
+                                                                .text_color(theme.text_secondary)
+                                                                .hover(|h| h.bg(theme.bg_hover))
+                                                        })
+                                                        .on_mouse_down(MouseButton::Left, cx.listener(move |view, _, _, cx| {
+                                                            if let Some((_, dialog, _)) = &mut view.format_dialog {
+                                                                dialog.set_filesystem(fs_clone);
+                                                            }
+                                                            cx.notify();
+                                                        }))
+                                                        .child(fs.display_name())
+                                                })),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_1()
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .font_weight(gpui::FontWeight::MEDIUM)
+                                                .text_color(theme.text_primary)
+                                                .child("Volume Label (optional)"),
+                                        )
+                                        .child(label_input_element),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_2()
+                                        .child(
+                                            div()
+                                                .id("quick-format-checkbox")
+                                                .size(px(16.0))
+                                                .rounded(px(3.0))
+                                                .border_1()
+                                                .cursor_pointer()
+                                                .when(quick_format, |s| {
+                                                    s.bg(theme.accent_primary)
+                                                        .border_color(theme.accent_primary)
+                                                })
+                                                .when(!quick_format, |s| {
+                                                    s.bg(theme.bg_tertiary)
+                                                        .border_color(theme.border_subtle)
+                                                })
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .when(quick_format, |s| {
+                                                    s.child(
+                                                        svg()
+                                                            .path("assets/icons/check.svg")
+                                                            .size(px(12.0))
+                                                            .text_color(theme.text_inverse),
+                                                    )
+                                                })
+                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                    if let Some((_, dialog, _)) = &mut view.format_dialog {
+                                                        dialog.set_quick_format(!dialog.quick_format());
+                                                    }
+                                                    cx.notify();
+                                                })),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .text_color(theme.text_secondary)
+                                                .child("Quick Format"),
+                                        ),
+                                )
+                                .when_some(error_message, |this, msg| {
+                                    this.child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.error)
+                                            .child(msg),
+                                    )
+                                })
+                                .child(
+                                    div()
+                                        .flex()
+                                        .gap_2()
+                                        .justify_end()
+                                        .mt_2()
+                                        .child(
+                                            div()
+                                                .id("format-cancel-btn")
+                                                .px_4()
+                                                .py_2()
+                                                .bg(theme.bg_tertiary)
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .hover(|s| s.bg(theme.bg_hover))
+                                                .text_sm()
+                                                .text_color(theme.text_primary)
+                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                    view.handle_format_cancel(cx);
+                                                }))
+                                                .child("Cancel"),
+                                        )
+                                        .child(
+                                            div()
+                                                .id("format-start-btn")
+                                                .px_4()
+                                                .py_2()
+                                                .bg(theme.warning)
+                                                .rounded_md()
+                                                .cursor_pointer()
+                                                .hover(|s| s.opacity(0.9))
+                                                .text_sm()
+                                                .text_color(theme.text_inverse)
+                                                .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                                    if let Some((_, dialog, _)) = &mut view.format_dialog {
+                                                        dialog.request_format();
+                                                    }
+                                                    cx.notify();
+                                                }))
+                                                .child("Format"),
+                                        ),
+                                ),
+                        )
+                    }),
+            )
+    }
+
+    fn render_bootable_usb_dialog_overlay(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let overlay_bg = gpui::rgba(0x00000099);
+
+        let Some((iso_path, selected_device)) = &self.bootable_usb_dialog else {
+            return div().id("bootable-usb-dialog-empty");
+        };
+
+        let iso_name = iso_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("ISO file")
+            .to_string();
+
+        let devices: Vec<Device> = self
+            .sidebar
+            .read(cx)
+            .devices()
+            .iter()
+            .filter(|d| d.is_removable && !d.path.starts_with("/dev/"))
+            .cloned()
+            .collect();
+
+        let selected_device_id = selected_device.as_ref().map(|d| d.id);
+
+        div()
+            .id("bootable-usb-dialog-overlay")
+            .absolute()
+            .inset_0()
+            .bg(overlay_bg)
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.handle_bootable_usb_cancel(cx);
+                }),
+            )
+            .child(
+                div()
+                    .id("bootable-usb-dialog-content")
+                    .occlude()
+                    .w(px(450.0))
+                    .bg(theme.bg_primary)
+                    .border_1()
+                    .border_color(theme.border_default)
+                    .rounded_lg()
+                    .shadow_lg()
+                    .p_4()
+                    .flex()
+                    .flex_col()
+                    .gap_4()
+                    .on_mouse_down(MouseButton::Left, |_, _, _| {})
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                svg()
+                                    .path("assets/icons/usb.svg")
+                                    .size(px(20.0))
+                                    .text_color(theme.accent_primary),
+                            )
+                            .child(
+                                div()
+                                    .text_base()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(theme.text_primary)
+                                    .child("Create Bootable USB"),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(theme.text_primary)
+                                    .child("ISO File"),
+                            )
+                            .child(
+                                div()
+                                    .px_3()
+                                    .py_2()
+                                    .bg(theme.bg_tertiary)
+                                    .rounded_md()
+                                    .text_sm()
+                                    .text_color(theme.text_secondary)
+                                    .overflow_hidden()
+                                    .text_ellipsis()
+                                    .child(iso_name),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(theme.text_primary)
+                                    .child("Select USB Drive"),
+                            )
+                            .child(
+                                div()
+                                    .id("usb-device-list")
+                                    .flex()
+                                    .flex_col()
+                                    .gap_2()
+                                    .max_h(px(200.0))
+                                    .overflow_y_scroll()
+                                    .when(devices.is_empty(), |this| {
+                                        this.child(
+                                            div()
+                                                .px_3()
+                                                .py_4()
+                                                .bg(theme.bg_tertiary)
+                                                .rounded_md()
+                                                .text_sm()
+                                                .text_color(theme.text_muted)
+                                                .text_center()
+                                                .child("No removable USB drives found. Please insert a USB drive."),
+                                        )
+                                    })
+                                    .children(devices.iter().map(|device| {
+                                        let device_clone = device.clone();
+                                        let is_selected = selected_device_id == Some(device.id);
+                                        let device_name = device.name.clone();
+                                        let device_size = crate::utils::format_size(device.total_space);
+
+                                        div()
+                                            .id(SharedString::from(format!("usb-device-{}", device.id.0)))
+                                            .px_3()
+                                            .py_2()
+                                            .rounded_md()
+                                            .cursor_pointer()
+                                            .border_1()
+                                            .when(is_selected, |s| {
+                                                s.bg(theme.accent_primary)
+                                                    .border_color(theme.accent_primary)
+                                                    .text_color(theme.text_inverse)
+                                            })
+                                            .when(!is_selected, |s| {
+                                                s.bg(theme.bg_tertiary)
+                                                    .border_color(theme.border_subtle)
+                                                    .text_color(theme.text_primary)
+                                                    .hover(|h| h.bg(theme.bg_hover))
+                                            })
+                                            .on_mouse_down(MouseButton::Left, cx.listener(move |view, _, _, cx| {
+                                                view.handle_bootable_usb_device_select(device_clone.clone(), cx);
+                                            }))
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap_2()
+                                                    .child(
+                                                        svg()
+                                                            .path("assets/icons/usb.svg")
+                                                            .size(px(16.0)),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .flex_1()
+                                                            .child(device_name),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .child(device_size),
+                                                    ),
+                                            )
+                                    })),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .p_3()
+                            .bg(gpui::rgba(0xf8514922))
+                            .border_1()
+                            .border_color(theme.warning)
+                            .rounded_md()
+                            .text_sm()
+                            .text_color(theme.warning)
+                            .child("WARNING: All data on the selected USB drive will be permanently erased."),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap_2()
+                            .justify_end()
+                            .child(
+                                div()
+                                    .id("bootable-cancel-btn")
+                                    .px_4()
+                                    .py_2()
+                                    .bg(theme.bg_tertiary)
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .hover(|s| s.bg(theme.bg_hover))
+                                    .text_sm()
+                                    .text_color(theme.text_primary)
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                        view.handle_bootable_usb_cancel(cx);
+                                    }))
+                                    .child("Cancel"),
+                            )
+                            .child(
+                                div()
+                                    .id("bootable-create-btn")
+                                    .px_4()
+                                    .py_2()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .when(selected_device.is_some(), |s| {
+                                        s.bg(theme.warning)
+                                            .hover(|h| h.opacity(0.9))
+                                            .text_color(theme.text_inverse)
+                                    })
+                                    .when(selected_device.is_none(), |s| {
+                                        s.bg(theme.bg_tertiary)
+                                            .opacity(0.5)
+                                            .cursor_not_allowed()
+                                            .text_color(theme.text_muted)
+                                    })
+                                    .text_sm()
+                                    .when(selected_device.is_some(), |s| {
+                                        s.on_mouse_down(MouseButton::Left, cx.listener(|view, _, _, cx| {
+                                            view.handle_bootable_usb_confirm(cx);
+                                        }))
+                                    })
+                                    .child("Create Bootable USB"),
+                            ),
+                    ),
+            )
     }
 
     fn format_time(&self, time: Option<std::time::SystemTime>) -> String {
