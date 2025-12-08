@@ -8,7 +8,7 @@ use gpui::{
 
 use crate::models::{
     sidebar as sidebar_spacing, theme_colors, Bookmark, BookmarkId, BookmarkManager,
-    CloudStorageManager, Device, DeviceMonitor, DeviceType, Favorite, Favorites, NetworkLocationId,
+    CloudStorageManager, Device, DeviceId, DeviceMonitor, DeviceType, Favorite, Favorites, NetworkLocationId,
     NetworkSidebarState, NetworkStorageManager, SearchQuery, SmartFolder, SmartFolderId,
     SmartFolderManager, WslDistribution,
 };
@@ -405,6 +405,7 @@ pub struct SidebarView {
     show_smart_folder_dialog: bool,
     editing_smart_folder: Option<SmartFolderId>,
     pending_smart_folder_click: Option<SmartFolderId>,
+    pending_eject_device: Option<DeviceId>,
 }
 
 impl SidebarView {
@@ -423,6 +424,7 @@ impl SidebarView {
             show_smart_folder_dialog: false,
             editing_smart_folder: None,
             pending_smart_folder_click: None,
+            pending_eject_device: None,
         }
     }
 
@@ -725,6 +727,17 @@ impl SidebarView {
     /// Get WSL distributions
     pub fn wsl_distributions(&self) -> &[WslDistribution] {
         self.sidebar.wsl_distributions()
+    }
+
+    /// Request ejection of a removable device
+    fn handle_device_eject(&mut self, device_id: DeviceId, cx: &mut Context<Self>) {
+        self.pending_eject_device = Some(device_id);
+        cx.notify();
+    }
+
+    /// Take the pending eject device request (if any)
+    pub fn take_pending_eject_device(&mut self) -> Option<DeviceId> {
+        self.pending_eject_device.take()
     }
 
     fn handle_tool_action(
@@ -2079,6 +2092,16 @@ impl SidebarView {
                                                 );
                                             }),
                                         )
+                                        // Right-click to eject removable devices
+                                        .when(is_removable && !is_wsl, |s| {
+                                            let device_id = device.id;
+                                            s.on_mouse_down(
+                                                MouseButton::Right,
+                                                cx.listener(move |view, _event, _window, cx| {
+                                                    view.handle_device_eject(device_id, cx);
+                                                }),
+                                            )
+                                        })
                                         .child(
                                             div()
                                                 .flex()
@@ -2118,11 +2141,11 @@ impl SidebarView {
                                                             .text_color(warning_color),
                                                     )
                                                 })
-                                                // Removable indicator
+                                                // Eject icon for removable devices (right-click to eject)
                                                 .when(is_removable && !is_wsl, |s| {
                                                     s.child(
                                                         svg()
-                                                            .path("assets/icons/hard-drive.svg")
+                                                            .path("assets/icons/external-link.svg")
                                                             .size(px(10.0))
                                                             .text_color(text_gray)
                                                             .opacity(0.5),

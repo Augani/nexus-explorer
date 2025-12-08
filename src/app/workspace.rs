@@ -11,8 +11,8 @@ use gpui::{
 
 use crate::io::{SortKey, SortOrder};
 use crate::models::{
-    current_theme, theme_colors, FileSystem, GlobalSettings, GridConfig, IconCache, SearchEngine,
-    ThemeId, ViewMode, WindowManager,
+    current_theme, theme_colors, DeviceId, FileSystem, GlobalSettings, GridConfig, IconCache,
+    PlatformAdapter, SearchEngine, ThemeId, ViewMode, WindowManager,
 };
 use crate::views::{
     ContextMenuAction, FileList, FileListView, GridView, GridViewComponent, PreviewView,
@@ -353,6 +353,12 @@ impl Workspace {
                     workspace.navigate_to(path, cx);
                 }
 
+                // Handle device eject requests
+                let eject_device = sidebar.update(cx, |view, _| view.take_pending_eject_device());
+                if let Some(device_id) = eject_device {
+                    workspace.handle_device_eject(device_id, cx);
+                }
+
                 let show_dialog = sidebar.read(cx).is_smart_folder_dialog_visible();
                 if show_dialog {
                     sidebar.update(cx, |view, cx| view.hide_smart_folder_dialog(cx));
@@ -621,6 +627,57 @@ impl Workspace {
                 }
             }
             ToolAction::SetAsDefault => {}
+        }
+    }
+
+    fn handle_device_eject(&mut self, device_id: DeviceId, cx: &mut Context<Self>) {
+        // Get device info before ejecting
+        let device_info = self.sidebar.read(cx).devices().iter()
+            .find(|d| d.id == device_id)
+            .map(|d| (d.name.clone(), d.path.clone()));
+
+        let Some((device_name, device_path)) = device_info else {
+            self.toast_manager.update(cx, |toast, cx| {
+                toast.show_error("Device not found".to_string(), cx);
+            });
+            return;
+        };
+
+        // Show ejecting notification
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("Ejecting {}...", device_name), cx);
+        });
+
+        // Create platform adapter and attempt eject
+        #[cfg(target_os = "windows")]
+        let adapter: Box<dyn PlatformAdapter> = Box::new(crate::models::WindowsAdapter::new());
+        #[cfg(target_os = "macos")]
+        let adapter: Box<dyn PlatformAdapter> = Box::new(crate::models::MacOSAdapter::new());
+        #[cfg(target_os = "linux")]
+        let adapter: Box<dyn PlatformAdapter> = Box::new(crate::models::LinuxAdapter::new());
+
+        match adapter.eject_device(device_id) {
+            Ok(()) => {
+                // If we're currently viewing the ejected device, navigate away
+                if self.current_path.starts_with(&device_path) {
+                    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
+                    self.navigate_to(home, cx);
+                }
+
+                // Refresh devices list
+                self.sidebar.update(cx, |view, cx| {
+                    view.refresh_devices(cx);
+                });
+
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_success(format!("Ejected: {}", device_name), cx);
+                });
+            }
+            Err(e) => {
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_error(format!("Failed to eject {}: {}", device_name, e), cx);
+                });
+            }
         }
     }
 
