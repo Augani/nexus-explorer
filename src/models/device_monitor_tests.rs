@@ -717,6 +717,8 @@ mod property_tests {
                 is_removable,
                 is_read_only,
                 is_mounted: true,
+                is_encrypted: false,
+                smart_status: None,
             }
         }
     }

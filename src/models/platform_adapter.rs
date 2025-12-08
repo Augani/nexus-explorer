@@ -1670,6 +1670,8 @@ mod property_tests {
                 is_removable,
                 is_read_only: false,
                 is_mounted: true,
+                is_encrypted: false,
+                smart_status: None,
             }
         }
     }
@@ -1837,6 +1839,8 @@ mod property_tests {
                 is_removable: true,
                 is_read_only: false,
                 is_mounted: true,
+                is_encrypted: false,
+                smart_status: None,
             }
         }
     }
@@ -1942,6 +1946,8 @@ mod property_tests {
                 is_removable: false,
                 is_read_only: false,
                 is_mounted: true,
+                is_encrypted: false,
+                smart_status: None,
             };
             
             // Non-removable devices should have is_removable = false

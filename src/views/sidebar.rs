@@ -897,263 +897,14 @@ impl Render for SidebarView {
                     .flex_col()
                     .flex_shrink_0()
                     .min_h_full()
-                    .child(
-                        div()
-                            .mb(section_gap)
-                            .child(
-                                div()
-                                    .id("tools-header")
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::BOLD)
-                                    .text_color(label_color)
-                                    .mb_2()
-                                    .px(item_padding_x)
-                                    .flex()
-                                    .items_center()
-                                    .justify_between()
-                                    .cursor_pointer()
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(|view, _event, _window, cx| {
-                                            view.toggle_tools_section(cx);
-                                        }),
-                                    )
-                                    .child("TOOLS")
-                                    .child(
-                                        svg()
-                                            .path(if is_tools_expanded {
-                                                "assets/icons/chevron-down.svg"
-                                            } else {
-                                                "assets/icons/chevron-right.svg"
-                                            })
-                                            .size(px(12.0))
-                                            .text_color(label_color),
-                                    ),
-                            )
-                            .when(is_tools_expanded, |s| {
-                                s.child(
-                                    div()
-                                        .flex()
-                                        .flex_col()
-                                        .gap_0p5()
-                                        .p_1()
-                                        // New File button
-                                        .child(self.render_tool_button(
-                                            "new-file",
-                                            "file-plus",
-                                            "New File",
-                                            ToolAction::NewFile,
-                                            true,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            icon_blue,
-                                            cx,
-                                        ))
-                                        // New Folder button
-                                        .child(self.render_tool_button(
-                                            "new-folder",
-                                            "folder-plus",
-                                            "New Folder",
-                                            ToolAction::NewFolder,
-                                            true,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            icon_blue,
-                                            cx,
-                                        ))
-                                        .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
-                                        // Copy button (batch operation)
-                                        .child(self.render_tool_button(
-                                            "copy-files",
-                                            "copy",
-                                            "Copy",
-                                            ToolAction::Copy,
-                                            has_selection,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            icon_blue,
-                                            cx,
-                                        ))
-                                        // Move button (batch operation)
-                                        .child(self.render_tool_button(
-                                            "move-files",
-                                            "files",
-                                            "Move",
-                                            ToolAction::Move,
-                                            has_selection,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            icon_blue,
-                                            cx,
-                                        ))
-                                        // Paste button (enabled when clipboard has content)
-                                        .child(self.render_tool_button(
-                                            "paste-files",
-                                            "clipboard-check",
-                                            "Paste",
-                                            ToolAction::Paste,
-                                            has_clipboard,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            gpui::rgb(0x3fb950),
-                                            cx,
-                                        ))
-                                        // Delete button (batch operation)
-                                        .child(self.render_tool_button(
-                                            "delete-files",
-                                            "trash-2",
-                                            "Delete",
-                                            ToolAction::Delete,
-                                            has_selection,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            gpui::rgb(0xf85149),
-                                            cx,
-                                        ))
-                                        .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
-                                        // Open Terminal Here
-                                        .child(self.render_tool_button(
-                                            "terminal-here",
-                                            "terminal",
-                                            "Open Terminal Here",
-                                            ToolAction::OpenTerminalHere,
-                                            true,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            icon_blue,
-                                            cx,
-                                        ))
-                                        .child(self.render_tool_button(
-                                            "copy-path",
-                                            "clipboard-paste",
-                                            "Copy Path",
-                                            ToolAction::CopyPath,
-                                            true,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            icon_blue,
-                                            cx,
-                                        ))
-                                        .child(self.render_tool_button(
-                                            "refresh",
-                                            "refresh-cw",
-                                            "Refresh",
-                                            ToolAction::Refresh,
-                                            true,
-                                            text_gray,
-                                            text_light,
-                                            hover_bg,
-                                            icon_blue,
-                                            cx,
-                                        ))
-                                        .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
-                                        // Show Hidden Files toggle
-                                        .child(
-                                            div()
-                                                .id("toggle-hidden")
-                                                .flex()
-                                                .items_center()
-                                                .gap_3()
-                                                .px_2()
-                                                .py_1p5()
-                                                .rounded_md()
-                                                .cursor_pointer()
-                                                .text_sm()
-                                                .text_color(text_gray)
-                                                .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                                .on_mouse_down(
-                                                    MouseButton::Left,
-                                                    cx.listener(|view, _event, _window, cx| {
-                                                        view.toggle_hidden_files(cx);
-                                                    }),
-                                                )
-                                                .child(
-                                                    svg()
-                                                        .path(if show_hidden {
-                                                            "assets/icons/eye.svg"
-                                                        } else {
-                                                            "assets/icons/eye-off.svg"
-                                                        })
-                                                        .size(px(14.0))
-                                                        .text_color(if show_hidden {
-                                                            success_color
-                                                        } else {
-                                                            icon_blue
-                                                        }),
-                                                )
-                                                .child(div().flex_1().child(if show_hidden {
-                                                    "Hide Hidden Files"
-                                                } else {
-                                                    "Show Hidden Files"
-                                                }))
-                                                .when(show_hidden, |s| {
-                                                    s.child(
-                                                        div()
-                                                            .w(px(6.0))
-                                                            .h(px(6.0))
-                                                            .rounded_full()
-                                                            .bg(success_color),
-                                                    )
-                                                }),
-                                        )
-                                        .child({
-                                            let is_default =
-                                                crate::models::is_default_file_browser();
-                                            div()
-                                                .id("set-as-default")
-                                                .flex()
-                                                .items_center()
-                                                .gap_3()
-                                                .px_2()
-                                                .py_1p5()
-                                                .rounded_md()
-                                                .cursor_pointer()
-                                                .text_sm()
-                                                .text_color(text_gray)
-                                                .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                                .on_mouse_down(
-                                                    MouseButton::Left,
-                                                    cx.listener(|view, _event, _window, cx| {
-                                                        view.toggle_default_browser(cx);
-                                                    }),
-                                                )
-                                                .child(
-                                                    svg()
-                                                        .path("assets/icons/layout-grid.svg")
-                                                        .size(px(14.0))
-                                                        .text_color(if is_default {
-                                                            success_color
-                                                        } else {
-                                                            icon_blue
-                                                        }),
-                                                )
-                                                .child(div().flex_1().child(if is_default {
-                                                    "Default Browser ✓"
-                                                } else {
-                                                    "Set as Default Browser"
-                                                }))
-                                                .when(is_default, |s| {
-                                                    s.child(
-                                                        div()
-                                                            .w(px(6.0))
-                                                            .h(px(6.0))
-                                                            .rounded_full()
-                                                            .bg(success_color),
-                                                    )
-                                                })
-                                        }),
-                                )
-                            }),
-                    )
-                    // Devices Section
+                    .child(self.render_tools_section(
+                        label_color,
+                        text_gray,
+                        text_light,
+                        hover_bg,
+                        icon_blue,
+                        cx,
+                    ))
                     .child(self.render_devices_section(
                         label_color,
                         text_gray,
@@ -1196,206 +947,19 @@ impl Render for SidebarView {
                         cx,
                     ))
                     // Favorites Section
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(gpui::FontWeight::BOLD)
-                            .text_color(label_color)
-                            .mb_2()
-                            .px_2()
-                            .child("FAVORITES"),
-                    )
-                    .child(
-                        div()
-                            .id("favorites-drop-zone")
-                            .flex()
-                            .flex_col()
-                            .gap_0p5()
-                            .mb_6()
-                            .p_1()
-                            .rounded_md()
-                            .when(is_drop_target && !is_full, |s| {
-                                s.bg(drop_zone_bg).border_2().border_color(drop_zone_border)
-                            })
-                            .on_drag_move(cx.listener(
-                                |view, _event: &DragMoveEvent<DraggedFolder>, _window, cx| {
-                                    if !view.sidebar.favorites.is_full() {
-                                        view.sidebar.set_drop_target(true);
-                                        cx.notify();
-                                    }
-                                },
-                            ))
-                            .on_drop(cx.listener(|view, paths: &ExternalPaths, _window, cx| {
-                                for path in paths.paths() {
-                                    if path.is_dir() {
-                                        view.handle_drop(path.clone(), cx);
-                                    }
-                                }
-                            }))
-                            .on_drop(cx.listener(|view, dragged: &DraggedFolder, _window, cx| {
-                                view.handle_drop(dragged.path.clone(), cx);
-                            }))
-                            .children(favorites.into_iter().enumerate().map(|(i, favorite)| {
-                                let is_selected = selected_path.as_ref() == Some(&favorite.path);
-                                let path_clone = favorite.path.clone();
-                                let path_for_drag = favorite.path.clone();
-                                let name_for_drag = favorite.name.clone();
-                                let icon_name = self.get_icon_for_favorite(i, &favorite.path);
-                                let is_valid = favorite.is_valid;
-                                let is_being_dragged = dragging_index == Some(i);
-                                let is_drop_target_here = drop_target_index == Some(i);
-
-                                div()
-                                    .id(SharedString::from(format!("fav-{}", i)))
-                                    .flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .px_2()
-                                    .py_1p5()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .text_sm()
-                                    .when(is_being_dragged, |s| s.opacity(0.5))
-                                    .when(is_drop_target_here, |s| {
-                                        s.border_t_2().border_color(drop_zone_border)
-                                    })
-                                    .when(is_selected, |s| s.bg(selected_bg).text_color(text_light))
-                                    .when(!is_selected && is_valid, |s| {
-                                        s.text_color(text_gray)
-                                            .hover(|h| h.bg(hover_bg).text_color(text_light))
-                                    })
-                                    .when(!is_valid, |s| s.text_color(warning_color).opacity(0.7))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(move |view, _event, window, cx| {
-                                            view.handle_favorite_click(
-                                                path_clone.clone(),
-                                                window,
-                                                cx,
-                                            );
-                                        }),
-                                    )
-                                    .on_mouse_down(
-                                        MouseButton::Right,
-                                        cx.listener(move |view, _event, _window, cx| {
-                                            view.handle_favorite_remove(i, cx);
-                                        }),
-                                    )
-                                    .on_drag(
-                                        DraggedFolder {
-                                            path: path_for_drag,
-                                            name: name_for_drag,
-                                        },
-                                        |dragged: &DraggedFolder, _position, _window, cx| {
-                                            let name = dragged.name.clone();
-                                            cx.new(|_| DraggedFolderView { name })
-                                        },
-                                    )
-                                    .on_drag_move(cx.listener(
-                                        move |view,
-                                              _event: &DragMoveEvent<DraggedFolder>,
-                                              _window,
-                                              cx| {
-                                            view.drop_target_index = Some(i);
-                                            cx.notify();
-                                        },
-                                    ))
-                                    .on_drop(cx.listener(
-                                        move |view, dragged: &DraggedFolder, _window, cx| {
-                                            // Find the index of the dragged item
-                                            if let Some(from_idx) =
-                                                view.sidebar.favorites.find_index(&dragged.path)
-                                            {
-                                                if from_idx != i {
-                                                    view.handle_reorder_drop(from_idx, i, cx);
-                                                }
-                                            } else {
-                                                // New item being dropped
-                                                view.handle_drop(dragged.path.clone(), cx);
-                                            }
-                                        },
-                                    ))
-                                    .child(
-                                        svg()
-                                            .path(SharedString::from(format!(
-                                                "assets/icons/{}.svg",
-                                                icon_name
-                                            )))
-                                            .size(px(14.0))
-                                            .text_color(if !is_valid {
-                                                warning_color
-                                            } else if is_selected {
-                                                text_light
-                                            } else {
-                                                icon_blue
-                                            }),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .overflow_hidden()
-                                            .child(favorite.name.clone()),
-                                    )
-                                    .when(!is_valid, |s| {
-                                        s.child(
-                                            svg()
-                                                .path("assets/icons/triangle-alert.svg")
-                                                .size(px(12.0))
-                                                .text_color(warning_color),
-                                        )
-                                    })
-                            }))
-                            .when(is_drop_target && !is_full, |s| {
-                                s.child(
-                                    div()
-                                        .px_2()
-                                        .py_1p5()
-                                        .text_sm()
-                                        .text_color(icon_blue)
-                                        .text_center()
-                                        .child("Drop folder here to add"),
-                                )
-                            }),
-                    )
-                    .child({
-                        let trash_path = Self::get_trash_path();
-                        let is_trash_selected = selected_path.as_ref() == Some(&trash_path);
-                        div()
-                            .id("trash-item")
-                            .px_2()
-                            .py_1p5()
-                            .mx_1()
-                            .rounded_md()
-                            .text_sm()
-                            .cursor_pointer()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .when(is_trash_selected, |s| {
-                                s.bg(theme.bg_hover).text_color(text_light)
-                            })
-                            .when(!is_trash_selected, |s| s.text_color(text_gray))
-                            .hover(|h| h.bg(theme.bg_hover))
-                            .on_mouse_down(MouseButton::Left, {
-                                let path = trash_path.clone();
-                                cx.listener(move |view, _event, _window, cx| {
-                                    view.sidebar.selected_path = Some(path.clone());
-                                    view.pending_navigation = Some(path.clone());
-                                    cx.notify();
-                                })
-                            })
-                            .child(
-                                svg()
-                                    .path("assets/icons/trash-2.svg")
-                                    .size(px(14.0))
-                                    .text_color(if is_trash_selected {
-                                        text_light
-                                    } else {
-                                        text_gray
-                                    }),
-                            )
-                            .child("Trash")
-                    }),
+                    .child(self.render_favorites_section(
+                        label_color,
+                        text_gray,
+                        text_light,
+                        hover_bg,
+                        selected_bg,
+                        icon_blue,
+                        warning_color,
+                        drop_zone_bg,
+                        drop_zone_border,
+                        cx,
+                    ))
+                    .child(self.render_trash_item(text_gray, text_light, cx)),
             )
     }
 }
@@ -1995,6 +1559,183 @@ impl SidebarView {
             })
     }
 
+    fn render_tools_section(
+        &self,
+        label_color: gpui::Rgba,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_tools_expanded = self.sidebar.is_tools_expanded();
+        let show_hidden = self.sidebar.show_hidden_files();
+        let has_selection = self.selected_file_count > 0;
+        let has_clipboard = self.has_clipboard;
+        let success_color = gpui::rgb(0x3fb950);
+        let section_gap = px(sidebar_spacing::SECTION_GAP);
+        let item_padding_x = px(sidebar_spacing::ITEM_PADDING_X);
+
+        div()
+            .mb(section_gap)
+            .child(
+                div()
+                    .id("tools-header")
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(label_color)
+                    .mb_2()
+                    .px(item_padding_x)
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .cursor_pointer()
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|view, _event, _window, cx| {
+                            view.toggle_tools_section(cx);
+                        }),
+                    )
+                    .child("TOOLS")
+                    .child(
+                        svg()
+                            .path(if is_tools_expanded {
+                                "assets/icons/chevron-down.svg"
+                            } else {
+                                "assets/icons/chevron-right.svg"
+                            })
+                            .size(px(12.0))
+                            .text_color(label_color),
+                    ),
+            )
+            .when(is_tools_expanded, |s| {
+                s.child(self.render_tools_content(
+                    text_gray,
+                    text_light,
+                    hover_bg,
+                    icon_blue,
+                    success_color,
+                    has_selection,
+                    has_clipboard,
+                    show_hidden,
+                    cx,
+                ))
+            })
+    }
+
+    fn render_tools_content(
+        &self,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        success_color: gpui::Rgba,
+        has_selection: bool,
+        has_clipboard: bool,
+        show_hidden: bool,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_0p5()
+            .p_1()
+            .child(self.render_tool_button("new-file", "file-plus", "New File", ToolAction::NewFile, true, text_gray, text_light, hover_bg, icon_blue, cx))
+            .child(self.render_tool_button("new-folder", "folder-plus", "New Folder", ToolAction::NewFolder, true, text_gray, text_light, hover_bg, icon_blue, cx))
+            .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
+            .child(self.render_tool_button("copy-files", "copy", "Copy", ToolAction::Copy, has_selection, text_gray, text_light, hover_bg, icon_blue, cx))
+            .child(self.render_tool_button("move-files", "files", "Move", ToolAction::Move, has_selection, text_gray, text_light, hover_bg, icon_blue, cx))
+            .child(self.render_tool_button("paste-files", "clipboard-check", "Paste", ToolAction::Paste, has_clipboard, text_gray, text_light, hover_bg, gpui::rgb(0x3fb950), cx))
+            .child(self.render_tool_button("delete-files", "trash-2", "Delete", ToolAction::Delete, has_selection, text_gray, text_light, hover_bg, gpui::rgb(0xf85149), cx))
+            .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
+            .child(self.render_tool_button("terminal-here", "terminal", "Open Terminal Here", ToolAction::OpenTerminalHere, true, text_gray, text_light, hover_bg, icon_blue, cx))
+            .child(self.render_tool_button("copy-path", "clipboard-paste", "Copy Path", ToolAction::CopyPath, true, text_gray, text_light, hover_bg, icon_blue, cx))
+            .child(self.render_tool_button("refresh", "refresh-cw", "Refresh", ToolAction::Refresh, true, text_gray, text_light, hover_bg, icon_blue, cx))
+            .child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_1())
+            .child(self.render_toggle_hidden_button(text_gray, text_light, hover_bg, icon_blue, success_color, show_hidden, cx))
+            .child(self.render_default_browser_button(text_gray, text_light, hover_bg, icon_blue, success_color, cx))
+    }
+
+    fn render_toggle_hidden_button(
+        &self,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        success_color: gpui::Rgba,
+        show_hidden: bool,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .id("toggle-hidden")
+            .flex()
+            .items_center()
+            .gap_3()
+            .px_2()
+            .py_1p5()
+            .rounded_md()
+            .cursor_pointer()
+            .text_sm()
+            .text_color(text_gray)
+            .hover(|h| h.bg(hover_bg).text_color(text_light))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.toggle_hidden_files(cx);
+                }),
+            )
+            .child(
+                svg()
+                    .path(if show_hidden { "assets/icons/eye.svg" } else { "assets/icons/eye-off.svg" })
+                    .size(px(14.0))
+                    .text_color(if show_hidden { success_color } else { icon_blue }),
+            )
+            .child(div().flex_1().child(if show_hidden { "Hide Hidden Files" } else { "Show Hidden Files" }))
+            .when(show_hidden, |s| {
+                s.child(div().w(px(6.0)).h(px(6.0)).rounded_full().bg(success_color))
+            })
+    }
+
+    fn render_default_browser_button(
+        &self,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        success_color: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_default = crate::models::is_default_file_browser();
+        div()
+            .id("set-as-default")
+            .flex()
+            .items_center()
+            .gap_3()
+            .px_2()
+            .py_1p5()
+            .rounded_md()
+            .cursor_pointer()
+            .text_sm()
+            .text_color(text_gray)
+            .hover(|h| h.bg(hover_bg).text_color(text_light))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.toggle_default_browser(cx);
+                }),
+            )
+            .child(
+                svg()
+                    .path("assets/icons/layout-grid.svg")
+                    .size(px(14.0))
+                    .text_color(if is_default { success_color } else { icon_blue }),
+            )
+            .child(div().flex_1().child(if is_default { "Default Browser ✓" } else { "Set as Default Browser" }))
+            .when(is_default, |s| {
+                s.child(div().w(px(6.0)).h(px(6.0)).rounded_full().bg(success_color))
+            })
+    }
+
     fn render_devices_section(
         &self,
         label_color: gpui::Rgba,
@@ -2006,51 +1747,14 @@ impl SidebarView {
         warning_color: gpui::Rgba,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        use crate::utils::{format_size, is_space_critical, is_space_very_low, usage_percentage};
-        
         let is_expanded = self.sidebar.is_devices_expanded();
         let devices = self.sidebar.devices().to_vec();
         let wsl_distros = self.sidebar.wsl_distributions().to_vec();
         let selected_path = self.sidebar.selected_path.clone();
-        
-        // Colors for usage bar
-        let bar_bg = gpui::rgb(0x21262d);
-        let bar_normal = gpui::rgb(0x238636); // Green
-        let bar_warning = gpui::rgb(0xd29922); // Yellow/Orange
-        let bar_critical = gpui::rgb(0xf85149); // Red
 
         div()
             .mb_4()
-            .child(
-                div()
-                    .id("devices-header")
-                    .text_xs()
-                    .font_weight(gpui::FontWeight::BOLD)
-                    .text_color(label_color)
-                    .mb_2()
-                    .px_2()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .cursor_pointer()
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(|view, _event, _window, cx| {
-                            view.toggle_devices_section(cx);
-                        }),
-                    )
-                    .child("DEVICES")
-                    .child(
-                        svg()
-                            .path(if is_expanded {
-                                "assets/icons/chevron-down.svg"
-                            } else {
-                                "assets/icons/chevron-right.svg"
-                            })
-                            .size(px(12.0))
-                            .text_color(label_color),
-                    ),
-            )
+            .child(self.render_devices_header(label_color, is_expanded, cx))
             .when(is_expanded, |s| {
                 s.child(
                     div()
@@ -2058,226 +1762,19 @@ impl SidebarView {
                         .flex_col()
                         .gap_0p5()
                         .p_1()
-                        .children(
-                            devices
-                                .iter()
-                                .map(|device| {
-                                    let is_selected = selected_path.as_ref() == Some(&device.path);
-                                    let path_clone = device.path.clone();
-                                    let icon_name = device.device_type.icon_name();
-                                    let display_name = device.name.clone();
-                                    let is_read_only = device.is_read_only;
-                                    let is_removable = device.is_removable;
-                                    let is_wsl =
-                                        matches!(device.device_type, DeviceType::WslDistribution);
-
-                                    // Calculate space info
-                                    let has_space_info = device.total_space > 0;
-                                    let usage_pct = if has_space_info {
-                                        usage_percentage(device.total_space, device.free_space)
-                                    } else {
-                                        0.0
-                                    };
-                                    let is_critical = is_space_critical(device.total_space, device.free_space);
-                                    let is_very_low = is_space_very_low(device.total_space, device.free_space);
-                                    
-                                    // Format space text
-                                    let space_text = if has_space_info {
-                                        let free_str = format_size(device.free_space);
-                                        let total_str = format_size(device.total_space);
-                                        Some(format!("{} free of {}", free_str, total_str))
-                                    } else {
-                                        None
-                                    };
-                                    
-                                    // Determine bar color based on usage
-                                    let bar_color = if is_very_low {
-                                        bar_critical
-                                    } else if is_critical {
-                                        bar_warning
-                                    } else {
-                                        bar_normal
-                                    };
-
-                                    // Build tooltip content
-                                    let tooltip_content = if has_space_info {
-                                        use crate::utils::format_space_tooltip;
-                                        format_space_tooltip(device.total_space, device.free_space)
-                                    } else {
-                                        device.path.to_string_lossy().to_string()
-                                    };
-                                    let tooltip_bg = gpui::rgb(0x1c2128);
-                                    let tooltip_border = gpui::rgb(0x30363d);
-                                    let group_id = SharedString::from(format!("device-group-{}", device.id.0));
-                                    
-                                    div()
-                                        .id(SharedString::from(format!("device-{}", device.id.0)))
-                                        .relative()
-                                        .group(group_id.clone())
-                                        .flex()
-                                        .flex_col()
-                                        .px_2()
-                                        .py_1p5()
-                                        .rounded_md()
-                                        .cursor_pointer()
-                                        .when(is_selected, |s| s.bg(selected_bg))
-                                        .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
-                                        .on_mouse_down(
-                                            MouseButton::Left,
-                                            cx.listener(move |view, _event, window, cx| {
-                                                view.handle_device_click(
-                                                    path_clone.clone(),
-                                                    window,
-                                                    cx,
-                                                );
-                                            }),
-                                        )
-                                        // Right-click to eject removable devices
-                                        .when(is_removable && !is_wsl, |s| {
-                                            let device_id = device.id;
-                                            s.on_mouse_down(
-                                                MouseButton::Right,
-                                                cx.listener(move |view, _event, _window, cx| {
-                                                    view.handle_device_eject(device_id, cx);
-                                                }),
-                                            )
-                                        })
-                                        // Tooltip on hover
-                                        .child(
-                                            gpui::deferred(
-                                                gpui::anchored()
-                                                    .snap_to_window_with_margin(px(8.0))
-                                                    .anchor(gpui::Corner::TopRight)
-                                                    .child(
-                                                        div()
-                                                            .occlude()
-                                                            .px_2()
-                                                            .py_1p5()
-                                                            .bg(tooltip_bg)
-                                                            .border_1()
-                                                            .border_color(tooltip_border)
-                                                            .rounded_md()
-                                                            .shadow_md()
-                                                            .text_xs()
-                                                            .text_color(text_light)
-                                                            .max_w(px(200.0))
-                                                            .opacity(0.0)
-                                                            .invisible()
-                                                            .group_hover(group_id, |mut style| {
-                                                                style.opacity = Some(1.0);
-                                                                style.visibility = Some(gpui::Visibility::Visible);
-                                                                style
-                                                            })
-                                                            .child(tooltip_content),
-                                                    ),
-                                            )
-                                            .with_priority(1),
-                                        )
-                                        .child(
-                                            div()
-                                                .flex()
-                                                .items_center()
-                                                .gap_3()
-                                                .child(
-                                                    svg()
-                                                        .path(SharedString::from(format!(
-                                                            "assets/icons/{}.svg",
-                                                            icon_name
-                                                        )))
-                                                        .size(px(14.0))
-                                                        .text_color(if is_selected {
-                                                            text_light
-                                                        } else {
-                                                            icon_blue
-                                                        }),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .flex_1()
-                                                        .overflow_hidden()
-                                                        .text_sm()
-                                                        .text_color(if is_selected {
-                                                            text_light
-                                                        } else {
-                                                            text_gray
-                                                        })
-                                                        .child(display_name),
-                                                )
-                                                // Warning icon for low space
-                                                .when(is_critical, |s| {
-                                                    s.child(
-                                                        svg()
-                                                            .path("assets/icons/triangle-alert.svg")
-                                                            .size(px(12.0))
-                                                            .text_color(if is_very_low {
-                                                                bar_critical
-                                                            } else {
-                                                                warning_color
-                                                            }),
-                                                    )
-                                                })
-                                                // Read-only lock icon
-                                                .when(is_read_only && !is_critical, |s| {
-                                                    s.child(
-                                                        svg()
-                                                            .path("assets/icons/file-lock.svg")
-                                                            .size(px(12.0))
-                                                            .text_color(warning_color),
-                                                    )
-                                                })
-                                                // Eject icon for removable devices (right-click to eject)
-                                                .when(is_removable && !is_wsl && !is_critical, |s| {
-                                                    s.child(
-                                                        svg()
-                                                            .path("assets/icons/external-link.svg")
-                                                            .size(px(10.0))
-                                                            .text_color(text_gray)
-                                                            .opacity(0.5),
-                                                    )
-                                                }),
-                                        )
-                                        // Usage bar and space info
-                                        .when(has_space_info, |s| {
-                                            s.child(
-                                                div()
-                                                    .pl(px(26.0))
-                                                    .pr(px(4.0))
-                                                    .mt(px(4.0))
-                                                    .flex()
-                                                    .flex_col()
-                                                    .gap(px(2.0))
-                                                    // Usage bar
-                                                    .child(
-                                                        div()
-                                                            .w_full()
-                                                            .h(px(4.0))
-                                                            .rounded(px(2.0))
-                                                            .bg(bar_bg)
-                                                            .child(
-                                                                div()
-                                                                    .h_full()
-                                                                    .rounded(px(2.0))
-                                                                    .bg(bar_color)
-                                                                    .w(gpui::relative(usage_pct as f32 / 100.0)),
-                                                            ),
-                                                    )
-                                                    // Space text
-                                                    .child(
-                                                        div()
-                                                            .text_xs()
-                                                            .text_color(if is_critical {
-                                                                bar_color
-                                                            } else {
-                                                                text_gray
-                                                            })
-                                                            .opacity(if is_critical { 1.0 } else { 0.7 })
-                                                            .child(space_text.unwrap_or_default()),
-                                                    ),
-                                            )
-                                        })
-                                })
-                                .collect::<Vec<_>>(),
-                        )
+                        .children(devices.iter().map(|device| {
+                            self.render_device_item(
+                                device,
+                                &selected_path,
+                                text_gray,
+                                text_light,
+                                hover_bg,
+                                selected_bg,
+                                icon_blue,
+                                warning_color,
+                                cx,
+                            )
+                        }))
                         // Render WSL distributions (Windows only)
                         .when(!wsl_distros.is_empty(), |s| {
                             s.child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_2())
@@ -2391,5 +1888,543 @@ impl SidebarView {
                         }),
                 )
             })
+    }
+
+    fn render_devices_header(
+        &self,
+        label_color: gpui::Rgba,
+        is_expanded: bool,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .id("devices-header")
+            .text_xs()
+            .font_weight(gpui::FontWeight::BOLD)
+            .text_color(label_color)
+            .mb_2()
+            .px_2()
+            .flex()
+            .items_center()
+            .justify_between()
+            .cursor_pointer()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.toggle_devices_section(cx);
+                }),
+            )
+            .child("DEVICES")
+            .child(
+                svg()
+                    .path(if is_expanded {
+                        "assets/icons/chevron-down.svg"
+                    } else {
+                        "assets/icons/chevron-right.svg"
+                    })
+                    .size(px(12.0))
+                    .text_color(label_color),
+            )
+    }
+
+    fn render_device_item(
+        &self,
+        device: &Device,
+        selected_path: &Option<PathBuf>,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        selected_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        warning_color: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        use crate::utils::{format_size, format_space_tooltip, is_space_critical, is_space_very_low, usage_percentage};
+
+        let bar_bg = gpui::rgba(0x21262dff);
+        let bar_normal = gpui::rgba(0x238636ff);
+        let bar_warning = gpui::rgba(0xd29922ff);
+        let bar_critical = gpui::rgba(0xf85149ff);
+
+        let is_selected = selected_path.as_ref() == Some(&device.path);
+        let path_clone = device.path.clone();
+        let icon_name = device.device_type.icon_name();
+        let display_name = device.name.clone();
+        let is_read_only = device.is_read_only;
+        let is_removable = device.is_removable;
+        let is_wsl = matches!(device.device_type, DeviceType::WslDistribution);
+
+        let has_space_info = device.total_space > 0;
+        let usage_pct = if has_space_info {
+            usage_percentage(device.total_space, device.free_space)
+        } else {
+            0.0
+        };
+        let is_critical = is_space_critical(device.total_space, device.free_space);
+        let is_very_low = is_space_very_low(device.total_space, device.free_space);
+
+        let space_text = if has_space_info {
+            Some(format!("{} free of {}", format_size(device.free_space), format_size(device.total_space)))
+        } else {
+            None
+        };
+
+        let bar_color = if is_very_low {
+            bar_critical
+        } else if is_critical {
+            bar_warning
+        } else {
+            bar_normal
+        };
+
+        let tooltip_content = if has_space_info {
+            format_space_tooltip(device.total_space, device.free_space)
+        } else {
+            device.path.to_string_lossy().to_string()
+        };
+
+        let group_id = SharedString::from(format!("device-group-{}", device.id.0));
+        let device_id = device.id;
+
+        div()
+            .id(SharedString::from(format!("device-{}", device.id.0)))
+            .relative()
+            .group(group_id.clone())
+            .flex()
+            .flex_col()
+            .px_2()
+            .py_1p5()
+            .rounded_md()
+            .cursor_pointer()
+            .when(is_selected, |s| s.bg(selected_bg))
+            .when(!is_selected, |s| s.hover(|h| h.bg(hover_bg)))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |view, _event, window, cx| {
+                    view.handle_device_click(path_clone.clone(), window, cx);
+                }),
+            )
+            .when(is_removable && !is_wsl, |s| {
+                s.on_mouse_down(
+                    MouseButton::Right,
+                    cx.listener(move |view, _event, _window, cx| {
+                        view.handle_device_eject(device_id, cx);
+                    }),
+                )
+            })
+            .child(self.render_device_tooltip(group_id.clone(), tooltip_content, text_light))
+            .child(self.render_device_info_row(
+                icon_name,
+                display_name,
+                is_selected,
+                is_critical,
+                is_very_low,
+                is_read_only,
+                is_removable,
+                is_wsl,
+                text_gray,
+                text_light,
+                icon_blue,
+                warning_color,
+                bar_critical,
+            ))
+            .when(has_space_info, |s| {
+                s.child(self.render_device_usage_bar(
+                    usage_pct,
+                    bar_bg,
+                    bar_color,
+                    is_critical,
+                    text_gray,
+                    space_text,
+                ))
+            })
+    }
+
+    fn render_device_tooltip(
+        &self,
+        group_id: SharedString,
+        tooltip_content: String,
+        text_light: gpui::Rgba,
+    ) -> impl IntoElement {
+        let tooltip_bg = gpui::rgb(0x1c2128);
+        let tooltip_border = gpui::rgb(0x30363d);
+
+        gpui::deferred(
+            gpui::anchored()
+                .snap_to_window_with_margin(px(8.0))
+                .anchor(gpui::Corner::TopRight)
+                .child(
+                    div()
+                        .occlude()
+                        .px_2()
+                        .py_1p5()
+                        .bg(tooltip_bg)
+                        .border_1()
+                        .border_color(tooltip_border)
+                        .rounded_md()
+                        .shadow_md()
+                        .text_xs()
+                        .text_color(text_light)
+                        .max_w(px(200.0))
+                        .opacity(0.0)
+                        .invisible()
+                        .group_hover(group_id, |mut style| {
+                            style.opacity = Some(1.0);
+                            style.visibility = Some(gpui::Visibility::Visible);
+                            style
+                        })
+                        .child(tooltip_content),
+                ),
+        )
+        .with_priority(1)
+    }
+
+    fn render_device_info_row(
+        &self,
+        icon_name: &str,
+        display_name: String,
+        is_selected: bool,
+        is_critical: bool,
+        is_very_low: bool,
+        is_read_only: bool,
+        is_removable: bool,
+        is_wsl: bool,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        warning_color: gpui::Rgba,
+        bar_critical: gpui::Rgba,
+    ) -> impl IntoElement {
+        div()
+            .flex()
+            .items_center()
+            .gap_3()
+            .child(
+                svg()
+                    .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                    .size(px(14.0))
+                    .text_color(if is_selected { text_light } else { icon_blue }),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .overflow_hidden()
+                    .text_sm()
+                    .text_color(if is_selected { text_light } else { text_gray })
+                    .child(display_name),
+            )
+            .when(is_critical, |s| {
+                s.child(
+                    svg()
+                        .path("assets/icons/triangle-alert.svg")
+                        .size(px(12.0))
+                        .text_color(if is_very_low { bar_critical } else { warning_color }),
+                )
+            })
+            .when(is_read_only && !is_critical, |s| {
+                s.child(
+                    svg()
+                        .path("assets/icons/file-lock.svg")
+                        .size(px(12.0))
+                        .text_color(warning_color),
+                )
+            })
+            .when(is_removable && !is_wsl && !is_critical, |s| {
+                s.child(
+                    svg()
+                        .path("assets/icons/external-link.svg")
+                        .size(px(10.0))
+                        .text_color(text_gray)
+                        .opacity(0.5),
+                )
+            })
+    }
+
+    fn render_device_usage_bar(
+        &self,
+        usage_pct: f64,
+        bar_bg: gpui::Rgba,
+        bar_color: gpui::Rgba,
+        is_critical: bool,
+        text_gray: gpui::Rgba,
+        space_text: Option<String>,
+    ) -> impl IntoElement {
+        div()
+            .pl(px(26.0))
+            .pr(px(4.0))
+            .mt(px(4.0))
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .child(
+                div()
+                    .w_full()
+                    .h(px(4.0))
+                    .rounded(px(2.0))
+                    .bg(bar_bg)
+                    .child(
+                        div()
+                            .h_full()
+                            .rounded(px(2.0))
+                            .bg(bar_color)
+                            .w(gpui::relative(usage_pct as f32 / 100.0)),
+                    ),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(if is_critical { bar_color } else { text_gray })
+                    .opacity(if is_critical { 1.0 } else { 0.7 })
+                    .child(space_text.unwrap_or_default()),
+            )
+    }
+
+    fn render_favorites_section(
+        &self,
+        label_color: gpui::Rgba,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        selected_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        warning_color: gpui::Rgba,
+        drop_zone_bg: gpui::Rgba,
+        drop_zone_border: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let selected_path = self.sidebar.selected_path.clone();
+        let favorites = self.sidebar.favorites.items().to_vec();
+        let is_drop_target = self.sidebar.is_drop_target;
+        let is_full = self.sidebar.favorites.is_full();
+        let dragging_index = self.dragging_favorite_index;
+        let drop_target_index = self.drop_target_index;
+
+        div()
+            .child(
+                div()
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(label_color)
+                    .mb_2()
+                    .px_2()
+                    .child("FAVORITES"),
+            )
+            .child(
+                div()
+                    .id("favorites-drop-zone")
+                    .flex()
+                    .flex_col()
+                    .gap_0p5()
+                    .mb_6()
+                    .p_1()
+                    .rounded_md()
+                    .when(is_drop_target && !is_full, |s| {
+                        s.bg(drop_zone_bg).border_2().border_color(drop_zone_border)
+                    })
+                    .on_drag_move(cx.listener(
+                        |view, _event: &DragMoveEvent<DraggedFolder>, _window, cx| {
+                            if !view.sidebar.favorites.is_full() {
+                                view.sidebar.set_drop_target(true);
+                                cx.notify();
+                            }
+                        },
+                    ))
+                    .on_drop(cx.listener(|view, paths: &ExternalPaths, _window, cx| {
+                        for path in paths.paths() {
+                            if path.is_dir() {
+                                view.handle_drop(path.clone(), cx);
+                            }
+                        }
+                    }))
+                    .on_drop(cx.listener(|view, dragged: &DraggedFolder, _window, cx| {
+                        view.handle_drop(dragged.path.clone(), cx);
+                    }))
+                    .children(favorites.into_iter().enumerate().map(|(i, favorite)| {
+                        self.render_favorite_item(
+                            i,
+                            favorite,
+                            &selected_path,
+                            dragging_index,
+                            drop_target_index,
+                            text_gray,
+                            text_light,
+                            hover_bg,
+                            selected_bg,
+                            icon_blue,
+                            warning_color,
+                            drop_zone_border,
+                            cx,
+                        )
+                    }))
+                    .when(is_drop_target && !is_full, |s| {
+                        s.child(
+                            div()
+                                .px_2()
+                                .py_1p5()
+                                .text_sm()
+                                .text_color(icon_blue)
+                                .text_center()
+                                .child("Drop folder here to add"),
+                        )
+                    }),
+            )
+    }
+
+    fn render_favorite_item(
+        &self,
+        i: usize,
+        favorite: Favorite,
+        selected_path: &Option<PathBuf>,
+        dragging_index: Option<usize>,
+        drop_target_index: Option<usize>,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        hover_bg: gpui::Rgba,
+        selected_bg: gpui::Rgba,
+        icon_blue: gpui::Rgba,
+        warning_color: gpui::Rgba,
+        drop_zone_border: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_selected = selected_path.as_ref() == Some(&favorite.path);
+        let path_clone = favorite.path.clone();
+        let path_for_drag = favorite.path.clone();
+        let name_for_drag = favorite.name.clone();
+        let icon_name = self.get_icon_for_favorite(i, &favorite.path);
+        let is_valid = favorite.is_valid;
+        let is_being_dragged = dragging_index == Some(i);
+        let is_drop_target_here = drop_target_index == Some(i);
+
+        div()
+            .id(SharedString::from(format!("fav-{}", i)))
+            .flex()
+            .items_center()
+            .gap_3()
+            .px_2()
+            .py_1p5()
+            .rounded_md()
+            .cursor_pointer()
+            .text_sm()
+            .when(is_being_dragged, |s| s.opacity(0.5))
+            .when(is_drop_target_here, |s| {
+                s.border_t_2().border_color(drop_zone_border)
+            })
+            .when(is_selected, |s| s.bg(selected_bg).text_color(text_light))
+            .when(!is_selected && is_valid, |s| {
+                s.text_color(text_gray)
+                    .hover(|h| h.bg(hover_bg).text_color(text_light))
+            })
+            .when(!is_valid, |s| s.text_color(warning_color).opacity(0.7))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |view, _event, window, cx| {
+                    view.handle_favorite_click(path_clone.clone(), window, cx);
+                }),
+            )
+            .on_mouse_down(
+                MouseButton::Right,
+                cx.listener(move |view, _event, _window, cx| {
+                    view.handle_favorite_remove(i, cx);
+                }),
+            )
+            .on_drag(
+                DraggedFolder {
+                    path: path_for_drag,
+                    name: name_for_drag,
+                },
+                |dragged: &DraggedFolder, _position, _window, cx| {
+                    let name = dragged.name.clone();
+                    cx.new(|_| DraggedFolderView { name })
+                },
+            )
+            .on_drag_move(cx.listener(
+                move |view, _event: &DragMoveEvent<DraggedFolder>, _window, cx| {
+                    view.drop_target_index = Some(i);
+                    cx.notify();
+                },
+            ))
+            .on_drop(cx.listener(
+                move |view, dragged: &DraggedFolder, _window, cx| {
+                    if let Some(from_idx) = view.sidebar.favorites.find_index(&dragged.path) {
+                        if from_idx != i {
+                            view.handle_reorder_drop(from_idx, i, cx);
+                        }
+                    } else {
+                        view.handle_drop(dragged.path.clone(), cx);
+                    }
+                },
+            ))
+            .child(
+                svg()
+                    .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                    .size(px(14.0))
+                    .text_color(if !is_valid {
+                        warning_color
+                    } else if is_selected {
+                        text_light
+                    } else {
+                        icon_blue
+                    }),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .overflow_hidden()
+                    .child(favorite.name.clone()),
+            )
+            .when(!is_valid, |s| {
+                s.child(
+                    svg()
+                        .path("assets/icons/triangle-alert.svg")
+                        .size(px(12.0))
+                        .text_color(warning_color),
+                )
+            })
+    }
+
+    fn render_trash_item(
+        &self,
+        text_gray: gpui::Rgba,
+        text_light: gpui::Rgba,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let theme = theme_colors();
+        let trash_path = Self::get_trash_path();
+        let is_trash_selected = self.sidebar.selected_path.as_ref() == Some(&trash_path);
+
+        div()
+            .id("trash-item")
+            .px_2()
+            .py_1p5()
+            .mx_1()
+            .rounded_md()
+            .text_sm()
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .gap_2()
+            .when(is_trash_selected, |s| {
+                s.bg(theme.bg_hover).text_color(text_light)
+            })
+            .when(!is_trash_selected, |s| s.text_color(text_gray))
+            .hover(|h| h.bg(theme.bg_hover))
+            .on_mouse_down(MouseButton::Left, {
+                let path = trash_path.clone();
+                cx.listener(move |view, _event, _window, cx| {
+                    view.sidebar.selected_path = Some(path.clone());
+                    view.pending_navigation = Some(path.clone());
+                    cx.notify();
+                })
+            })
+            .child(
+                svg()
+                    .path("assets/icons/trash-2.svg")
+                    .size(px(14.0))
+                    .text_color(if is_trash_selected {
+                        text_light
+                    } else {
+                        text_gray
+                    }),
+            )
+            .child("Trash")
     }
 }

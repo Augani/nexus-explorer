@@ -29,6 +29,7 @@ mod theme;
 mod trash;
 mod types;
 mod typography;
+#[cfg(not(test))]
 mod window_manager;
 mod wsl;
 
@@ -96,5 +97,6 @@ pub use theme::*;
 pub use trash::*;
 pub use types::*;
 pub use typography::*;
+#[cfg(not(test))]
 pub use window_manager::*;
 pub use wsl::*;

@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use gpui::{px, size, App, Bounds, Global, Pixels, WindowBounds, WindowHandle, WindowOptions};
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(test))]
 use crate::app::Workspace;
 
 static NEXT_WINDOW_ID: AtomicU64 = AtomicU64::new(1);
@@ -67,6 +68,7 @@ impl WindowBoundsState {
     }
 }
 
+#[cfg(not(test))]
 /// Manages multiple application windows
 pub struct WindowManager {
     /// Map of window IDs to their GPUI window handles
@@ -82,6 +84,7 @@ pub struct WindowManager {
     cascade_offset: f32,
 }
 
+#[cfg(not(test))]
 impl WindowManager {
     pub fn new() -> Self {
         Self {
@@ -259,6 +262,7 @@ impl Default for WindowManager {
     }
 }
 
+#[cfg(not(test))]
 impl Global for WindowManager {}
 
 /// Persisted window manager state for save/restore
@@ -268,6 +272,7 @@ pub struct WindowManagerState {
     pub active_window_index: Option<usize>,
 }
 
+#[cfg(not(test))]
 impl WindowManager {
     /// Saves the current window state to disk
     pub fn save_state(&self) -> std::io::Result<()> {
