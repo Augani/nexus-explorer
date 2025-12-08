@@ -115,8 +115,12 @@ impl MacOSDiskMonitor {
 
     pub fn enumerate_volumes(&self) -> Vec<DiskInfo> {
         let mut disks = Vec::new();
+        let mut seen_bsd_names: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         if let Some(root_info) = self.get_volume_info(&PathBuf::from("/")) {
+            if !root_info.bsd_name.is_empty() {
+                seen_bsd_names.insert(root_info.bsd_name.clone());
+            }
             disks.push(root_info);
         }
 
@@ -138,12 +142,177 @@ impl MacOSDiskMonitor {
                 }
 
                 if let Some(info) = self.get_volume_info(&path) {
+                    if !info.bsd_name.is_empty() {
+                        seen_bsd_names.insert(info.bsd_name.clone());
+                    }
                     disks.push(info);
                 }
             }
         }
 
+        if let Some(external_disks) = self.enumerate_external_disks(&seen_bsd_names) {
+            disks.extend(external_disks);
+        }
+
         disks
+    }
+
+    fn enumerate_external_disks(&self, seen_bsd_names: &std::collections::HashSet<String>) -> Option<Vec<DiskInfo>> {
+        let output = std::process::Command::new("diskutil")
+            .args(["list", "-plist", "external"])
+            .output()
+            .ok()?;
+
+        if !output.status.success() {
+            return self.enumerate_external_disks_fallback(seen_bsd_names);
+        }
+
+        let plist_str = String::from_utf8_lossy(&output.stdout);
+        let mut disks = Vec::new();
+
+        for line in plist_str.lines() {
+            let line = line.trim();
+            if line.starts_with("<string>disk") && line.ends_with("</string>") {
+                let disk_id = line
+                    .trim_start_matches("<string>")
+                    .trim_end_matches("</string>");
+                
+                if !disk_id.contains('s') && !seen_bsd_names.contains(disk_id) {
+                    if let Some(info) = self.get_external_disk_info(disk_id) {
+                        disks.push(info);
+                    }
+                }
+            }
+        }
+
+        if disks.is_empty() {
+            return self.enumerate_external_disks_fallback(seen_bsd_names);
+        }
+
+        Some(disks)
+    }
+
+    fn enumerate_external_disks_fallback(&self, seen_bsd_names: &std::collections::HashSet<String>) -> Option<Vec<DiskInfo>> {
+        let output = std::process::Command::new("diskutil")
+            .args(["list"])
+            .output()
+            .ok()?;
+
+        if !output.status.success() {
+            return None;
+        }
+
+        let list_str = String::from_utf8_lossy(&output.stdout);
+        let mut disks = Vec::new();
+        let mut current_disk: Option<String> = None;
+        let mut is_external = false;
+
+        for line in list_str.lines() {
+            if line.starts_with("/dev/disk") {
+                if let Some(disk_id) = current_disk.take() {
+                    if is_external && !seen_bsd_names.contains(&disk_id) {
+                        if let Some(info) = self.get_external_disk_info(&disk_id) {
+                            disks.push(info);
+                        }
+                    }
+                }
+                
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if let Some(dev_path) = parts.first() {
+                    current_disk = Some(dev_path.trim_start_matches("/dev/").to_string());
+                }
+                is_external = line.contains("external") || line.contains("physical");
+            }
+        }
+
+        if let Some(disk_id) = current_disk {
+            if is_external && !seen_bsd_names.contains(&disk_id) {
+                if let Some(info) = self.get_external_disk_info(&disk_id) {
+                    disks.push(info);
+                }
+            }
+        }
+
+        Some(disks)
+    }
+
+    fn get_external_disk_info(&self, disk_id: &str) -> Option<DiskInfo> {
+        let output = std::process::Command::new("diskutil")
+            .args(["info", disk_id])
+            .output()
+            .ok()?;
+
+        if !output.status.success() {
+            return None;
+        }
+
+        let info_str = String::from_utf8_lossy(&output.stdout);
+        let mut info = DiskInfo::default();
+        info.bsd_name = disk_id.to_string();
+        info.is_internal = false;
+        info.is_removable = true;
+        info.is_ejectable = true;
+
+        for line in info_str.lines() {
+            let line = line.trim();
+            if let Some((key, value)) = line.split_once(':') {
+                let key = key.trim();
+                let value = value.trim();
+
+                match key {
+                    "Volume Name" => {
+                        if !value.is_empty() {
+                            info.volume_name = Some(value.to_string());
+                        }
+                    }
+                    "Mount Point" => {
+                        if !value.is_empty() {
+                            info.volume_path = Some(PathBuf::from(value));
+                        }
+                    }
+                    "Disk Size" | "Total Size" => {
+                        info.media_size = parse_size_string(value);
+                    }
+                    "Protocol" => {
+                        info.bus_name = Some(value.to_string());
+                    }
+                    "Media Name" | "Device / Media Name" => {
+                        info.media_name = Some(value.to_string());
+                        if info.volume_name.is_none() {
+                            info.volume_name = Some(value.to_string());
+                        }
+                    }
+                    "Removable Media" => {
+                        info.is_removable = value.eq_ignore_ascii_case("yes") || value.eq_ignore_ascii_case("removable");
+                    }
+                    "Ejectable" => {
+                        info.is_ejectable = value.eq_ignore_ascii_case("yes");
+                    }
+                    "Internal" => {
+                        info.is_internal = value.eq_ignore_ascii_case("yes") || value.eq_ignore_ascii_case("internal");
+                    }
+                    "Whole" => {
+                        info.is_whole_disk = value.eq_ignore_ascii_case("yes");
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if info.is_internal {
+            return None;
+        }
+
+        if info.volume_name.is_none() {
+            info.volume_name = info.media_name.clone()
+                .or_else(|| Some(format!("External Disk ({})", disk_id)));
+        }
+
+        if info.volume_path.is_none() {
+            info.volume_path = Some(PathBuf::from(format!("/dev/{}", disk_id)));
+        }
+
+        Some(info)
     }
 
 

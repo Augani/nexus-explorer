@@ -369,6 +369,11 @@ impl Workspace {
                     workspace.handle_device_eject(device_id, cx);
                 }
 
+                let mount_device = sidebar.update(cx, |view, _| view.take_pending_mount_device());
+                if let Some(device_path) = mount_device {
+                    workspace.handle_device_mount(device_path, cx);
+                }
+
                 let show_dialog = sidebar.read(cx).is_smart_folder_dialog_visible();
                 if show_dialog {
                     sidebar.update(cx, |view, cx| view.hide_smart_folder_dialog(cx));
@@ -684,6 +689,53 @@ impl Workspace {
                     toast.show_error(format!("Failed to eject {}: {}", device_name, e), cx);
                 });
             }
+        }
+    }
+
+    fn handle_device_mount(&mut self, device_path: PathBuf, cx: &mut Context<Self>) {
+        let disk_id = device_path.to_string_lossy().trim_start_matches("/dev/").to_string();
+        
+        self.toast_manager.update(cx, |toast, cx| {
+            toast.show_info(format!("Mounting {}...", disk_id), cx);
+        });
+
+        #[cfg(target_os = "macos")]
+        {
+            let output = std::process::Command::new("diskutil")
+                .args(["mountDisk", &disk_id])
+                .output();
+
+            match output {
+                Ok(result) if result.status.success() => {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    
+                    self.sidebar.update(cx, |view, cx| {
+                        view.refresh_devices(cx);
+                    });
+
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_success(format!("Mounted: {}", disk_id), cx);
+                    });
+                }
+                Ok(result) => {
+                    let error = String::from_utf8_lossy(&result.stderr);
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_error(format!("Failed to mount {}: {}", disk_id, error), cx);
+                    });
+                }
+                Err(e) => {
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_error(format!("Failed to mount {}: {}", disk_id, e), cx);
+                    });
+                }
+            }
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            self.toast_manager.update(cx, |toast, cx| {
+                toast.show_error("Mount not supported on this platform".to_string(), cx);
+            });
         }
     }
 

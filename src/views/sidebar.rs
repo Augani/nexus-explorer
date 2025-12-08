@@ -421,6 +421,7 @@ pub struct SidebarView {
     editing_smart_folder: Option<SmartFolderId>,
     pending_smart_folder_click: Option<SmartFolderId>,
     pending_eject_device: Option<DeviceId>,
+    pending_mount_device: Option<PathBuf>,
 }
 
 impl SidebarView {
@@ -440,6 +441,7 @@ impl SidebarView {
             editing_smart_folder: None,
             pending_smart_folder_click: None,
             pending_eject_device: None,
+            pending_mount_device: None,
         }
     }
 
@@ -721,8 +723,12 @@ impl SidebarView {
 
 
     fn handle_device_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
-        self.sidebar.selected_path = Some(path.clone());
-        self.pending_navigation = Some(path);
+        if path.starts_with("/dev/") {
+            self.pending_mount_device = Some(path);
+        } else {
+            self.sidebar.selected_path = Some(path.clone());
+            self.pending_navigation = Some(path);
+        }
         cx.notify();
     }
 
@@ -751,6 +757,10 @@ impl SidebarView {
 
     pub fn take_pending_eject_device(&mut self) -> Option<DeviceId> {
         self.pending_eject_device.take()
+    }
+
+    pub fn take_pending_mount_device(&mut self) -> Option<PathBuf> {
+        self.pending_mount_device.take()
     }
 
     fn handle_tool_action(
