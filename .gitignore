@@ -31,6 +31,9 @@ Desktop.ini
 # Kiro IDE
 .kiro/
 
+# Scripts (local utilities)
+scripts/
+
 # Temporary files
 *.tmp
 *.temp
