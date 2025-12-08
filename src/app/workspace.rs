@@ -953,13 +953,11 @@ impl Workspace {
                 {
                     match crate::models::share_via_airdrop(&[path.clone()]) {
                         Ok(()) => {
-                            self.toast_manager.update(cx, |toast, cx| {
-                                toast.show_success("AirDrop opened".to_string(), cx);
-                            });
+                            // Don't show toast - Finder's share menu is visible
                         }
                         Err(e) => {
                             self.toast_manager.update(cx, |toast, cx| {
-                                toast.show_error(format!("AirDrop failed: {}", e), cx);
+                                toast.show_error(format!("Share failed: {}", e), cx);
                             });
                         }
                     }

@@ -800,7 +800,7 @@ pub fn is_airdrop_available() -> bool {
 }
 
 /// Share files via AirDrop (macOS only)
-/// Uses NSSharingService via osascript for compatibility
+/// Opens Finder, selects the files, and triggers the Share menu
 #[cfg(target_os = "macos")]
 pub fn share_via_airdrop(paths: &[PathBuf]) -> ShareResult<()> {
     use std::process::Command;
@@ -809,43 +809,39 @@ pub fn share_via_airdrop(paths: &[PathBuf]) -> ShareResult<()> {
         return Err(ShareError::CreationFailed("No files to share".to_string()));
     }
 
-    // Verify all paths exist
     for path in paths {
         if !path.exists() {
             return Err(ShareError::PathNotFound(path.clone()));
         }
     }
 
-    // Build the file list for AppleScript
-    let file_list: Vec<String> = paths
+    // Build POSIX file references for AppleScript
+    let file_refs: Vec<String> = paths
         .iter()
-        .map(|p| format!("POSIX file \"{}\"", p.display()))
+        .map(|p| {
+            let escaped = p.display().to_string().replace("\\", "\\\\").replace("\"", "\\\"");
+            format!("POSIX file \"{}\"", escaped)
+        })
         .collect();
-    let files_str = file_list.join(", ");
+    let files_str = file_refs.join(", ");
 
-    // Use AppleScript to invoke NSSharingService for AirDrop
-    // This opens the native AirDrop sharing panel
+    // Use Finder to select files and open the Share menu
     let script = format!(
         r#"
-        use framework "Foundation"
-        use framework "AppKit"
-        use scripting additions
+tell application "Finder"
+    activate
+    set theFiles to {{{}}}
+    select theFiles
+    delay 0.2
+end tell
 
-        set theFiles to {{{}}}
-        set fileURLs to {{}}
-        
-        repeat with aFile in theFiles
-            set end of fileURLs to (aFile as alias)
-        end repeat
-        
-        tell application "Finder"
-            activate
-            select fileURLs
-            tell application "System Events"
-                keystroke "r" using {{command down, shift down}}
-            end tell
-        end tell
-        "#,
+tell application "System Events"
+    tell process "Finder"
+        -- Click File menu then Share submenu
+        click menu item "Share…" of menu 1 of menu bar item "File" of menu bar 1
+    end tell
+end tell
+"#,
         files_str
     );
 
@@ -857,28 +853,11 @@ pub fn share_via_airdrop(paths: &[PathBuf]) -> ShareResult<()> {
     if output.status.success() {
         Ok(())
     } else {
-        // Try alternative method using open command with AirDrop
-        let alt_output = Command::new("open")
-            .args(["-a", "AirDrop"])
-            .output();
-
-        match alt_output {
-            Ok(result) if result.status.success() => {
-                // AirDrop window opened, user can drag files
-                Ok(())
-            }
-            _ => {
-                let error = String::from_utf8_lossy(&output.stderr);
-                Err(ShareError::AirDropUnavailable(format!(
-                    "Failed to open AirDrop: {}",
-                    if error.is_empty() {
-                        "AirDrop may be disabled or unavailable"
-                    } else {
-                        &error
-                    }
-                )))
-            }
-        }
+        let error = String::from_utf8_lossy(&output.stderr);
+        Err(ShareError::AirDropUnavailable(format!(
+            "Failed to open share menu: {}",
+            error
+        )))
     }
 }
 
@@ -911,6 +890,20 @@ pub fn open_airdrop_window() -> ShareResult<()> {
 pub fn open_airdrop_window() -> ShareResult<()> {
     Err(ShareError::PlatformNotSupported(
         "AirDrop is only available on macOS".to_string(),
+    ))
+}
+
+/// Open the native macOS share sheet for files (includes AirDrop, Messages, Mail, etc.)
+#[cfg(target_os = "macos")]
+pub fn open_macos_share_sheet(paths: &[PathBuf]) -> ShareResult<()> {
+    // Just delegate to share_via_airdrop which now opens the full share menu
+    share_via_airdrop(paths)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn open_macos_share_sheet(_paths: &[PathBuf]) -> ShareResult<()> {
+    Err(ShareError::PlatformNotSupported(
+        "macOS share sheet is only available on macOS".to_string(),
     ))
 }
 

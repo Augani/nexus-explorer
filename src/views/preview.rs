@@ -771,29 +771,7 @@ impl PreviewView {
                     )
                 })
             })
-            .when(
-                matches!(self.preview.content(), PreviewContent::Text { .. }),
-                |this| {
-                    this.child(
-                        div().mt_2().child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .gap_2()
-                                .py_1p5()
-                                .px_3()
-                                .bg(accent)
-                                .rounded_md()
-                                .text_xs()
-                                .font_weight(gpui::FontWeight::MEDIUM)
-                                .text_color(gpui::white())
-                                .cursor_pointer()
-                                .child("Explain Code"),
-                        ),
-                    )
-                },
-            )
+
     }
 
     fn render_content(
