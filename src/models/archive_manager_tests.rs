@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
-/
+
 fn create_test_file(dir: &Path, name: &str, content: &[u8]) -> PathBuf {
     let path = dir.join(name);
     if let Some(parent) = path.parent() {
@@ -16,7 +16,7 @@ fn create_test_file(dir: &Path, name: &str, content: &[u8]) -> PathBuf {
     path
 }
 
-/
+
 fn create_test_structure(dir: &Path, files: &[(String, Vec<u8>)]) -> Vec<PathBuf> {
     files.iter().map(|(name, content)| {
         create_test_file(dir, name, content)

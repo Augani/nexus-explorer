@@ -1,23 +1,23 @@
 use crate::models::terminal::{TerminalState, DEFAULT_COLS, DEFAULT_ROWS};
-/
-/
-/
-/
-/
-/
+
+
+
+
+
+
 use proptest::prelude::*;
 
-/
+
 fn terminal_dimensions() -> impl Strategy<Value = (usize, usize)> {
     (20usize..=120, 5usize..=50)
 }
 
-/
+
 fn line_count_strategy() -> impl Strategy<Value = usize> {
     1usize..200
 }
 
-/
+
 fn scroll_offset_strategy(max: usize) -> impl Strategy<Value = usize> {
     0..=max
 }
@@ -25,8 +25,8 @@ fn scroll_offset_strategy(max: usize) -> impl Strategy<Value = usize> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
+
+
     #[test]
     fn prop_visible_lines_count_equals_rows(
         (cols, rows) in terminal_dimensions(),
@@ -49,8 +49,8 @@ proptest! {
         );
     }
 
-    /
-    /
+
+
     #[test]
     fn prop_scroll_offset_bounds_visible_range(
         (cols, rows) in terminal_dimensions(),
@@ -84,8 +84,8 @@ proptest! {
         }
     }
 
-    /
-    /
+
+
     #[test]
     fn prop_scrollback_lines_calculation(
         (cols, rows) in terminal_dimensions(),
@@ -116,8 +116,8 @@ proptest! {
         }
     }
 
-    /
-    /
+
+
     #[test]
     fn prop_scroll_to_bottom_resets_offset(
         (cols, rows) in terminal_dimensions(),
@@ -145,8 +145,8 @@ proptest! {
         );
     }
 
-    /
-    /
+
+
     #[test]
     fn prop_scroll_to_top_sets_max_offset(
         (cols, rows) in terminal_dimensions(),
@@ -172,8 +172,8 @@ proptest! {
         }
     }
 
-    /
-    /
+
+
     #[test]
     fn prop_visible_lines_content_valid(
         (cols, rows) in terminal_dimensions(),

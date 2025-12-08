@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, FileEntry, ViewMode};
 
-/
+
 #[derive(Debug, Clone)]
 pub struct StatusBarState {
     pub total_items: usize,
@@ -38,7 +38,7 @@ impl StatusBarState {
         Self::default()
     }
 
-    /
+
     pub fn update_from_entries(&mut self, entries: &[FileEntry], selected_indices: &[usize]) {
         self.total_items = entries.len();
         self.selected_count = selected_indices.len();
@@ -49,7 +49,7 @@ impl StatusBarState {
             .sum();
     }
 
-    /
+
     pub fn update_from_file_list(&mut self, entries: &[FileEntry], selected_index: Option<usize>) {
         self.total_items = entries.len();
         if let Some(idx) = selected_index {
@@ -61,7 +61,7 @@ impl StatusBarState {
         }
     }
 
-    /
+
     pub fn detect_git_branch(&mut self, path: &Path) {
         self.git_branch = detect_git_branch(path);
     }
@@ -79,7 +79,7 @@ impl StatusBarState {
     }
 }
 
-/
+
 pub fn detect_git_branch(path: &Path) -> Option<String> {
     let mut current = Some(path);
 
@@ -117,7 +117,7 @@ pub fn detect_git_branch(path: &Path) -> Option<String> {
     None
 }
 
-/
+
 pub fn format_size(size: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -137,14 +137,14 @@ pub fn format_size(size: u64) -> String {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum StatusBarAction {
     ToggleTerminal,
     ToggleViewMode,
 }
 
-/
+
 pub struct StatusBarView {
     state: StatusBarState,
     focus_handle: FocusHandle,
@@ -168,18 +168,18 @@ impl StatusBarView {
         &mut self.state
     }
 
-    /
+
     pub fn take_pending_action(&mut self) -> Option<StatusBarAction> {
         self.pending_action.take()
     }
 
-    /
+
     pub fn update_state(&mut self, state: StatusBarState, cx: &mut Context<Self>) {
         self.state = state;
         cx.notify();
     }
 
-    /
+
     pub fn update_from_entries(
         &mut self,
         entries: &[FileEntry],
@@ -190,19 +190,19 @@ impl StatusBarView {
         cx.notify();
     }
 
-    /
+
     pub fn set_current_directory(&mut self, path: &Path, cx: &mut Context<Self>) {
         self.state.detect_git_branch(path);
         cx.notify();
     }
 
-    /
+
     pub fn set_view_mode(&mut self, mode: ViewMode, cx: &mut Context<Self>) {
         self.state.set_view_mode(mode);
         cx.notify();
     }
 
-    /
+
     pub fn set_terminal_open(&mut self, is_open: bool, cx: &mut Context<Self>) {
         self.state.set_terminal_open(is_open);
         cx.notify();
@@ -524,7 +524,7 @@ mod tests {
         let _ = branch;
     }
 
-    /
+
     fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
         ("[a-zA-Z0-9_]{1,20}", prop::bool::ANY, 0u64..10_000_000_000).prop_map(
             |(name, is_dir, size)| {
@@ -534,7 +534,7 @@ mod tests {
         )
     }
 
-    /
+
     fn arb_entries() -> impl Strategy<Value = Vec<FileEntry>> {
         prop::collection::vec(arb_file_entry(), 0..100)
     }
@@ -542,11 +542,11 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_status_bar_item_count(entries in arb_entries()) {
             let mut state = StatusBarState::new();
@@ -560,11 +560,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_status_bar_selected_count(
             entries in arb_entries(),
@@ -585,11 +585,11 @@ mod tests {
             }
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_status_bar_multiple_selection_count(
             entries in arb_entries(),
@@ -614,11 +614,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_status_bar_selection_size(
             entries in arb_entries(),
@@ -649,11 +649,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_status_bar_single_selection_size(
             entries in arb_entries(),

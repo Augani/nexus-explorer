@@ -2,13 +2,13 @@ use super::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/
+
 fn arb_frn() -> impl Strategy<Value = FileReferenceNumber> {
     (0u64..0x0000_FFFF_FFFF_FFFFu64, 0u16..=u16::MAX)
         .prop_map(|(record, seq)| FileReferenceNumber::new(record, seq))
 }
 
-/
+
 fn arb_file_node() -> impl Strategy<Value = FileNode> {
     (
         "[a-zA-Z0-9_.-]{1,50}",
@@ -24,8 +24,8 @@ fn arb_file_node() -> impl Strategy<Value = FileNode> {
         })
 }
 
-/
-/
+
+
 fn arb_mft_tree(
     max_depth: usize,
     max_children: usize,
@@ -436,7 +436,7 @@ fn test_mft_corrupted_data_rejection() {
     assert!(result.is_err(), "Truncated data should be rejected");
 }
 
-/
+
 fn arb_mft_index() -> impl Strategy<Value = MftIndex> {
     ("[A-Z]:", 0u64..u64::MAX, arb_mft_tree(3, 5)).prop_map(|(volume, cursor, tree)| {
         let mut index = MftIndex::new(PathBuf::from(volume));

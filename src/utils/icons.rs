@@ -1,21 +1,21 @@
-/
-/
-/
-/
 
-/
-/
-/
-/
+
+
+
+
+
+
+
+
 #[inline]
 pub fn rgba_to_bgra_pixel(r: u8, g: u8, b: u8, a: u8) -> (u8, u8, u8, u8) {
     (b, g, r, a)
 }
 
-/
-/
-/
-/
+
+
+
+
 pub fn rgba_to_bgra_inplace(data: &mut [u8]) {
     debug_assert!(
         data.len() % 4 == 0,
@@ -27,9 +27,9 @@ pub fn rgba_to_bgra_inplace(data: &mut [u8]) {
     }
 }
 
-/
-/
-/
+
+
+
 pub fn rgba_to_bgra(data: &[u8]) -> Vec<u8> {
     debug_assert!(
         data.len() % 4 == 0,
@@ -41,14 +41,14 @@ pub fn rgba_to_bgra(data: &[u8]) -> Vec<u8> {
     result
 }
 
-/
-/
-/
+
+
+
 pub fn bgra_to_rgba_inplace(data: &mut [u8]) {
     rgba_to_bgra_inplace(data);
 }
 
-/
+
 pub fn bgra_to_rgba(data: &[u8]) -> Vec<u8> {
     rgba_to_bgra(data)
 }
@@ -101,11 +101,11 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_rgba_to_bgra_conversion(r in any::<u8>(), g in any::<u8>(), b in any::<u8>(), a in any::<u8>()) {
             let (out_b, out_g, out_r, out_a) = rgba_to_bgra_pixel(r, g, b, a);
@@ -117,7 +117,7 @@ mod proptests {
             prop_assert_eq!(out_a, a, "Alpha channel should be preserved");
         }
 
-        /
+
         #[test]
         fn prop_rgba_bgra_round_trip(
             pixels in prop::collection::vec(any::<u8>(), 0..400)

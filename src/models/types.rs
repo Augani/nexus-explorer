@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 use thiserror::Error;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CloudSyncStatus {
     #[default]
@@ -55,7 +55,7 @@ impl CloudSyncStatus {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FileEntry {
     pub name: String,
@@ -66,34 +66,34 @@ pub struct FileEntry {
     pub modified: SystemTime,
     pub file_type: FileType,
     pub icon_key: IconKey,
-    /
+
     #[serde(default)]
     pub linux_permissions: Option<LinuxFilePermissions>,
-    /
+
     #[serde(default)]
     pub sync_status: CloudSyncStatus,
-    /
+
     #[serde(default)]
     pub is_symlink: bool,
-    /
+
     #[serde(default)]
     pub symlink_target: Option<PathBuf>,
-    /
+
     #[serde(default)]
     pub is_broken_symlink: bool,
-    /
+
     #[serde(default)]
     pub is_shared: bool,
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LinuxFilePermissions {
-    /
+
     pub mode: u32,
-    /
+
     pub owner: String,
-    /
+
     pub group: String,
 }
 
@@ -102,7 +102,7 @@ impl LinuxFilePermissions {
         Self { mode, owner, group }
     }
 
-    /
+
     pub fn format_mode(&self) -> String {
         let mut result = String::with_capacity(9);
 
@@ -121,7 +121,7 @@ impl LinuxFilePermissions {
         result
     }
 
-    /
+
     pub fn format_full(&self) -> String {
         let type_char = '-';
         format!(
@@ -134,7 +134,7 @@ impl LinuxFilePermissions {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum FileType {
     Directory,
@@ -143,7 +143,7 @@ pub enum FileType {
     Unknown,
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum IconKey {
     Directory,
@@ -153,7 +153,7 @@ pub enum IconKey {
     Custom(PathBuf),
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoadState {
     Idle,
@@ -163,7 +163,7 @@ pub enum LoadState {
     Cached { stale: bool },
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct CachedDirectory {
     pub entries: Vec<FileEntry>,
@@ -172,7 +172,7 @@ pub struct CachedDirectory {
     pub mtime: SystemTime,
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum FsEvent {
     Created(PathBuf),
@@ -181,7 +181,7 @@ pub enum FsEvent {
     Renamed { from: PathBuf, to: PathBuf },
 }
 
-/
+
 #[derive(Debug, Error)]
 pub enum FileSystemError {
     #[error("I/O error: {0}")]
@@ -200,7 +200,7 @@ pub enum FileSystemError {
     Platform(String),
 }
 
-/
+
 pub type Result<T> = std::result::Result<T, FileSystemError>;
 
 mod system_time_serde {
@@ -258,7 +258,7 @@ impl FileEntry {
         }
     }
 
-    /
+
     pub fn with_symlink_info(mut self, target: PathBuf, is_broken: bool) -> Self {
         self.is_symlink = true;
         self.symlink_target = Some(target);
@@ -267,50 +267,50 @@ impl FileEntry {
         self
     }
 
-    /
+
     pub fn is_symlink(&self) -> bool {
         self.is_symlink
     }
 
-    /
+
     pub fn symlink_target(&self) -> Option<&Path> {
         self.symlink_target.as_deref()
     }
 
-    /
+
     pub fn is_broken_symlink(&self) -> bool {
         self.is_broken_symlink
     }
 
-    /
+
     pub fn with_linux_permissions(mut self, permissions: LinuxFilePermissions) -> Self {
         self.linux_permissions = Some(permissions);
         self
     }
 
-    /
+
     pub fn with_sync_status(mut self, status: CloudSyncStatus) -> Self {
         self.sync_status = status;
         self
     }
 
-    /
+
     pub fn set_sync_status(&mut self, status: CloudSyncStatus) {
         self.sync_status = status;
     }
 
-    /
+
     pub fn set_shared(&mut self, shared: bool) {
         self.is_shared = shared;
     }
 
-    /
+
     pub fn with_shared(mut self, shared: bool) -> Self {
         self.is_shared = shared;
         self
     }
 
-    /
+
     pub fn from_path(path: &std::path::Path) -> Option<Self> {
         let symlink_metadata = std::fs::symlink_metadata(path).ok()?;
         let name = path.file_name()?.to_string_lossy().to_string();
@@ -349,7 +349,7 @@ impl FileEntry {
         }
     }
 
-    /
+
     pub fn share_icon_name() -> &'static str {
         "share-2"
     }
@@ -376,7 +376,7 @@ impl CachedDirectory {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum SortColumn {
     #[default]
@@ -386,7 +386,7 @@ pub enum SortColumn {
     Size,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum SortDirection {
     #[default]
@@ -407,7 +407,7 @@ impl SortDirection {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SortState {
     pub column: SortColumn,
@@ -430,7 +430,7 @@ impl SortState {
         Self::default()
     }
 
-    /
+
     pub fn toggle_column(&mut self, column: SortColumn) {
         if self.column == column {
             self.direction = self.direction.toggle();
@@ -445,7 +445,7 @@ impl SortState {
         }
     }
 
-    /
+
     pub fn sort_entries(&self, entries: &mut [FileEntry]) {
         if self.directories_first {
             let (mut dirs, mut files): (Vec<_>, Vec<_>) =
@@ -485,19 +485,19 @@ impl SortState {
     }
 }
 
-/
+
 fn compare_names(a: &str, b: &str) -> Ordering {
     a.to_lowercase().cmp(&b.to_lowercase())
 }
 
-/
+
 fn compare_types(a: &FileEntry, b: &FileEntry) -> Ordering {
     let ext_a = get_extension(&a.name);
     let ext_b = get_extension(&b.name);
     ext_a.to_lowercase().cmp(&ext_b.to_lowercase())
 }
 
-/
+
 fn get_extension(name: &str) -> &str {
     name.rsplit('.')
         .next()

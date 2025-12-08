@@ -1,12 +1,12 @@
 use gpui::Rgba;
 use std::path::PathBuf;
 
-/
+
 pub const DEFAULT_COLS: usize = 80;
 pub const DEFAULT_ROWS: usize = 24;
 pub const DEFAULT_SCROLLBACK: usize = 10000;
 
-/
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct CellStyle {
     pub foreground: Rgba,
@@ -71,7 +71,7 @@ impl CellStyle {
     }
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct TerminalCell {
     pub char: char,
@@ -100,7 +100,7 @@ impl TerminalCell {
     }
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct TerminalLine {
     pub cells: Vec<TerminalCell>,
@@ -166,20 +166,20 @@ impl TerminalLine {
         }
     }
 
-    /
+
     pub fn text(&self) -> String {
         let mut s: String = self.cells.iter().map(|c| c.char).collect();
         s.truncate(s.trim_end().len());
         s
     }
 
-    /
+
     pub fn resize(&mut self, cols: usize) {
         self.cells.resize_with(cols, TerminalCell::default);
     }
 }
 
-/
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorPosition {
     pub row: usize,
@@ -196,32 +196,32 @@ impl CursorPosition {
     }
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct TerminalState {
-    /
+
     lines: Vec<TerminalLine>,
-    /
+
     cursor: CursorPosition,
-    /
+
     cols: usize,
-    /
+
     rows: usize,
-    /
+
     scroll_offset: usize,
-    /
+
     max_scrollback: usize,
-    /
+
     working_directory: PathBuf,
-    /
+
     is_running: bool,
-    /
+
     current_style: CellStyle,
-    /
+
     cursor_visible: bool,
-    /
+
     saved_cursor: Option<CursorPosition>,
-    /
+
     title: Option<String>,
 }
 
@@ -331,17 +331,17 @@ impl TerminalState {
         self.current_style = CellStyle::default();
     }
 
-    /
+
     pub fn line(&self, index: usize) -> Option<&TerminalLine> {
         self.lines.get(index)
     }
 
-    /
+
     pub fn line_mut(&mut self, index: usize) -> Option<&mut TerminalLine> {
         self.lines.get_mut(index)
     }
 
-    /
+
     pub fn visible_lines(&self) -> impl Iterator<Item = &TerminalLine> {
         let total = self.lines.len();
         let start = total.saturating_sub(self.rows + self.scroll_offset);
@@ -349,13 +349,13 @@ impl TerminalState {
         self.lines[start..end].iter()
     }
 
-    /
+
     fn viewport_to_absolute(&self, row: usize) -> usize {
         let total = self.lines.len();
         total.saturating_sub(self.rows) + row
     }
 
-    /
+
     fn current_line_mut(&mut self) -> &mut TerminalLine {
         let idx = self.viewport_to_absolute(self.cursor.row);
         while self.lines.len() <= idx {
@@ -364,7 +364,7 @@ impl TerminalState {
         &mut self.lines[idx]
     }
 
-    /
+
     pub fn write_char(&mut self, c: char) {
         if self.cursor.col >= self.cols {
             self.newline();
@@ -377,7 +377,7 @@ impl TerminalState {
         self.cursor.col += 1;
     }
 
-    /
+
     pub fn write_str(&mut self, s: &str) {
         for c in s.chars() {
             match c {
@@ -392,7 +392,7 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn newline(&mut self) {
         self.cursor.col = 0;
         if self.cursor.row + 1 >= self.rows {
@@ -402,25 +402,25 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn carriage_return(&mut self) {
         self.cursor.col = 0;
     }
 
-    /
+
     pub fn tab(&mut self) {
         let next_tab = ((self.cursor.col / 8) + 1) * 8;
         self.cursor.col = next_tab.min(self.cols - 1);
     }
 
-    /
+
     pub fn backspace(&mut self) {
         if self.cursor.col > 0 {
             self.cursor.col -= 1;
         }
     }
 
-    /
+
     pub fn scroll_up(&mut self) {
         self.lines.push(TerminalLine::new(self.cols));
 
@@ -429,7 +429,7 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn scroll_down(&mut self) {
         let insert_idx = self.lines.len().saturating_sub(self.rows);
         self.lines.insert(insert_idx, TerminalLine::new(self.cols));
@@ -439,52 +439,52 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn move_cursor_to(&mut self, row: usize, col: usize) {
         self.cursor.row = row.min(self.rows.saturating_sub(1));
         self.cursor.col = col.min(self.cols.saturating_sub(1));
     }
 
-    /
+
     pub fn move_cursor_by(&mut self, row_delta: i32, col_delta: i32) {
         let new_row = (self.cursor.row as i32 + row_delta).max(0) as usize;
         let new_col = (self.cursor.col as i32 + col_delta).max(0) as usize;
         self.move_cursor_to(new_row, new_col);
     }
 
-    /
+
     pub fn cursor_up(&mut self, n: usize) {
         self.cursor.row = self.cursor.row.saturating_sub(n);
     }
 
-    /
+
     pub fn cursor_down(&mut self, n: usize) {
         self.cursor.row = (self.cursor.row + n).min(self.rows.saturating_sub(1));
     }
 
-    /
+
     pub fn cursor_forward(&mut self, n: usize) {
         self.cursor.col = (self.cursor.col + n).min(self.cols.saturating_sub(1));
     }
 
-    /
+
     pub fn cursor_backward(&mut self, n: usize) {
         self.cursor.col = self.cursor.col.saturating_sub(n);
     }
 
-    /
+
     pub fn save_cursor(&mut self) {
         self.saved_cursor = Some(self.cursor);
     }
 
-    /
+
     pub fn restore_cursor(&mut self) {
         if let Some(pos) = self.saved_cursor {
             self.cursor = pos;
         }
     }
 
-    /
+
     pub fn clear_screen(&mut self) {
         for line in &mut self.lines {
             line.clear();
@@ -492,7 +492,7 @@ impl TerminalState {
         self.cursor = CursorPosition::origin();
     }
 
-    /
+
     pub fn clear_to_end_of_screen(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
@@ -504,7 +504,7 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn clear_to_start_of_screen(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
 
@@ -518,7 +518,7 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn clear_line(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
@@ -526,7 +526,7 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn clear_to_end_of_line(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
@@ -534,7 +534,7 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn clear_to_start_of_line(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
@@ -542,33 +542,33 @@ impl TerminalState {
         }
     }
 
-    /
+
     pub fn scroll_viewport_up(&mut self, lines: usize) {
         let max = self.max_scroll_offset();
         self.scroll_offset = (self.scroll_offset + lines).min(max);
     }
 
-    /
+
     pub fn scroll_viewport_down(&mut self, lines: usize) {
         self.scroll_offset = self.scroll_offset.saturating_sub(lines);
     }
 
-    /
+
     pub fn scroll_to_bottom(&mut self) {
         self.scroll_offset = 0;
     }
 
-    /
+
     pub fn scroll_to_top(&mut self) {
         self.scroll_offset = self.max_scroll_offset();
     }
 
-    /
+
     pub fn is_at_bottom(&self) -> bool {
         self.scroll_offset == 0
     }
 
-    /
+
     pub fn resize(&mut self, cols: usize, rows: usize) {
         self.cols = cols;
         self.rows = rows;
@@ -587,7 +587,7 @@ impl TerminalState {
         self.scroll_offset = self.scroll_offset.min(self.max_scroll_offset());
     }
 
-    /
+
     pub fn reset(&mut self) {
         self.lines.clear();
         for _ in 0..self.rows {
@@ -601,7 +601,7 @@ impl TerminalState {
         self.title = None;
     }
 
-    /
+
     pub fn content_as_string(&self) -> String {
         self.lines
             .iter()
@@ -610,7 +610,7 @@ impl TerminalState {
             .join("\n")
     }
 
-    /
+
     pub fn visible_content_as_string(&self) -> String {
         self.visible_lines()
             .map(|line| line.text())

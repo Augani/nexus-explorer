@@ -10,10 +10,6 @@ use super::coalescer::EventCoalescer;
 use super::watcher::{PlatformFs, Watcher};
 use crate::models::{FileSystemError, FsEvent, Result};
 
-/
-/
-/
-/
 pub struct MacOsPlatform;
 
 impl PlatformFs for MacOsPlatform {
@@ -30,7 +26,7 @@ impl PlatformFs for MacOsPlatform {
     }
 }
 
-/
+
 pub struct MacOsWatcher {
     watcher: Option<RecommendedWatcher>,
     event_rx: Option<Receiver<notify::Result<Event>>>,

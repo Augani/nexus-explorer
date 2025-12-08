@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use flume::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 
-/
+
 #[derive(Debug, Clone)]
 pub struct UndoableOperation {
     pub id: OperationId,
@@ -14,33 +14,33 @@ pub struct UndoableOperation {
     pub timestamp: Instant,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum UndoableOperationType {
-    /
+
     Copy {
-        /
+
         copied_paths: Vec<PathBuf>,
     },
-    /
+
     Move {
-        /
+
         original_paths: Vec<PathBuf>,
-        /
+
         new_paths: Vec<PathBuf>,
     },
-    /
+
     Rename {
-        /
+
         original_path: PathBuf,
-        /
+
         new_path: PathBuf,
     },
-    /
+
     Delete {
-        /
+
         original_paths: Vec<PathBuf>,
-        /
+
         trash_paths: Vec<PathBuf>,
     },
 }
@@ -95,7 +95,7 @@ impl UndoableOperation {
         }
     }
 
-    /
+
     pub fn description(&self) -> String {
         match &self.op_type {
             UndoableOperationType::Copy { copied_paths } => {
@@ -157,20 +157,20 @@ impl UndoableOperation {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum UndoError {
-    /
+
     NothingToUndo,
-    /
+
     NothingToRedo,
-    /
+
     FileSystemError(String),
-    /
+
     OperationNotReversible(String),
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct OperationId(pub u64);
 
@@ -180,7 +180,7 @@ impl OperationId {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperationType {
     Copy,
@@ -198,7 +198,7 @@ impl std::fmt::Display for OperationType {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Default)]
 pub struct OperationProgress {
     pub total_bytes: u64,
@@ -246,7 +246,7 @@ impl OperationProgress {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationStatus {
     Pending,
@@ -273,7 +273,7 @@ impl OperationStatus {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorAction {
     Skip,
@@ -281,7 +281,7 @@ pub enum ErrorAction {
     Cancel,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct OperationError {
     pub file_path: PathBuf,
@@ -290,7 +290,7 @@ pub struct OperationError {
     pub error_kind: OperationErrorKind,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationErrorKind {
     PermissionDenied,
@@ -357,7 +357,7 @@ impl OperationError {
         }
     }
 
-    /
+
     pub fn user_message(&self) -> String {
         match self.error_kind {
             OperationErrorKind::PermissionDenied => {
@@ -389,7 +389,7 @@ impl OperationError {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct FileOperation {
     pub id: OperationId,
@@ -476,7 +476,7 @@ impl FileOperation {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum ProgressUpdate {
     Started {
@@ -493,12 +493,12 @@ pub enum ProgressUpdate {
     FileCompleted {
         id: OperationId,
     },
-    /
+
     Error {
         id: OperationId,
         error: OperationError,
     },
-    /
+
     FileSkipped {
         id: OperationId,
         file: String,
@@ -511,27 +511,27 @@ pub enum ProgressUpdate {
     },
 }
 
-/
+
 pub type ErrorResponseSender = Sender<ErrorResponse>;
 pub type ErrorResponseReceiver = Receiver<ErrorResponse>;
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ErrorResponse {
     pub id: OperationId,
     pub action: ErrorAction,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ErrorHandlingState {
-    /
+
     pub is_paused_for_error: bool,
-    /
+
     pub pending_response: Option<ErrorAction>,
-    /
+
     pub skipped_count: usize,
-    /
+
     pub skipped_files: Vec<PathBuf>,
 }
 
@@ -575,7 +575,7 @@ impl ErrorHandlingState {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct CancellationToken {
     cancelled: Arc<AtomicBool>,
@@ -603,10 +603,10 @@ impl Default for CancellationToken {
     }
 }
 
-/
+
 const MAX_UNDO_HISTORY: usize = 50;
 
-/
+
 pub struct FileOperationsManager {
     operations: Vec<FileOperation>,
     cancellation_tokens: std::collections::HashMap<OperationId, CancellationToken>,
@@ -615,9 +615,9 @@ pub struct FileOperationsManager {
     next_id: AtomicU64,
     progress_sender: Sender<ProgressUpdate>,
     progress_receiver: Receiver<ProgressUpdate>,
-    /
+
     undo_stack: Vec<UndoableOperation>,
-    /
+
     redo_stack: Vec<UndoableOperation>,
 }
 
@@ -648,8 +648,8 @@ impl FileOperationsManager {
         &self.progress_receiver
     }
 
-    /
-    /
+
+
     pub fn push_undoable(&mut self, operation: UndoableOperation) {
         self.redo_stack.clear();
 
@@ -660,38 +660,38 @@ impl FileOperationsManager {
         }
     }
 
-    /
+
     pub fn can_undo(&self) -> bool {
         !self.undo_stack.is_empty()
     }
 
-    /
+
     pub fn can_redo(&self) -> bool {
         !self.redo_stack.is_empty()
     }
 
-    /
+
     pub fn undo_description(&self) -> Option<String> {
         self.undo_stack.last().map(|op| op.description())
     }
 
-    /
+
     pub fn redo_description(&self) -> Option<String> {
         self.redo_stack.last().map(|op| op.description())
     }
 
-    /
+
     pub fn undo_stack(&self) -> &[UndoableOperation] {
         &self.undo_stack
     }
 
-    /
+
     pub fn redo_stack(&self) -> &[UndoableOperation] {
         &self.redo_stack
     }
 
-    /
-    /
+
+
     pub fn undo(&mut self) -> Result<UndoableOperation, UndoError> {
         let operation = self.undo_stack.pop().ok_or(UndoError::NothingToUndo)?;
 
@@ -702,8 +702,8 @@ impl FileOperationsManager {
         Ok(operation)
     }
 
-    /
-    /
+
+
     pub fn redo(&mut self) -> Result<UndoableOperation, UndoError> {
         let operation = self.redo_stack.pop().ok_or(UndoError::NothingToRedo)?;
 
@@ -714,7 +714,7 @@ impl FileOperationsManager {
         Ok(operation)
     }
 
-    /
+
     fn execute_undo(&self, operation: &UndoableOperation) -> Result<(), UndoError> {
         match &operation.op_type {
             UndoableOperationType::Copy { copied_paths } => {
@@ -830,7 +830,7 @@ impl FileOperationsManager {
         }
     }
 
-    /
+
     fn execute_redo(&self, operation: &UndoableOperation) -> Result<(), UndoError> {
         match &operation.op_type {
             UndoableOperationType::Copy { copied_paths: _ } => {
@@ -927,13 +927,13 @@ impl FileOperationsManager {
         }
     }
 
-    /
+
     pub fn clear_history(&mut self) {
         self.undo_stack.clear();
         self.redo_stack.clear();
     }
 
-    /
+
     pub fn copy(&mut self, sources: Vec<PathBuf>, dest: PathBuf) -> OperationId {
         let id = self.next_operation_id();
         let operation = FileOperation::new(id, OperationType::Copy, sources, Some(dest));
@@ -945,7 +945,7 @@ impl FileOperationsManager {
         id
     }
 
-    /
+
     pub fn move_files(&mut self, sources: Vec<PathBuf>, dest: PathBuf) -> OperationId {
         let id = self.next_operation_id();
         let operation = FileOperation::new(id, OperationType::Move, sources, Some(dest));
@@ -957,7 +957,7 @@ impl FileOperationsManager {
         id
     }
 
-    /
+
     pub fn delete(&mut self, sources: Vec<PathBuf>) -> OperationId {
         let id = self.next_operation_id();
         let operation = FileOperation::new(id, OperationType::Delete, sources, None);
@@ -969,21 +969,21 @@ impl FileOperationsManager {
         id
     }
 
-    /
+
     pub fn get_error_response_receiver(&self, id: OperationId) -> Option<ErrorResponseReceiver> {
         self.error_response_channels
             .get(&id)
             .map(|(_, rx)| rx.clone())
     }
 
-    /
+
     pub fn send_error_response(&self, id: OperationId, action: ErrorAction) {
         if let Some((tx, _)) = self.error_response_channels.get(&id) {
             let _ = tx.send(ErrorResponse { id, action });
         }
     }
 
-    /
+
     pub fn cancel(&mut self, id: OperationId) {
         if let Some(token) = self.cancellation_tokens.get(&id) {
             token.cancel();
@@ -993,14 +993,14 @@ impl FileOperationsManager {
         }
     }
 
-    /
+
     pub fn clear_error(&mut self, id: OperationId) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == id) {
             op.current_error = None;
         }
     }
 
-    /
+
     pub fn handle_error_response(&mut self, id: OperationId, action: ErrorAction) {
         self.send_error_response(id, action);
 
@@ -1025,7 +1025,7 @@ impl FileOperationsManager {
         }
     }
 
-    /
+
     pub fn is_paused_for_error(&self, id: OperationId) -> bool {
         self.operations
             .iter()
@@ -1034,7 +1034,7 @@ impl FileOperationsManager {
             .unwrap_or(false)
     }
 
-    /
+
     pub fn get_error_response(&mut self, id: OperationId) -> Option<ErrorAction> {
         self.operations
             .iter_mut()
@@ -1042,17 +1042,17 @@ impl FileOperationsManager {
             .and_then(|o| o.error_state.take_response())
     }
 
-    /
+
     pub fn get_cancellation_token(&self, id: OperationId) -> Option<CancellationToken> {
         self.cancellation_tokens.get(&id).cloned()
     }
 
-    /
+
     pub fn operations(&self) -> &[FileOperation] {
         &self.operations
     }
 
-    /
+
     pub fn active_operations(&self) -> Vec<&FileOperation> {
         self.operations
             .iter()
@@ -1060,17 +1060,17 @@ impl FileOperationsManager {
             .collect()
     }
 
-    /
+
     pub fn get_operation(&self, id: OperationId) -> Option<&FileOperation> {
         self.operations.iter().find(|o| o.id == id)
     }
 
-    /
+
     pub fn get_operation_mut(&mut self, id: OperationId) -> Option<&mut FileOperation> {
         self.operations.iter_mut().find(|o| o.id == id)
     }
 
-    /
+
     pub fn cleanup_completed(&mut self, max_age: Duration) {
         self.operations.retain(|op| {
             if let Some(completed_at) = op.completed_at {
@@ -1088,7 +1088,7 @@ impl FileOperationsManager {
             .retain(|id, _| active_ids.contains(id));
     }
 
-    /
+
     pub fn process_updates(&mut self) {
         while let Ok(update) = self.progress_receiver.try_recv() {
             self.apply_update(update);
@@ -1144,12 +1144,12 @@ impl FileOperationsManager {
         }
     }
 
-    /
+
     pub fn has_active_operations(&self) -> bool {
         self.operations.iter().any(|o| o.status.is_active())
     }
 
-    /
+
     pub fn active_count(&self) -> usize {
         self.operations
             .iter()
@@ -1164,32 +1164,32 @@ impl Default for FileOperationsManager {
     }
 }
 
-/
+
 pub struct FileOperationExecutor;
 
-/
+
 #[derive(Debug)]
 pub enum FileOpResult {
     Success,
     Skipped,
     Cancelled,
-    /
+
     WaitingForResponse,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ErrorHandlingConfig {
-    /
+
     pub interactive: bool,
-    /
+
     pub default_action: ErrorAction,
-    /
+
     pub response_receiver: Option<ErrorResponseReceiver>,
 }
 
 impl FileOperationExecutor {
-    /
+
     pub fn calculate_total_size(sources: &[PathBuf]) -> std::io::Result<(usize, u64)> {
         let mut total_files = 0usize;
         let mut total_bytes = 0u64;
@@ -1224,7 +1224,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /
+
     pub fn execute_copy(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1235,7 +1235,7 @@ impl FileOperationExecutor {
         Self::execute_copy_interactive(sources, dest, progress_tx, cancel_token, id, None)
     }
 
-    /
+
     pub fn execute_copy_interactive(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1297,7 +1297,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /
+
     pub fn execute_move(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1308,7 +1308,7 @@ impl FileOperationExecutor {
         Self::execute_move_interactive(sources, dest, progress_tx, cancel_token, id, None)
     }
 
-    /
+
     pub fn execute_move_interactive(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1453,7 +1453,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /
+
     pub fn execute_delete(
         sources: Vec<PathBuf>,
         progress_tx: Sender<ProgressUpdate>,
@@ -1463,7 +1463,7 @@ impl FileOperationExecutor {
         Self::execute_delete_interactive(sources, progress_tx, cancel_token, id, None)
     }
 
-    /
+
     pub fn execute_delete_interactive(
         sources: Vec<PathBuf>,
         progress_tx: Sender<ProgressUpdate>,
@@ -1568,7 +1568,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /
+
     fn copy_file_with_error_handling(
         source: &PathBuf,
         dest: &PathBuf,
@@ -1579,7 +1579,7 @@ impl FileOperationExecutor {
         Self::copy_file_interactive(source, dest, progress_tx, cancel_token, id, &None)
     }
 
-    /
+
     fn copy_file_interactive(
         source: &PathBuf,
         dest: &PathBuf,
@@ -1775,7 +1775,7 @@ impl FileOperationExecutor {
         Ok(FileOpResult::Success)
     }
 
-    /
+
     fn copy_dir_recursive_with_error_handling(
         source: &PathBuf,
         dest: &PathBuf,
@@ -1786,7 +1786,7 @@ impl FileOperationExecutor {
         Self::copy_dir_recursive_interactive(source, dest, progress_tx, cancel_token, id, &None)
     }
 
-    /
+
     fn copy_dir_recursive_interactive(
         source: &PathBuf,
         dest: &PathBuf,
@@ -2419,18 +2419,18 @@ mod property_tests {
     use super::*;
     use proptest::prelude::*;
 
-    /
+
     fn valid_filename() -> impl Strategy<Value = String> {
         "[a-zA-Z0-9_-]{1,20}\\.[a-z]{1,4}"
     }
 
-    /
+
     fn valid_path() -> impl Strategy<Value = PathBuf> {
         (valid_filename(), valid_filename())
             .prop_map(|(dir, file)| PathBuf::from(format!("/tmp/{}/{}", dir, file)))
     }
 
-    /
+
     fn undoable_operation() -> impl Strategy<Value = UndoableOperation> {
         prop_oneof![
             prop::collection::vec(valid_path(), 1..5)
@@ -2466,14 +2466,14 @@ mod property_tests {
     }
 
     proptest! {
-        /
-        /
-        /
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
+
+
+
         #[test]
         fn prop_undo_moves_operation_to_redo_stack(op in undoable_operation()) {
             let mut manager = FileOperationsManager::new();
@@ -2492,7 +2492,7 @@ mod property_tests {
             prop_assert_eq!(undo_desc_before.unwrap(), original_description);
         }
 
-        /
+
         #[test]
         fn prop_push_clears_redo_stack(
             op1 in undoable_operation(),
@@ -2516,7 +2516,7 @@ mod property_tests {
             prop_assert_eq!(manager.redo_stack().len(), 0);
         }
 
-        /
+
         #[test]
         fn prop_undo_stack_respects_max_size(count in 1usize..100) {
             let mut manager = FileOperationsManager::new();
@@ -2534,7 +2534,7 @@ mod property_tests {
             prop_assert_eq!(manager.undo_stack().len(), count.min(MAX_UNDO_HISTORY));
         }
 
-        /
+
         #[test]
         fn prop_clear_history_empties_stacks(ops in prop::collection::vec(undoable_operation(), 1..10)) {
             let mut manager = FileOperationsManager::new();

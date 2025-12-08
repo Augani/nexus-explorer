@@ -4,13 +4,10 @@ use flume::{Receiver, Sender};
 
 use crate::models::FileEntry;
 
-/
 pub const DEFAULT_BATCH_SIZE: usize = 100;
 
-/
 pub const DEFAULT_FLUSH_INTERVAL: Duration = Duration::from_millis(16);
 
-/
 #[derive(Debug, Clone)]
 pub struct BatchConfig {
     pub batch_size: usize,
@@ -26,14 +23,14 @@ impl Default for BatchConfig {
     }
 }
 
-/
-/
-/
-/
-/
-/
-/
-/
+
+
+
+
+
+
+
+
 pub struct BatchAggregator {
     config: BatchConfig,
     input: Receiver<FileEntry>,
@@ -53,8 +50,8 @@ impl BatchAggregator {
         }
     }
 
-    /
-    /
+
+
     pub fn run(self) -> usize {
         let mut batch = Vec::with_capacity(self.config.batch_size);
         let mut last_flush = Instant::now();
@@ -106,12 +103,12 @@ impl BatchAggregator {
     }
 }
 
-/
-/
-/
-/
-/
-/
+
+
+
+
+
+
 pub fn create_batch_pipeline(
     config: BatchConfig,
 ) -> (
@@ -128,9 +125,9 @@ pub fn create_batch_pipeline(
     (entry_tx, batch_rx, handle)
 }
 
-/
-/
-/
+
+
+
 pub fn max_batches_for_items(item_count: usize, batch_size: usize) -> usize {
     if batch_size == 0 {
         return 0;
@@ -281,7 +278,7 @@ mod tests {
         assert_eq!(total, 25);
     }
 
-    /
+
     fn make_test_entry(index: usize) -> FileEntry {
         FileEntry::new(
             format!("file_{}.txt", index),
@@ -293,12 +290,12 @@ mod tests {
     }
 
     proptest! {
-        /
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
+
         #[test]
         fn prop_batch_size_bounds(
             item_count in 0usize..1000,

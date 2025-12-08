@@ -11,7 +11,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
-/
+
 #[derive(Debug, Error)]
 pub enum EncryptedVolumeError {
     #[error("Volume not found: {0}")]
@@ -47,7 +47,7 @@ pub enum EncryptedVolumeError {
 
 pub type EncryptedVolumeResult<T> = Result<T, EncryptedVolumeError>;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncryptionType {
     BitLocker,
@@ -67,14 +67,14 @@ impl EncryptionType {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProtectionStatus {
-    /
+
     Unlocked,
-    /
+
     Locked,
-    /
+
     Unknown,
 }
 
@@ -88,22 +88,22 @@ impl ProtectionStatus {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct EncryptedVolumeInfo {
-    /
+
     pub device_id: String,
-    /
+
     pub mount_point: Option<PathBuf>,
-    /
+
     pub encryption_type: EncryptionType,
-    /
+
     pub protection_status: ProtectionStatus,
-    /
+
     pub label: Option<String>,
-    /
+
     pub size: u64,
-    /
+
     pub encryption_percentage: Option<u8>,
 }
 
@@ -121,14 +121,14 @@ impl EncryptedVolumeInfo {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum UnlockCredential {
     Password(String),
     RecoveryKey(String),
 }
 
-/
+
 pub struct EncryptedVolumeManager {
     #[cfg(target_os = "windows")]
     _windows_marker: std::marker::PhantomData<()>,
@@ -152,14 +152,14 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /
+
     pub fn is_encrypted(&self, device_id: &str) -> bool {
         self.get_volume_info(device_id)
             .map(|info| info.is_encrypted())
             .unwrap_or(false)
     }
 
-    /
+
     pub fn get_volume_info(&self, device_id: &str) -> EncryptedVolumeResult<EncryptedVolumeInfo> {
         #[cfg(target_os = "windows")]
         {
@@ -179,7 +179,7 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /
+
     pub fn list_encrypted_volumes(&self) -> Vec<EncryptedVolumeInfo> {
         #[cfg(target_os = "windows")]
         {
@@ -197,7 +197,7 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /
+
     pub fn unlock(&self, device_id: &str, credential: UnlockCredential) -> EncryptedVolumeResult<PathBuf> {
         #[cfg(target_os = "windows")]
         {
@@ -217,7 +217,7 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /
+
     pub fn lock(&self, device_id: &str) -> EncryptedVolumeResult<()> {
         #[cfg(target_os = "windows")]
         {
@@ -615,7 +615,7 @@ fn extract_device_from_lsblk_line(line: &str) -> Option<String> {
 }
 
 
-/
+
 pub fn is_encrypted_volume_support_available() -> bool {
     #[cfg(target_os = "windows")]
     {
@@ -639,7 +639,7 @@ pub fn is_encrypted_volume_support_available() -> bool {
     }
 }
 
-/
+
 pub fn check_device_encrypted(device_id: &str) -> bool {
     let manager = EncryptedVolumeManager::new();
     manager.is_encrypted(device_id)

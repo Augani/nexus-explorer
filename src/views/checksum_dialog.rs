@@ -4,7 +4,7 @@ use crate::models::{
 };
 use std::path::PathBuf;
 
-/
+
 #[derive(Clone, PartialEq)]
 pub enum ChecksumDialogAction {
     Calculate,
@@ -15,7 +15,7 @@ pub enum ChecksumDialogAction {
     Close,
 }
 
-/
+
 pub struct ChecksumDialog {
     file_path: PathBuf,
     file_name: String,
@@ -74,7 +74,7 @@ impl ChecksumDialog {
         self
     }
 
-    /
+
     pub fn set_algorithm(&mut self, algorithm: HashAlgorithm) {
         self.selected_algorithm = algorithm;
         self.calculated_hash = None;
@@ -82,7 +82,7 @@ impl ChecksumDialog {
         self.error_message = None;
     }
 
-    /
+
     pub fn set_comparison_hash(&mut self, hash: String) {
         self.comparison_hash = hash;
         if let Some(detected) = detect_algorithm(&self.comparison_hash) {
@@ -91,19 +91,19 @@ impl ChecksumDialog {
         self.update_comparison();
     }
 
-    /
+
     pub fn start_calculation(&mut self) {
         self.is_calculating = true;
         self.error_message = None;
         self.progress = Some(HashProgress::new(0, self.file_size));
     }
 
-    /
+
     pub fn update_progress(&mut self, progress: HashProgress) {
         self.progress = Some(progress);
     }
 
-    /
+
     pub fn set_result(&mut self, result: Result<HashResult, String>) {
         self.is_calculating = false;
         self.progress = None;
@@ -120,7 +120,7 @@ impl ChecksumDialog {
         }
     }
 
-    /
+
     pub fn calculate_sync(&mut self) {
         self.start_calculation();
         
@@ -134,7 +134,7 @@ impl ChecksumDialog {
         }
     }
 
-    /
+
     fn update_comparison(&mut self) {
         if let Some(ref hash_result) = self.calculated_hash {
             if !self.comparison_hash.is_empty() {
@@ -148,7 +148,7 @@ impl ChecksumDialog {
         }
     }
 
-    /
+
     pub fn copy_hash(&self) {
         if let Some(ref hash_result) = self.calculated_hash {
             if let Some(ref callback) = self.on_copy {
@@ -157,7 +157,7 @@ impl ChecksumDialog {
         }
     }
 
-    /
+
     pub fn handle_close(&self) {
         if let Some(ref callback) = self.on_close {
             callback();
@@ -225,7 +225,7 @@ impl ChecksumDialog {
     }
 }
 
-/
+
 fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;

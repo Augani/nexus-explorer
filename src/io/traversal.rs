@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::{FileEntry, FileSystemError, Result};
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum SortOrder {
     #[default]
@@ -15,7 +15,7 @@ pub enum SortOrder {
     Descending,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum SortKey {
     #[default]
@@ -24,7 +24,7 @@ pub enum SortKey {
     Date,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct TraversalConfig {
     pub sort_key: SortKey,
@@ -44,10 +44,10 @@ impl Default for TraversalConfig {
     }
 }
 
-/
-/
-/
-/
+
+
+
+
 pub fn traverse_directory(
     path: &Path,
     config: &TraversalConfig,
@@ -94,7 +94,7 @@ pub fn traverse_directory(
     Ok(count)
 }
 
-/
+
 fn build_walk_dir(path: &Path, config: &TraversalConfig) -> WalkDirGeneric<((), ())> {
     let mut walk_dir = WalkDir::new(path)
         .parallelism(jwalk::Parallelism::RayonNewPool(num_cpus()))
@@ -109,14 +109,14 @@ fn build_walk_dir(path: &Path, config: &TraversalConfig) -> WalkDirGeneric<((), 
     walk_dir
 }
 
-/
+
 fn num_cpus() -> usize {
     std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(4)
 }
 
-/
+
 fn dir_entry_to_file_entry(entry: &jwalk::DirEntry<((), ())>) -> Option<FileEntry> {
     let path = entry.path();
     let name = entry.file_name().to_string_lossy().to_string();
@@ -158,12 +158,12 @@ fn dir_entry_to_file_entry(entry: &jwalk::DirEntry<((), ())>) -> Option<FileEntr
     }
 }
 
-/
+
 fn is_hidden(name: &str) -> bool {
     name.starts_with('.')
 }
 
-/
+
 pub fn sort_entries(entries: &mut [FileEntry], sort_key: SortKey, sort_order: SortOrder) {
     match (sort_key, sort_order) {
         (SortKey::Name, SortOrder::Ascending) => {
@@ -213,11 +213,11 @@ pub fn sort_entries(entries: &mut [FileEntry], sort_key: SortKey, sort_order: So
     }
 }
 
-/
-/
-/
-/
-/
+
+
+
+
+
 pub fn traverse_directory_sorted(
     path: &Path,
     config: &TraversalConfig,
@@ -269,8 +269,8 @@ pub fn traverse_directory_sorted(
     Ok(count)
 }
 
-/
-/
+
+
 pub fn spawn_traversal(
     path: PathBuf,
     config: TraversalConfig,
@@ -285,8 +285,8 @@ pub fn spawn_traversal(
     (receiver, handle)
 }
 
-/
-/
+
+
 pub fn spawn_sorted_traversal(
     path: PathBuf,
     config: TraversalConfig,
@@ -472,7 +472,7 @@ mod tests {
         assert_eq!(entries[3].name, "file_a.txt");
     }
 
-    /
+
     fn is_sorted(entries: &[FileEntry], sort_key: SortKey, sort_order: SortOrder) -> bool {
         if entries.len() <= 1 {
             return true;
@@ -519,12 +519,12 @@ mod tests {
     }
 
     proptest! {
-        /
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
+
         #[test]
         fn prop_traversal_results_sorted(
             file_count in 0usize..20,

@@ -5,7 +5,7 @@ use crate::models::{
 };
 use std::path::PathBuf;
 
-/
+
 #[derive(Clone, PartialEq)]
 pub enum ShareDialogAction {
     Share,
@@ -15,13 +15,13 @@ pub enum ShareDialogAction {
     DescriptionChanged(String),
     PermissionChanged(SharePermission),
     MaxUsersChanged(Option<u32>),
-    /
+
     ShareViaPlatform(PlatformShareMethod),
-    /
+
     SwitchTab(ShareDialogTab),
 }
 
-/
+
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub enum ShareDialogTab {
     #[default]
@@ -29,7 +29,7 @@ pub enum ShareDialogTab {
     NetworkShare,
 }
 
-/
+
 pub struct ShareDialog {
     paths: Vec<PathBuf>,
     path: PathBuf,
@@ -45,11 +45,11 @@ pub struct ShareDialog {
     on_stop_sharing: Option<Box<dyn Fn(PathBuf) + Send + Sync>>,
     on_cancel: Option<Box<dyn Fn() + Send + Sync>>,
     on_platform_share: Option<Box<dyn Fn(Vec<PathBuf>, PlatformShareMethod) + Send + Sync>>,
-    /
+
     current_tab: ShareDialogTab,
-    /
+
     available_methods: Vec<PlatformShareMethod>,
-    /
+
     platform_share_status: Option<String>,
 }
 
@@ -84,7 +84,7 @@ impl ShareDialog {
         }
     }
 
-    /
+
     pub fn new_multi(paths: Vec<PathBuf>) -> Self {
         let default_name = if paths.len() == 1 {
             paths[0]
@@ -162,7 +162,7 @@ impl ShareDialog {
         self
     }
 
-    /
+
     pub fn build_config(&self) -> ShareConfig {
         let mut config = ShareConfig::new(self.share_name.clone(), self.path.clone())
             .with_description(self.description.clone())
@@ -175,7 +175,7 @@ impl ShareDialog {
         config
     }
 
-    /
+
     pub fn validate_share_name(&self) -> Result<(), String> {
         if self.share_name.is_empty() {
             return Err("Share name cannot be empty".to_string());
@@ -195,7 +195,7 @@ impl ShareDialog {
         Ok(())
     }
 
-    /
+
     pub fn validate(&self) -> Result<(), String> {
         self.validate_share_name()?;
 
@@ -210,7 +210,7 @@ impl ShareDialog {
         Ok(())
     }
 
-    /
+
     pub fn execute_share(&mut self) {
         if let Err(msg) = self.validate() {
             self.error_message = Some(msg);
@@ -226,42 +226,42 @@ impl ShareDialog {
         }
     }
 
-    /
+
     pub fn execute_stop_sharing(&mut self) {
         if let Some(callback) = &self.on_stop_sharing {
             callback(self.path.clone());
         }
     }
 
-    /
+
     pub fn handle_cancel(&self) {
         if let Some(callback) = &self.on_cancel {
             callback();
         }
     }
 
-    /
+
     pub fn set_share_name(&mut self, name: String) {
         self.share_name = name;
         self.error_message = None;
     }
 
-    /
+
     pub fn set_description(&mut self, description: String) {
         self.description = description;
     }
 
-    /
+
     pub fn set_permission(&mut self, permission: SharePermission) {
         self.permission = permission;
     }
 
-    /
+
     pub fn set_max_users(&mut self, max_users: Option<u32>) {
         self.max_users = max_users;
     }
 
-    /
+
     pub fn set_share_complete(&mut self, success: bool, error: Option<String>) {
         self.is_sharing = false;
         if success {
@@ -271,13 +271,13 @@ impl ShareDialog {
         }
     }
 
-    /
+
     pub fn set_share_removed(&mut self) {
         self.is_already_shared = false;
         self.existing_share = None;
     }
 
-    /
+
     pub fn execute_platform_share(&mut self, method: PlatformShareMethod) {
         if !is_share_method_available(method) {
             if let Some(reason) = get_share_method_unavailable_reason(method) {
@@ -296,7 +296,7 @@ impl ShareDialog {
         }
     }
 
-    /
+
     pub fn set_platform_share_result(&mut self, success: bool, message: Option<String>) {
         if success {
             self.platform_share_status = message.or(Some("Share initiated".to_string()));
@@ -306,7 +306,7 @@ impl ShareDialog {
         }
     }
 
-    /
+
     pub fn set_tab(&mut self, tab: ShareDialogTab) {
         self.current_tab = tab;
         self.error_message = None;
@@ -364,22 +364,22 @@ impl ShareDialog {
         &self.paths
     }
 
-    /
+
     pub fn is_method_available(&self, method: PlatformShareMethod) -> bool {
         is_share_method_available(method)
     }
 
-    /
+
     pub fn get_method_unavailable_reason(&self, method: PlatformShareMethod) -> Option<String> {
         get_share_method_unavailable_reason(method)
     }
 
-    /
+
     pub fn folder_info_summary(&self) -> String {
         self.path.display().to_string()
     }
 
-    /
+
     pub fn available_permissions() -> Vec<SharePermission> {
         vec![
             SharePermission::ReadOnly,
@@ -388,7 +388,7 @@ impl ShareDialog {
         ]
     }
 
-    /
+
     pub fn platform_info(&self) -> &'static str {
         #[cfg(target_os = "windows")]
         {
@@ -415,12 +415,12 @@ impl ShareDialog {
         }
     }
 
-    /
+
     pub fn is_sharing_supported() -> bool {
         cfg!(any(target_os = "windows", target_os = "linux", target_os = "macos"))
     }
 
-    /
+
     pub fn has_platform_share_options() -> bool {
         #[cfg(target_os = "macos")]
         {
@@ -436,7 +436,7 @@ impl ShareDialog {
         }
     }
 
-    /
+
     pub fn primary_platform_method() -> Option<PlatformShareMethod> {
         #[cfg(target_os = "macos")]
         {

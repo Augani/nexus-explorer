@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use thiserror::Error;
 
-/
+
 #[derive(Debug, Error)]
 pub enum ShareError {
     #[error("Share creation failed: {0}")]
@@ -43,16 +43,16 @@ pub enum ShareError {
     TransferCancelled,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlatformShareMethod {
-    /
+
     AirDrop,
-    /
+
     NearbyShare,
-    /
+
     NetworkShare,
-    /
+
     Clipboard,
 }
 
@@ -85,30 +85,30 @@ impl PlatformShareMethod {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformShareStatus {
-    /
+
     Checking,
-    /
+
     Ready,
-    /
+
     WaitingForRecipient,
-    /
+
     InProgress { progress_percent: u8 },
-    /
+
     Completed,
-    /
+
     Failed(String),
-    /
+
     Cancelled,
-    /
+
     Unavailable(String),
 }
 
 pub type ShareResult<T> = std::result::Result<T, ShareError>;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SharePermission {
     #[default]
@@ -127,7 +127,7 @@ impl SharePermission {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShareConfig {
     pub share_name: String,
@@ -178,7 +178,7 @@ impl ShareConfig {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShareInfo {
     pub share_name: String,
@@ -202,7 +202,7 @@ impl ShareInfo {
     }
 }
 
-/
+
 pub struct ShareManager {
     shares: HashMap<PathBuf, ShareInfo>,
 }
@@ -220,22 +220,22 @@ impl ShareManager {
         }
     }
 
-    /
+
     pub fn is_shared(&self, path: &PathBuf) -> bool {
         self.shares.contains_key(path)
     }
 
-    /
+
     pub fn get_share(&self, path: &PathBuf) -> Option<&ShareInfo> {
         self.shares.get(path)
     }
 
-    /
+
     pub fn list_shares(&self) -> Vec<&ShareInfo> {
         self.shares.values().collect()
     }
 
-    /
+
     pub fn create_share(&mut self, config: ShareConfig) -> ShareResult<ShareInfo> {
         if !config.path.exists() {
             return Err(ShareError::PathNotFound(config.path));
@@ -281,7 +281,7 @@ impl ShareManager {
         Ok(info)
     }
 
-    /
+
     pub fn remove_share(&mut self, path: &PathBuf) -> ShareResult<()> {
         let share = self
             .shares
@@ -309,7 +309,7 @@ impl ShareManager {
         Ok(())
     }
 
-    /
+
     pub fn refresh_shares(&mut self) -> ShareResult<()> {
         self.shares.clear();
 
@@ -684,7 +684,7 @@ fn parse_macos_shares(output: &str) -> Vec<ShareInfo> {
     shares
 }
 
-/
+
 pub fn get_available_share_methods() -> Vec<PlatformShareMethod> {
     let mut methods = Vec::new();
 
@@ -708,7 +708,7 @@ pub fn get_available_share_methods() -> Vec<PlatformShareMethod> {
     methods
 }
 
-/
+
 pub fn is_share_method_available(method: PlatformShareMethod) -> bool {
     match method {
         PlatformShareMethod::AirDrop => {
@@ -766,8 +766,8 @@ pub fn is_airdrop_available() -> bool {
     false
 }
 
-/
-/
+
+
 #[cfg(target_os = "macos")]
 pub fn share_via_airdrop(paths: &[PathBuf]) -> ShareResult<()> {
     use std::process::Command;
@@ -833,7 +833,7 @@ pub fn share_via_airdrop(_paths: &[PathBuf]) -> ShareResult<()> {
     ))
 }
 
-/
+
 #[cfg(target_os = "macos")]
 pub fn open_airdrop_window() -> ShareResult<()> {
     use std::process::Command;
@@ -858,7 +858,7 @@ pub fn open_airdrop_window() -> ShareResult<()> {
     ))
 }
 
-/
+
 #[cfg(target_os = "macos")]
 pub fn open_macos_share_sheet(paths: &[PathBuf]) -> ShareResult<()> {
     share_via_airdrop(paths)
@@ -912,8 +912,8 @@ pub fn is_nearby_share_available() -> bool {
     false
 }
 
-/
-/
+
+
 #[cfg(target_os = "windows")]
 pub fn share_via_nearby_share(paths: &[PathBuf]) -> ShareResult<()> {
     use std::process::Command;
@@ -999,7 +999,7 @@ pub fn share_via_nearby_share(_paths: &[PathBuf]) -> ShareResult<()> {
     ))
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn open_nearby_share_settings() -> ShareResult<()> {
     use std::process::Command;
@@ -1025,7 +1025,7 @@ pub fn open_nearby_share_settings() -> ShareResult<()> {
 }
 
 
-/
+
 pub fn share_files(paths: &[PathBuf], method: PlatformShareMethod) -> ShareResult<()> {
     match method {
         PlatformShareMethod::AirDrop => share_via_airdrop(paths),
@@ -1043,7 +1043,7 @@ pub fn share_files(paths: &[PathBuf], method: PlatformShareMethod) -> ShareResul
     }
 }
 
-/
+
 fn copy_to_clipboard(text: &str) -> ShareResult<()> {
     #[cfg(target_os = "macos")]
     {
@@ -1127,7 +1127,7 @@ fn copy_to_clipboard(text: &str) -> ShareResult<()> {
     }
 }
 
-/
+
 pub fn get_share_method_unavailable_reason(method: PlatformShareMethod) -> Option<String> {
     match method {
         PlatformShareMethod::AirDrop => {

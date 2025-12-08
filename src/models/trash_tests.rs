@@ -6,17 +6,17 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 use tempfile::TempDir;
 
-/
+
 fn file_name_strategy() -> impl Strategy<Value = String> {
     "[a-zA-Z0-9_-]{1,20}\\.[a-z]{1,4}".prop_map(|s| s)
 }
 
-/
+
 fn dir_name_strategy() -> impl Strategy<Value = String> {
     "[a-zA-Z0-9_-]{1,20}".prop_map(|s| s)
 }
 
-/
+
 fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBuf {
     let path = dir.join(name);
     if let Some(parent) = path.parent() {
@@ -27,7 +27,7 @@ fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBu
     path
 }
 
-/
+
 fn create_test_dir(parent: &std::path::Path, name: &str) -> PathBuf {
     let path = parent.join(name);
     fs::create_dir_all(&path).unwrap();

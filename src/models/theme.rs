@@ -2,7 +2,7 @@ use gpui::{Global, Rgba};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum ThemeId {
     Light,
@@ -20,7 +20,7 @@ impl Default for ThemeId {
     }
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct Theme {
     pub id: ThemeId,
@@ -31,7 +31,7 @@ pub struct Theme {
     pub decorations: ThemeDecorations,
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct ThemeColors {
     pub bg_void: Rgba,
@@ -83,7 +83,7 @@ pub struct ThemeColors {
     pub terminal_white: Rgba,
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct ThemeTypography {
     pub font_display: &'static str,
@@ -110,7 +110,7 @@ pub struct ThemeTypography {
     pub tracking_wide: f32,
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct ThemeDecorations {
     pub border_radius_sm: f32,
@@ -133,7 +133,7 @@ pub struct ThemeDecorations {
     pub bg_noise_opacity: f32,
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct CornerFlourish {
     pub svg_path: &'static str,
@@ -182,7 +182,7 @@ pub enum BackgroundPattern {
     Organic,
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct ShadowConfig {
     pub offset_x: f32,
@@ -219,7 +219,7 @@ impl ShadowConfig {
     }
 }
 
-/
+
 pub fn rgba_from_hex(hex: u32) -> Rgba {
     let r = ((hex >> 16) & 0xFF) as f32 / 255.0;
     let g = ((hex >> 8) & 0xFF) as f32 / 255.0;
@@ -227,7 +227,7 @@ pub fn rgba_from_hex(hex: u32) -> Rgba {
     Rgba { r, g, b, a: 1.0 }
 }
 
-/
+
 pub fn rgba_from_hex_alpha(hex: u32, alpha: f32) -> Rgba {
     let r = ((hex >> 16) & 0xFF) as f32 / 255.0;
     let g = ((hex >> 8) & 0xFF) as f32 / 255.0;
@@ -283,7 +283,7 @@ impl Default for ThemeDecorations {
 }
 
 impl ThemeColors {
-    /
+
     pub fn is_complete(&self) -> bool {
         self.bg_primary.a > 0.0
             && self.bg_secondary.a > 0.0
@@ -297,7 +297,7 @@ impl ThemeColors {
 }
 
 impl Theme {
-    /
+
     pub fn light() -> Self {
         Self {
             id: ThemeId::Light,
@@ -391,7 +391,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn dark() -> Self {
         Self {
             id: ThemeId::Dark,
@@ -485,7 +485,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn dragon_forge() -> Self {
         Self {
             id: ThemeId::DragonForge,
@@ -600,7 +600,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn frost_haven() -> Self {
         Self {
             id: ThemeId::FrostHaven,
@@ -715,7 +715,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn ancient_tome() -> Self {
         Self {
             id: ThemeId::AncientTome,
@@ -831,7 +831,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn shadow_realm() -> Self {
         Self {
             id: ThemeId::ShadowRealm,
@@ -946,7 +946,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn elven_glade() -> Self {
         Self {
             id: ThemeId::ElvenGlade,
@@ -1056,7 +1056,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn from_id(id: ThemeId) -> Self {
         match id {
             ThemeId::Light => Self::light(),
@@ -1069,7 +1069,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn all_themes() -> Vec<Self> {
         vec![
             Self::light(),
@@ -1083,7 +1083,7 @@ impl Theme {
     }
 }
 
-/
+
 #[derive(Clone)]
 pub struct ThemeManager {
     current_id: ThemeId,
@@ -1129,7 +1129,7 @@ impl ThemeManager {
         self.themes.get(&id)
     }
 
-    /
+
     pub fn save(&self) -> std::io::Result<()> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -1148,7 +1148,7 @@ impl ThemeManager {
         std::fs::write(config_path, json)
     }
 
-    /
+
     pub fn load() -> std::io::Result<Self> {
         let config_path = dirs::config_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -1176,7 +1176,7 @@ impl Default for ThemeManager {
 
 impl Global for ThemeManager {}
 
-/
+
 #[derive(Serialize, Deserialize)]
 struct ThemeConfig {
     theme_id: ThemeId,
@@ -1250,11 +1250,11 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_theme_color_completeness(theme_id in arb_theme_id()) {
             let theme = Theme::from_id(theme_id);
@@ -1282,11 +1282,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_theme_persistence_round_trip(theme_id in arb_theme_id()) {
             let mut manager = ThemeManager::new();
@@ -1307,11 +1307,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_theme_application_consistency(theme_id in arb_theme_id()) {
             let theme = Theme::from_id(theme_id);
@@ -1352,7 +1352,7 @@ mod tests {
 }
 
 
-/
+
 #[derive(Clone, Debug)]
 pub struct GradientConfig {
     pub gradient_type: GradientType,
@@ -1368,7 +1368,7 @@ pub enum GradientType {
 }
 
 impl GradientConfig {
-    /
+
     pub fn vertical(top: Rgba, bottom: Rgba) -> Self {
         Self {
             gradient_type: GradientType::Linear,
@@ -1377,7 +1377,7 @@ impl GradientConfig {
         }
     }
 
-    /
+
     pub fn radial(center: Rgba, edge: Rgba) -> Self {
         Self {
             gradient_type: GradientType::Radial,
@@ -1386,7 +1386,7 @@ impl GradientConfig {
         }
     }
 
-    /
+
     pub fn depth(top: Rgba, middle: Rgba, bottom: Rgba) -> Self {
         Self {
             gradient_type: GradientType::Linear,
@@ -1396,23 +1396,23 @@ impl GradientConfig {
     }
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct BackgroundEffect {
-    /
+
     pub base_color: Rgba,
-    /
+
     pub gradient: Option<GradientConfig>,
-    /
+
     pub pattern: Option<BackgroundPattern>,
-    /
+
     pub noise_opacity: f32,
-    /
+
     pub glow: Option<(Rgba, f32)>,
 }
 
 impl BackgroundEffect {
-    /
+
     pub fn solid(color: Rgba) -> Self {
         Self {
             base_color: color,
@@ -1423,25 +1423,25 @@ impl BackgroundEffect {
         }
     }
 
-    /
+
     pub fn with_gradient(mut self, gradient: GradientConfig) -> Self {
         self.gradient = Some(gradient);
         self
     }
 
-    /
+
     pub fn with_pattern(mut self, pattern: BackgroundPattern) -> Self {
         self.pattern = Some(pattern);
         self
     }
 
-    /
+
     pub fn with_noise(mut self, opacity: f32) -> Self {
         self.noise_opacity = opacity.clamp(0.0, 1.0);
         self
     }
 
-    /
+
     pub fn with_glow(mut self, color: Rgba, intensity: f32) -> Self {
         self.glow = Some((color, intensity.clamp(0.0, 1.0)));
         self
@@ -1449,7 +1449,7 @@ impl BackgroundEffect {
 }
 
 impl Theme {
-    /
+
     pub fn content_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_primary;
         let void = self.colors.bg_void;
@@ -1468,7 +1468,7 @@ impl Theme {
         effect
     }
 
-    /
+
     pub fn sidebar_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_secondary;
 
@@ -1482,7 +1482,7 @@ impl Theme {
         effect
     }
 
-    /
+
     pub fn toolbar_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_secondary;
         let tertiary = self.colors.bg_tertiary;
@@ -1492,7 +1492,7 @@ impl Theme {
             .with_noise(self.decorations.bg_noise_opacity * 0.3)
     }
 
-    /
+
     pub fn card_background(&self) -> BackgroundEffect {
         let base = self.colors.bg_tertiary;
 
@@ -1506,14 +1506,14 @@ impl Theme {
         effect
     }
 
-    /
+
     pub fn terminal_background(&self) -> BackgroundEffect {
         BackgroundEffect::solid(self.colors.terminal_bg)
             .with_noise(self.decorations.bg_noise_opacity * 0.2)
     }
 }
 
-/
+
 fn rgba_to_hex(color: &Rgba) -> u32 {
     let r = (color.r * 255.0) as u32;
     let g = (color.g * 255.0) as u32;
@@ -1521,9 +1521,9 @@ fn rgba_to_hex(color: &Rgba) -> u32 {
     (r << 16) | (g << 8) | b
 }
 
-/
+
 impl BackgroundPattern {
-    /
+
     pub fn overlay_color(&self, theme: &Theme) -> Rgba {
         match self {
             BackgroundPattern::None => rgba_from_hex_alpha(0x000000, 0.0),
@@ -1543,7 +1543,7 @@ impl BackgroundPattern {
         }
     }
 
-    /
+
     pub fn scale(&self) -> f32 {
         match self {
             BackgroundPattern::None => 1.0,
@@ -1561,7 +1561,7 @@ impl BackgroundPattern {
 }
 
 
-/
+
 #[derive(Clone, Debug)]
 pub struct OrnateBorderConfig {
     pub width: f32,
@@ -1573,7 +1573,7 @@ pub struct OrnateBorderConfig {
 }
 
 impl OrnateBorderConfig {
-    /
+
     pub fn simple(width: f32, color: Rgba) -> Self {
         Self {
             width,
@@ -1585,7 +1585,7 @@ impl OrnateBorderConfig {
         }
     }
 
-    /
+
     pub fn ornate(width: f32, color: Rgba, flourish: CornerFlourish) -> Self {
         Self {
             width,
@@ -1597,54 +1597,54 @@ impl OrnateBorderConfig {
         }
     }
 
-    /
+
     pub fn with_glow(mut self, color: Rgba, blur: f32) -> Self {
         self.glow_color = Some(color);
         self.glow_blur = blur;
         self
     }
 
-    /
+
     pub fn inner_border_color(&self) -> Rgba {
         rgba_from_hex_alpha(rgba_to_hex(&self.color), 0.5)
     }
 
-    /
+
     pub fn has_glow(&self) -> bool {
         self.glow_color.is_some() && self.glow_blur > 0.0
     }
 }
 
-/
+
 pub mod flourish_paths {
-    /
+
     pub const CURVED: &str = "M0,0 Q8,0 8,8 L8,16 Q8,8 16,8 L24,8";
 
-    /
+
     pub const DIAMOND: &str = "M0,8 L8,0 L16,8 L8,16 Z";
 
-    /
+
     pub const SCROLL: &str = "M0,0 C4,0 8,4 8,8 C8,4 12,0 16,0";
 
-    /
+
     pub const SWIRL: &str = "M0,12 Q6,6 12,0 Q6,6 0,12";
 
-    /
+
     pub const VINE: &str = "M0,16 C8,16 16,8 16,0 C16,8 24,16 32,16";
 
-    /
+
     pub const CELTIC: &str = "M0,0 L8,8 L0,16 M8,0 L0,8 L8,16";
 
-    /
+
     pub const BRACKET: &str = "M0,12 L0,4 Q0,0 4,0 L12,0";
 
-    /
+
     pub const MEDIEVAL: &str = "M0,0 Q4,4 0,8 Q4,4 8,8 Q4,4 8,0 Q4,4 0,0";
 }
 
-/
+
 impl CornerFlourish {
-    /
+
     pub fn dragon_forge() -> Self {
         Self {
             svg_path: flourish_paths::CURVED,
@@ -1653,7 +1653,7 @@ impl CornerFlourish {
         }
     }
 
-    /
+
     pub fn frost_haven() -> Self {
         Self {
             svg_path: flourish_paths::DIAMOND,
@@ -1662,7 +1662,7 @@ impl CornerFlourish {
         }
     }
 
-    /
+
     pub fn ancient_tome() -> Self {
         Self {
             svg_path: flourish_paths::SCROLL,
@@ -1671,7 +1671,7 @@ impl CornerFlourish {
         }
     }
 
-    /
+
     pub fn shadow_realm() -> Self {
         Self {
             svg_path: flourish_paths::SWIRL,
@@ -1680,7 +1680,7 @@ impl CornerFlourish {
         }
     }
 
-    /
+
     pub fn elven_glade() -> Self {
         Self {
             svg_path: flourish_paths::VINE,
@@ -1690,7 +1690,7 @@ impl CornerFlourish {
     }
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct DividerConfig {
     pub style: DividerStyle,
@@ -1700,7 +1700,7 @@ pub struct DividerConfig {
 }
 
 impl DividerConfig {
-    /
+
     pub fn simple(color: Rgba, thickness: f32) -> Self {
         Self {
             style: DividerStyle::Simple,
@@ -1710,7 +1710,7 @@ impl DividerConfig {
         }
     }
 
-    /
+
     pub fn ornate(color: Rgba, ornament_color: Rgba) -> Self {
         Self {
             style: DividerStyle::Ornate,
@@ -1720,7 +1720,7 @@ impl DividerConfig {
         }
     }
 
-    /
+
     pub fn ornament_char(&self) -> &'static str {
         match self.style {
             DividerStyle::Simple => "",
@@ -1734,7 +1734,7 @@ impl DividerConfig {
 }
 
 impl Theme {
-    /
+
     pub fn section_divider(&self) -> DividerConfig {
         match self.decorations.divider_style {
             DividerStyle::Simple => DividerConfig::simple(self.colors.border_subtle, 1.0),
@@ -1761,7 +1761,7 @@ impl Theme {
     }
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct FrameConfig {
     pub style: FrameStyle,
@@ -1773,7 +1773,7 @@ pub struct FrameConfig {
 }
 
 impl FrameConfig {
-    /
+
     pub fn simple(border_width: f32, border_color: Rgba, corner_radius: f32) -> Self {
         Self {
             style: FrameStyle::Simple,
@@ -1785,7 +1785,7 @@ impl FrameConfig {
         }
     }
 
-    /
+
     pub fn double(
         border_width: f32,
         outer_color: Rgba,
@@ -1802,7 +1802,7 @@ impl FrameConfig {
         }
     }
 
-    /
+
     pub fn with_shadow(mut self, shadow: ShadowConfig) -> Self {
         self.shadow = Some(shadow);
         self
@@ -1810,7 +1810,7 @@ impl FrameConfig {
 }
 
 impl Theme {
-    /
+
     pub fn panel_frame(&self) -> FrameConfig {
         let base = FrameConfig::simple(
             self.decorations.border_width,
@@ -1848,7 +1848,7 @@ impl Theme {
         }
     }
 
-    /
+
     pub fn card_frame(&self) -> FrameConfig {
         FrameConfig::simple(
             self.decorations.border_width,
@@ -1858,7 +1858,7 @@ impl Theme {
         .with_shadow(self.decorations.shadow_sm.clone())
     }
 
-    /
+
     pub fn modal_frame(&self) -> FrameConfig {
         FrameConfig::simple(
             self.decorations.border_width,
@@ -1870,7 +1870,7 @@ impl Theme {
 }
 
 impl Theme {
-    /
+
     pub fn panel_border(&self) -> OrnateBorderConfig {
         let mut config =
             OrnateBorderConfig::simple(self.decorations.border_width, self.colors.border_default);
@@ -1885,7 +1885,7 @@ impl Theme {
         config
     }
 
-    /
+
     pub fn emphasis_border(&self) -> OrnateBorderConfig {
         let mut config = OrnateBorderConfig::simple(
             self.decorations.border_width * 2.0,
@@ -1901,7 +1901,7 @@ impl Theme {
         config
     }
 
-    /
+
     pub fn section_divider_color(&self) -> Rgba {
         match self.decorations.divider_style {
             DividerStyle::Simple => self.colors.border_subtle,
@@ -1914,79 +1914,79 @@ impl Theme {
     }
 }
 
-/
+
 impl ThemeColors {
-    /
+
     pub fn bg_void_color(&self) -> gpui::Rgba {
         self.bg_void
     }
 
-    /
+
     pub fn bg_primary_color(&self) -> gpui::Rgba {
         self.bg_primary
     }
 
-    /
+
     pub fn bg_secondary_color(&self) -> gpui::Rgba {
         self.bg_secondary
     }
 
-    /
+
     pub fn bg_tertiary_color(&self) -> gpui::Rgba {
         self.bg_tertiary
     }
 
-    /
+
     pub fn bg_hover_color(&self) -> gpui::Rgba {
         self.bg_hover
     }
 
-    /
+
     pub fn bg_selected_color(&self) -> gpui::Rgba {
         self.bg_selected
     }
 
-    /
+
     pub fn text_primary_color(&self) -> gpui::Rgba {
         self.text_primary
     }
 
-    /
+
     pub fn text_secondary_color(&self) -> gpui::Rgba {
         self.text_secondary
     }
 
-    /
+
     pub fn text_muted_color(&self) -> gpui::Rgba {
         self.text_muted
     }
 
-    /
+
     pub fn accent_primary_color(&self) -> gpui::Rgba {
         self.accent_primary
     }
 
-    /
+
     pub fn accent_secondary_color(&self) -> gpui::Rgba {
         self.accent_secondary
     }
 
-    /
+
     pub fn border_default_color(&self) -> gpui::Rgba {
         self.border_default
     }
 
-    /
+
     pub fn border_subtle_color(&self) -> gpui::Rgba {
         self.border_subtle
     }
 
-    /
+
     pub fn border_emphasis_color(&self) -> gpui::Rgba {
         self.border_emphasis
     }
 
-    /
+
     pub fn folder_color_value(&self) -> gpui::Rgba {
         self.folder_color
     }
@@ -1994,10 +1994,10 @@ impl ThemeColors {
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
-/
+
 static CURRENT_THEME_ID: AtomicU8 = AtomicU8::new(1);
 
-/
+
 fn theme_id_to_u8(id: ThemeId) -> u8 {
     match id {
         ThemeId::Light => 0,
@@ -2010,7 +2010,7 @@ fn theme_id_to_u8(id: ThemeId) -> u8 {
     }
 }
 
-/
+
 fn u8_to_theme_id(val: u8) -> ThemeId {
     match val {
         0 => ThemeId::Light,
@@ -2024,37 +2024,37 @@ fn u8_to_theme_id(val: u8) -> ThemeId {
     }
 }
 
-/
+
 pub fn set_current_theme(id: ThemeId) {
     CURRENT_THEME_ID.store(theme_id_to_u8(id), Ordering::SeqCst);
 }
 
-/
+
 pub fn current_theme_id() -> ThemeId {
     u8_to_theme_id(CURRENT_THEME_ID.load(Ordering::SeqCst))
 }
 
-/
+
 pub fn current_theme() -> Theme {
     Theme::from_id(current_theme_id())
 }
 
-/
+
 pub fn theme_colors() -> ThemeColors {
     current_theme().colors
 }
 
-/
+
 pub fn theme_typography() -> ThemeTypography {
     current_theme().typography
 }
 
-/
+
 pub fn theme_decorations() -> ThemeDecorations {
     current_theme().decorations
 }
 
-/
+
 pub fn save_theme_selection(id: ThemeId) {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -2074,7 +2074,7 @@ pub fn save_theme_selection(id: ThemeId) {
     }
 }
 
-/
+
 pub fn load_theme_selection() -> ThemeId {
     let config_path = dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))

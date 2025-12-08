@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 
-/
+
 #[derive(Debug, Clone)]
 pub struct DiskInfo {
     pub bsd_name: String,
@@ -51,7 +51,7 @@ impl Default for DiskInfo {
 }
 
 impl DiskInfo {
-    /
+
     pub fn device_type(&self) -> DeviceType {
         if self.is_network {
             return DeviceType::NetworkDrive;
@@ -94,7 +94,7 @@ impl DiskInfo {
     }
 }
 
-/
+
 #[cfg(target_os = "macos")]
 pub struct MacOSDiskMonitor {
     is_monitoring: Arc<AtomicBool>,
@@ -112,7 +112,7 @@ impl MacOSDiskMonitor {
         }
     }
 
-    /
+
     pub fn enumerate_volumes(&self) -> Vec<DiskInfo> {
         let mut disks = Vec::new();
 
@@ -146,7 +146,7 @@ impl MacOSDiskMonitor {
         disks
     }
 
-    /
+
     fn get_volume_info(&self, path: &PathBuf) -> Option<DiskInfo> {
         let path_str = path.to_str()?;
         
@@ -163,7 +163,7 @@ impl MacOSDiskMonitor {
         Some(self.parse_diskutil_output(&info_str, path))
     }
 
-    /
+
     fn parse_diskutil_output(&self, output: &str, path: &PathBuf) -> DiskInfo {
         let mut info = DiskInfo::default();
         info.volume_path = Some(path.clone());
@@ -204,7 +204,7 @@ impl MacOSDiskMonitor {
         info
     }
 
-    /
+
     fn get_basic_volume_info(&self, path: &PathBuf) -> Option<DiskInfo> {
         if !path.exists() {
             return None;
@@ -243,7 +243,7 @@ impl MacOSDiskMonitor {
         Some(info)
     }
 
-    /
+
     pub fn start_monitoring(&self, sender: flume::Sender<DeviceEvent>) -> Result<(), String> {
         if self.is_monitoring.load(Ordering::SeqCst) {
             return Ok(());
@@ -275,7 +275,7 @@ impl MacOSDiskMonitor {
         Ok(())
     }
 
-    /
+
     fn monitor_loop(
         is_monitoring: Arc<AtomicBool>,
         event_sender: Arc<Mutex<Option<flume::Sender<DeviceEvent>>>>,
@@ -361,7 +361,7 @@ impl MacOSDiskMonitor {
         }
     }
 
-    /
+
     fn get_volume_info_static(path: &PathBuf) -> Option<DiskInfo> {
         let path_str = path.to_str()?;
         
@@ -456,7 +456,7 @@ impl MacOSDiskMonitor {
         Some(info)
     }
 
-    /
+
     fn disk_info_to_device(info: &DiskInfo, id: DeviceId) -> Device {
         let name = info.volume_name.clone()
             .unwrap_or_else(|| "Unknown Volume".to_string());
@@ -479,7 +479,7 @@ impl MacOSDiskMonitor {
         device
     }
 
-    /
+
     pub fn stop_monitoring(&self) {
         self.is_monitoring.store(false, Ordering::SeqCst);
         if let Ok(mut guard) = self.event_sender.lock() {
@@ -487,7 +487,7 @@ impl MacOSDiskMonitor {
         }
     }
 
-    /
+
     pub fn is_monitoring(&self) -> bool {
         self.is_monitoring.load(Ordering::SeqCst)
     }
@@ -500,7 +500,7 @@ impl Default for MacOSDiskMonitor {
     }
 }
 
-/
+
 fn parse_size_string(s: &str) -> u64 {
     if let Some(start) = s.find('(') {
         if let Some(end) = s.find(" Bytes") {
@@ -529,7 +529,7 @@ fn parse_size_string(s: &str) -> u64 {
     0
 }
 
-/
+
 fn hash_path(path: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -540,7 +540,7 @@ fn hash_path(path: &str) -> u64 {
 }
 
 impl DeviceMonitor {
-    /
+
     #[cfg(target_os = "macos")]
     pub fn enumerate_macos_devices(&mut self) {
         let monitor = MacOSDiskMonitor::new();
@@ -569,7 +569,7 @@ impl DeviceMonitor {
         }
     }
 
-    /
+
     #[cfg(target_os = "macos")]
     pub fn eject(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         let device = self
@@ -599,7 +599,7 @@ impl DeviceMonitor {
         }
     }
 
-    /
+
     #[cfg(target_os = "macos")]
     pub fn unmount(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         let device = self
@@ -624,7 +624,7 @@ impl DeviceMonitor {
     }
 }
 
-/
+
 #[cfg(target_os = "macos")]
 fn is_volume_read_only(path: &PathBuf) -> bool {
     use std::os::unix::fs::MetadataExt;
@@ -636,7 +636,7 @@ fn is_volume_read_only(path: &PathBuf) -> bool {
     false
 }
 
-/
+
 #[cfg(target_os = "macos")]
 pub fn is_disk_image(path: &PathBuf) -> bool {
     let path_str = path.to_string_lossy().to_lowercase();
@@ -658,7 +658,7 @@ pub fn is_disk_image(path: &PathBuf) -> bool {
     false
 }
 
-/
+
 #[cfg(target_os = "macos")]
 pub fn get_mounted_disk_images() -> Vec<PathBuf> {
     let mut images = Vec::new();

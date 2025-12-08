@@ -36,14 +36,14 @@ impl SidebarItem {
     }
 }
 
-/
+
 #[derive(Clone)]
 pub struct DraggedFolder {
     pub path: PathBuf,
     pub name: String,
 }
 
-/
+
 pub struct DraggedFolderView {
     pub name: String,
 }
@@ -62,7 +62,7 @@ impl Render for DraggedFolderView {
     }
 }
 
-/
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ToolAction {
     NewFile,
@@ -470,22 +470,22 @@ impl SidebarView {
         }
     }
 
-    /
+
     pub fn set_has_clipboard(&mut self, has_clipboard: bool) {
         self.has_clipboard = has_clipboard;
     }
 
-    /
+
     pub fn has_clipboard(&self) -> bool {
         self.has_clipboard
     }
 
-    /
+
     pub fn add_favorite(&mut self, path: PathBuf) -> Result<(), crate::models::FavoritesError> {
         self.sidebar.add_favorite(path)
     }
 
-    /
+
     pub fn add_bookmark_for_current(&mut self, cx: &mut Context<Self>) {
         if let Some(path) = self.sidebar.current_directory.clone() {
             let _ = self.sidebar.add_bookmark(path);
@@ -493,7 +493,7 @@ impl SidebarView {
         }
     }
 
-    /
+
     fn handle_bookmark_click(
         &mut self,
         path: PathBuf,
@@ -505,51 +505,51 @@ impl SidebarView {
         cx.notify();
     }
 
-    /
+
     fn handle_bookmark_remove(&mut self, id: BookmarkId, cx: &mut Context<Self>) {
         let _ = self.sidebar.remove_bookmark(id);
         cx.notify();
     }
 
-    /
+
     fn toggle_bookmarks_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_bookmarks_expanded();
         cx.notify();
     }
 
-    /
+
     pub fn take_pending_navigation(&mut self) -> Option<PathBuf> {
         self.pending_navigation.take()
     }
 
-    /
+
     pub fn take_pending_action(&mut self) -> Option<ToolAction> {
         self.pending_action.take()
     }
 
-    /
+
     pub fn set_current_directory(&mut self, path: PathBuf) {
         self.sidebar.set_current_directory(path);
     }
 
-    /
+
     pub fn set_selected_file_count(&mut self, count: usize) {
         self.selected_file_count = count;
     }
 
-    /
+
     pub fn show_hidden_files(&self) -> bool {
         self.sidebar.show_hidden_files()
     }
 
-    /
+
     pub fn toggle_hidden_files(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_hidden_files();
         self.pending_action = Some(ToolAction::ToggleHiddenFiles);
         cx.notify();
     }
 
-    /
+
     pub fn toggle_default_browser(&mut self, cx: &mut Context<Self>) {
         let is_default = crate::models::is_default_file_browser();
         if is_default {
@@ -561,20 +561,20 @@ impl SidebarView {
         cx.notify();
     }
 
-    /
+
     fn toggle_network_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_network_expanded();
         cx.notify();
     }
 
-    /
+
     fn handle_cloud_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
         self.sidebar.selected_path = Some(path.clone());
         self.pending_navigation = Some(path);
         cx.notify();
     }
 
-    /
+
     fn handle_network_click(
         &mut self,
         id: NetworkLocationId,
@@ -596,62 +596,62 @@ impl SidebarView {
         cx.notify();
     }
 
-    /
+
     pub fn show_network_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_network_dialog = true;
         cx.notify();
     }
 
-    /
+
     pub fn hide_network_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_network_dialog = false;
         cx.notify();
     }
 
-    /
+
     pub fn is_network_dialog_visible(&self) -> bool {
         self.show_network_dialog
     }
 
-    /
+
     fn toggle_smart_folders_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_smart_folders_expanded();
         cx.notify();
     }
 
-    /
+
     pub fn show_smart_folder_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_smart_folder_dialog = true;
         self.editing_smart_folder = None;
         cx.notify();
     }
 
-    /
+
     pub fn edit_smart_folder(&mut self, id: SmartFolderId, cx: &mut Context<Self>) {
         self.show_smart_folder_dialog = true;
         self.editing_smart_folder = Some(id);
         cx.notify();
     }
 
-    /
+
     pub fn hide_smart_folder_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_smart_folder_dialog = false;
         self.editing_smart_folder = None;
         cx.notify();
     }
 
-    /
+
     pub fn is_smart_folder_dialog_visible(&self) -> bool {
         self.show_smart_folder_dialog
     }
 
-    /
+
     pub fn editing_smart_folder(&self) -> Option<&SmartFolder> {
         self.editing_smart_folder
             .and_then(|id| self.sidebar.smart_folders.get(id))
     }
 
-    /
+
     fn handle_smart_folder_click(
         &mut self,
         id: SmartFolderId,
@@ -662,18 +662,18 @@ impl SidebarView {
         cx.notify();
     }
 
-    /
+
     pub fn take_pending_smart_folder_click(&mut self) -> Option<SmartFolderId> {
         self.pending_smart_folder_click.take()
     }
 
-    /
+
     fn handle_smart_folder_remove(&mut self, id: SmartFolderId, cx: &mut Context<Self>) {
         let _ = self.sidebar.delete_smart_folder(id);
         cx.notify();
     }
 
-    /
+
     pub fn create_smart_folder(
         &mut self,
         name: String,
@@ -685,7 +685,7 @@ impl SidebarView {
         result
     }
 
-    /
+
     pub fn update_smart_folder(
         &mut self,
         id: SmartFolderId,
@@ -697,58 +697,58 @@ impl SidebarView {
         result
     }
 
-    /
+
     pub fn smart_folders(&self) -> &[SmartFolder] {
         self.sidebar.smart_folders.folders()
     }
 
-    /
+
     pub fn refresh_cloud_providers(&mut self, cx: &mut Context<Self>) {
         self.sidebar.refresh_cloud_providers();
         cx.notify();
     }
 
-    /
+
     pub fn network_state(&self) -> NetworkSidebarState {
         self.sidebar.get_network_sidebar_state()
     }
 
-    /
+
     fn toggle_devices_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_devices_expanded();
         cx.notify();
     }
 
-    /
+
     fn handle_device_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
         self.sidebar.selected_path = Some(path.clone());
         self.pending_navigation = Some(path);
         cx.notify();
     }
 
-    /
+
     pub fn refresh_devices(&mut self, cx: &mut Context<Self>) {
         self.sidebar.refresh_devices();
         cx.notify();
     }
 
-    /
+
     pub fn devices(&self) -> &[Device] {
         self.sidebar.devices()
     }
 
-    /
+
     pub fn wsl_distributions(&self) -> &[WslDistribution] {
         self.sidebar.wsl_distributions()
     }
 
-    /
+
     fn handle_device_eject(&mut self, device_id: DeviceId, cx: &mut Context<Self>) {
         self.pending_eject_device = Some(device_id);
         cx.notify();
     }
 
-    /
+
     pub fn take_pending_eject_device(&mut self) -> Option<DeviceId> {
         self.pending_eject_device.take()
     }
@@ -2460,7 +2460,7 @@ impl SidebarView {
             )
     }
 
-    /
+
     pub fn refresh_trash(&mut self, cx: &mut Context<Self>) {
         self.sidebar.refresh_trash();
         cx.notify();

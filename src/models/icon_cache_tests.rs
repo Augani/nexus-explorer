@@ -118,11 +118,11 @@ fn arb_icon_key() -> impl Strategy<Value = IconKey> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_icon_cache_miss_returns_default(key in arb_icon_key()) {
         let mut cache = IconCache::new();
@@ -147,11 +147,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_lru_eviction_bounds_cache_size(
         max_entries in 1usize..50,
@@ -257,11 +257,11 @@ fn test_icon_fetch_pipeline_default_icons() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_icon_fetch_completion_updates_cache(key in arb_icon_key()) {
         let mut cache = IconCache::new();

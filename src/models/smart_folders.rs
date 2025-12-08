@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::models::{CloudSyncStatus, FileEntry, TagId};
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SmartFolderId(pub u64);
 
@@ -16,7 +16,7 @@ impl SmartFolderId {
     }
 }
 
-/
+
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum SmartFolderError {
     #[error("Smart folder not found: {0}")]
@@ -35,28 +35,28 @@ pub enum SmartFolderError {
     Serialization(String),
 }
 
-/
+
 pub type SmartFolderResult<T> = std::result::Result<T, SmartFolderError>;
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DateFilter {
-    /
+
     LastDays(u32),
-    /
+
     LastWeeks(u32),
-    /
+
     LastMonths(u32),
-    /
+
     Between(u64, u64),
-    /
+
     Before(u64),
-    /
+
     After(u64),
 }
 
 impl DateFilter {
-    /
+
     pub fn matches(&self, modified: SystemTime) -> bool {
         let file_secs = modified
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -88,23 +88,23 @@ impl DateFilter {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SizeFilter {
-    /
+
     SmallerThan(u64),
-    /
+
     LargerThan(u64),
-    /
+
     Between(u64, u64),
-    /
+
     Empty,
-    /
+
     NonEmpty,
 }
 
 impl SizeFilter {
-    /
+
     pub fn matches(&self, size: u64) -> bool {
         match self {
             SizeFilter::SmallerThan(max) => size < *max,
@@ -116,46 +116,46 @@ impl SizeFilter {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SearchQuery {
-    /
+
     #[serde(default)]
     pub text: Option<String>,
 
-    /
+
     #[serde(default)]
     pub file_types: Vec<String>,
 
-    /
+
     #[serde(default)]
     pub date_filter: Option<DateFilter>,
 
-    /
+
     #[serde(default)]
     pub size_filter: Option<SizeFilter>,
 
-    /
+
     #[serde(default)]
     pub tags: Vec<TagId>,
 
-    /
+
     #[serde(default)]
     pub locations: Vec<PathBuf>,
 
-    /
+
     #[serde(default = "default_recursive")]
     pub recursive: bool,
 
-    /
+
     #[serde(default)]
     pub include_hidden: bool,
 
-    /
+
     #[serde(default)]
     pub directories_only: bool,
 
-    /
+
     #[serde(default)]
     pub files_only: bool,
 }
@@ -165,12 +165,12 @@ fn default_recursive() -> bool {
 }
 
 impl SearchQuery {
-    /
+
     pub fn new() -> Self {
         Self::default()
     }
 
-    /
+
     pub fn with_text(text: impl Into<String>) -> Self {
         Self {
             text: Some(text.into()),
@@ -178,55 +178,55 @@ impl SearchQuery {
         }
     }
 
-    /
+
     pub fn text(mut self, pattern: impl Into<String>) -> Self {
         self.text = Some(pattern.into());
         self
     }
 
-    /
+
     pub fn file_types(mut self, types: Vec<String>) -> Self {
         self.file_types = types;
         self
     }
 
-    /
+
     pub fn date_filter(mut self, filter: DateFilter) -> Self {
         self.date_filter = Some(filter);
         self
     }
 
-    /
+
     pub fn size_filter(mut self, filter: SizeFilter) -> Self {
         self.size_filter = Some(filter);
         self
     }
 
-    /
+
     pub fn tags(mut self, tags: Vec<TagId>) -> Self {
         self.tags = tags;
         self
     }
 
-    /
+
     pub fn locations(mut self, locations: Vec<PathBuf>) -> Self {
         self.locations = locations;
         self
     }
 
-    /
+
     pub fn recursive(mut self, recursive: bool) -> Self {
         self.recursive = recursive;
         self
     }
 
-    /
+
     pub fn include_hidden(mut self, include: bool) -> Self {
         self.include_hidden = include;
         self
     }
 
-    /
+
     pub fn matches(&self, entry: &FileEntry, file_tags: &HashSet<TagId>) -> bool {
         if let Some(ref pattern) = self.text {
             let name_lower = entry.name.to_lowercase();
@@ -282,7 +282,7 @@ impl SearchQuery {
         true
     }
 
-    /
+
     pub fn has_filters(&self) -> bool {
         self.text.is_some()
             || !self.file_types.is_empty()
@@ -293,7 +293,7 @@ impl SearchQuery {
             || self.files_only
     }
 
-    /
+
     pub fn description(&self) -> String {
         let mut parts = Vec::new();
 
@@ -340,19 +340,19 @@ impl SearchQuery {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SmartFolder {
     pub id: SmartFolderId,
     pub name: String,
     pub query: SearchQuery,
-    /
+
     #[serde(default)]
     pub icon: String,
-    /
+
     #[serde(default)]
     pub created: u64,
-    /
+
     #[serde(default)]
     pub modified: u64,
 }
@@ -374,7 +374,7 @@ impl SmartFolder {
         }
     }
 
-    /
+
     pub fn update_query(&mut self, query: SearchQuery) {
         self.query = query;
         self.modified = SystemTime::now()
@@ -384,7 +384,7 @@ impl SmartFolder {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SmartFolderManager {
     folders: Vec<SmartFolder>,
@@ -398,7 +398,7 @@ impl Default for SmartFolderManager {
 }
 
 impl SmartFolderManager {
-    /
+
     pub fn new() -> Self {
         Self {
             folders: Vec::new(),
@@ -406,7 +406,7 @@ impl SmartFolderManager {
         }
     }
 
-    /
+
     pub fn create(&mut self, name: String, query: SearchQuery) -> SmartFolderResult<SmartFolderId> {
         if self
             .folders
@@ -425,7 +425,7 @@ impl SmartFolderManager {
         Ok(id)
     }
 
-    /
+
     pub fn delete(&mut self, id: SmartFolderId) -> SmartFolderResult<SmartFolder> {
         if let Some(index) = self.folders.iter().position(|f| f.id == id) {
             Ok(self.folders.remove(index))
@@ -434,7 +434,7 @@ impl SmartFolderManager {
         }
     }
 
-    /
+
     pub fn update(&mut self, id: SmartFolderId, query: SearchQuery) -> SmartFolderResult<()> {
         if let Some(folder) = self.folders.iter_mut().find(|f| f.id == id) {
             folder.update_query(query);
@@ -444,7 +444,7 @@ impl SmartFolderManager {
         }
     }
 
-    /
+
     pub fn rename(&mut self, id: SmartFolderId, new_name: String) -> SmartFolderResult<()> {
         if self
             .folders
@@ -466,10 +466,10 @@ impl SmartFolderManager {
         }
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn execute<F>(
         &self,
         id: SmartFolderId,
@@ -483,7 +483,7 @@ impl SmartFolderManager {
         Ok(self.execute_query(&folder.query, entries, file_tags))
     }
 
-    /
+
     pub fn execute_query<F>(
         &self,
         query: &SearchQuery,
@@ -503,39 +503,39 @@ impl SmartFolderManager {
             .collect()
     }
 
-    /
+
     pub fn get(&self, id: SmartFolderId) -> Option<&SmartFolder> {
         self.folders.iter().find(|f| f.id == id)
     }
 
-    /
+
     pub fn get_mut(&mut self, id: SmartFolderId) -> Option<&mut SmartFolder> {
         self.folders.iter_mut().find(|f| f.id == id)
     }
 
-    /
+
     pub fn get_by_name(&self, name: &str) -> Option<&SmartFolder> {
         self.folders
             .iter()
             .find(|f| f.name.eq_ignore_ascii_case(name))
     }
 
-    /
+
     pub fn folders(&self) -> &[SmartFolder] {
         &self.folders
     }
 
-    /
+
     pub fn len(&self) -> usize {
         self.folders.len()
     }
 
-    /
+
     pub fn is_empty(&self) -> bool {
         self.folders.is_empty()
     }
 
-    /
+
     fn config_path() -> PathBuf {
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -543,7 +543,7 @@ impl SmartFolderManager {
             .join("smart_folders.json")
     }
 
-    /
+
     pub fn save(&self) -> SmartFolderResult<()> {
         let config_path = Self::config_path();
 
@@ -559,7 +559,7 @@ impl SmartFolderManager {
         Ok(())
     }
 
-    /
+
     pub fn load() -> SmartFolderResult<Self> {
         let config_path = Self::config_path();
 

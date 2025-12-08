@@ -8,11 +8,11 @@ use lru::LruCache;
 use super::IconKey;
 use crate::utils::rgba_to_bgra_inplace;
 
-/
+
 const DEFAULT_MAX_ENTRIES: usize = 500;
 
-/
-/
+
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderImage {
     pub width: u32,
@@ -29,7 +29,7 @@ impl RenderImage {
         }
     }
 
-    /
+
     pub fn default_placeholder() -> Self {
         let pixel = [128u8, 128, 128, 255];
         let data: Vec<u8> = pixel.iter().cycle().take(16 * 16 * 4).copied().collect();
@@ -40,7 +40,7 @@ impl RenderImage {
         }
     }
 
-    /
+
     pub fn default_folder() -> Self {
         let pixel = [200u8, 180, 100, 255];
         let data: Vec<u8> = pixel.iter().cycle().take(16 * 16 * 4).copied().collect();
@@ -52,11 +52,11 @@ impl RenderImage {
     }
 }
 
-/
-/
-/
-/
-/
+
+
+
+
+
 pub struct IconCache {
     textures: HashMap<IconKey, RenderImage>,
     lru: LruCache<IconKey, ()>,
@@ -67,12 +67,12 @@ pub struct IconCache {
 }
 
 impl IconCache {
-    /
+
     pub fn new() -> Self {
         Self::with_capacity(DEFAULT_MAX_ENTRIES)
     }
 
-    /
+
     pub fn with_capacity(max_entries: usize) -> Self {
         let capacity =
             NonZeroUsize::new(max_entries.max(1)).expect("max_entries must be at least 1");
@@ -87,23 +87,23 @@ impl IconCache {
         }
     }
 
-    /
+
     pub fn max_entries(&self) -> usize {
         self.max_entries
     }
 
-    /
+
     pub fn len(&self) -> usize {
         self.textures.len()
     }
 
-    /
+
     pub fn is_empty(&self) -> bool {
         self.textures.is_empty()
     }
 
-    /
-    /
+
+
     pub fn get_icon(&mut self, key: &IconKey) -> Option<&RenderImage> {
         if self.textures.contains_key(key) {
             self.lru.get(key);
@@ -113,8 +113,8 @@ impl IconCache {
         }
     }
 
-    /
-    /
+
+
     pub fn get_or_default(&mut self, key: &IconKey) -> &RenderImage {
         if self.textures.contains_key(key) {
             self.lru.get(key);
@@ -130,22 +130,22 @@ impl IconCache {
         }
     }
 
-    /
+
     pub fn contains(&self, key: &IconKey) -> bool {
         self.textures.contains_key(key)
     }
 
-    /
+
     pub fn is_pending(&self, key: &IconKey) -> bool {
         self.pending.contains(key)
     }
 
-    /
+
     pub fn pending_keys(&self) -> &HashSet<IconKey> {
         &self.pending
     }
 
-    /
+
     pub fn insert(&mut self, key: IconKey, image: RenderImage) {
         self.pending.remove(&key);
 
@@ -161,31 +161,31 @@ impl IconCache {
         self.lru.put(key, ());
     }
 
-    /
+
     pub fn remove(&mut self, key: &IconKey) -> Option<RenderImage> {
         self.lru.pop(key);
         self.pending.remove(key);
         self.textures.remove(key)
     }
 
-    /
+
     pub fn clear(&mut self) {
         self.textures.clear();
         self.lru.clear();
         self.pending.clear();
     }
 
-    /
+
     pub fn remove_pending(&mut self, key: &IconKey) {
         self.pending.remove(key);
     }
 
-    /
+
     pub fn default_icon(&self) -> &RenderImage {
         &self.default_icon
     }
 
-    /
+
     pub fn folder_icon(&self) -> &RenderImage {
         &self.folder_icon
     }
@@ -197,7 +197,7 @@ impl Default for IconCache {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct IconFetchResult {
     pub key: IconKey,
@@ -227,20 +227,20 @@ impl IconFetchResult {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct IconFetchRequest {
     pub key: IconKey,
     pub path: Option<std::path::PathBuf>,
 }
 
-/
-/
-/
-/
-/
-/
-/
+
+
+
+
+
+
+
 pub struct IconFetchPipeline {
     request_tx: Sender<IconFetchRequest>,
     result_rx: Receiver<IconFetchResult>,
@@ -248,7 +248,7 @@ pub struct IconFetchPipeline {
 }
 
 impl IconFetchPipeline {
-    /
+
     pub fn new() -> Self {
         let (request_tx, request_rx) = flume::unbounded::<IconFetchRequest>();
         let (result_tx, result_rx) = flume::unbounded::<IconFetchResult>();
@@ -264,14 +264,14 @@ impl IconFetchPipeline {
         }
     }
 
-    /
+
     pub fn request_icon(&self, key: IconKey, path: Option<std::path::PathBuf>) {
         let request = IconFetchRequest { key, path };
         let _ = self.request_tx.send(request);
     }
 
-    /
-    /
+
+
     pub fn poll_results(&self) -> Vec<IconFetchResult> {
         let mut results = Vec::new();
         while let Ok(result) = self.result_rx.try_recv() {
@@ -280,7 +280,7 @@ impl IconFetchPipeline {
         results
     }
 
-    /
+
     pub fn result_receiver(&self) -> &Receiver<IconFetchResult> {
         &self.result_rx
     }
@@ -333,8 +333,8 @@ impl Default for IconFetchPipeline {
 }
 
 impl IconCache {
-    /
-    /
+
+
     pub fn process_fetch_results(&mut self, results: Vec<IconFetchResult>) -> usize {
         let mut count = 0;
         for result in results {
@@ -348,7 +348,7 @@ impl IconCache {
         count
     }
 
-    /
+
     pub fn queue_pending_fetches(&self, pipeline: &IconFetchPipeline) {
         for key in &self.pending {
             let path = match key {

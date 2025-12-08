@@ -13,14 +13,14 @@ use crate::io::{
     TraversalConfig,
 };
 
-/
+
 const DEFAULT_CACHE_CAPACITY: usize = 100;
 
-/
-/
-/
-/
-/
+
+
+
+
+
 pub struct FileSystem {
     current_path: PathBuf,
     entries: Vec<FileEntry>,
@@ -30,7 +30,7 @@ pub struct FileSystem {
 }
 
 impl FileSystem {
-    /
+
     pub fn new(initial_path: PathBuf) -> Self {
         let cache_capacity = NonZeroUsize::new(DEFAULT_CACHE_CAPACITY)
             .expect("DEFAULT_CACHE_CAPACITY must be non-zero");
@@ -44,7 +44,7 @@ impl FileSystem {
         }
     }
 
-    /
+
     pub fn with_cache_capacity(initial_path: PathBuf, capacity: usize) -> Self {
         let cache_capacity =
             NonZeroUsize::new(capacity.max(1)).expect("capacity must be at least 1");
@@ -58,32 +58,32 @@ impl FileSystem {
         }
     }
 
-    /
+
     pub fn entries(&self) -> &[FileEntry] {
         &self.entries
     }
 
-    /
+
     pub fn current_path(&self) -> &Path {
         &self.current_path
     }
 
-    /
+
     pub fn state(&self) -> &LoadState {
         &self.state
     }
 
-    /
+
     pub fn request_id(&self) -> usize {
         self.request_id
     }
 
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
     pub fn begin_load(&mut self, path: PathBuf) -> usize {
         self.request_id = self.request_id.wrapping_add(1);
         self.current_path = path.clone();
@@ -96,18 +96,18 @@ impl FileSystem {
         self.request_id
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn is_valid_request(&self, request_id: usize) -> bool {
         self.request_id == request_id
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn complete_load(
         &mut self,
         request_id: usize,
@@ -130,9 +130,9 @@ impl FileSystem {
         true
     }
 
-    /
-    /
-    /
+
+
+
     pub fn set_error(&mut self, request_id: usize, message: String) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
@@ -142,30 +142,30 @@ impl FileSystem {
         true
     }
 
-    /
+
     pub fn get_cached(&mut self, path: &Path) -> Option<&CachedDirectory> {
         self.cache.get(path)
     }
 
-    /
+
     pub fn is_cached(&self, path: &Path) -> bool {
         self.cache.contains(path)
     }
 
-    /
+
     pub fn cache_len(&self) -> usize {
         self.cache.len()
     }
 
-    /
+
     pub fn clear_cache(&mut self) {
         self.cache.clear();
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn append_entries(&mut self, request_id: usize, new_entries: Vec<FileEntry>) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
@@ -176,7 +176,7 @@ impl FileSystem {
     }
 }
 
-/
+
 pub struct LoadOperation {
     pub request_id: usize,
     pub batch_receiver: Receiver<Vec<FileEntry>>,
@@ -184,15 +184,15 @@ pub struct LoadOperation {
 }
 
 impl FileSystem {
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
     pub fn load_path(
         &mut self,
         path: PathBuf,
@@ -242,12 +242,12 @@ impl FileSystem {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
     pub fn process_batch(&mut self, request_id: usize, batch: Vec<FileEntry>) -> Option<usize> {
         if !self.is_valid_request(request_id) {
             return None;
@@ -258,9 +258,9 @@ impl FileSystem {
         Some(count)
     }
 
-    /
-    /
-    /
+
+
+
     pub fn finalize_load(&mut self, request_id: usize, duration: Duration) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
@@ -279,8 +279,8 @@ impl FileSystem {
         true
     }
 
-    /
-    /
+
+
     pub fn update_sync_status(&mut self, cloud_manager: &super::CloudStorageManager) {
         if cloud_manager.is_cloud_path(&self.current_path).is_some() {
             for entry in &mut self.entries {
@@ -298,16 +298,16 @@ impl FileSystem {
         }
     }
 
-    /
+
     pub fn entries_mut(&mut self) -> &mut Vec<FileEntry> {
         &mut self.entries
     }
 }
 
-/
-/
-/
-/
+
+
+
+
 pub fn load_directory_sync(
     fs: &mut FileSystem,
     path: PathBuf,
@@ -341,16 +341,16 @@ impl Default for FileSystem {
 
 use super::FsEvent;
 
-/
-/
-/
-/
-/
+
+
+
+
+
 impl FileSystem {
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn process_event(&mut self, event: FsEvent) -> bool {
         match event {
             FsEvent::Created(path) => self.handle_created(path),
@@ -360,9 +360,9 @@ impl FileSystem {
         }
     }
 
-    /
-    /
-    /
+
+
+
     pub fn process_events(&mut self, events: Vec<FsEvent>) -> usize {
         events
             .into_iter()
@@ -462,7 +462,7 @@ impl FileSystem {
         self.cache.pop(&self.current_path);
     }
 
-    /
+
     pub fn contains_path(&self, path: &Path) -> bool {
         self.entries.iter().any(|e| e.path == path)
     }

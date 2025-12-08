@@ -113,9 +113,9 @@ fn main() {
     });
 }
 
-/
-/
-/
+
+
+
 fn get_assets_base_path() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
@@ -145,14 +145,14 @@ fn get_assets_base_path() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
-/
-/
+
+
 fn spawn_tokio_runtime() -> Arc<Runtime> {
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
     Arc::new(runtime)
 }
 
-/
+
 fn preload_default_icons() -> IconCache {
     let mut cache = IconCache::new();
 

@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-/
+
 #[derive(Debug, Clone, Default)]
 pub struct LinuxBlockDevice {
     pub device_node: String,
@@ -90,7 +90,7 @@ impl LinuxBlockDevice {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Default)]
 pub struct UdevDeviceInfo {
     pub device_node: String,
@@ -105,7 +105,7 @@ pub struct UdevDeviceInfo {
     pub size_bytes: u64,
 }
 
-/
+
 pub struct UdevDeviceEnumerator {
     udev: Option<udev::Udev>,
 }
@@ -123,7 +123,7 @@ impl UdevDeviceEnumerator {
         }
     }
 
-    /
+
     pub fn get_device_info(&self, device_node: &str) -> Option<UdevDeviceInfo> {
         let udev = self.udev.as_ref()?;
         
@@ -170,7 +170,7 @@ impl UdevDeviceEnumerator {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct MountEntry {
     pub device: String,
@@ -179,7 +179,7 @@ pub struct MountEntry {
     pub options: String,
 }
 
-/
+
 pub fn parse_proc_mounts() -> Vec<MountEntry> {
     let mut mounts = Vec::new();
 
@@ -200,12 +200,12 @@ pub fn parse_proc_mounts() -> Vec<MountEntry> {
     mounts
 }
 
-/
+
 pub fn is_device_removable(device_node: &str) -> bool {
     read_sysfs_removable(device_node)
 }
 
-/
+
 pub fn detect_device_type(device_node: &str, fs_type: &str, mount_point: &str, is_removable: bool) -> DeviceType {
     if ["nfs", "nfs4", "cifs", "smbfs", "sshfs", "fuse.sshfs"].contains(&fs_type) {
         return DeviceType::NetworkDrive;
@@ -226,7 +226,7 @@ pub fn detect_device_type(device_node: &str, fs_type: &str, mount_point: &str, i
     DeviceType::InternalDrive
 }
 
-/
+
 pub fn get_device_name(mount_point: &PathBuf, device_node: &str, label: Option<&str>) -> String {
     if let Some(label) = label {
         if !label.is_empty() {
@@ -256,7 +256,7 @@ pub fn get_device_name(mount_point: &PathBuf, device_node: &str, label: Option<&
         .to_string()
 }
 
-/
+
 pub struct LinuxDeviceMonitor {
     is_monitoring: Arc<AtomicBool>,
     stop_signal: Arc<AtomicBool>,
@@ -284,7 +284,7 @@ impl LinuxDeviceMonitor {
         self.is_monitoring.load(Ordering::SeqCst)
     }
 
-    /
+
     pub fn enumerate_devices(&self) -> Vec<LinuxBlockDevice> {
         let mut devices = Vec::new();
         let mount_points = parse_mount_points();
@@ -459,7 +459,7 @@ impl LinuxDeviceMonitor {
     }
 
 
-/
+
 #[cfg(target_os = "linux")]
 pub struct UdevMonitor {
     is_running: Arc<AtomicBool>,
@@ -475,7 +475,7 @@ impl UdevMonitor {
         }
     }
 
-    /
+
     pub fn start(&self, sender: flume::Sender<DeviceEvent>) -> Result<(), String> {
         if self.is_running.load(Ordering::SeqCst) {
             return Ok(());
@@ -501,17 +501,17 @@ impl UdevMonitor {
         Ok(())
     }
 
-    /
+
     pub fn stop(&self) {
         self.stop_signal.store(true, Ordering::SeqCst);
     }
 
-    /
+
     pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::SeqCst)
     }
 
-    /
+
     fn monitor_loop(sender: flume::Sender<DeviceEvent>, stop_signal: Arc<AtomicBool>) -> Result<(), String> {
         let context = udev::Udev::new().map_err(|e| format!("Failed to create udev context: {}", e))?;
         
@@ -669,7 +669,7 @@ impl Default for UdevMonitor {
     }
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn find_mount_point_for_device(device_node: &str) -> Option<PathBuf> {
     let mounts = parse_proc_mounts();
@@ -708,7 +708,7 @@ fn find_mount_point_for_device(device_node: &str) -> Option<PathBuf> {
     None
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn hash_string(s: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
@@ -720,7 +720,7 @@ fn hash_string(s: &str) -> u64 {
 }
 
 
-    /
+
     pub fn start_monitoring(&self, sender: flume::Sender<DeviceEvent>) -> Result<(), String> {
         if self.is_monitoring.load(Ordering::SeqCst) {
             return Ok(());
@@ -956,7 +956,7 @@ fn is_mount_point(path: &PathBuf) -> bool {
     false
 }
 
-/
+
 pub struct UDisks2Client {
     runtime: Option<tokio::runtime::Runtime>,
 }
@@ -977,7 +977,7 @@ impl UDisks2Client {
         Self { runtime }
     }
 
-    /
+
     pub fn unmount(&self, device_path: &str) -> Result<(), String> {
         let runtime = self
             .runtime
@@ -1013,7 +1013,7 @@ impl UDisks2Client {
         })
     }
 
-    /
+
     pub fn power_off(&self, device_path: &str) -> Result<(), String> {
         let runtime = self
             .runtime
@@ -1052,7 +1052,7 @@ impl UDisks2Client {
         })
     }
 
-    /
+
     pub fn mount(&self, device_path: &str) -> Result<PathBuf, String> {
         let runtime = self
             .runtime
@@ -1220,7 +1220,7 @@ fn find_device_node_for_mount(mount_point: &PathBuf) -> Option<String> {
 }
 
 
-/
+
 #[cfg(target_os = "linux")]
 pub struct UDisks2Client {
     runtime: Option<tokio::runtime::Runtime>,
@@ -1237,7 +1237,7 @@ impl UDisks2Client {
         Self { runtime }
     }
 
-    /
+
     pub fn mount(&self, block_device: &str) -> Result<PathBuf, String> {
         let output = std::process::Command::new("udisksctl")
             .args(["mount", "-b", block_device])
@@ -1261,7 +1261,7 @@ impl UDisks2Client {
         Err(format!("Mount failed: {}", stderr))
     }
 
-    /
+
     pub fn unmount(&self, block_device: &str) -> Result<(), String> {
         let output = std::process::Command::new("udisksctl")
             .args(["unmount", "-b", block_device])
@@ -1276,7 +1276,7 @@ impl UDisks2Client {
         Err(format!("Unmount failed: {}", stderr))
     }
 
-    /
+
     pub fn power_off(&self, block_device: &str) -> Result<(), String> {
         let parent_device = get_parent_block_device(block_device);
         
@@ -1293,7 +1293,7 @@ impl UDisks2Client {
         Err(format!("Power off failed: {}", stderr))
     }
 
-    /
+
     pub fn get_device_properties(&self, block_device: &str) -> Option<UDisks2DeviceProperties> {
         let output = std::process::Command::new("udisksctl")
             .args(["info", "-b", block_device])
@@ -1308,7 +1308,7 @@ impl UDisks2Client {
         parse_udisksctl_info_output(&stdout)
     }
 
-    /
+
     pub fn is_available() -> bool {
         std::process::Command::new("udisksctl")
             .arg("--version")
@@ -1325,7 +1325,7 @@ impl Default for UDisks2Client {
     }
 }
 
-/
+
 #[cfg(target_os = "linux")]
 #[derive(Debug, Clone, Default)]
 pub struct UDisks2DeviceProperties {
@@ -1343,7 +1343,7 @@ pub struct UDisks2DeviceProperties {
     pub serial: Option<String>,
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn parse_udisksctl_mount_output(output: &str) -> Option<PathBuf> {
     for line in output.lines() {
@@ -1358,7 +1358,7 @@ fn parse_udisksctl_mount_output(output: &str) -> Option<PathBuf> {
     None
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn parse_udisksctl_info_output(output: &str) -> Option<UDisks2DeviceProperties> {
     let mut props = UDisks2DeviceProperties::default();
@@ -1462,7 +1462,7 @@ fn parse_udisksctl_info_output(output: &str) -> Option<UDisks2DeviceProperties> 
     }
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn get_parent_block_device(device: &str) -> String {
     let device = device.trim_start_matches("/dev/");
@@ -1658,17 +1658,17 @@ mod tests {
         assert_eq!(get_parent_block_device("nvme0n1p1"), "/dev/nvme0n1");
     }
 
-/
+
 pub struct SmartDataReader;
 
 impl SmartDataReader {
-    /
+
     pub fn get_smart_data(device_node: &str) -> Option<SmartData> {
         Self::get_smart_data_smartctl(device_node)
             .or_else(|| Self::get_smart_data_sysfs(device_node))
     }
 
-    /
+
     fn get_smart_data_smartctl(device_node: &str) -> Option<SmartData> {
         use std::process::Command;
 
@@ -1687,7 +1687,7 @@ impl SmartDataReader {
         Self::parse_smartctl_json(&json_str)
     }
 
-    /
+
     fn parse_smartctl_json(json_str: &str) -> Option<SmartData> {
         use serde_json::Value;
 
@@ -1775,7 +1775,7 @@ impl SmartDataReader {
         Some(data)
     }
 
-    /
+
     fn get_smart_data_smartctl_text(device_node: &str) -> Option<SmartData> {
         use std::process::Command;
 
@@ -1788,7 +1788,7 @@ impl SmartDataReader {
         Self::parse_smartctl_text(&text)
     }
 
-    /
+
     fn parse_smartctl_text(text: &str) -> Option<SmartData> {
         let mut data = SmartData::default();
 
@@ -1861,7 +1861,7 @@ impl SmartDataReader {
         Some(data)
     }
 
-    /
+
     fn get_smart_data_sysfs(device_node: &str) -> Option<SmartData> {
         let parent_device = get_parent_block_device(device_node);
         let device_name = parent_device.trim_start_matches("/dev/");
@@ -1905,7 +1905,7 @@ impl SmartDataReader {
 }
 
 impl LinuxDeviceMonitor {
-    /
+
     pub fn get_smart_data(&self, device_node: &str) -> Option<SmartData> {
         SmartDataReader::get_smart_data(device_node)
     }

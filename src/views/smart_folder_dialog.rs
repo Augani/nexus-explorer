@@ -7,7 +7,7 @@ use crate::models::{
     theme_colors, DateFilter, SearchQuery, SizeFilter, SmartFolder, SmartFolderId,
 };
 
-/
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum SmartFolderDialogAction {
     Create {
@@ -21,7 +21,7 @@ pub enum SmartFolderDialogAction {
     Cancel,
 }
 
-/
+
 #[derive(Clone, Default)]
 pub struct QueryBuilderState {
     pub name: String,

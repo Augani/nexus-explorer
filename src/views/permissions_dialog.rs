@@ -6,7 +6,7 @@ use gpui::prelude::FluentBuilder;
 use gpui::*;
 use std::path::PathBuf;
 
-/
+
 #[derive(Clone, PartialEq)]
 pub enum PermissionsDialogAction {
     Close,
@@ -26,7 +26,7 @@ pub enum PermissionsDialogAction {
     StickyChanged(bool),
 }
 
-/
+
 pub struct PermissionsDialog {
     path: PathBuf,
     original_permissions: Option<FilePermissions>,
@@ -101,12 +101,12 @@ impl PermissionsDialog {
         self.is_applying
     }
 
-    /
+
     pub fn current_permissions(&self) -> Option<&FilePermissions> {
         self.modified_permissions.as_ref()
     }
 
-    /
+
     pub fn has_changes(&self) -> bool {
         match (&self.original_permissions, &self.modified_permissions) {
             (Some(FilePermissions::Unix(orig)), Some(FilePermissions::Unix(modified))) => {
@@ -116,7 +116,7 @@ impl PermissionsDialog {
         }
     }
 
-    /
+
     pub fn apply(&mut self) -> Result<(), PermissionError> {
         if let Some(perms) = &self.modified_permissions {
             self.is_applying = true;
@@ -147,7 +147,7 @@ impl PermissionsDialog {
         }
     }
 
-    /
+
     #[cfg(unix)]
     pub fn apply_recursive(&mut self) -> Result<Vec<PathBuf>, PermissionError> {
         if !self.is_directory {
@@ -188,14 +188,14 @@ impl PermissionsDialog {
         }
     }
 
-    /
+
     pub fn close(&self) {
         if let Some(callback) = &self.on_close {
             callback();
         }
     }
 
-    /
+
     fn update_unix_bit<F>(&mut self, updater: F)
     where
         F: FnOnce(&mut UnixPermissions),
@@ -205,7 +205,7 @@ impl PermissionsDialog {
         }
     }
 
-    /
+
     pub fn handle_action(&mut self, action: PermissionsDialogAction) {
         match action {
             PermissionsDialogAction::Close => self.close(),
@@ -257,7 +257,7 @@ impl PermissionsDialog {
         }
     }
 
-    /
+
     pub fn unix_permissions(&self) -> Option<&UnixPermissions> {
         match &self.modified_permissions {
             Some(FilePermissions::Unix(perms)) => Some(perms),
@@ -265,7 +265,7 @@ impl PermissionsDialog {
         }
     }
 
-    /
+
     pub fn windows_acl(&self) -> Option<&WindowsAcl> {
         match &self.modified_permissions {
             Some(FilePermissions::Windows(acl)) => Some(acl),
@@ -273,21 +273,21 @@ impl PermissionsDialog {
         }
     }
 
-    /
+
     pub fn octal_mode(&self) -> Option<String> {
         self.unix_permissions().map(|p| p.to_octal_string())
     }
 
-    /
+
     pub fn symbolic_mode(&self) -> Option<String> {
         self.unix_permissions().map(|p| p.to_symbolic())
     }
 }
 
 
-/
+
 impl PermissionsDialog {
-    /
+
     fn render_permission_checkbox(
         label: &str,
         checked: bool,
@@ -332,7 +332,7 @@ impl PermissionsDialog {
             )
     }
 
-    /
+
     fn render_unix_permissions(&self, perms: &UnixPermissions) -> impl IntoElement {
         div()
             .flex()
@@ -538,7 +538,7 @@ impl PermissionsDialog {
             )
     }
 
-    /
+
     fn render_windows_acl(&self, acl: &WindowsAcl) -> impl IntoElement {
         div()
             .flex()
@@ -642,7 +642,7 @@ impl PermissionsDialog {
     }
 }
 
-/
+
 pub struct PermissionsDialogView {
     dialog: PermissionsDialog,
     focus_handle: FocusHandle,

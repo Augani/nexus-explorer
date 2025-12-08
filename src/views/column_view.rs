@@ -20,7 +20,7 @@ actions!(
     ]
 );
 
-/
+
 pub struct NavigateToPath(pub PathBuf);
 pub struct SelectColumnEntry {
     pub column: usize,
@@ -31,7 +31,7 @@ pub struct NavigateDown;
 pub struct NavigateLeft;
 pub struct NavigateRight;
 
-/
+
 pub struct ColumnViewComponent {
     column_view: ColumnView,
     focus_handle: FocusHandle,
@@ -82,7 +82,7 @@ impl ColumnViewComponent {
         self.context_menu_entry = None;
     }
 
-    /
+
     pub fn set_column_entries(
         &mut self,
         column_index: usize,
@@ -93,7 +93,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /
+
     pub fn select_entry(
         &mut self,
         column_index: usize,
@@ -104,7 +104,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /
+
     pub fn open_selected(&mut self, cx: &mut Context<Self>) {
         if let Some(entry) = self.column_view.selected_entry() {
             if entry.is_dir {
@@ -114,7 +114,7 @@ impl ColumnViewComponent {
         }
     }
 
-    /
+
     pub fn handle_key_up(&mut self, cx: &mut Context<Self>) {
         self.column_view.navigate_up();
         cx.notify();
@@ -138,13 +138,13 @@ impl ColumnViewComponent {
         }
     }
 
-    /
+
     pub fn set_root(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.column_view.set_root(path);
         cx.notify();
     }
 
-    /
+
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("up", ColumnNavigateUp, Some("ColumnView")),
@@ -155,7 +155,7 @@ impl ColumnViewComponent {
         ]);
     }
 
-    /
+
     fn handle_navigate_up(
         &mut self,
         _: &ColumnNavigateUp,
@@ -166,7 +166,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /
+
     fn handle_navigate_down(
         &mut self,
         _: &ColumnNavigateDown,
@@ -177,7 +177,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /
+
     fn handle_navigate_left(
         &mut self,
         _: &ColumnNavigateLeft,
@@ -188,7 +188,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /
+
     fn handle_navigate_right(
         &mut self,
         _: &ColumnNavigateRight,
@@ -205,7 +205,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /
+
     fn handle_open_selected(
         &mut self,
         _: &ColumnOpenSelected,

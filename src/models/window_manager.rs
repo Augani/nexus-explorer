@@ -10,7 +10,7 @@ use crate::app::Workspace;
 
 static NEXT_WINDOW_ID: AtomicU64 = AtomicU64::new(1);
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AppWindowId(u64);
 
@@ -26,7 +26,7 @@ impl Default for AppWindowId {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowState {
     pub id: AppWindowId,
@@ -35,7 +35,7 @@ pub struct WindowState {
     pub is_active: bool,
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowBoundsState {
     pub x: f32,
@@ -69,18 +69,18 @@ impl WindowBoundsState {
 }
 
 #[cfg(not(test))]
-/
+
 pub struct WindowManager {
-    /
+
     windows: HashMap<AppWindowId, WindowHandle<Workspace>>,
-    /
+
     window_states: HashMap<AppWindowId, WindowState>,
-    /
+
     active_window: Option<AppWindowId>,
-    /
+
     default_width: f32,
     default_height: f32,
-    /
+
     cascade_offset: f32,
 }
 
@@ -97,22 +97,22 @@ impl WindowManager {
         }
     }
 
-    /
+
     pub fn window_count(&self) -> usize {
         self.windows.len()
     }
 
-    /
+
     pub fn has_windows(&self) -> bool {
         !self.windows.is_empty()
     }
 
-    /
+
     pub fn active_window(&self) -> Option<AppWindowId> {
         self.active_window
     }
 
-    /
+
     pub fn set_active(&mut self, id: AppWindowId) {
         if self.windows.contains_key(&id) {
             if let Some(prev_id) = self.active_window {
@@ -127,22 +127,22 @@ impl WindowManager {
         }
     }
 
-    /
+
     pub fn window_ids(&self) -> Vec<AppWindowId> {
         self.windows.keys().copied().collect()
     }
 
-    /
+
     pub fn get_window(&self, id: AppWindowId) -> Option<&WindowHandle<Workspace>> {
         self.windows.get(&id)
     }
 
-    /
+
     pub fn get_window_state(&self, id: AppWindowId) -> Option<&WindowState> {
         self.window_states.get(&id)
     }
 
-    /
+
     pub fn open_window(&mut self, path: PathBuf, cx: &mut App) -> Option<AppWindowId> {
         let id = AppWindowId::new();
 
@@ -198,7 +198,7 @@ impl WindowManager {
         }
     }
 
-    /
+
     pub fn close_window(&mut self, id: AppWindowId, cx: &mut App) {
         if let Some(handle) = self.windows.remove(&id) {
             self.window_states.remove(&id);
@@ -216,7 +216,7 @@ impl WindowManager {
         }
     }
 
-    /
+
     pub fn register_window(
         &mut self,
         handle: WindowHandle<Workspace>,
@@ -238,14 +238,14 @@ impl WindowManager {
         id
     }
 
-    /
+
     pub fn update_window_bounds(&mut self, id: AppWindowId, bounds: Bounds<gpui::Pixels>) {
         if let Some(state) = self.window_states.get_mut(&id) {
             state.bounds = Some(WindowBoundsState::from_bounds(&bounds));
         }
     }
 
-    /
+
     pub fn update_window_path(&mut self, id: AppWindowId, path: PathBuf) {
         if let Some(state) = self.window_states.get_mut(&id) {
             state.path = path;
@@ -262,7 +262,7 @@ impl Default for WindowManager {
 #[cfg(not(test))]
 impl Global for WindowManager {}
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowManagerState {
     pub windows: Vec<WindowState>,
@@ -271,7 +271,7 @@ pub struct WindowManagerState {
 
 #[cfg(not(test))]
 impl WindowManager {
-    /
+
     pub fn save_state(&self) -> std::io::Result<()> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -293,7 +293,7 @@ impl WindowManager {
         std::fs::write(config_path, json)
     }
 
-    /
+
     pub fn load_state() -> Option<WindowManagerState> {
         let config_path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -311,7 +311,7 @@ impl WindowManager {
         None
     }
 
-    /
+
     pub fn restore_state(&mut self, state: WindowManagerState, cx: &mut App) {
         for window_state in state.windows {
             if window_state.path.exists() {

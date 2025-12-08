@@ -28,7 +28,7 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_WRITE_DATA,
 };
 
-/
+
 #[cfg(target_os = "windows")]
 mod access_masks {
     pub const GENERIC_READ: u32 = 0x80000000;
@@ -51,7 +51,7 @@ mod access_masks {
     pub const FILE_WRITE_ATTRIBUTES: u32 = 0x0100;
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
     use std::ffi::OsStr;
@@ -205,7 +205,7 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
     Ok(acl)
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn sid_to_name(sid: PSID) -> Option<String> {
     let mut name_size: u32 = 256;
@@ -240,7 +240,7 @@ fn sid_to_name(sid: PSID) -> Option<String> {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn parse_dacl(dacl: *mut WIN_ACL, acl: &mut WindowsAcl) {
     unsafe {
@@ -300,7 +300,7 @@ fn parse_dacl(dacl: *mut WIN_ACL, acl: &mut WindowsAcl) {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 #[repr(C)]
 struct AceHeader {
@@ -309,7 +309,7 @@ struct AceHeader {
     ace_size: u16,
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn mask_to_permissions(mask: u32) -> Vec<WindowsPermissionType> {
     use access_masks::*;
@@ -344,7 +344,7 @@ fn mask_to_permissions(mask: u32) -> Vec<WindowsPermissionType> {
     permissions
 }
 
-/
+
 #[cfg(not(target_os = "windows"))]
 pub fn read_windows_acl(_path: &std::path::Path) -> Result<super::permissions::WindowsAcl, super::permissions::PermissionError> {
     Err(super::permissions::PermissionError::PlatformNotSupported(

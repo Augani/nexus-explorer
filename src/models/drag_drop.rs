@@ -3,37 +3,37 @@ use std::path::PathBuf;
 use gpui::{prelude::*, px, Context, Window};
 use serde::{Deserialize, Serialize};
 
-/
+
 #[derive(Clone, Debug)]
 pub struct DragPayload {
     pub paths: Vec<PathBuf>,
 }
 
 impl DragPayload {
-    /
+
     pub fn new(paths: Vec<PathBuf>) -> Self {
         Self { paths }
     }
 
-    /
+
     pub fn single(path: PathBuf) -> Self {
         Self { paths: vec![path] }
     }
 }
 
-/
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FileDragData {
-    /
+
     pub paths: Vec<PathBuf>,
-    /
+
     pub source_window_id: Option<u64>,
-    /
+
     pub position: (f32, f32),
 }
 
 impl FileDragData {
-    /
+
     pub fn single(path: PathBuf) -> Self {
         Self {
             paths: vec![path],
@@ -42,7 +42,7 @@ impl FileDragData {
         }
     }
 
-    /
+
     pub fn multiple(paths: Vec<PathBuf>) -> Self {
         Self {
             paths,
@@ -51,39 +51,39 @@ impl FileDragData {
         }
     }
 
-    /
+
     pub fn with_source_window(mut self, window_id: u64) -> Self {
         self.source_window_id = Some(window_id);
         self
     }
 
-    /
+
     pub fn with_position(mut self, x: f32, y: f32) -> Self {
         self.position = (x, y);
         self
     }
 
-    /
+
     pub fn file_count(&self) -> usize {
         self.paths.len()
     }
 
-    /
+
     pub fn is_single(&self) -> bool {
         self.paths.len() == 1
     }
 
-    /
+
     pub fn first_path(&self) -> Option<&PathBuf> {
         self.paths.first()
     }
 
-    /
+
     pub fn all_directories(&self) -> bool {
         self.paths.iter().all(|p| p.is_dir())
     }
 
-    /
+
     pub fn has_directories(&self) -> bool {
         self.paths.iter().any(|p| p.is_dir())
     }
@@ -125,50 +125,50 @@ impl Render for FileDragData {
     }
 }
 
-/
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DropTarget {
-    /
+
     Directory(usize),
-    /
+
     CurrentDirectory,
-    /
+
     Favorites,
-    /
+
     FavoriteItem(usize),
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub enum DropResult {
-    /
+
     Copy {
         sources: Vec<PathBuf>,
         target: PathBuf,
     },
-    /
+
     Move {
         sources: Vec<PathBuf>,
         target: PathBuf,
     },
-    /
+
     AddToFavorites(PathBuf),
-    /
+
     Cancelled,
 }
 
 impl DropResult {
-    /
+
     pub fn copy(sources: Vec<PathBuf>, target: PathBuf) -> Self {
         Self::Copy { sources, target }
     }
 
-    /
+
     pub fn move_files(sources: Vec<PathBuf>, target: PathBuf) -> Self {
         Self::Move { sources, target }
     }
 
-    /
+
     pub fn add_favorite(path: PathBuf) -> Self {
         Self::AddToFavorites(path)
     }

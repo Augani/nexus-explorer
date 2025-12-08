@@ -2,12 +2,12 @@ use super::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/
+
 fn valid_share_name_strategy() -> impl Strategy<Value = String> {
     "[a-zA-Z][a-zA-Z0-9_]{0,30}".prop_map(|s| s)
 }
 
-/
+
 fn valid_path_strategy() -> impl Strategy<Value = PathBuf> {
     prop::collection::vec("[a-zA-Z0-9_]+", 1..4)
         .prop_map(|parts| {
@@ -20,11 +20,11 @@ fn valid_path_strategy() -> impl Strategy<Value = PathBuf> {
 }
 
 proptest! {
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn test_share_status_tracking(
         share_name in valid_share_name_strategy(),
@@ -57,7 +57,7 @@ proptest! {
         prop_assert!(manager.get_share(&path).is_none(), "get_share should return None after removal");
     }
 
-    /
+
     #[test]
     fn test_invalid_share_name_validation(
         invalid_char in prop::sample::select(vec!['\\', '/', ':', '*', '?', '"', '<', '>', '|']),
@@ -70,7 +70,7 @@ proptest! {
         prop_assert!(has_invalid, "Generated name should contain invalid character");
     }
 
-    /
+
     #[test]
     fn test_valid_share_name_validation(name in valid_share_name_strategy()) {
         let invalid_chars = ['\\', '/', ':', '*', '?', '"', '<', '>', '|'];
@@ -78,7 +78,7 @@ proptest! {
         prop_assert!(!has_invalid, "Valid share name should not contain invalid characters");
     }
 
-    /
+
     #[test]
     fn test_list_shares_completeness(
         shares in prop::collection::vec(

@@ -214,18 +214,18 @@ fn get_volume_name(path: &PathBuf) -> Option<String> {
     None
 }
 
-/
+
 pub struct SmartDataReader;
 
 impl SmartDataReader {
-    /
-    /
+
+
     pub fn get_smart_data(drive_letter: &str) -> Option<SmartData> {
         Self::get_smart_data_wmi(drive_letter)
             .or_else(|| Self::get_basic_disk_info(drive_letter))
     }
 
-    /
+
     fn get_smart_data_wmi(drive_letter: &str) -> Option<SmartData> {
         use serde::Deserialize;
         use wmi::{COMLibrary, WMIConnection};
@@ -269,7 +269,7 @@ impl SmartDataReader {
         None
     }
 
-    /
+
     fn get_basic_disk_info(drive_letter: &str) -> Option<SmartData> {
         use serde::Deserialize;
         use wmi::{COMLibrary, WMIConnection};
@@ -315,7 +315,7 @@ impl SmartDataReader {
         None
     }
 
-    /
+
     fn get_physical_drive_number(drive_letter: &str) -> Option<String> {
         use serde::Deserialize;
         use wmi::{COMLibrary, WMIConnection};
@@ -353,7 +353,7 @@ impl SmartDataReader {
         None
     }
 
-    /
+
     pub fn parse_smart_attributes(raw_data: &[u8]) -> Vec<SmartAttribute> {
         let mut attributes = Vec::new();
 
@@ -405,7 +405,7 @@ impl SmartDataReader {
 }
 
 impl WmiDeviceEnumerator {
-    /
+
     pub fn get_smart_data(&self, drive_letter: &str) -> Option<SmartData> {
         SmartDataReader::get_smart_data(drive_letter)
     }

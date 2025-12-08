@@ -5,11 +5,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use thiserror::Error;
 
-/
+
 pub const DEFAULT_PTY_COLS: u16 = 80;
 pub const DEFAULT_PTY_ROWS: u16 = 24;
 
-/
+
 #[derive(Error, Debug)]
 pub enum PtyError {
     #[error("Failed to create PTY: {0}")]
@@ -26,7 +26,7 @@ pub enum PtyError {
     NotRunning,
 }
 
-/
+
 pub struct PtyService {
     pty_pair: Option<PtyPair>,
     writer: Option<Box<dyn Write + Send>>,
@@ -82,7 +82,7 @@ impl PtyService {
         self.working_directory = path;
     }
 
-    /
+
     pub fn start(&mut self) -> Result<(), PtyError> {
         if self.is_running() {
             return Ok(());
@@ -163,7 +163,7 @@ impl PtyService {
         Ok(())
     }
 
-    /
+
     pub fn stop(&mut self) {
         *self.is_running.lock().unwrap() = false;
 
@@ -175,7 +175,7 @@ impl PtyService {
         }
     }
 
-    /
+
     pub fn write(&mut self, data: &[u8]) -> Result<(), PtyError> {
         if let Some(writer) = &mut self.writer {
             writer
@@ -190,12 +190,12 @@ impl PtyService {
         }
     }
 
-    /
+
     pub fn write_str(&mut self, s: &str) -> Result<(), PtyError> {
         self.write(s.as_bytes())
     }
 
-    /
+
     pub fn resize(&mut self, cols: u16, rows: u16) -> Result<(), PtyError> {
         self.cols = cols;
         self.rows = rows;
@@ -214,12 +214,12 @@ impl PtyService {
         Ok(())
     }
 
-    /
+
     pub fn try_recv(&self) -> Option<Vec<u8>> {
         self.output_receiver.try_recv().ok()
     }
 
-    /
+
     pub fn drain_output(&self) -> Vec<u8> {
         let mut output = Vec::new();
         while let Ok(data) = self.output_receiver.try_recv() {
@@ -241,7 +241,7 @@ impl Drop for PtyService {
     }
 }
 
-/
+
 fn get_default_shell() -> String {
     #[cfg(target_os = "windows")]
     {
@@ -264,7 +264,7 @@ fn get_default_shell() -> String {
     }
 }
 
-/
+
 pub mod key_codes {
     pub const ENTER: &[u8] = b"\r";
     pub const TAB: &[u8] = b"\t";

@@ -2,14 +2,14 @@ use nucleo::{Config, Injector, Matcher, Nucleo};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-/
+
 pub struct SearchEngine {
     nucleo: Nucleo<PathBuf>,
     pattern: String,
     active: bool,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct SearchSnapshot {
     pub matches: Vec<MatchedItem>,
@@ -17,7 +17,7 @@ pub struct SearchSnapshot {
     pub total_items: usize,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct MatchedItem {
     pub path: PathBuf,
@@ -26,7 +26,7 @@ pub struct MatchedItem {
 }
 
 impl SearchEngine {
-    /
+
     pub fn new() -> Self {
         let config = Config::DEFAULT.match_paths();
         let nucleo = Nucleo::new(config, Arc::new(|| {}), None, 1);
@@ -38,12 +38,12 @@ impl SearchEngine {
         }
     }
 
-    /
+
     pub fn injector(&self) -> Injector<PathBuf> {
         self.nucleo.injector()
     }
 
-    /
+
     pub fn inject(&self, path: PathBuf) {
         let injector = self.nucleo.injector();
         let path_string = path.to_string_lossy().to_string();
@@ -52,7 +52,7 @@ impl SearchEngine {
         });
     }
 
-    /
+
     pub fn set_pattern(&mut self, pattern: &str) {
         self.pattern = pattern.to_string();
         self.active = !pattern.is_empty();
@@ -66,17 +66,17 @@ impl SearchEngine {
         );
     }
 
-    /
+
     pub fn pattern(&self) -> &str {
         &self.pattern
     }
 
-    /
+
     pub fn is_active(&self) -> bool {
         self.active
     }
 
-    /
+
     pub fn snapshot(&mut self) -> SearchSnapshot {
         self.nucleo.tick(10);
 
@@ -114,7 +114,7 @@ impl SearchEngine {
         }
     }
 
-    /
+
     pub fn clear(&mut self) {
         self.pattern.clear();
         self.active = false;
@@ -131,19 +131,19 @@ impl Default for SearchEngine {
 }
 
 impl SearchSnapshot {
-    /
+
     pub fn is_empty(&self) -> bool {
         self.matches.is_empty()
     }
 
-    /
+
     pub fn len(&self) -> usize {
         self.matches.len()
     }
 }
 
 impl MatchedItem {
-    /
+
     pub fn is_match_position(&self, pos: usize) -> bool {
         self.positions.contains(&pos)
     }

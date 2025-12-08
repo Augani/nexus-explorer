@@ -219,11 +219,11 @@ fn test_dual_pane_sync_panes() {
 }
 
 
-/
-/
-/
-/
-/
+
+
+
+
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 

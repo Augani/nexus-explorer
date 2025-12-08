@@ -1,28 +1,28 @@
-/
 
-/
+
+
 const KB: u64 = 1024;
 const MB: u64 = KB * 1024;
 const GB: u64 = MB * 1024;
 const TB: u64 = GB * 1024;
 
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
-/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 pub fn format_size(bytes: u64) -> String {
     if bytes >= TB {
         format!("{:.1} TB", bytes as f64 / TB as f64)
@@ -37,9 +37,9 @@ pub fn format_size(bytes: u64) -> String {
     }
 }
 
-/
-/
-/
+
+
+
 pub fn format_size_for_list(bytes: u64, is_dir: bool) -> String {
     if is_dir {
         "--".to_string()
@@ -48,10 +48,10 @@ pub fn format_size_for_list(bytes: u64, is_dir: bool) -> String {
     }
 }
 
-/
-/
-/
-/
+
+
+
+
 pub fn parse_size(s: &str) -> Option<u64> {
     let s = s.trim();
     
@@ -75,7 +75,7 @@ pub fn parse_size(s: &str) -> Option<u64> {
     Some((value * multiplier as f64) as u64)
 }
 
-/
+
 pub fn is_space_critical(total: u64, free: u64) -> bool {
     if total == 0 {
         return false;
@@ -84,7 +84,7 @@ pub fn is_space_critical(total: u64, free: u64) -> bool {
     usage_percent >= 90.0
 }
 
-/
+
 pub fn is_space_very_low(total: u64, free: u64) -> bool {
     if total == 0 {
         return false;
@@ -93,7 +93,7 @@ pub fn is_space_very_low(total: u64, free: u64) -> bool {
     usage_percent >= 95.0
 }
 
-/
+
 pub fn usage_percentage(total: u64, free: u64) -> f64 {
     if total == 0 {
         return 0.0;
@@ -101,9 +101,9 @@ pub fn usage_percentage(total: u64, free: u64) -> f64 {
     ((total - free) as f64 / total as f64) * 100.0
 }
 
-/
-/
-/
+
+
+
 pub fn format_space_tooltip(total: u64, free: u64) -> String {
     let used = total.saturating_sub(free);
     let percent = usage_percentage(total, free);
@@ -122,12 +122,12 @@ mod tests {
     use super::*;
     use proptest::prelude::*;
 
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
     proptest! {
         #[test]
         fn prop_format_size_returns_valid_format(bytes in 0u64..u64::MAX) {

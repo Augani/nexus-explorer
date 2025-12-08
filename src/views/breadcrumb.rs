@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, toolbar as toolbar_spacing};
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathSegment {
     pub name: String,
@@ -25,8 +25,8 @@ impl PathSegment {
     }
 }
 
-/
-/
+
+
 pub struct Breadcrumb {
     segments: Vec<PathSegment>,
     max_visible: usize,
@@ -34,7 +34,7 @@ pub struct Breadcrumb {
 }
 
 impl Breadcrumb {
-    /
+
     pub fn from_path(path: &Path) -> Self {
         let segments = Self::parse_path(path);
         Self {
@@ -44,7 +44,7 @@ impl Breadcrumb {
         }
     }
 
-    /
+
     fn parse_path(path: &Path) -> Vec<PathSegment> {
         let mut segments = Vec::new();
         let mut current = Some(path);
@@ -82,17 +82,17 @@ impl Breadcrumb {
         segments
     }
 
-    /
+
     pub fn segments(&self) -> &[PathSegment] {
         &self.segments
     }
 
-    /
+
     pub fn segment_count(&self) -> usize {
         self.segments.len()
     }
 
-    /
+
     pub fn visible_segments(&self) -> Vec<&PathSegment> {
         if self.segments.len() <= self.max_visible {
             self.segments.iter().collect()
@@ -108,7 +108,7 @@ impl Breadcrumb {
         }
     }
 
-    /
+
     pub fn hidden_segments(&self) -> Vec<&PathSegment> {
         if self.segments.len() <= self.max_visible {
             Vec::new()
@@ -118,43 +118,43 @@ impl Breadcrumb {
         }
     }
 
-    /
+
     pub fn needs_truncation(&self) -> bool {
         self.segments.len() > self.max_visible
     }
 
-    /
+
     pub fn path_for_segment(&self, index: usize) -> Option<&Path> {
         self.segments.get(index).map(|s| s.path.as_path())
     }
 
-    /
+
     pub fn set_max_visible(&mut self, max: usize) {
         self.max_visible = max.max(2);
     }
 
-    /
+
     pub fn toggle_ellipsis_menu(&mut self) {
         self.show_ellipsis_menu = !self.show_ellipsis_menu;
     }
 
-    /
+
     pub fn is_ellipsis_menu_shown(&self) -> bool {
         self.show_ellipsis_menu
     }
 
-    /
+
     pub fn path_to_index(&self, index: usize) -> Option<PathBuf> {
         self.segments.get(index).map(|s| s.path.clone())
     }
 
-    /
+
     pub fn current_path(&self) -> Option<&Path> {
         self.segments.last().map(|s| s.path.as_path())
     }
 }
 
-/
+
 pub struct BreadcrumbView {
     breadcrumb: Breadcrumb,
     focus_handle: FocusHandle,

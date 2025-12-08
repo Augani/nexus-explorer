@@ -3,55 +3,28 @@ use std::time::Duration;
 
 use crate::models::{FsEvent, Result};
 
-/
 pub const DEFAULT_COALESCE_WINDOW: Duration = Duration::from_millis(50);
 
-/
-/
-/
-/
 pub trait Watcher: Send {
-    /
-    /
-    /
-    /
     fn watch(&mut self, path: &Path) -> Result<()>;
 
-    /
     fn unwatch(&mut self, path: &Path) -> Result<()>;
 
-    /
-    /
-    /
-    /
     fn poll_events(&mut self) -> Vec<FsEvent>;
 
-    /
-    /
-    /
-    /
     fn set_coalesce_window(&mut self, window: Duration);
 
-    /
     fn coalesce_window(&self) -> Duration;
 }
 
-/
-/
-/
-/
 pub trait PlatformFs: Send + Sync {
-    /
     fn create_watcher(&self) -> Box<dyn Watcher>;
 
-    /
     fn supports_mft_index(&self) -> bool;
 
-    /
     fn platform_name(&self) -> &'static str;
 }
 
-/
 pub fn detect_platform() -> Box<dyn PlatformFs> {
     #[cfg(target_os = "macos")]
     {

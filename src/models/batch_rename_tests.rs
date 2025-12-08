@@ -162,11 +162,11 @@ fn test_apply_returns_error_on_conflict() {
 }
 
 
-/
-/
-/
-/
-/
+
+
+
+
+
 proptest! {
     #[test]
     fn prop_preview_count_matches_file_count(
@@ -350,11 +350,11 @@ fn test_pattern_with_literal_braces() {
     assert_eq!(preview[0].new_name, "test_{invalid}.txt");
 }
 
-/
-/
-/
-/
-/
+
+
+
+
+
 proptest! {
     #[test]
     fn prop_sequential_numbers_are_consecutive(
@@ -504,11 +504,11 @@ fn test_apply_blocked_by_conflict() {
     }
 }
 
-/
-/
-/
-/
-/
+
+
+
+
+
 proptest! {
     #[test]
     fn prop_batch_rename_pattern_expansion_sequential_no_duplicates(
@@ -556,7 +556,7 @@ proptest! {
     }
 }
 
-/
+
 proptest! {
     #[test]
     fn prop_unique_counter_names_no_conflict(

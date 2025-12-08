@@ -8,14 +8,14 @@ use gpui::{
 use crate::models::theme_colors;
 use adabraka_ui::components::input::{InputEvent, InputState};
 
-/
+
 #[derive(Clone, Debug)]
 pub enum SymlinkDialogAction {
     Create { target: PathBuf, link_path: PathBuf },
     Cancel,
 }
 
-/
+
 pub struct SymlinkDialog {
     target_path: PathBuf,
     link_name_input: Entity<InputState>,
@@ -259,7 +259,7 @@ impl Render for SymlinkDialog {
     }
 }
 
-/
+
 pub fn create_symbolic_link(target: &PathBuf, link_path: &PathBuf) -> std::io::Result<()> {
     #[cfg(unix)]
     {

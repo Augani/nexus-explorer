@@ -5,7 +5,7 @@ use md5::Md5;
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
     Md5,
@@ -15,7 +15,7 @@ pub enum HashAlgorithm {
 }
 
 impl HashAlgorithm {
-    /
+
     pub fn display_name(&self) -> &'static str {
         match self {
             HashAlgorithm::Md5 => "MD5",
@@ -25,7 +25,7 @@ impl HashAlgorithm {
         }
     }
 
-    /
+
     pub fn hash_length(&self) -> usize {
         match self {
             HashAlgorithm::Md5 => 32,
@@ -35,7 +35,7 @@ impl HashAlgorithm {
         }
     }
 
-    /
+
     pub fn all() -> &'static [HashAlgorithm] {
         &[
             HashAlgorithm::Md5,
@@ -46,7 +46,7 @@ impl HashAlgorithm {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct HashProgress {
     pub bytes_processed: u64,
@@ -69,7 +69,7 @@ impl HashProgress {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct HashResult {
     pub algorithm: HashAlgorithm,
@@ -82,7 +82,7 @@ impl HashResult {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashComparisonResult {
     Match,
@@ -100,7 +100,7 @@ impl HashComparisonResult {
     }
 }
 
-/
+
 pub fn calculate_hash_bytes(data: &[u8], algorithm: HashAlgorithm) -> String {
     match algorithm {
         HashAlgorithm::Md5 => {
@@ -126,7 +126,7 @@ pub fn calculate_hash_bytes(data: &[u8], algorithm: HashAlgorithm) -> String {
     }
 }
 
-/
+
 pub fn calculate_file_hash(path: &Path, algorithm: HashAlgorithm) -> io::Result<String> {
     let mut file = std::fs::File::open(path)?;
     let mut buffer = vec![0u8; 8192];
@@ -179,7 +179,7 @@ pub fn calculate_file_hash(path: &Path, algorithm: HashAlgorithm) -> io::Result<
     }
 }
 
-/
+
 pub fn compare_hashes(hash1: &str, hash2: &str) -> HashComparisonResult {
     let h1 = hash1.trim();
     let h2 = hash2.trim();
@@ -195,12 +195,12 @@ pub fn compare_hashes(hash1: &str, hash2: &str) -> HashComparisonResult {
     }
 }
 
-/
+
 pub fn is_valid_hex(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_ascii_hexdigit())
 }
 
-/
+
 pub fn detect_algorithm(hash: &str) -> Option<HashAlgorithm> {
     let trimmed = hash.trim();
     if !is_valid_hex(trimmed) {
@@ -217,7 +217,7 @@ pub fn detect_algorithm(hash: &str) -> Option<HashAlgorithm> {
 }
 
 
-/
+
 pub struct AsyncHashCalculator {
     chunk_size: usize,
     cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -242,17 +242,17 @@ impl AsyncHashCalculator {
         self
     }
 
-    /
+
     pub fn cancel_handle(&self) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
         self.cancelled.clone()
     }
 
-    /
+
     pub fn cancel(&self) {
         self.cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
-    /
+
     pub async fn calculate_with_progress<F>(
         &self,
         path: &Path,
@@ -361,7 +361,7 @@ impl AsyncHashCalculator {
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
     }
 
-    /
+
     pub async fn calculate_all_hashes<F>(
         &self,
         path: &Path,
@@ -385,7 +385,7 @@ impl AsyncHashCalculator {
     }
 }
 
-/
+
 pub fn calculate_file_hash_with_progress<F>(
     path: &Path,
     algorithm: HashAlgorithm,

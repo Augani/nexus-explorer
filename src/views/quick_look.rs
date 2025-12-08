@@ -10,7 +10,7 @@ use std::time::SystemTime;
 use crate::models::{theme_colors, FileEntry};
 use crate::views::preview::{format_date, format_size};
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum QuickLookContent {
     Image {
@@ -34,7 +34,7 @@ pub enum QuickLookContent {
     None,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct QuickLook {
     is_visible: bool,
@@ -93,7 +93,7 @@ impl QuickLook {
         self.modified
     }
 
-    /
+
     pub fn show(&mut self, path: PathBuf) {
         self.current_path = Some(path.clone());
         self.is_visible = true;
@@ -101,12 +101,12 @@ impl QuickLook {
         self.load_content(&path);
     }
 
-    /
+
     pub fn hide(&mut self) {
         self.is_visible = false;
     }
 
-    /
+
     pub fn toggle(&mut self, path: PathBuf) {
         if self.is_visible && self.current_path.as_ref() == Some(&path) {
             self.hide();
@@ -115,7 +115,7 @@ impl QuickLook {
         }
     }
 
-    /
+
     pub fn next(&mut self, entries: &[FileEntry], current_index: usize) {
         if entries.is_empty() {
             return;
@@ -136,7 +136,7 @@ impl QuickLook {
         }
     }
 
-    /
+
     pub fn previous(&mut self, entries: &[FileEntry], current_index: usize) {
         if entries.is_empty() {
             return;
@@ -165,17 +165,17 @@ impl QuickLook {
         }
     }
 
-    /
+
     pub fn zoom_in(&mut self) {
         self.zoom_level = (self.zoom_level * 1.25).min(4.0);
     }
 
-    /
+
     pub fn zoom_out(&mut self) {
         self.zoom_level = (self.zoom_level / 1.25).max(0.25);
     }
 
-    /
+
     pub fn reset_zoom(&mut self) {
         self.zoom_level = 1.0;
     }
@@ -256,7 +256,7 @@ impl QuickLook {
     }
 }
 
-/
+
 fn is_image_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -264,7 +264,7 @@ fn is_image_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/
+
 fn is_text_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -355,7 +355,7 @@ fn is_text_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/
+
 fn is_likely_text_file(path: &Path) -> bool {
     if let Ok(data) = fs::read(path) {
         let sample: Vec<u8> = data.into_iter().take(512).collect();
@@ -370,7 +370,7 @@ fn is_likely_text_file(path: &Path) -> bool {
     }
 }
 
-/
+
 fn detect_language(ext: &str) -> Option<String> {
     let lang = match ext {
         "rs" => "Rust",
@@ -424,7 +424,7 @@ fn detect_language(ext: &str) -> Option<String> {
     Some(lang.to_string())
 }
 
-/
+
 fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
     if let Ok(reader) = image::ImageReader::open(path) {
         if let Ok(dimensions) = reader.into_dimensions() {
@@ -447,7 +447,7 @@ actions!(
     ]
 );
 
-/
+
 pub struct QuickLookView {
     quick_look: QuickLook,
     focus_handle: FocusHandle,

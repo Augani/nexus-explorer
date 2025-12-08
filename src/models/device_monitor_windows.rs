@@ -10,7 +10,7 @@ use super::device_monitor::{
 };
 use std::path::PathBuf;
 
-/
+
 const DRIVE_UNKNOWN: u32 = 0;
 const DRIVE_NO_ROOT_DIR: u32 = 1;
 const DRIVE_REMOVABLE: u32 = 2;
@@ -19,7 +19,7 @@ const DRIVE_REMOTE: u32 = 4;
 const DRIVE_CDROM: u32 = 5;
 const DRIVE_RAMDISK: u32 = 6;
 
-/
+
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone)]
 pub struct WmiLogicalDisk {
@@ -32,7 +32,7 @@ pub struct WmiLogicalDisk {
     pub volume_serial_number: Option<String>,
 }
 
-/
+
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone)]
 pub struct WmiDiskDrive {
@@ -45,7 +45,7 @@ pub struct WmiDiskDrive {
 }
 
 impl DeviceMonitor {
-    /
+
     #[cfg(target_os = "windows")]
     pub fn enumerate_windows_devices(&mut self) {
         if let Ok(wmi_devices) = enumerate_wmi_logical_disks() {
@@ -61,7 +61,7 @@ impl DeviceMonitor {
         self.enumerate_wsl_distributions();
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     fn enumerate_windows_drives_basic(&mut self) {
         for letter in b'A'..=b'Z' {
@@ -94,7 +94,7 @@ impl DeviceMonitor {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     fn enumerate_wsl_distributions(&mut self) {
         self.wsl_distributions_mut().clear();
@@ -148,7 +148,7 @@ impl DeviceMonitor {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn eject(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         let device = self
@@ -185,14 +185,14 @@ impl DeviceMonitor {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn unmount(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         self.eject(id)
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn enumerate_wmi_logical_disks() -> Result<Vec<WmiLogicalDisk>, String> {
     use serde::Deserialize;
@@ -233,7 +233,7 @@ pub fn enumerate_wmi_logical_disks() -> Result<Vec<WmiLogicalDisk>, String> {
         .collect())
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn enumerate_wmi_disk_drives() -> Result<Vec<WmiDiskDrive>, String> {
     use serde::Deserialize;
@@ -272,7 +272,7 @@ pub fn enumerate_wmi_disk_drives() -> Result<Vec<WmiDiskDrive>, String> {
         .collect())
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn wmi_disk_to_device(wmi_disk: &WmiLogicalDisk) -> Option<Device> {
     let path = PathBuf::from(format!("{}\\", wmi_disk.device_id));
@@ -305,7 +305,7 @@ fn wmi_disk_to_device(wmi_disk: &WmiLogicalDisk) -> Option<Device> {
     Some(device)
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn wmi_drive_type_to_device_type(drive_type: u32) -> DeviceType {
     match drive_type {
@@ -318,7 +318,7 @@ fn wmi_drive_type_to_device_type(drive_type: u32) -> DeviceType {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn detect_windows_drive_type(path: &PathBuf) -> DeviceType {
     use std::os::windows::ffi::OsStrExt;
@@ -343,7 +343,7 @@ pub fn detect_windows_drive_type(path: &PathBuf) -> DeviceType {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn get_windows_volume_name(path: &PathBuf) -> Option<String> {
     use std::os::windows::ffi::OsStrExt;
@@ -385,7 +385,7 @@ pub fn get_windows_volume_name(path: &PathBuf) -> Option<String> {
     None
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn get_windows_filesystem_type(path: &PathBuf) -> Option<String> {
     use std::os::windows::ffi::OsStrExt;
@@ -427,7 +427,7 @@ pub fn get_windows_filesystem_type(path: &PathBuf) -> Option<String> {
     None
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn is_drive_read_only(path: &PathBuf) -> bool {
     use std::os::windows::ffi::OsStrExt;
@@ -447,7 +447,7 @@ pub fn is_drive_read_only(path: &PathBuf) -> bool {
     false
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn get_available_drive_letters() -> Vec<char> {
     let mut drives = Vec::new();
@@ -464,7 +464,7 @@ pub fn get_available_drive_letters() -> Vec<char> {
     drives
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn get_drive_info(drive_letter: char) -> Option<DriveInfo> {
     let path = PathBuf::from(format!("{}:\\", drive_letter));
@@ -491,7 +491,7 @@ pub fn get_drive_info(drive_letter: char) -> Option<DriveInfo> {
     })
 }
 
-/
+
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone)]
 pub struct DriveInfo {
@@ -507,7 +507,7 @@ pub struct DriveInfo {
 
 #[cfg(target_os = "windows")]
 impl DriveInfo {
-    /
+
     pub fn is_removable(&self) -> bool {
         matches!(
             self.drive_type,
@@ -515,7 +515,7 @@ impl DriveInfo {
         )
     }
 
-    /
+
     pub fn display_name(&self) -> String {
         self.volume_name
             .clone()

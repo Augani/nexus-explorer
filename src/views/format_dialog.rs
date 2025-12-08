@@ -1,7 +1,7 @@
 use crate::models::{Device, DeviceId, FileSystemType, FormatOptions};
 use gpui::*;
 
-/
+
 #[derive(Clone, PartialEq)]
 pub enum FormatDialogAction {
     Format,
@@ -12,7 +12,7 @@ pub enum FormatDialogAction {
     CompressionChanged(bool),
 }
 
-/
+
 pub struct FormatDialog {
     device: Device,
     filesystem: FileSystemType,
@@ -63,7 +63,7 @@ impl FormatDialog {
     }
 
 
-    /
+
     pub fn build_options(&self) -> FormatOptions {
         FormatOptions {
             filesystem: self.filesystem,
@@ -73,7 +73,7 @@ impl FormatDialog {
         }
     }
 
-    /
+
     pub fn validate_label(&self) -> Result<(), String> {
         let label = &self.label;
         
@@ -124,12 +124,12 @@ impl FormatDialog {
         Ok(())
     }
 
-    /
+
     pub fn validate(&self) -> Result<(), String> {
         self.validate_label()
     }
 
-    /
+
     pub fn request_format(&mut self) {
         if let Err(msg) = self.validate() {
             self.error_message = Some(msg);
@@ -139,7 +139,7 @@ impl FormatDialog {
         self.show_confirmation = true;
     }
 
-    /
+
     pub fn confirm_format(&mut self) {
         self.show_confirmation = false;
         self.is_formatting = true;
@@ -151,19 +151,19 @@ impl FormatDialog {
         }
     }
 
-    /
+
     pub fn cancel_confirmation(&mut self) {
         self.show_confirmation = false;
     }
 
-    /
+
     pub fn handle_cancel(&self) {
         if let Some(callback) = &self.on_cancel {
             callback();
         }
     }
 
-    /
+
     pub fn set_filesystem(&mut self, filesystem: FileSystemType) {
         self.filesystem = filesystem;
         self.error_message = None;
@@ -173,25 +173,25 @@ impl FormatDialog {
         }
     }
 
-    /
+
     pub fn set_label(&mut self, label: String) {
         self.label = label;
         self.error_message = None;
     }
 
-    /
+
     pub fn set_quick_format(&mut self, quick: bool) {
         self.quick_format = quick;
     }
 
-    /
+
     pub fn set_compression(&mut self, enabled: bool) {
         if self.filesystem == FileSystemType::Ntfs {
             self.enable_compression = enabled;
         }
     }
 
-    /
+
     pub fn set_format_complete(&mut self, success: bool, error: Option<String>) {
         self.is_formatting = false;
         if !success {
@@ -239,12 +239,12 @@ impl FormatDialog {
         self.show_confirmation
     }
 
-    /
+
     pub fn compatibility_info(&self) -> &'static str {
         self.filesystem.compatibility_info()
     }
 
-    /
+
     pub fn device_info_summary(&self) -> String {
         let size = format_size(self.device.total_space);
         format!(
@@ -255,7 +255,7 @@ impl FormatDialog {
         )
     }
 
-    /
+
     pub fn format_warning(&self) -> String {
         format!(
             "WARNING: All data on \"{}\" will be permanently erased. This action cannot be undone.",
@@ -264,7 +264,7 @@ impl FormatDialog {
     }
 }
 
-/
+
 fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;

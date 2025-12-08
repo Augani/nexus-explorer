@@ -8,31 +8,31 @@ use super::coalescer::EventCoalescer;
 use super::watcher::{PlatformFs, Watcher, DEFAULT_COALESCE_WINDOW};
 use crate::models::{FileSystemError, FsEvent, Result};
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FileReferenceNumber(pub u64);
 
 impl FileReferenceNumber {
-    /
+
     pub fn record_number(&self) -> u64 {
         self.0 & 0x0000_FFFF_FFFF_FFFF
     }
 
-    /
+
     pub fn sequence_number(&self) -> u16 {
         ((self.0 >> 48) & 0xFFFF) as u16
     }
 
-    /
+
     pub fn new(record_number: u64, sequence_number: u16) -> Self {
         Self((record_number & 0x0000_FFFF_FFFF_FFFF) | ((sequence_number as u64) << 48))
     }
 
-    /
+
     pub const ROOT: Self = Self(5);
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileNode {
     pub name: String,
@@ -66,22 +66,22 @@ impl FileNode {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MftIndex {
-    /
+
     pub files: HashMap<FileReferenceNumber, FileNode>,
-    /
+
     pub usn_cursor: u64,
-    /
+
     pub volume_path: PathBuf,
-    /
+
     #[serde(skip)]
     path_cache: HashMap<FileReferenceNumber, PathBuf>,
 }
 
 impl MftIndex {
-    /
+
     pub fn new(volume_path: PathBuf) -> Self {
         Self {
             files: HashMap::new(),
@@ -91,42 +91,42 @@ impl MftIndex {
         }
     }
 
-    /
+
     pub fn insert(&mut self, frn: FileReferenceNumber, node: FileNode) {
         self.path_cache.remove(&frn);
         self.files.insert(frn, node);
     }
 
-    /
+
     pub fn remove(&mut self, frn: &FileReferenceNumber) -> Option<FileNode> {
         self.path_cache.remove(frn);
         self.files.remove(frn)
     }
 
-    /
+
     pub fn get(&self, frn: &FileReferenceNumber) -> Option<&FileNode> {
         self.files.get(frn)
     }
 
-    /
+
     pub fn contains(&self, frn: &FileReferenceNumber) -> bool {
         self.files.contains_key(frn)
     }
 
-    /
+
     pub fn len(&self) -> usize {
         self.files.len()
     }
 
-    /
+
     pub fn is_empty(&self) -> bool {
         self.files.is_empty()
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn reconstruct_path(&mut self, frn: &FileReferenceNumber) -> Option<PathBuf> {
         if let Some(cached) = self.path_cache.get(frn) {
             return Some(cached.clone());
@@ -137,7 +137,7 @@ impl MftIndex {
         Some(path)
     }
 
-    /
+
     fn build_path_uncached(&self, frn: &FileReferenceNumber) -> Option<PathBuf> {
         let mut components: Vec<&str> = Vec::new();
         let mut current = *frn;
@@ -167,17 +167,17 @@ impl MftIndex {
         Some(path)
     }
 
-    /
+
     pub fn clear_path_cache(&mut self) {
         self.path_cache.clear();
     }
 
-    /
+
     pub fn set_usn_cursor(&mut self, cursor: u64) {
         self.usn_cursor = cursor;
     }
 
-    /
+
     pub fn find_by_path(&mut self, path: &Path) -> Option<FileReferenceNumber> {
         let frns: Vec<FileReferenceNumber> = self.files.keys().copied().collect();
 
@@ -191,34 +191,34 @@ impl MftIndex {
         None
     }
 
-    /
+
     pub fn serialize(&self) -> Result<Vec<u8>> {
         bincode::serialize(self).map_err(FileSystemError::Serialization)
     }
 
-    /
+
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         bincode::deserialize(data).map_err(FileSystemError::Serialization)
     }
 
-    /
+
     pub fn save_to_file(&self, path: &Path) -> Result<()> {
         let data = self.serialize()?;
         std::fs::write(path, data)?;
         Ok(())
     }
 
-    /
+
     pub fn load_from_file(path: &Path) -> Result<Self> {
         let data = std::fs::read(path)?;
         Self::deserialize(&data)
     }
 }
 
-/
-/
-/
-/
+
+
+
+
 pub struct MftParser {
     volume_path: PathBuf,
 }
@@ -228,10 +228,10 @@ impl MftParser {
         Self { volume_path }
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     #[cfg(target_os = "windows")]
     pub fn parse(&self) -> Result<MftIndex> {
         use std::fs::OpenOptions;
@@ -263,7 +263,7 @@ impl MftParser {
         Ok(index)
     }
 
-    /
+
     #[cfg(not(target_os = "windows"))]
     pub fn parse(&self) -> Result<MftIndex> {
         Err(FileSystemError::Platform(
@@ -272,7 +272,7 @@ impl MftParser {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct UsnRecord {
     pub frn: FileReferenceNumber,
@@ -283,7 +283,7 @@ pub struct UsnRecord {
     pub file_attributes: u32,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UsnReason(pub u32);
 
@@ -327,7 +327,7 @@ impl UsnReason {
     }
 }
 
-/
+
 pub struct UsnJournalMonitor {
     volume_path: PathBuf,
     usn_cursor: u64,
@@ -343,17 +343,17 @@ impl UsnJournalMonitor {
         }
     }
 
-    /
+
     pub fn set_cursor(&mut self, cursor: u64) {
         self.usn_cursor = cursor;
     }
 
-    /
+
     pub fn cursor(&self) -> u64 {
         self.usn_cursor
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn read_journal(&mut self) -> Result<Vec<UsnRecord>> {
 
@@ -367,7 +367,7 @@ impl UsnJournalMonitor {
         ))
     }
 
-    /
+
     pub fn apply_to_index(&self, index: &mut MftIndex, records: &[UsnRecord]) {
         for record in records {
             if record.reason.is_create() {
@@ -399,7 +399,7 @@ impl UsnJournalMonitor {
         }
     }
 
-    /
+
     pub fn records_to_events(&self, index: &mut MftIndex, records: &[UsnRecord]) -> Vec<FsEvent> {
         let mut events = Vec::new();
 
@@ -419,7 +419,7 @@ impl UsnJournalMonitor {
     }
 }
 
-/
+
 pub struct WindowsPlatform;
 
 impl PlatformFs for WindowsPlatform {
@@ -436,7 +436,7 @@ impl PlatformFs for WindowsPlatform {
     }
 }
 
-/
+
 pub struct WindowsWatcher {
     coalesce_window: Duration,
     coalescer: EventCoalescer,
@@ -456,7 +456,7 @@ impl WindowsWatcher {
         }
     }
 
-    /
+
     pub fn init_mft_index(&mut self, volume_path: PathBuf) -> Result<()> {
         let parser = MftParser::new(volume_path.clone());
         let index = parser.parse()?;
@@ -470,12 +470,12 @@ impl WindowsWatcher {
         Ok(())
     }
 
-    /
+
     pub fn mft_index(&self) -> Option<&MftIndex> {
         self.mft_index.as_ref()
     }
 
-    /
+
     pub fn mft_index_mut(&mut self) -> Option<&mut MftIndex> {
         self.mft_index.as_mut()
     }

@@ -1,14 +1,14 @@
-/
-/
-/
-/
+
+
+
+
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AppInfo {
     pub name: String,
@@ -33,8 +33,8 @@ impl AppInfo {
     }
 }
 
-/
-/
+
+
 pub struct AppRegistry {
     extension_to_apps: HashMap<String, Vec<AppInfo>>,
     all_apps: Vec<AppInfo>,
@@ -78,8 +78,8 @@ lazy_static::lazy_static! {
     static ref LOADING_STARTED: AtomicBool = AtomicBool::new(false);
 }
 
-/
-/
+
+
 pub fn init_app_registry() {
     if LOADING_STARTED.swap(true, Ordering::SeqCst) {
         return;
@@ -93,8 +93,8 @@ pub fn init_app_registry() {
     });
 }
 
-/
-/
+
+
 pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
     #[cfg(target_os = "macos")]
     {
@@ -151,7 +151,7 @@ pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
     }
 }
 
-/
+
 pub fn get_apps_for_file(file_path: &Path) -> Vec<AppInfo> {
     if file_path.is_dir() {
         if let Ok(registry) = APP_REGISTRY.read() {
@@ -177,7 +177,7 @@ pub fn get_apps_for_file(file_path: &Path) -> Vec<AppInfo> {
     Vec::new()
 }
 
-/
+
 pub fn is_registry_loaded() -> bool {
     if let Ok(registry) = APP_REGISTRY.read() {
         registry.is_loaded()
@@ -186,7 +186,7 @@ pub fn is_registry_loaded() -> bool {
     }
 }
 
-/
+
 pub fn open_file_with_app(file_path: &Path, app: &AppInfo) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -222,7 +222,7 @@ pub fn open_file_with_app(file_path: &Path, app: &AppInfo) -> Result<(), String>
     }
 }
 
-/
+
 pub fn show_open_with_dialog(file_path: &Path) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {

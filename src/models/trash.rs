@@ -5,45 +5,45 @@ use std::time::SystemTime;
 #[cfg(target_os = "macos")]
 use std::process::Command;
 
-/
+
 #[derive(Debug, Clone)]
 pub struct TrashEntry {
-    /
+
     pub name: String,
-    /
+
     pub original_path: PathBuf,
-    /
+
     pub deletion_date: SystemTime,
-    /
+
     pub size: u64,
-    /
+
     pub is_dir: bool,
-    /
+
     pub trash_id: TrashId,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum TrashId {
-    /
+
     Path(PathBuf),
-    /
+
     #[cfg(target_os = "windows")]
     Windows(String),
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum TrashError {
-    /
+
     NotFound(String),
-    /
+
     OriginalLocationMissing(PathBuf),
-    /
+
     PermissionDenied(String),
-    /
+
     IoError(String),
-    /
+
     PlatformError(String),
 }
 
@@ -63,16 +63,16 @@ impl std::fmt::Display for TrashError {
 
 impl std::error::Error for TrashError {}
 
-/
+
 pub struct TrashManager {
-    /
+
     entries: Vec<TrashEntry>,
-    /
+
     total_size: u64,
 }
 
 impl TrashManager {
-    /
+
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
@@ -80,47 +80,47 @@ impl TrashManager {
         }
     }
 
-    /
+
     pub fn refresh(&mut self) {
         self.entries = list_trash_entries();
         self.total_size = self.entries.iter().map(|e| e.size).sum();
     }
 
-    /
+
     pub fn entries(&self) -> &[TrashEntry] {
         &self.entries
     }
 
-    /
+
     pub fn total_size(&self) -> u64 {
         self.total_size
     }
 
-    /
+
     pub fn item_count(&self) -> usize {
         self.entries.len()
     }
 
-    /
+
     pub fn is_large(&self) -> bool {
         self.total_size > 1024 * 1024 * 1024
     }
 
-    /
+
     pub fn restore(&mut self, entry: &TrashEntry) -> Result<PathBuf, TrashError> {
         let result = restore_from_trash(entry)?;
         self.refresh();
         Ok(result)
     }
 
-    /
+
     pub fn delete_permanently(&mut self, entry: &TrashEntry) -> Result<(), TrashError> {
         delete_from_trash(entry)?;
         self.refresh();
         Ok(())
     }
 
-    /
+
     pub fn empty(&mut self) -> Result<(), TrashError> {
         empty_trash_internal()?;
         self.entries.clear();
@@ -128,7 +128,7 @@ impl TrashManager {
         Ok(())
     }
 
-    /
+
     pub fn move_to_trash(&mut self, path: &PathBuf) -> Result<(), TrashError> {
         trash::delete(path).map_err(|e| TrashError::IoError(e.to_string()))?;
         self.refresh();
@@ -142,7 +142,7 @@ impl Default for TrashManager {
     }
 }
 
-/
+
 pub fn list_trash_entries() -> Vec<TrashEntry> {
     #[cfg(target_os = "macos")]
     {
@@ -303,7 +303,7 @@ fn list_trash_entries_windows() -> Vec<TrashEntry> {
     entries
 }
 
-/
+
 pub fn calculate_dir_size(path: &PathBuf) -> u64 {
     let mut size = 0u64;
     if let Ok(entries) = std::fs::read_dir(path) {
@@ -319,7 +319,7 @@ pub fn calculate_dir_size(path: &PathBuf) -> u64 {
     size
 }
 
-/
+
 pub fn restore_from_trash(entry: &TrashEntry) -> Result<PathBuf, TrashError> {
     if let Some(parent) = entry.original_path.parent() {
         if !parent.exists() {
@@ -356,7 +356,7 @@ pub fn restore_from_trash(entry: &TrashEntry) -> Result<PathBuf, TrashError> {
     Ok(entry.original_path.clone())
 }
 
-/
+
 fn delete_from_trash(entry: &TrashEntry) -> Result<(), TrashError> {
     match &entry.trash_id {
         TrashId::Path(trash_path) => {
@@ -383,7 +383,7 @@ fn delete_from_trash(entry: &TrashEntry) -> Result<(), TrashError> {
     Ok(())
 }
 
-/
+
 fn empty_trash_internal() -> Result<(), TrashError> {
     #[cfg(target_os = "macos")]
     {
@@ -462,7 +462,7 @@ fn empty_trash_internal() -> Result<(), TrashError> {
     }
 }
 
-/
+
 pub fn list_trash_items() -> Vec<FileEntry> {
     #[cfg(target_os = "macos")]
     {
@@ -693,7 +693,7 @@ fn create_entry_from_path(path: &PathBuf) -> Option<FileEntry> {
     })
 }
 
-/
+
 pub fn get_trash_path() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
@@ -721,13 +721,13 @@ pub fn get_trash_path() -> PathBuf {
     }
 }
 
-/
+
 pub fn is_trash_path(path: &PathBuf) -> bool {
     let trash_path = get_trash_path();
     path == &trash_path
 }
 
-/
+
 pub fn empty_trash() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {

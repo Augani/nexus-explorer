@@ -1,11 +1,11 @@
 use crate::models::ansi_parser::{color_from_256, AnsiParser, ParsedSegment, ANSI_COLORS};
 use proptest::prelude::*;
 
-/
-/
-/
-/
-/
+
+
+
+
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 

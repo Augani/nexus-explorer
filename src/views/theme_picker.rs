@@ -6,10 +6,10 @@ use std::time::{Duration, Instant};
 
 use crate::models::{theme_colors, Theme, ThemeColors, ThemeId};
 
-/
+
 pub type OnThemeSelect = Box<dyn Fn(ThemeId) + 'static>;
 
-/
+
 #[derive(Clone, Debug)]
 struct TransitionState {
     from_theme: Option<ThemeId>,
@@ -43,7 +43,7 @@ impl TransitionState {
     }
 }
 
-/
+
 pub struct ThemePickerView {
     focus_handle: FocusHandle,
     selected_theme: ThemeId,
@@ -53,7 +53,7 @@ pub struct ThemePickerView {
     hovered_theme: Option<ThemeId>,
 }
 
-/
+
 pub type ThemePicker = ThemePickerView;
 
 impl ThemePickerView {
@@ -68,7 +68,7 @@ impl ThemePickerView {
         }
     }
 
-    /
+
     pub fn on_theme_select<F>(mut self, callback: F) -> Self
     where
         F: Fn(ThemeId) + 'static,
@@ -77,7 +77,7 @@ impl ThemePickerView {
         self
     }
 
-    /
+
     pub fn with_selected_theme(mut self, theme_id: ThemeId) -> Self {
         self.selected_theme = theme_id;
         self
@@ -116,7 +116,7 @@ impl ThemePickerView {
         }
     }
 
-    /
+
     fn set_hovered_theme(&mut self, theme_id: Option<ThemeId>, cx: &mut Context<Self>) {
         if self.hovered_theme != theme_id {
             self.hovered_theme = theme_id;
@@ -125,7 +125,7 @@ impl ThemePickerView {
     }
 }
 
-/
+
 fn render_mini_preview(theme: &Theme) -> impl IntoElement {
     let colors = &theme.colors;
 
@@ -358,7 +358,7 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
         )
 }
 
-/
+
 fn render_color_swatches(theme: &Theme) -> impl IntoElement {
     let colors = &theme.colors;
 
@@ -412,7 +412,7 @@ fn render_color_swatches(theme: &Theme) -> impl IntoElement {
         )
 }
 
-/
+
 fn render_theme_card(
     theme: &Theme,
     is_selected: bool,
@@ -421,7 +421,7 @@ fn render_theme_card(
     render_theme_card_animated(theme, is_selected, false, current_colors, false, 1.0)
 }
 
-/
+
 fn render_theme_card_animated(
     theme: &Theme,
     is_selected: bool,

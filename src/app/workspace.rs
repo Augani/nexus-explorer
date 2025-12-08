@@ -37,7 +37,6 @@ actions!(
     ]
 );
 
-/
 fn copy_dir_recursive_async(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(src)? {
@@ -53,7 +52,7 @@ fn copy_dir_recursive_async(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()>
     Ok(())
 }
 
-/
+
 #[derive(Clone)]
 pub enum DialogState {
     None,
@@ -62,7 +61,7 @@ pub enum DialogState {
     Rename { path: PathBuf, name: String },
 }
 
-/
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ClipboardOperation {
     Copy(PathBuf),
@@ -115,12 +114,12 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    /
+
     pub fn current_path(&self) -> &PathBuf {
         &self.current_path
     }
 
-    /
+
     pub fn open_new_window(path: PathBuf, cx: &mut App) {
         if cx.has_global::<WindowManager>() {
             cx.update_global::<WindowManager, _>(|manager, cx| {
@@ -129,12 +128,12 @@ impl Workspace {
         }
     }
 
-    /
+
     pub fn open_new_window_here(&self, cx: &mut App) {
         Self::open_new_window(self.current_path.clone(), cx);
     }
 
-    /
+
     fn get_or_create_terminal(&mut self, cx: &mut Context<Self>) -> Entity<TerminalView> {
         let tab_id = self.tab_bar.read(cx).tab_state().active_tab_id();
         if let Some(terminal) = self.terminals.get(&tab_id) {
@@ -147,13 +146,13 @@ impl Workspace {
         }
     }
 
-    /
+
     fn active_terminal(&self, cx: &Context<Self>) -> Option<Entity<TerminalView>> {
         let tab_id = self.tab_bar.read(cx).tab_state().active_tab_id();
         self.terminals.get(&tab_id).cloned()
     }
 
-    /
+
     fn create_terminal_for_tab(
         &mut self,
         tab_id: crate::models::TabId,
@@ -164,14 +163,14 @@ impl Workspace {
         self.terminals.insert(tab_id, terminal);
     }
 
-    /
+
     fn remove_terminal_for_tab(&mut self, tab_id: crate::models::TabId) {
         self.terminals.remove(&tab_id);
     }
 }
 
 impl Workspace {
-    /
+
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("cmd-t", NewTab, Some("Workspace")),
@@ -2064,7 +2063,7 @@ impl Workspace {
         cx.notify();
     }
 
-    /
+
     fn load_directory(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         let start = Instant::now();
         let show_hidden = self.show_hidden_files;
@@ -2279,7 +2278,7 @@ impl Workspace {
         }
     }
 
-    /
+
     fn update_share_status_on_entries(&mut self, entries: &mut Vec<crate::models::FileEntry>) {
         for entry in entries.iter_mut() {
             if entry.is_dir {
@@ -2425,7 +2424,7 @@ impl Workspace {
         }
     }
 
-    /
+
     fn get_selected_entry(&self, cx: &mut Context<Self>) -> Option<crate::models::FileEntry> {
         match self.view_mode {
             ViewMode::List | ViewMode::Details => {
@@ -2441,7 +2440,7 @@ impl Workspace {
         }
     }
 
-    /
+
     fn update_preview_for_selection(&mut self, cx: &mut Context<Self>) {
         let selected_entry = self.get_selected_entry(cx);
 
@@ -2509,7 +2508,7 @@ impl Workspace {
         }
     }
 
-    /
+
     fn handle_toggle_terminal(
         &mut self,
         _: &ToggleTerminal,
@@ -2519,7 +2518,7 @@ impl Workspace {
         self.toggle_terminal(cx);
     }
 
-    /
+
     fn handle_focus_search(
         &mut self,
         _: &FocusSearch,

@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use super::device_monitor::{Device, DeviceEvent, DeviceId, DeviceResult, SmartData};
 
-/
+
 #[derive(Debug, Error)]
 pub enum PlatformError {
     #[error("Device not found: {0:?}")]
@@ -33,7 +33,7 @@ pub enum PlatformError {
 
 pub type PlatformResult<T> = std::result::Result<T, PlatformError>;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FileSystemType {
     Fat32,
@@ -48,7 +48,7 @@ pub enum FileSystemType {
 }
 
 impl FileSystemType {
-    /
+
     pub fn display_name(&self) -> &'static str {
         match self {
             FileSystemType::Fat32 => "FAT32",
@@ -64,7 +64,7 @@ impl FileSystemType {
     }
 
 
-    /
+
     pub fn compatibility_info(&self) -> &'static str {
         match self {
             FileSystemType::Fat32 => "Compatible with Windows, macOS, Linux. Max file size: 4GB",
@@ -79,7 +79,7 @@ impl FileSystemType {
         }
     }
 
-    /
+
     pub fn is_available_on_current_platform(&self) -> bool {
         #[cfg(target_os = "windows")]
         {
@@ -119,7 +119,7 @@ impl FileSystemType {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct FormatOptions {
     pub filesystem: FileSystemType,
@@ -139,7 +139,7 @@ impl Default for FormatOptions {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ContextMenuItem {
     pub id: String,
@@ -176,161 +176,161 @@ impl ContextMenuItem {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum PlatformAction {
-    /
+
     Eject(DeviceId),
-    /
+
     Format(DeviceId, FormatOptions),
-    /
+
     MountImage(PathBuf),
-    /
+
     Unmount(PathBuf),
-    /
+
     OpenTerminal(PathBuf),
-    /
+
     PinToQuickAccess(PathBuf),
-    /
+
     ScanWithDefender(PathBuf),
-    /
+
     ShareAirDrop(Vec<PathBuf>),
-    /
+
     QuickAction(String, Vec<PathBuf>),
-    /
+
     Custom(String, Vec<String>),
 }
 
 
-/
-/
-/
-/
-/
+
+
+
+
+
 pub trait PlatformAdapter: Send + Sync {
-    /
-    /
-    /
-    /
+
+
+
+
     fn enumerate_devices(&self) -> Vec<Device>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
+
     fn start_monitoring(&self, sender: flume::Sender<DeviceEvent>) -> PlatformResult<()>;
 
-    /
-    /
-    /
-    /
+
+
+
+
     fn stop_monitoring(&self) -> PlatformResult<()>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
+
     fn eject_device(&self, device_id: DeviceId) -> PlatformResult<()>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
+
+
     fn format_device(&self, device_id: DeviceId, options: FormatOptions) -> PlatformResult<()>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
+
+
     fn get_smart_data(&self, device_id: DeviceId) -> PlatformResult<Option<SmartData>>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
+
     fn mount_image(&self, path: &Path) -> PlatformResult<PathBuf>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
     fn unmount_image(&self, mount_point: &Path) -> PlatformResult<()>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
     fn get_context_menu_items(&self, paths: &[PathBuf]) -> Vec<ContextMenuItem>;
 
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
+
+
+
+
+
     fn execute_action(&self, action: PlatformAction) -> PlatformResult<()>;
 
-    /
-    /
-    /
-    /
+
+
+
+
     fn available_filesystems(&self) -> Vec<FileSystemType>;
 
-    /
+
     fn is_monitoring(&self) -> bool;
 }
 
@@ -338,7 +338,7 @@ pub trait PlatformAdapter: Send + Sync {
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-/
+
 #[cfg(target_os = "windows")]
 pub struct WindowsAdapter {
     is_monitoring: Arc<AtomicBool>,
@@ -358,7 +358,7 @@ impl WindowsAdapter {
         }
     }
 
-    /
+
     pub fn get_device_info(&self, drive_letter: &str) -> Option<super::windows_wmi::WmiDeviceInfo> {
         self.wmi_enumerator.get_device_info(drive_letter)
     }
@@ -567,7 +567,7 @@ impl PlatformAdapter for WindowsAdapter {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn format_drive_name_by_type(letter: char, device_type: &super::device_monitor::DeviceType) -> String {
     let type_name = match device_type {
@@ -653,7 +653,7 @@ fn get_windows_volume_name(path: &PathBuf) -> Option<String> {
     None
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
     use std::os::windows::ffi::OsStrExt;
@@ -740,7 +740,7 @@ fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
     Ok(())
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn eject_windows_drive_powershell(drive_letter: char) -> PlatformResult<()> {
     let script = format!(
@@ -768,7 +768,7 @@ fn eject_windows_drive_powershell(drive_letter: char) -> PlatformResult<()> {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn mount_windows_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     let path_str = path.to_string_lossy();
@@ -825,7 +825,7 @@ fn mount_windows_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn get_mounted_image_path(image_path: &Path) -> PlatformResult<PathBuf> {
     let path_str = image_path.to_string_lossy();
@@ -862,7 +862,7 @@ fn get_mounted_image_path(image_path: &Path) -> PlatformResult<PathBuf> {
     Ok(PathBuf::from(format!("{}\\", drive_letter)))
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn unmount_windows_disk_image(mount_point: &Path) -> PlatformResult<()> {
     let path_str = mount_point.to_string_lossy();
@@ -916,7 +916,7 @@ fn unmount_windows_disk_image(mount_point: &Path) -> PlatformResult<()> {
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn is_windows_disk_image(path: &Path) -> bool {
     path.extension()
@@ -928,7 +928,7 @@ pub fn is_windows_disk_image(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn is_windows_image_mounted(image_path: &Path) -> bool {
     let path_str = image_path.to_string_lossy();
@@ -949,7 +949,7 @@ pub fn is_windows_image_mounted(image_path: &Path) -> bool {
     }
 }
 
-/
+
 #[cfg(target_os = "macos")]
 pub struct MacOSAdapter {
     is_monitoring: Arc<AtomicBool>,
@@ -967,12 +967,12 @@ impl MacOSAdapter {
         }
     }
 
-    /
+
     pub fn is_disk_image(&self, path: &Path) -> bool {
         super::device_monitor_macos::is_disk_image(&path.to_path_buf())
     }
 
-    /
+
     pub fn get_mounted_disk_images(&self) -> Vec<PathBuf> {
         super::device_monitor_macos::get_mounted_disk_images()
     }
@@ -1258,7 +1258,7 @@ impl PlatformAdapter for MacOSAdapter {
     }
 }
 
-/
+
 #[cfg(target_os = "linux")]
 pub struct LinuxAdapter {
     is_monitoring: Arc<AtomicBool>,
@@ -1278,23 +1278,23 @@ impl LinuxAdapter {
         }
     }
 
-    /
+
     pub fn get_device_info(&self, device_node: &str) -> Option<super::device_monitor_linux::UdevDeviceInfo> {
         let enumerator = super::device_monitor_linux::UdevDeviceEnumerator::new();
         enumerator.get_device_info(device_node)
     }
 
-    /
+
     pub fn get_udisks2_properties(&self, block_device: &str) -> Option<super::device_monitor_linux::UDisks2DeviceProperties> {
         self.udisks2_client.get_device_properties(block_device)
     }
 
-    /
+
     pub fn mount_device(&self, block_device: &str) -> Result<PathBuf, String> {
         self.udisks2_client.mount(block_device)
     }
 
-    /
+
     pub fn unmount_device(&self, block_device: &str) -> Result<(), String> {
         self.udisks2_client.unmount(block_device)
     }
@@ -1545,7 +1545,7 @@ impl PlatformAdapter for LinuxAdapter {
     }
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn mount_linux_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     let image_name = path.file_stem()
@@ -1574,7 +1574,7 @@ fn mount_linux_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     }
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformResult<()> {
     let image_str = image_path.to_str().unwrap_or("");
@@ -1640,7 +1640,7 @@ fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformRe
     ))
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn parse_udisksctl_loop_device(output: &str) -> Option<String> {
     for line in output.lines() {
@@ -1656,7 +1656,7 @@ fn parse_udisksctl_loop_device(output: &str) -> Option<String> {
     None
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn parse_udisksctl_mount_point(output: &str) -> Option<PathBuf> {
     for line in output.lines() {
@@ -1670,7 +1670,7 @@ fn parse_udisksctl_mount_point(output: &str) -> Option<PathBuf> {
     None
 }
 
-/
+
 #[cfg(target_os = "linux")]
 fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
     let mount_str = mount_point.to_str().unwrap_or("");
@@ -1744,7 +1744,7 @@ fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
     ))
 }
 
-/
+
 #[cfg(target_os = "linux")]
 pub fn is_linux_disk_image(path: &Path) -> bool {
     path.extension()
@@ -1834,19 +1834,19 @@ fn is_linux_removable(device: &str) -> bool {
     false
 }
 
-/
+
 #[cfg(target_os = "windows")]
 pub fn get_platform_adapter() -> Box<dyn PlatformAdapter> {
     Box::new(WindowsAdapter::new())
 }
 
-/
+
 #[cfg(target_os = "macos")]
 pub fn get_platform_adapter() -> Box<dyn PlatformAdapter> {
     Box::new(MacOSAdapter::new())
 }
 
-/
+
 #[cfg(target_os = "linux")]
 pub fn get_platform_adapter() -> Box<dyn PlatformAdapter> {
     Box::new(LinuxAdapter::new())

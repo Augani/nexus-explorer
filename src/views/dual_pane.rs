@@ -13,7 +13,7 @@ actions!(
     [ToggleDualPane, SwitchPane, CopyToOther, MoveToOther,]
 );
 
-/
+
 #[derive(Clone, Debug)]
 pub struct PaneDragData {
     pub paths: Vec<PathBuf>,
@@ -33,7 +33,7 @@ impl PaneDragData {
     }
 }
 
-/
+
 pub struct PaneDragView {
     count: usize,
     name: String,
@@ -60,7 +60,7 @@ impl Render for PaneDragView {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum DualPaneAction {
     CopyFiles {
@@ -75,7 +75,7 @@ pub enum DualPaneAction {
     NavigateRight(PathBuf),
 }
 
-/
+
 pub struct DualPaneView {
     dual_pane: DualPane,
     left_file_list: Entity<FileListView>,
@@ -84,7 +84,7 @@ pub struct DualPaneView {
     pending_action: Option<DualPaneAction>,
     left_drop_hover: bool,
     right_drop_hover: bool,
-    /
+
     dragging_from: Option<PaneSide>,
 }
 
@@ -125,7 +125,7 @@ impl DualPaneView {
         }
     }
 
-    /
+
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("cmd-shift-d", ToggleDualPane, Some("DualPane")),
@@ -135,57 +135,57 @@ impl DualPaneView {
         ]);
     }
 
-    /
+
     pub fn is_enabled(&self) -> bool {
         self.dual_pane.is_enabled()
     }
 
-    /
+
     pub fn enable(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.enable();
         cx.notify();
     }
 
-    /
+
     pub fn disable(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.disable();
         cx.notify();
     }
 
-    /
+
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.toggle();
         cx.notify();
     }
 
-    /
+
     pub fn active_side(&self) -> PaneSide {
         self.dual_pane.active_side()
     }
 
-    /
+
     pub fn switch_active(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.switch_active();
         cx.notify();
     }
 
-    /
+
     pub fn set_active(&mut self, side: PaneSide, cx: &mut Context<Self>) {
         self.dual_pane.set_active(side);
         cx.notify();
     }
 
-    /
+
     pub fn inner(&self) -> &DualPane {
         &self.dual_pane
     }
 
-    /
+
     pub fn inner_mut(&mut self) -> &mut DualPane {
         &mut self.dual_pane
     }
 
-    /
+
     pub fn set_left_entries(&mut self, entries: Vec<FileEntry>, cx: &mut Context<Self>) {
         self.dual_pane.left_pane_mut().set_entries(entries.clone());
         self.left_file_list.update(cx, |view, _| {
@@ -194,7 +194,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /
+
     pub fn set_right_entries(&mut self, entries: Vec<FileEntry>, cx: &mut Context<Self>) {
         self.dual_pane.right_pane_mut().set_entries(entries.clone());
         self.right_file_list.update(cx, |view, _| {
@@ -203,7 +203,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /
+
     pub fn set_pane_entries(
         &mut self,
         side: PaneSide,
@@ -216,36 +216,36 @@ impl DualPaneView {
         }
     }
 
-    /
+
     pub fn navigate_left(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.dual_pane.left_pane_mut().navigate_to(path.clone());
         self.pending_action = Some(DualPaneAction::NavigateLeft(path));
         cx.notify();
     }
 
-    /
+
     pub fn navigate_right(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.dual_pane.right_pane_mut().navigate_to(path.clone());
         self.pending_action = Some(DualPaneAction::NavigateRight(path));
         cx.notify();
     }
 
-    /
+
     pub fn take_pending_action(&mut self) -> Option<DualPaneAction> {
         self.pending_action.take()
     }
 
-    /
+
     pub fn left_path(&self) -> &PathBuf {
         &self.dual_pane.left_pane().path
     }
 
-    /
+
     pub fn right_path(&self) -> &PathBuf {
         &self.dual_pane.right_pane().path
     }
 
-    /
+
     pub fn active_path(&self) -> &PathBuf {
         &self.dual_pane.active_pane().path
     }
@@ -292,7 +292,7 @@ impl DualPaneView {
         }
     }
 
-    /
+
     pub fn handle_drop_left(&mut self, payload: DragPayload, cx: &mut Context<Self>) {
         self.left_drop_hover = false;
         self.dragging_from = None;
@@ -304,7 +304,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /
+
     pub fn handle_drop_right(&mut self, payload: DragPayload, cx: &mut Context<Self>) {
         self.right_drop_hover = false;
         self.dragging_from = None;
@@ -316,7 +316,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /
+
     fn handle_pane_drop_left(&mut self, data: &PaneDragData, cx: &mut Context<Self>) {
         self.left_drop_hover = false;
         self.dragging_from = None;
@@ -331,7 +331,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /
+
     fn handle_pane_drop_right(&mut self, data: &PaneDragData, cx: &mut Context<Self>) {
         self.right_drop_hover = false;
         self.dragging_from = None;
@@ -346,25 +346,25 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /
+
     pub fn set_left_drop_hover(&mut self, hover: bool, cx: &mut Context<Self>) {
         self.left_drop_hover = hover;
         cx.notify();
     }
 
-    /
+
     pub fn set_right_drop_hover(&mut self, hover: bool, cx: &mut Context<Self>) {
         self.right_drop_hover = hover;
         cx.notify();
     }
 
-    /
+
     pub fn start_drag(&mut self, side: PaneSide, cx: &mut Context<Self>) {
         self.dragging_from = Some(side);
         cx.notify();
     }
 
-    /
+
     pub fn clear_drag(&mut self, cx: &mut Context<Self>) {
         self.dragging_from = None;
         self.left_drop_hover = false;
@@ -372,12 +372,12 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /
+
     pub fn selected_paths(&self, side: PaneSide) -> Vec<PathBuf> {
         self.dual_pane.pane(side).selected_paths()
     }
 
-    /
+
     pub fn first_selected_name(&self, side: PaneSide) -> Option<String> {
         self.dual_pane
             .pane(side)

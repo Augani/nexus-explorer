@@ -5,11 +5,6 @@ use std::time::{Duration, Instant};
 use super::watcher::DEFAULT_COALESCE_WINDOW;
 use crate::models::FsEvent;
 
-/
-/
-/
-/
-/
 pub struct EventCoalescer {
     pending_events: HashMap<PathBuf, PendingEvent>,
     coalesce_window: Duration,
@@ -22,7 +17,7 @@ struct PendingEvent {
 }
 
 impl EventCoalescer {
-    /
+
     pub fn new() -> Self {
         Self {
             pending_events: HashMap::new(),
@@ -30,7 +25,7 @@ impl EventCoalescer {
         }
     }
 
-    /
+
     pub fn with_window(window: Duration) -> Self {
         Self {
             pending_events: HashMap::new(),
@@ -38,20 +33,20 @@ impl EventCoalescer {
         }
     }
 
-    /
+
     pub fn coalesce_window(&self) -> Duration {
         self.coalesce_window
     }
 
-    /
+
     pub fn set_coalesce_window(&mut self, window: Duration) {
         self.coalesce_window = window;
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn add_events(&mut self, events: Vec<FsEvent>) {
         let now = Instant::now();
 
@@ -75,10 +70,10 @@ impl EventCoalescer {
         }
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn poll_ready(&mut self) -> Vec<FsEvent> {
         let now = Instant::now();
         let mut ready_events = Vec::new();
@@ -98,9 +93,9 @@ impl EventCoalescer {
         ready_events
     }
 
-    /
-    /
-    /
+
+
+
     pub fn flush_all(&mut self) -> Vec<FsEvent> {
         let events: Vec<FsEvent> = self
             .pending_events
@@ -110,19 +105,19 @@ impl EventCoalescer {
         events
     }
 
-    /
+
     pub fn pending_count(&self) -> usize {
         self.pending_events.len()
     }
 
-    /
-    /
-    /
+
+
+
     pub fn total_coalesced_count(&self) -> usize {
         self.pending_events.values().map(|p| p.count).sum()
     }
 
-    /
+
     pub fn clear(&mut self) {
         self.pending_events.clear();
     }

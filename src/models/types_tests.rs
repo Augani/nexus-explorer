@@ -1,5 +1,5 @@
-/
-/
+
+
 use super::{CloudSyncStatus, FileEntry, FileType, IconKey, SortColumn, SortDirection, SortState};
 use proptest::prelude::*;
 use std::path::PathBuf;
@@ -64,11 +64,11 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_file_entry_serialization_round_trip(entry in arb_file_entry()) {
         let serialized = bincode::serialize(&entry)
@@ -86,11 +86,11 @@ proptest! {
         prop_assert_eq!(entry.icon_key, deserialized.icon_key);
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_corrupted_data_rejection(random_bytes in prop::collection::vec(any::<u8>(), 0..1000)) {
         let result: std::result::Result<FileEntry, _> = bincode::deserialize(&random_bytes);
@@ -109,11 +109,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_sort_by_name_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -135,11 +135,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_sort_by_date_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -161,11 +161,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_sort_by_type_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -196,11 +196,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_sort_by_size_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -226,11 +226,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_sort_toggle_reversal(
         column in prop_oneof![
@@ -266,11 +266,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_directories_first_invariant(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -306,11 +306,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_sort_stability_on_update(
         initial_count in 1usize..50,
@@ -431,11 +431,11 @@ mod symlink_tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_symbolic_link_detection(
             file_name in "[a-zA-Z0-9]{1,20}",
@@ -494,10 +494,10 @@ mod symlink_tests {
             );
         }
 
-        /
-        /
-        /
-        /
+
+
+
+
         #[test]
         fn prop_broken_symbolic_link_detection(
             target_name in "[a-zA-Z0-9]{1,20}",
@@ -565,12 +565,12 @@ mod symlink_tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
+
         #[test]
         fn prop_symbolic_link_detection_regular_files(
             file_name in "[a-zA-Z0-9]{1,20}",

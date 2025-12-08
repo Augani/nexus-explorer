@@ -1,11 +1,11 @@
-/
-/
-/
-/
+
+
+
+
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-/
+
 #[derive(Debug, Error)]
 pub enum WslError {
     #[error("WSL is not installed")]
@@ -26,7 +26,7 @@ pub enum WslError {
 
 pub type WslResult<T> = std::result::Result<T, WslError>;
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct WslDistro {
     pub name: String,
@@ -36,7 +36,7 @@ pub struct WslDistro {
     pub state: WslState,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WslState {
     Running,
@@ -58,7 +58,7 @@ impl WslState {
     }
 }
 
-/
+
 pub struct WslManager {
     distributions: Vec<WslDistro>,
     is_available: bool,
@@ -80,29 +80,29 @@ impl WslManager {
         manager
     }
 
-    /
+
     pub fn is_available(&self) -> bool {
         self.is_available
     }
 
-    /
+
     pub fn distributions(&self) -> &[WslDistro] {
         &self.distributions
     }
 
-    /
+
     pub fn get_distribution(&self, name: &str) -> Option<&WslDistro> {
         self.distributions
             .iter()
             .find(|d| d.name.eq_ignore_ascii_case(name))
     }
 
-    /
+
     pub fn default_distribution(&self) -> Option<&WslDistro> {
         self.distributions.iter().find(|d| d.is_default)
     }
 
-    /
+
     pub fn refresh(&mut self) {
         self.distributions.clear();
         self.is_available = false;
@@ -113,7 +113,7 @@ impl WslManager {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     fn detect_wsl_windows(&mut self) {
         let status_check = std::process::Command::new("wsl")
@@ -143,7 +143,7 @@ impl WslManager {
         self.parse_wsl_list_output(&stdout);
     }
 
-    /
+
     fn parse_wsl_list_output(&mut self, output: &str) {
         for line in output.lines().skip(1) {
             let line = line.trim();
@@ -174,17 +174,17 @@ impl WslManager {
         }
     }
 
-    /
+
     pub fn get_unc_path(distro_name: &str) -> PathBuf {
         PathBuf::from(format!("\\\\wsl$\\{}", distro_name))
     }
 
-    /
+
     pub fn get_unc_path_localhost(distro_name: &str) -> PathBuf {
         PathBuf::from(format!("\\\\wsl.localhost\\{}", distro_name))
     }
 
-    /
+
     pub fn windows_to_wsl_path(windows_path: &Path) -> WslResult<String> {
         let path_str = windows_path.to_string_lossy();
 
@@ -223,7 +223,7 @@ impl WslManager {
         )))
     }
 
-    /
+
     pub fn wsl_to_windows_path(distro_name: &str, wsl_path: &str) -> WslResult<PathBuf> {
         if wsl_path.starts_with("/mnt/") && wsl_path.len() >= 6 {
             if let Some(drive_letter) = wsl_path.chars().nth(5) {
@@ -244,13 +244,13 @@ impl WslManager {
         Ok(PathBuf::from(full_path))
     }
 
-    /
+
     pub fn is_wsl_path(path: &Path) -> bool {
         let path_str = path.to_string_lossy();
         path_str.starts_with("\\\\wsl$\\") || path_str.starts_with("\\\\wsl.localhost\\")
     }
 
-    /
+
     pub fn extract_distro_name(path: &Path) -> Option<String> {
         let path_str = path.to_string_lossy();
 
@@ -269,7 +269,7 @@ impl WslManager {
         Some(without_prefix[..end].to_string())
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn start_distribution(&self, name: &str) -> WslResult<()> {
         let output = std::process::Command::new("wsl")
@@ -284,7 +284,7 @@ impl WslManager {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn terminate_distribution(&self, name: &str) -> WslResult<()> {
         let output = std::process::Command::new("wsl")
@@ -299,7 +299,7 @@ impl WslManager {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn execute_command(&self, distro: &str, command: &str) -> WslResult<String> {
         let output = std::process::Command::new("wsl")
@@ -314,7 +314,7 @@ impl WslManager {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn get_linux_permissions(
         &self,
@@ -338,8 +338,8 @@ impl WslManager {
         }
     }
 
-    /
-    /
+
+
     #[cfg(target_os = "windows")]
     pub fn open_terminal_here(distro: &str, linux_path: &str) -> WslResult<()> {
         let wt_result = std::process::Command::new("wt")
@@ -363,7 +363,7 @@ impl WslManager {
         }
     }
 
-    /
+
     #[cfg(target_os = "windows")]
     pub fn open_terminal_at_path(path: &Path) -> WslResult<()> {
         if !Self::is_wsl_path(path) {
@@ -382,7 +382,7 @@ impl WslManager {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinuxPermissions {
     pub mode: u32,
@@ -391,7 +391,7 @@ pub struct LinuxPermissions {
 }
 
 impl LinuxPermissions {
-    /
+
     pub fn format_mode(&self) -> String {
         let mut result = String::with_capacity(9);
 
@@ -410,13 +410,13 @@ impl LinuxPermissions {
         result
     }
 
-    /
+
     pub fn format_full(&self) -> String {
         format!("-{} {} {}", self.format_mode(), self.owner, self.group)
     }
 }
 
-/
+
 #[cfg(target_os = "windows")]
 fn decode_wsl_output(bytes: &[u8]) -> String {
     if bytes.len() >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE {

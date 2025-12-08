@@ -2,7 +2,7 @@ use super::wsl::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -127,24 +127,24 @@ mod unit_tests {
     }
 }
 
-/
-/
-/
+
+
+
 #[cfg(test)]
 mod property_tests {
     use super::*;
 
-    /
+
     fn drive_letter_strategy() -> impl Strategy<Value = char> {
         prop_oneof![Just('C'), Just('D'), Just('E'), Just('F'),]
     }
 
-    /
+
     fn path_component_strategy() -> impl Strategy<Value = String> {
         "[a-zA-Z0-9_-]{1,20}".prop_map(|s| s)
     }
 
-    /
+
     fn distro_name_strategy() -> impl Strategy<Value = String> {
         prop_oneof![
             Just("Ubuntu".to_string()),
@@ -155,8 +155,8 @@ mod property_tests {
     }
 
     proptest! {
-        /
-        /
+
+
         #[test]
         fn prop_windows_drive_path_roundtrip(
             drive in drive_letter_strategy(),
@@ -192,7 +192,7 @@ mod property_tests {
             );
         }
 
-        /
+
         #[test]
         fn prop_unc_path_distro_extraction(
             distro in distro_name_strategy(),
@@ -211,7 +211,7 @@ mod property_tests {
             prop_assert_eq!(extracted.unwrap(), distro);
         }
 
-        /
+
         #[test]
         fn prop_linux_path_to_unc(
             distro in distro_name_strategy(),
@@ -233,7 +233,7 @@ mod property_tests {
             prop_assert_eq!(extracted, Some(distro.clone()));
         }
 
-        /
+
         #[test]
         fn prop_permission_format_length(mode in 0u32..0o777) {
             let perms = LinuxPermissions {

@@ -4,7 +4,7 @@ use gpui::{
 };
 use std::path::PathBuf;
 
-/
+
 #[derive(Clone, PartialEq)]
 pub enum ConflictDialogAction {
     Skip,
@@ -14,7 +14,7 @@ pub enum ConflictDialogAction {
     ApplyToAll(bool),
 }
 
-/
+
 #[derive(Clone, Debug)]
 pub struct ConflictInfo {
     pub source: PathBuf,
@@ -55,7 +55,7 @@ impl ConflictInfo {
     }
 }
 
-/
+
 pub struct ConflictDialog {
     conflict: ConflictInfo,
     apply_to_all: bool,

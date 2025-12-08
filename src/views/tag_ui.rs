@@ -3,7 +3,7 @@ use gpui::{div, prelude::*, px, Hsla, IntoElement, ParentElement, SharedString, 
 use crate::models::{Tag, TagColor, TagId, TagManager};
 use std::path::Path;
 
-/
+
 pub fn render_tag_dot(color: TagColor) -> impl IntoElement {
     let (r, g, b, _) = color.to_rgba();
     let hsla = Hsla::from(gpui::Rgba {
@@ -16,7 +16,7 @@ pub fn render_tag_dot(color: TagColor) -> impl IntoElement {
     div().size(px(8.0)).rounded_full().bg(hsla).flex_shrink_0()
 }
 
-/
+
 pub fn render_tag_dots(tags: &[&Tag]) -> impl IntoElement {
     let mut container = div().flex().items_center().gap(px(2.0)).flex_shrink_0();
 
@@ -40,7 +40,7 @@ pub fn render_tag_dots(tags: &[&Tag]) -> impl IntoElement {
     container
 }
 
-/
+
 pub fn render_file_tag_dots(tags: Vec<&Tag>) -> impl IntoElement {
     if tags.is_empty() {
         div().w(px(0.0)).flex().items_center()
@@ -68,7 +68,7 @@ pub fn render_file_tag_dots(tags: Vec<&Tag>) -> impl IntoElement {
     }
 }
 
-/
+
 pub fn render_tag_filter_item(tag: &Tag, is_selected: bool, file_count: usize) -> impl IntoElement {
     let theme_bg_hover = gpui::rgb(0x161b22);
     let theme_bg_selected = gpui::rgb(0x1f3a5f);
@@ -102,7 +102,7 @@ pub fn render_tag_filter_item(tag: &Tag, is_selected: bool, file_count: usize) -
         )
 }
 
-/
+
 pub fn render_tag_context_menu(tag_manager: &TagManager, file_path: &Path) -> impl IntoElement {
     let theme_bg = gpui::rgb(0x161b22);
     let theme_border = gpui::rgb(0x30363d);
@@ -160,9 +160,9 @@ pub fn render_tag_context_menu(tag_manager: &TagManager, file_path: &Path) -> im
     menu
 }
 
-/
-/
-/
+
+
+
 pub fn parse_tag_query(query: &str) -> (String, Vec<String>) {
     let mut remaining_parts = Vec::new();
     let mut tag_filters = Vec::new();

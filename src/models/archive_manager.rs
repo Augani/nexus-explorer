@@ -8,7 +8,7 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use thiserror::Error;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArchiveFormat {
     Zip,
@@ -58,7 +58,7 @@ impl ArchiveFormat {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct CompressOptions {
     pub format: ArchiveFormat,
@@ -76,7 +76,7 @@ impl Default for CompressOptions {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OverwriteMode {
     Skip,
@@ -84,7 +84,7 @@ pub enum OverwriteMode {
     ReplaceIfNewer,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ExtractOptions {
     pub destination: PathBuf,
@@ -92,7 +92,7 @@ pub struct ExtractOptions {
     pub overwrite: OverwriteMode,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ArchiveEntry {
     pub path: String,
@@ -103,7 +103,7 @@ pub struct ArchiveEntry {
     pub is_encrypted: bool,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ArchiveProgress {
     pub current_file: String,
@@ -138,7 +138,7 @@ impl ArchiveProgress {
     }
 }
 
-/
+
 #[derive(Debug, Error)]
 pub enum ArchiveError {
     #[error("Invalid archive: {0}")]
@@ -166,7 +166,7 @@ pub enum ArchiveError {
     ZipError(#[from] zip::result::ZipError),
 }
 
-/
+
 pub struct ArchiveManager {
     supported_formats: Vec<ArchiveFormat>,
 }
@@ -197,7 +197,7 @@ impl ArchiveManager {
     }
 
 
-    /
+
     pub fn list_contents(&self, archive_path: &Path) -> Result<Vec<ArchiveEntry>, ArchiveError> {
         let format = ArchiveFormat::from_extension(archive_path)
             .ok_or_else(|| ArchiveError::UnsupportedFormat(
@@ -291,12 +291,12 @@ impl ArchiveManager {
         Ok(entries)
     }
 
-    /
+
     pub fn get_total_uncompressed_size(&self, entries: &[ArchiveEntry]) -> u64 {
         entries.iter().filter(|e| !e.is_dir).map(|e| e.size).sum()
     }
 
-    /
+
     pub fn compress<F>(
         &self,
         paths: &[PathBuf],
@@ -517,7 +517,7 @@ impl ArchiveManager {
     }
 
 
-    /
+
     pub fn extract<F>(
         &self,
         archive_path: &Path,
@@ -778,7 +778,7 @@ impl ArchiveManager {
         Ok(())
     }
 
-    /
+
     pub fn extract_file(
         &self,
         archive_path: &Path,

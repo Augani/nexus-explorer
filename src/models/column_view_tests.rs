@@ -279,7 +279,7 @@ fn test_column_view_path_hierarchy() {
 
 use proptest::prelude::*;
 
-/
+
 fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
     ("[a-zA-Z0-9_]{1,20}", prop::bool::ANY).prop_map(|(name, is_dir)| {
         let ext = if is_dir { "" } else { ".txt" };
@@ -294,7 +294,7 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
     })
 }
 
-/
+
 fn arb_entries_with_dir() -> impl Strategy<Value = Vec<FileEntry>> {
     prop::collection::vec(arb_file_entry(), 1..10)
         .prop_filter("must have at least one directory", |entries| {
@@ -302,12 +302,12 @@ fn arb_entries_with_dir() -> impl Strategy<Value = Vec<FileEntry>> {
         })
 }
 
-/
-/
-/
-/
-/
-/
+
+
+
+
+
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 

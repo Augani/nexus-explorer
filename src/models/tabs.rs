@@ -2,7 +2,7 @@ use crate::models::ViewMode;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TabId(pub usize);
 
@@ -12,7 +12,7 @@ impl TabId {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TabViewState {
     pub scroll_position: f32,
@@ -32,7 +32,7 @@ impl Default for TabViewState {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tab {
     pub id: TabId,
@@ -74,7 +74,7 @@ impl Tab {
         self.path = path;
     }
 
-    /
+
     pub fn navigate_to(&mut self, path: PathBuf) {
         if self.history_index < self.history.len().saturating_sub(1) {
             self.history.truncate(self.history_index + 1);
@@ -130,7 +130,7 @@ impl Tab {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TabState {
     tabs: Vec<Tab>,
@@ -139,7 +139,7 @@ pub struct TabState {
 }
 
 impl TabState {
-    /
+
     pub fn new(initial_path: PathBuf) -> Self {
         let initial_tab = Tab::new(TabId::new(0), initial_path);
         Self {
@@ -149,7 +149,7 @@ impl TabState {
         }
     }
 
-    /
+
     pub fn open_tab(&mut self, path: PathBuf) -> TabId {
         let id = TabId::new(self.next_id);
         self.next_id += 1;
@@ -162,8 +162,8 @@ impl TabState {
         id
     }
 
-    /
-    /
+
+
     pub fn close_tab(&mut self, id: TabId) -> bool {
         if let Some(index) = self.tabs.iter().position(|t| t.id == id) {
             if self.tabs.len() == 1 {
@@ -186,7 +186,7 @@ impl TabState {
         }
     }
 
-    /
+
     pub fn switch_to(&mut self, id: TabId) -> bool {
         if let Some(index) = self.tabs.iter().position(|t| t.id == id) {
             self.active_index = index;
@@ -196,7 +196,7 @@ impl TabState {
         }
     }
 
-    /
+
     pub fn switch_to_index(&mut self, index: usize) -> bool {
         if index < self.tabs.len() {
             self.active_index = index;
@@ -206,59 +206,59 @@ impl TabState {
         }
     }
 
-    /
+
     pub fn active_tab(&self) -> &Tab {
         &self.tabs[self.active_index]
     }
 
-    /
+
     pub fn active_tab_mut(&mut self) -> &mut Tab {
         &mut self.tabs[self.active_index]
     }
 
-    /
+
     pub fn active_tab_id(&self) -> TabId {
         self.tabs[self.active_index].id
     }
 
-    /
+
     pub fn active_index(&self) -> usize {
         self.active_index
     }
 
-    /
+
     pub fn tabs(&self) -> &[Tab] {
         &self.tabs
     }
 
-    /
+
     pub fn tab_count(&self) -> usize {
         self.tabs.len()
     }
 
-    /
+
     pub fn get_tab(&self, id: TabId) -> Option<&Tab> {
         self.tabs.iter().find(|t| t.id == id)
     }
 
-    /
+
     pub fn get_tab_mut(&mut self, id: TabId) -> Option<&mut Tab> {
         self.tabs.iter_mut().find(|t| t.id == id)
     }
 
-    /
+
     pub fn update_active_path(&mut self, path: PathBuf) {
         self.tabs[self.active_index].set_path(path);
     }
 
-    /
+
     pub fn next_tab(&mut self) {
         if !self.tabs.is_empty() {
             self.active_index = (self.active_index + 1) % self.tabs.len();
         }
     }
 
-    /
+
     pub fn prev_tab(&mut self) {
         if !self.tabs.is_empty() {
             self.active_index = if self.active_index == 0 {
@@ -269,44 +269,44 @@ impl TabState {
         }
     }
 
-    /
+
     pub fn close_active_tab(&mut self) -> bool {
         let id = self.active_tab_id();
         self.close_tab(id)
     }
 
-    /
+
     pub fn navigate_active_to(&mut self, path: PathBuf) {
         self.tabs[self.active_index].navigate_to(path);
     }
 
-    /
+
     pub fn go_back(&mut self) -> Option<PathBuf> {
         self.tabs[self.active_index].go_back()
     }
 
-    /
+
     pub fn go_forward(&mut self) -> Option<PathBuf> {
         self.tabs[self.active_index].go_forward()
     }
 
-    /
+
     pub fn can_go_back(&self) -> bool {
         self.tabs[self.active_index].can_go_back()
     }
 
-    /
+
     pub fn can_go_forward(&self) -> bool {
         self.tabs[self.active_index].can_go_forward()
     }
 
-    /
+
     pub fn duplicate_active_tab(&mut self) -> TabId {
         let current_path = self.tabs[self.active_index].path.clone();
         self.open_tab(current_path)
     }
 
-    /
+
     pub fn move_tab(&mut self, from_index: usize, to_index: usize) {
         if from_index < self.tabs.len() && to_index < self.tabs.len() && from_index != to_index {
             let tab = self.tabs.remove(from_index);
@@ -322,7 +322,7 @@ impl TabState {
         }
     }
 
-    /
+
     pub fn close_other_tabs(&mut self) {
         let active_tab = self.tabs.remove(self.active_index);
         self.tabs.clear();
@@ -330,7 +330,7 @@ impl TabState {
         self.active_index = 0;
     }
 
-    /
+
     pub fn close_tabs_to_right(&mut self) {
         self.tabs.truncate(self.active_index + 1);
     }

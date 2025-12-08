@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use crate::models::theme_colors;
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum PreviewContent {
     Text {
@@ -38,7 +38,7 @@ pub enum PreviewContent {
     None,
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileMetadata {
     pub name: String,
@@ -101,7 +101,7 @@ impl FileMetadata {
     }
 }
 
-/
+
 fn format_permissions(metadata: &fs::Metadata) -> String {
     #[cfg(unix)]
     {
@@ -130,7 +130,7 @@ fn format_permission_triple(bits: u32) -> String {
     format!("{}{}{}", r, w, x)
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct Preview {
     content: PreviewContent,
@@ -282,7 +282,7 @@ impl Preview {
     }
 }
 
-/
+
 pub fn calculate_directory_stats(path: &Path) -> std::io::Result<(usize, u64, usize, usize)> {
     let mut item_count = 0;
     let mut total_size = 0u64;
@@ -305,7 +305,7 @@ pub fn calculate_directory_stats(path: &Path) -> std::io::Result<(usize, u64, us
     Ok((item_count, total_size, subdir_count, file_count))
 }
 
-/
+
 fn is_image_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -313,7 +313,7 @@ fn is_image_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/
+
 fn is_text_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -404,7 +404,7 @@ fn is_text_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/
+
 fn is_likely_text_file(path: &Path) -> bool {
     if let Ok(data) = fs::read(path) {
         let sample: Vec<u8> = data.into_iter().take(512).collect();
@@ -419,7 +419,7 @@ fn is_likely_text_file(path: &Path) -> bool {
     }
 }
 
-/
+
 fn detect_language(ext: &str) -> Option<String> {
     let lang = match ext {
         "rs" => "Rust",
@@ -473,13 +473,13 @@ fn detect_language(ext: &str) -> Option<String> {
     Some(lang.to_string())
 }
 
-/
+
 fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
     let _ = path;
     None
 }
 
-/
+
 pub fn format_size(size: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -496,7 +496,7 @@ pub fn format_size(size: u64) -> String {
     }
 }
 
-/
+
 pub fn format_date(time: SystemTime) -> String {
     use std::time::UNIX_EPOCH;
 
@@ -512,7 +512,7 @@ pub fn format_date(time: SystemTime) -> String {
     format!("{:04}-{:02}-{:02}", years, month.min(12), day.min(31))
 }
 
-/
+
 pub fn format_hex_dump(bytes: &[u8]) -> Vec<(String, String, String)> {
     let mut lines = Vec::new();
 
@@ -544,7 +544,7 @@ pub fn format_hex_dump(bytes: &[u8]) -> Vec<(String, String, String)> {
     lines
 }
 
-/
+
 pub struct PreviewView {
     preview: Preview,
     focus_handle: FocusHandle,

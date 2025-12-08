@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use flume::{Receiver, Sender};
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClipboardOperation {
     Copy { paths: Vec<PathBuf> },
@@ -30,7 +30,7 @@ impl ClipboardOperation {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Default)]
 pub struct PasteProgress {
     pub current_file: PathBuf,
@@ -69,7 +69,7 @@ impl PasteProgress {
 }
 
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConflictResolution {
     Skip,
@@ -79,7 +79,7 @@ pub enum ConflictResolution {
     ReplaceIfLarger,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct PasteResult {
     pub successful_files: Vec<PathBuf>,
@@ -115,7 +115,7 @@ impl Default for PasteResult {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct ClipboardEntry {
     pub operation: ClipboardOperation,
@@ -131,7 +131,7 @@ impl ClipboardEntry {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct PasteCancellationToken {
     cancelled: Arc<AtomicBool>,
@@ -159,7 +159,7 @@ impl Default for PasteCancellationToken {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum PasteProgressUpdate {
     Started { total_files: usize, total_bytes: u64 },
@@ -173,11 +173,11 @@ pub enum PasteProgressUpdate {
     ConflictDetected { source: PathBuf, destination: PathBuf },
 }
 
-/
+
 const MAX_CLIPBOARD_HISTORY: usize = 10;
 
 
-/
+
 pub struct ClipboardManager {
     operation: Option<ClipboardOperation>,
     history: VecDeque<ClipboardEntry>,
@@ -197,13 +197,13 @@ impl ClipboardManager {
         }
     }
 
-    /
+
     pub fn copy(&mut self, paths: Vec<PathBuf>) {
         let operation = ClipboardOperation::Copy { paths };
         self.set_operation(operation);
     }
 
-    /
+
     pub fn cut(&mut self, paths: Vec<PathBuf>) {
         let operation = ClipboardOperation::Cut { paths };
         self.set_operation(operation);
@@ -219,32 +219,32 @@ impl ClipboardManager {
         self.operation = Some(operation);
     }
 
-    /
+
     pub fn has_content(&self) -> bool {
         self.operation.is_some()
     }
 
-    /
+
     pub fn operation_type(&self) -> Option<&ClipboardOperation> {
         self.operation.as_ref()
     }
 
-    /
+
     pub fn paths(&self) -> Option<&[PathBuf]> {
         self.operation.as_ref().map(|op| op.paths())
     }
 
-    /
+
     pub fn is_cut(&self) -> bool {
         self.operation.as_ref().map_or(false, |op| op.is_cut())
     }
 
-    /
+
     pub fn is_copy(&self) -> bool {
         self.operation.as_ref().map_or(false, |op| op.is_copy())
     }
 
-    /
+
     pub fn clear(&mut self) {
         if let Some(current) = self.operation.take() {
             self.history.push_front(ClipboardEntry::new(current));
@@ -254,19 +254,19 @@ impl ClipboardManager {
         }
     }
 
-    /
+
     pub fn history(&self) -> &VecDeque<ClipboardEntry> {
         &self.history
     }
 
-    /
+
     pub fn contains_path(&self, path: &PathBuf) -> bool {
         self.operation
             .as_ref()
             .map_or(false, |op| op.paths().contains(path))
     }
 
-    /
+
     pub fn is_path_cut(&self, path: &PathBuf) -> bool {
         match &self.operation {
             Some(ClipboardOperation::Cut { paths }) => paths.contains(path),
@@ -274,7 +274,7 @@ impl ClipboardManager {
         }
     }
 
-    /
+
     pub fn setup_progress_channels(&mut self) -> Receiver<PasteProgressUpdate> {
         let (tx, rx) = flume::unbounded();
         self.progress_sender = Some(tx);
@@ -282,33 +282,33 @@ impl ClipboardManager {
         rx
     }
 
-    /
+
     pub fn progress_sender(&self) -> Option<Sender<PasteProgressUpdate>> {
         self.progress_sender.clone()
     }
 
-    /
+
     pub fn start_paste(&mut self) -> PasteCancellationToken {
         let token = PasteCancellationToken::new();
         self.active_paste = Some(token.clone());
         token
     }
 
-    /
+
     pub fn cancel_paste(&mut self) {
         if let Some(token) = &self.active_paste {
             token.cancel();
         }
     }
 
-    /
+
     pub fn is_paste_active(&self) -> bool {
         self.active_paste
             .as_ref()
             .map_or(false, |t| !t.is_cancelled())
     }
 
-    /
+
     pub fn complete_paste(&mut self, was_cut: bool) {
         self.active_paste = None;
         if was_cut {
@@ -316,7 +316,7 @@ impl ClipboardManager {
         }
     }
 
-    /
+
     pub fn item_count(&self) -> usize {
         self.operation.as_ref().map_or(0, |op| op.paths().len())
     }
@@ -329,7 +329,7 @@ impl Default for ClipboardManager {
 }
 
 
-/
+
 pub struct PasteExecutor {
     cancellation_token: PasteCancellationToken,
     progress_sender: Sender<PasteProgressUpdate>,
@@ -346,7 +346,7 @@ impl PasteExecutor {
         }
     }
 
-    /
+
     pub fn execute(
         &self,
         sources: &[PathBuf],
@@ -715,7 +715,7 @@ impl PasteExecutor {
     }
 }
 
-/
+
 struct SpeedTracker {
     start_time: Instant,
     bytes_transferred: u64,

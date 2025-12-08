@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, BookmarkManager};
 
-/
+
 pub struct GoToFolderView {
     input_value: String,
     focus_handle: FocusHandle,
@@ -31,7 +31,7 @@ impl GoToFolderView {
         }
     }
 
-    /
+
     pub fn show(&mut self, cx: &mut Context<Self>) {
         self.is_visible = true;
         self.input_value.clear();
@@ -39,7 +39,7 @@ impl GoToFolderView {
         cx.notify();
     }
 
-    /
+
     pub fn hide(&mut self, cx: &mut Context<Self>) {
         self.is_visible = false;
         self.input_value.clear();
@@ -47,7 +47,7 @@ impl GoToFolderView {
         cx.notify();
     }
 
-    /
+
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         if self.is_visible {
             self.hide(cx);
@@ -56,12 +56,12 @@ impl GoToFolderView {
         }
     }
 
-    /
+
     pub fn is_visible(&self) -> bool {
         self.is_visible
     }
 
-    /
+
     pub fn update_recent(&mut self, manager: &BookmarkManager) {
         self.recent_locations = manager.recent().iter().cloned().collect();
         self.bookmarks = manager
@@ -71,24 +71,24 @@ impl GoToFolderView {
             .collect();
     }
 
-    /
+
     pub fn take_pending_navigation(&mut self) -> Option<PathBuf> {
         self.pending_navigation.take()
     }
 
-    /
+
     pub fn set_input(&mut self, text: String, cx: &mut Context<Self>) {
         self.input_value = text;
         self.error_message = None;
         cx.notify();
     }
 
-    /
+
     pub fn input_value(&self) -> &str {
         &self.input_value
     }
 
-    /
+
     pub fn navigate(&mut self, cx: &mut Context<Self>) {
         let path = self.expand_path(&self.input_value);
 
@@ -104,7 +104,7 @@ impl GoToFolderView {
         }
     }
 
-    /
+
     fn navigate_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         if path.exists() && path.is_dir() {
             self.pending_navigation = Some(path);
@@ -112,7 +112,7 @@ impl GoToFolderView {
         }
     }
 
-    /
+
     fn expand_path(&self, input: &str) -> PathBuf {
         if input.starts_with('~') {
             if let Some(home) = dirs::home_dir() {
@@ -122,7 +122,7 @@ impl GoToFolderView {
         PathBuf::from(input)
     }
 
-    /
+
     fn get_suggestions(&self) -> Vec<(String, PathBuf)> {
         let input_lower = self.input_value.to_lowercase();
         let mut suggestions = Vec::new();
@@ -432,7 +432,7 @@ impl Render for GoToFolderView {
 mod tests {
     use super::*;
 
-    /
+
     fn expand_path_helper(input: &str) -> PathBuf {
         if input.starts_with('~') {
             if let Some(home) = dirs::home_dir() {

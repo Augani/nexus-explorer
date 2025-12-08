@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, FileOperation, OperationId, OperationStatus, OperationType};
 
-/
+
 fn with_alpha(color: Rgba, alpha: f32) -> Rgba {
     Rgba {
         r: color.r,
@@ -17,7 +17,7 @@ fn with_alpha(color: Rgba, alpha: f32) -> Rgba {
     }
 }
 
-/
+
 fn format_duration(duration: Duration) -> String {
     let secs = duration.as_secs();
     if secs < 60 {
@@ -29,7 +29,7 @@ fn format_duration(duration: Duration) -> String {
     }
 }
 
-/
+
 fn format_speed(bytes_per_sec: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -46,7 +46,7 @@ fn format_speed(bytes_per_sec: u64) -> String {
     }
 }
 
-/
+
 fn format_size(size: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -66,7 +66,7 @@ fn format_size(size: u64) -> String {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProgressPanelAction {
     Cancel(OperationId),
@@ -76,7 +76,7 @@ pub enum ProgressPanelAction {
     DismissAll,
 }
 
-/
+
 pub struct ProgressPanelView {
     operations: Vec<FileOperation>,
     focus_handle: FocusHandle,
@@ -94,28 +94,28 @@ impl ProgressPanelView {
         }
     }
 
-    /
+
     pub fn update_operations(&mut self, operations: Vec<FileOperation>, cx: &mut Context<Self>) {
         self.operations = operations;
         cx.notify();
     }
 
-    /
+
     pub fn take_pending_action(&mut self) -> Option<ProgressPanelAction> {
         self.pending_action.take()
     }
 
-    /
+
     pub fn has_operations(&self) -> bool {
         !self.operations.is_empty()
     }
 
-    /
+
     pub fn has_active_operations(&self) -> bool {
         self.operations.iter().any(|op| op.status.is_active())
     }
 
-    /
+
     pub fn toggle_expanded(&mut self, cx: &mut Context<Self>) {
         self.is_expanded = !self.is_expanded;
         cx.notify();

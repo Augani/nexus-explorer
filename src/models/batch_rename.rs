@@ -2,7 +2,7 @@ use chrono::{DateTime, Local};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenamePreview {
     pub original: String,
@@ -20,35 +20,35 @@ impl RenamePreview {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum RenameToken {
-    /
+
     Text(String),
-    /
+
     Counter { start: usize, padding: usize },
-    /
+
     Date { format: String },
-    /
+
     Extension,
-    /
+
     OriginalName,
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BatchRenameError {
-    /
+
     Conflict(Vec<usize>),
-    /
+
     InvalidPattern(String),
-    /
+
     FileSystemError(String),
-    /
+
     NoFiles,
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct BatchRename {
     files: Vec<PathBuf>,
@@ -72,7 +72,7 @@ impl Default for BatchRename {
 }
 
 impl BatchRename {
-    /
+
     pub fn new(files: Vec<PathBuf>) -> Self {
         let mut instance = Self {
             files,
@@ -92,24 +92,24 @@ impl BatchRename {
         instance
     }
 
-    /
+
     pub fn files(&self) -> &[PathBuf] {
         &self.files
     }
 
-    /
+
     pub fn set_pattern(&mut self, pattern: &str) {
         self.pattern = pattern.to_string();
         self.use_find_replace = false;
         self.update_preview();
     }
 
-    /
+
     pub fn pattern(&self) -> &str {
         &self.pattern
     }
 
-    /
+
     pub fn set_find_replace(&mut self, find: &str, replace: &str) {
         self.find_text = find.to_string();
         self.replace_text = replace.to_string();
@@ -117,7 +117,7 @@ impl BatchRename {
         self.update_preview();
     }
 
-    /
+
     pub fn set_find_replace_with_options(
         &mut self,
         find: &str,
@@ -133,77 +133,77 @@ impl BatchRename {
         self.update_preview();
     }
 
-    /
+
     pub fn set_use_regex(&mut self, use_regex: bool) {
         self.use_regex = use_regex;
         self.update_preview();
     }
 
-    /
+
     pub fn is_regex_mode(&self) -> bool {
         self.use_regex
     }
 
-    /
+
     pub fn set_case_insensitive(&mut self, case_insensitive: bool) {
         self.case_insensitive = case_insensitive;
         self.update_preview();
     }
 
-    /
+
     pub fn is_case_insensitive(&self) -> bool {
         self.case_insensitive
     }
 
-    /
+
     pub fn find_text(&self) -> &str {
         &self.find_text
     }
 
-    /
+
     pub fn replace_text(&self) -> &str {
         &self.replace_text
     }
 
-    /
+
     pub fn is_find_replace_mode(&self) -> bool {
         self.use_find_replace
     }
 
-    /
+
     pub fn set_counter_start(&mut self, start: usize) {
         self.counter_start = start;
         self.update_preview();
     }
 
-    /
+
     pub fn set_counter_padding(&mut self, padding: usize) {
         self.counter_padding = padding.max(1);
         self.update_preview();
     }
 
-    /
+
     pub fn set_date_format(&mut self, format: &str) {
         self.date_format = format.to_string();
         self.update_preview();
     }
 
-    /
+
     pub fn preview(&self) -> &[RenamePreview] {
         &self.preview
     }
 
-    /
+
     pub fn has_conflicts(&self) -> bool {
         !self.conflicts.is_empty()
     }
 
-    /
+
     pub fn conflicts(&self) -> &[usize] {
         &self.conflicts
     }
 
-    /
+
     fn parse_pattern(&self) -> Vec<RenameToken> {
         let mut tokens = Vec::new();
         let mut chars = self.pattern.chars().peekable();
@@ -244,7 +244,7 @@ impl BatchRename {
         tokens
     }
 
-    /
+
     fn parse_token(&self, content: &str) -> Option<RenameToken> {
         let parts: Vec<&str> = content.split(':').collect();
         let token_name = parts[0].trim().to_lowercase();
@@ -275,7 +275,7 @@ impl BatchRename {
         }
     }
 
-    /
+
     fn generate_name(&self, path: &Path, index: usize, tokens: &[RenameToken]) -> String {
         let file_name = path
             .file_stem()
@@ -321,7 +321,7 @@ impl BatchRename {
         result
     }
 
-    /
+
     fn get_file_date(&self, path: &Path, format: &str) -> String {
         if let Ok(metadata) = std::fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
@@ -332,7 +332,7 @@ impl BatchRename {
         Local::now().format(format).to_string()
     }
 
-    /
+
     fn apply_find_replace(&self, original: &str) -> String {
         if self.find_text.is_empty() {
             return original.to_string();
@@ -367,7 +367,7 @@ impl BatchRename {
         }
     }
 
-    /
+
     fn update_preview(&mut self) {
         self.preview.clear();
         self.conflicts.clear();
@@ -402,7 +402,7 @@ impl BatchRename {
         self.detect_conflicts();
     }
 
-    /
+
     fn detect_conflicts(&mut self) {
         self.conflicts.clear();
 
@@ -444,7 +444,7 @@ impl BatchRename {
         }
     }
 
-    /
+
     pub fn apply(&self) -> Result<Vec<PathBuf>, BatchRenameError> {
         if self.files.is_empty() {
             return Err(BatchRenameError::NoFiles);
@@ -484,7 +484,7 @@ impl BatchRename {
         Ok(renamed_paths)
     }
 
-    /
+
     pub fn rename_count(&self) -> usize {
         self.preview
             .iter()

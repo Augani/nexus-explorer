@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-/
-/
+
+
 pub fn is_default_file_browser() -> bool {
     get_default_preference()
 }
 
-/
+
 pub fn set_as_default_file_browser() -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
@@ -71,7 +71,7 @@ MimeType=inode/directory;
     }
 }
 
-/
+
 pub fn restore_default_file_browser() -> Result<String, String> {
     save_default_preference(false);
 

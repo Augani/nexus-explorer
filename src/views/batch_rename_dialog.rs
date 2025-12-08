@@ -8,21 +8,21 @@ use gpui::{
 use crate::models::{theme_colors, BatchRename, RenamePreview};
 use adabraka_ui::components::input::{InputEvent, InputState};
 
-/
+
 #[derive(Clone, Debug)]
 pub enum BatchRenameDialogAction {
     Apply { renamed_paths: Vec<PathBuf> },
     Cancel,
 }
 
-/
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum RenameMode {
     Pattern,
     FindReplace,
 }
 
-/
+
 pub struct BatchRenameDialog {
     batch_rename: BatchRename,
     mode: RenameMode,

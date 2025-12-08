@@ -1,7 +1,7 @@
 use crate::models::{AuthMethod, NetworkConnectionConfig, NetworkProtocol};
 use gpui::*;
 
-/
+
 #[derive(Clone, PartialEq)]
 pub enum NetworkDialogAction {
     Connect,
@@ -16,7 +16,7 @@ pub enum NetworkDialogAction {
     UseAnonymous(bool),
 }
 
-/
+
 pub struct NetworkConnectionDialog {
     protocol: NetworkProtocol,
     host: String,
@@ -66,7 +66,7 @@ impl NetworkConnectionDialog {
         self
     }
 
-    /
+
     pub fn build_config(&self) -> Option<NetworkConnectionConfig> {
         if self.host.is_empty() {
             return None;
@@ -98,7 +98,7 @@ impl NetworkConnectionDialog {
         Some(config)
     }
 
-    /
+
     pub fn validate(&self) -> Result<(), String> {
         if self.host.is_empty() {
             return Err("Server address is required".to_string());
@@ -117,7 +117,7 @@ impl NetworkConnectionDialog {
         Ok(())
     }
 
-    /
+
     pub fn handle_connect(&mut self) {
         if let Err(msg) = self.validate() {
             self.error_message = Some(msg);
@@ -134,110 +134,110 @@ impl NetworkConnectionDialog {
         }
     }
 
-    /
+
     pub fn handle_cancel(&self) {
         if let Some(callback) = &self.on_cancel {
             callback();
         }
     }
 
-    /
+
     pub fn set_protocol(&mut self, protocol: NetworkProtocol) {
         self.protocol = protocol;
         if self.port.is_empty() {
         }
     }
 
-    /
+
     pub fn set_host(&mut self, host: String) {
         self.host = host;
         self.error_message = None;
     }
 
-    /
+
     pub fn set_port(&mut self, port: String) {
         self.port = port;
         self.error_message = None;
     }
 
-    /
+
     pub fn set_path(&mut self, path: String) {
         self.path = path;
     }
 
-    /
+
     pub fn set_username(&mut self, username: String) {
         self.username = username;
         self.error_message = None;
     }
 
-    /
+
     pub fn set_password(&mut self, password: String) {
         self.password = password;
     }
 
-    /
+
     pub fn set_label(&mut self, label: String) {
         self.label = label;
     }
 
-    /
+
     pub fn set_use_anonymous(&mut self, anonymous: bool) {
         self.use_anonymous = anonymous;
         self.error_message = None;
     }
 
-    /
+
     pub fn protocol(&self) -> NetworkProtocol {
         self.protocol
     }
 
-    /
+
     pub fn host(&self) -> &str {
         &self.host
     }
 
-    /
+
     pub fn port_str(&self) -> &str {
         &self.port
     }
 
-    /
+
     pub fn path(&self) -> &str {
         &self.path
     }
 
-    /
+
     pub fn username(&self) -> &str {
         &self.username
     }
 
-    /
+
     pub fn label(&self) -> &str {
         &self.label
     }
 
-    /
+
     pub fn is_anonymous(&self) -> bool {
         self.use_anonymous
     }
 
-    /
+
     pub fn error_message(&self) -> Option<&str> {
         self.error_message.as_deref()
     }
 
-    /
+
     pub fn is_connecting(&self) -> bool {
         self.is_connecting
     }
 
-    /
+
     pub fn port_placeholder(&self) -> String {
         format!("{}", self.protocol.default_port())
     }
 
-    /
+
     pub fn available_protocols() -> &'static [NetworkProtocol] {
         &[
             NetworkProtocol::Smb,

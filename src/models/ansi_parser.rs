@@ -1,7 +1,7 @@
 use crate::models::terminal::CellStyle;
 use gpui::Rgba;
 
-/
+
 pub const ANSI_COLORS: [Rgba; 16] = [
     Rgba {
         r: 0.0,
@@ -101,14 +101,14 @@ pub const ANSI_COLORS: [Rgba; 16] = [
     },
 ];
 
-/
+
 pub const DEFAULT_FG: Rgba = Rgba {
     r: 0.96,
     g: 0.91,
     b: 0.86,
     a: 1.0,
 };
-/
+
 pub const DEFAULT_BG: Rgba = Rgba {
     r: 0.0,
     g: 0.0,
@@ -116,7 +116,7 @@ pub const DEFAULT_BG: Rgba = Rgba {
     a: 0.0,
 };
 
-/
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ParserState {
     Ground,
@@ -128,7 +128,7 @@ enum ParserState {
     OscString,
 }
 
-/
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParsedSegment {
     Text(String, CellStyle),
@@ -151,7 +151,7 @@ pub enum ParsedSegment {
     ScrollDown(usize),
 }
 
-/
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClearMode {
     ToEnd,
@@ -172,7 +172,7 @@ impl ClearMode {
     }
 }
 
-/
+
 pub struct AnsiParser {
     state: ParserState,
     params: Vec<u16>,
@@ -232,7 +232,7 @@ impl AnsiParser {
         };
     }
 
-    /
+
     pub fn parse(&mut self, input: &[u8]) -> Vec<ParsedSegment> {
         let mut segments = Vec::new();
         let mut text_buffer = String::new();
@@ -683,7 +683,7 @@ impl AnsiParser {
     }
 }
 
-/
+
 pub fn color_from_256(n: usize) -> Rgba {
     match n {
         0..=15 => ANSI_COLORS[n],

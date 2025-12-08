@@ -279,8 +279,8 @@ mod property_tests {
     use proptest::prelude::*;
     use tempfile::TempDir;
 
-    /
-    /
+
+
     #[test]
     fn property_favorites_add_persistence() {
         let temp = TempDir::new().unwrap();
@@ -304,8 +304,8 @@ mod property_tests {
     }
 
     proptest! {
-        /
-        /
+
+
         #[test]
         fn property_favorites_reorder_preservation(
             num_items in 2usize..=5,
@@ -334,8 +334,8 @@ mod property_tests {
             }
         }
 
-        /
-        /
+
+
         #[test]
         fn property_favorites_invalid_path_detection(
             path_suffix in "[a-z]{5,10}"

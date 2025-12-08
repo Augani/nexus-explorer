@@ -10,21 +10,21 @@ use crate::models::{
     key_codes, theme_colors, AnsiParser, ClearMode, ParsedSegment, PtyService, TerminalState,
 };
 
-/
+
 const LINE_HEIGHT: f32 = 20.0;
-/
+
 const CHAR_WIDTH: f32 = 8.4;
-/
+
 const TERMINAL_PADDING: f32 = 12.0;
-/
+
 const TERMINAL_CONTENT_HEIGHT: f32 = 260.0;
-/
+
 const OVERSCAN_LINES: usize = 3;
 
-/
+
 const CURSOR_BLINK_INTERVAL_MS: u64 = 530;
 
-/
+
 pub struct TerminalView {
     state: TerminalState,
     parser: AnsiParser,
@@ -102,7 +102,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn change_directory(&mut self, path: PathBuf) {
         let is_running = self.is_running();
         self.state.set_working_directory(path.clone());
@@ -116,7 +116,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn start_with_polling(
         &mut self,
         window: &mut Window,
@@ -162,7 +162,7 @@ impl TerminalView {
         Ok(())
     }
 
-    /
+
     pub fn start(&mut self) -> Result<(), String> {
         if self.is_running() {
             return Ok(());
@@ -180,7 +180,7 @@ impl TerminalView {
         Ok(())
     }
 
-    /
+
     pub fn stop(&mut self) {
         if let Some(mut pty) = self.pty.take() {
             pty.stop();
@@ -188,14 +188,14 @@ impl TerminalView {
         self.state.set_running(false);
     }
 
-    /
+
     pub fn restart(&mut self) -> Result<(), String> {
         self.stop();
         self.state.reset();
         self.start()
     }
 
-    /
+
     pub fn process_output(&mut self) {
         if let Some(pty) = &self.pty {
             let output = pty.drain_output();
@@ -205,7 +205,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     fn process_bytes(&mut self, bytes: &[u8]) {
         let segments = self.parser.parse(bytes);
         for segment in segments {
@@ -213,7 +213,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     fn apply_segment(&mut self, segment: ParsedSegment) {
         match segment {
             ParsedSegment::Text(text, style) => {
@@ -256,19 +256,19 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn send_input(&mut self, data: &[u8]) {
         if let Some(pty) = &mut self.pty {
             let _ = pty.write(data);
         }
     }
 
-    /
+
     pub fn send_str(&mut self, s: &str) {
         self.send_input(s.as_bytes());
     }
 
-    /
+
     pub fn resize(&mut self, cols: usize, rows: usize) {
         self.state.resize(cols, rows);
         if let Some(pty) = &mut self.pty {
@@ -276,33 +276,33 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn scroll_up(&mut self, lines: usize) {
         self.state.scroll_viewport_up(lines);
     }
 
-    /
+
     pub fn scroll_down(&mut self, lines: usize) {
         self.state.scroll_viewport_down(lines);
     }
 
-    /
+
     pub fn scroll_to_bottom(&mut self) {
         self.state.scroll_to_bottom();
     }
 
-    /
+
     pub fn visible_line_count(&self) -> usize {
         self.state.rows()
     }
 
-    /
+
     pub fn total_line_count(&self) -> usize {
         self.state.total_lines()
     }
 
-    /
-    /
+
+
     pub fn visible_line_range(&self) -> (usize, usize) {
         let total_lines = self.state.total_lines();
         let visible_rows = self.state.rows();
@@ -317,18 +317,18 @@ impl TerminalView {
         (render_start, render_end)
     }
 
-    /
+
     pub fn virtualized_lines(&self) -> impl Iterator<Item = (usize, &crate::models::TerminalLine)> {
         let (start, end) = self.visible_line_range();
         (start..end).filter_map(move |idx| self.state.line(idx).map(|line| (idx, line)))
     }
 
-    /
+
     pub fn calculate_visible_rows(&self) -> usize {
         ((self.viewport_height - TERMINAL_PADDING * 2.0) / LINE_HEIGHT).floor() as usize
     }
 
-    /
+
     pub fn set_viewport_height(&mut self, height: f32) {
         self.viewport_height = height;
         let rows = self.calculate_visible_rows();
@@ -337,7 +337,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn scroll_progress(&self) -> f32 {
         let max_offset = self.state.max_scroll_offset();
         if max_offset == 0 {
@@ -347,7 +347,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn scrollbar_thumb_size(&self) -> f32 {
         let total = self.state.total_lines();
         let visible = self.state.rows();
@@ -358,7 +358,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn handle_key_down(
         &mut self,
         event: &KeyDownEvent,
@@ -533,7 +533,7 @@ impl TerminalView {
         self.reset_cursor_blink();
     }
 
-    /
+
     pub fn handle_scroll(
         &mut self,
         event: &ScrollWheelEvent,
@@ -555,7 +555,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn handle_mouse_down(
         &mut self,
         event: &MouseDownEvent,
@@ -573,7 +573,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn handle_mouse_move(
         &mut self,
         event: &MouseMoveEvent,
@@ -587,7 +587,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn handle_mouse_up(
         &mut self,
         event: &MouseUpEvent,
@@ -600,7 +600,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     fn position_from_mouse(&self, position: gpui::Point<gpui::Pixels>) -> (usize, usize) {
         let x = f32::from(position.x) - TERMINAL_PADDING;
         let y = f32::from(position.y) - TERMINAL_PADDING - 36.0;
@@ -614,7 +614,7 @@ impl TerminalView {
         (line, col)
     }
 
-    /
+
     fn is_position_selected(&self, line: usize, col: usize) -> bool {
         if let (Some(start), Some(end)) = (self.selection_start, self.selection_end) {
             let (start_line, start_col) = start;
@@ -645,7 +645,7 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn get_selected_text(&self) -> Option<String> {
         let (start, end) = (self.selection_start?, self.selection_end?);
         let (start_line, start_col) = start;
@@ -696,14 +696,14 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn copy_selection(&self, cx: &mut Context<Self>) {
         if let Some(text) = self.get_selected_text() {
             cx.write_to_clipboard(ClipboardItem::new_string(text));
         }
     }
 
-    /
+
     pub fn paste_from_clipboard(&mut self, cx: &mut Context<Self>) {
         if let Some(item) = cx.read_from_clipboard() {
             if let Some(text) = item.text() {
@@ -712,21 +712,21 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn clear_selection(&mut self) {
         self.selection_start = None;
         self.selection_end = None;
         self.is_selecting = false;
     }
 
-    /
+
     pub fn has_selection(&self) -> bool {
         self.selection_start.is_some()
             && self.selection_end.is_some()
             && self.selection_start != self.selection_end
     }
 
-    /
+
     pub fn update_cursor_blink(&mut self) {
         let now = Instant::now();
         if now.duration_since(self.last_blink_time)
@@ -737,13 +737,13 @@ impl TerminalView {
         }
     }
 
-    /
+
     pub fn reset_cursor_blink(&mut self) {
         self.cursor_blink_state = true;
         self.last_blink_time = Instant::now();
     }
 
-    /
+
     fn render_line(
         &self,
         idx: usize,
@@ -847,7 +847,7 @@ impl TerminalView {
             .children(spans)
     }
 
-    /
+
     fn cursor_absolute_line(&self) -> usize {
         let total = self.state.total_lines();
         let rows = self.state.rows();

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use super::FileEntry;
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Column {
     pub path: PathBuf,
@@ -13,7 +13,7 @@ pub struct Column {
 }
 
 impl Column {
-    /
+
     pub fn new(path: PathBuf) -> Self {
         Self {
             path,
@@ -22,7 +22,7 @@ impl Column {
         }
     }
 
-    /
+
     pub fn with_entries(path: PathBuf, entries: Vec<FileEntry>) -> Self {
         Self {
             path,
@@ -31,29 +31,29 @@ impl Column {
         }
     }
 
-    /
+
     pub fn selected_entry(&self) -> Option<&FileEntry> {
         self.selected_index.and_then(|idx| self.entries.get(idx))
     }
 
-    /
+
     pub fn select(&mut self, index: usize) {
         if index < self.entries.len() {
             self.selected_index = Some(index);
         }
     }
 
-    /
+
     pub fn clear_selection(&mut self) {
         self.selected_index = None;
     }
 
-    /
+
     pub fn has_entries(&self) -> bool {
         !self.entries.is_empty()
     }
 
-    /
+
     pub fn entry_count(&self) -> usize {
         self.entries.len()
     }
@@ -65,10 +65,10 @@ impl Default for Column {
     }
 }
 
-/
-/
-/
-/
+
+
+
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColumnView {
     columns: Vec<Column>,
@@ -78,16 +78,16 @@ pub struct ColumnView {
 }
 
 impl ColumnView {
-    /
+
     pub const DEFAULT_COLUMN_WIDTH: f32 = 220.0;
 
-    /
+
     pub const MIN_COLUMN_WIDTH: f32 = 150.0;
 
-    /
+
     pub const MAX_COLUMN_WIDTH: f32 = 400.0;
 
-    /
+
     pub fn new(root: PathBuf) -> Self {
         let root_column = Column::new(root.clone());
         Self {
@@ -98,7 +98,7 @@ impl ColumnView {
         }
     }
 
-    /
+
     pub fn with_column_width(root: PathBuf, width: f32) -> Self {
         let clamped_width = width.clamp(Self::MIN_COLUMN_WIDTH, Self::MAX_COLUMN_WIDTH);
         let root_column = Column::new(root.clone());
@@ -110,42 +110,42 @@ impl ColumnView {
         }
     }
 
-    /
+
     pub fn columns(&self) -> &[Column] {
         &self.columns
     }
 
-    /
+
     pub fn column_count(&self) -> usize {
         self.columns.len()
     }
 
-    /
+
     pub fn scroll_offset(&self) -> f32 {
         self.scroll_offset
     }
 
-    /
+
     pub fn set_scroll_offset(&mut self, offset: f32) {
         self.scroll_offset = offset.max(0.0);
     }
 
-    /
+
     pub fn column_width(&self) -> f32 {
         self.column_width
     }
 
-    /
+
     pub fn set_column_width(&mut self, width: f32) {
         self.column_width = width.clamp(Self::MIN_COLUMN_WIDTH, Self::MAX_COLUMN_WIDTH);
     }
 
-    /
+
     pub fn root_path(&self) -> &PathBuf {
         &self.root_path
     }
 
-    /
+
     pub fn visible_columns(&self, viewport_width: f32) -> Range<usize> {
         if self.columns.is_empty() || viewport_width <= 0.0 {
             return 0..0;
@@ -158,27 +158,27 @@ impl ColumnView {
         start_column.min(self.columns.len())..end_column
     }
 
-    /
+
     pub fn column(&self, index: usize) -> Option<&Column> {
         self.columns.get(index)
     }
 
-    /
+
     pub fn column_mut(&mut self, index: usize) -> Option<&mut Column> {
         self.columns.get_mut(index)
     }
 
-    /
+
     pub fn last_column(&self) -> Option<&Column> {
         self.columns.last()
     }
 
-    /
+
     pub fn last_column_mut(&mut self) -> Option<&mut Column> {
         self.columns.last_mut()
     }
 
-    /
+
     pub fn last_column_index(&self) -> Option<usize> {
         if self.columns.is_empty() {
             None
@@ -187,18 +187,18 @@ impl ColumnView {
         }
     }
 
-    /
+
     pub fn set_column_entries(&mut self, column_index: usize, entries: Vec<FileEntry>) {
         if let Some(column) = self.columns.get_mut(column_index) {
             column.entries = entries;
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     pub fn select(&mut self, column_index: usize, entry_index: usize) {
         if column_index >= self.columns.len() {
             return;
@@ -223,10 +223,10 @@ impl ColumnView {
         }
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn navigate_right(&mut self) -> bool {
         let active_column_idx = self.find_active_column_index();
 
@@ -251,10 +251,10 @@ impl ColumnView {
         false
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn navigate_left(&mut self) -> bool {
         let active_column_idx = self.find_active_column_index();
 
@@ -269,10 +269,10 @@ impl ColumnView {
         false
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn navigate_up(&mut self) -> bool {
         let active_column_idx = self.find_active_column_index();
 
@@ -294,10 +294,10 @@ impl ColumnView {
         false
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     pub fn navigate_down(&mut self) -> bool {
         let active_column_idx = self.find_active_column_index();
 
@@ -324,7 +324,7 @@ impl ColumnView {
         false
     }
 
-    /
+
     fn find_active_column_index(&self) -> Option<usize> {
         for (idx, column) in self.columns.iter().enumerate().rev() {
             if column.selected_index.is_some() {
@@ -345,7 +345,7 @@ impl ColumnView {
         }
     }
 
-    /
+
     fn ensure_column_visible(&mut self, column_index: usize) {
         let column_start = column_index as f32 * self.column_width;
         let column_end = column_start + self.column_width;
@@ -356,7 +356,7 @@ impl ColumnView {
 
     }
 
-    /
+
     pub fn ensure_column_visible_in_viewport(&mut self, column_index: usize, viewport_width: f32) {
         let column_start = column_index as f32 * self.column_width;
         let column_end = column_start + self.column_width;
@@ -369,7 +369,7 @@ impl ColumnView {
         }
     }
 
-    /
+
     pub fn reset(&mut self) {
         self.columns.truncate(1);
         if let Some(column) = self.columns.first_mut() {
@@ -378,7 +378,7 @@ impl ColumnView {
         self.scroll_offset = 0.0;
     }
 
-    /
+
     pub fn set_root(&mut self, path: PathBuf) {
         self.root_path = path.clone();
         self.columns.clear();
@@ -386,24 +386,24 @@ impl ColumnView {
         self.scroll_offset = 0.0;
     }
 
-    /
+
     pub fn selected_entry(&self) -> Option<&FileEntry> {
         self.find_active_column_index()
             .and_then(|idx| self.columns.get(idx))
             .and_then(|col| col.selected_entry())
     }
 
-    /
+
     pub fn selected_path(&self) -> Option<&PathBuf> {
         self.selected_entry().map(|e| &e.path)
     }
 
-    /
+
     pub fn total_width(&self) -> f32 {
         self.columns.len() as f32 * self.column_width
     }
 
-    /
+
     pub fn current_path(&self) -> PathBuf {
         for column in self.columns.iter().rev() {
             if !column.path.as_os_str().is_empty() {
@@ -413,7 +413,7 @@ impl ColumnView {
         self.root_path.clone()
     }
 
-    /
+
     pub fn path_hierarchy(&self) -> Vec<&PathBuf> {
         self.columns.iter().map(|c| &c.path).collect()
     }

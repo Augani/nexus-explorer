@@ -4,50 +4,50 @@ use serde::{Deserialize, Serialize};
 use crate::io::{SortKey, SortOrder};
 use crate::models::ThemeId;
 
-/
-/
-/
-/
+
+
+
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalSettings {
-    /
+
     pub show_hidden_files: bool,
 
-    /
+
     pub sort_key: SortKey,
 
-    /
+
     pub sort_order: SortOrder,
 
-    /
+
     pub theme_mode: AppThemeMode,
 
-    /
+
     pub show_extensions: bool,
 
-    /
+
     pub show_sizes: bool,
 
-    /
+
     pub show_dates: bool,
 
-    /
+
     pub view_mode: ViewMode,
 
-    /
+
     pub grid_config: GridConfig,
 
-    /
+
     #[serde(default)]
     pub theme_id: ThemeId,
 
-    /
+
     #[serde(default)]
     pub restore_windows: bool,
 }
 
-/
-/
+
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AppThemeMode {
     Light,
@@ -55,7 +55,7 @@ pub enum AppThemeMode {
     System,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ViewMode {
     List,
@@ -63,18 +63,18 @@ pub enum ViewMode {
     Details,
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct GridConfig {
-    /
+
     pub icon_size: f32,
-    /
+
     pub item_width: f32,
-    /
+
     pub item_height: f32,
-    /
+
     pub gap: f32,
-    /
+
     pub min_columns: usize,
 }
 
@@ -91,12 +91,12 @@ impl Default for GridConfig {
 }
 
 impl GridConfig {
-    /
+
     pub fn new() -> Self {
         Self::default()
     }
 
-    /
+
     pub fn columns_for_width(&self, viewport_width: f32) -> usize {
         if viewport_width <= 0.0 || self.item_width <= 0.0 {
             return self.min_columns;
@@ -108,7 +108,7 @@ impl GridConfig {
         columns.max(self.min_columns)
     }
 
-    /
+
     pub fn rows_for_items(&self, item_count: usize, viewport_width: f32) -> usize {
         let columns = self.columns_for_width(viewport_width);
         if columns == 0 {
@@ -117,7 +117,7 @@ impl GridConfig {
         (item_count + columns - 1) / columns
     }
 
-    /
+
     pub fn position_for_index(&self, index: usize, viewport_width: f32) -> (usize, usize) {
         let columns = self.columns_for_width(viewport_width);
         if columns == 0 {
@@ -128,13 +128,13 @@ impl GridConfig {
         (col, row)
     }
 
-    /
+
     pub fn index_for_position(&self, col: usize, row: usize, viewport_width: f32) -> usize {
         let columns = self.columns_for_width(viewport_width);
         row * columns + col
     }
 
-    /
+
     pub fn content_height(&self, item_count: usize, viewport_width: f32) -> f32 {
         let rows = self.rows_for_items(item_count, viewport_width);
         if rows == 0 {
@@ -145,47 +145,47 @@ impl GridConfig {
 }
 
 impl GlobalSettings {
-    /
+
     pub fn new() -> Self {
         Self::default()
     }
 
-    /
+
     pub fn show_hidden(&self) -> bool {
         self.show_hidden_files
     }
 
-    /
+
     pub fn set_show_hidden(&mut self, show: bool) {
         self.show_hidden_files = show;
     }
 
-    /
+
     pub fn toggle_show_hidden(&mut self) {
         self.show_hidden_files = !self.show_hidden_files;
     }
 
-    /
+
     pub fn sort_key(&self) -> SortKey {
         self.sort_key
     }
 
-    /
+
     pub fn set_sort_key(&mut self, key: SortKey) {
         self.sort_key = key;
     }
 
-    /
+
     pub fn sort_order(&self) -> SortOrder {
         self.sort_order
     }
 
-    /
+
     pub fn set_sort_order(&mut self, order: SortOrder) {
         self.sort_order = order;
     }
 
-    /
+
     pub fn toggle_sort_order(&mut self) {
         self.sort_order = match self.sort_order {
             SortOrder::Ascending => SortOrder::Descending,
@@ -193,27 +193,27 @@ impl GlobalSettings {
         };
     }
 
-    /
+
     pub fn theme_mode(&self) -> AppThemeMode {
         self.theme_mode
     }
 
-    /
+
     pub fn set_theme_mode(&mut self, mode: AppThemeMode) {
         self.theme_mode = mode;
     }
 
-    /
+
     pub fn view_mode(&self) -> ViewMode {
         self.view_mode
     }
 
-    /
+
     pub fn set_view_mode(&mut self, mode: ViewMode) {
         self.view_mode = mode;
     }
 
-    /
+
     pub fn toggle_view_mode(&mut self) {
         self.view_mode = match self.view_mode {
             ViewMode::List | ViewMode::Details => ViewMode::Grid,
@@ -221,42 +221,42 @@ impl GlobalSettings {
         };
     }
 
-    /
+
     pub fn grid_config(&self) -> &GridConfig {
         &self.grid_config
     }
 
-    /
+
     pub fn grid_config_mut(&mut self) -> &mut GridConfig {
         &mut self.grid_config
     }
 
-    /
+
     pub fn set_grid_config(&mut self, config: GridConfig) {
         self.grid_config = config;
     }
 
-    /
+
     pub fn theme_id(&self) -> ThemeId {
         self.theme_id
     }
 
-    /
+
     pub fn set_theme_id(&mut self, id: ThemeId) {
         self.theme_id = id;
     }
 
-    /
+
     pub fn restore_windows_on_start(&self) -> bool {
         self.restore_windows
     }
 
-    /
+
     pub fn set_restore_windows(&mut self, restore: bool) {
         self.restore_windows = restore;
     }
 
-    /
+
     pub fn save(&self) -> std::io::Result<()> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -271,7 +271,7 @@ impl GlobalSettings {
         std::fs::write(config_path, json)
     }
 
-    /
+
     pub fn load() -> Self {
         let config_path = dirs::config_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -450,12 +450,12 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
+
         #[test]
         fn prop_grid_columns_calculation(
             config in arb_grid_config(),
@@ -492,11 +492,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_grid_position_index_round_trip(
             config in arb_grid_config(),
@@ -513,11 +513,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_grid_rows_consistency(
             config in arb_grid_config(),
@@ -544,11 +544,11 @@ mod tests {
             }
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_view_mode_selection_preservation(
             item_count in 1usize..100,
@@ -600,11 +600,11 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
         #[test]
         fn prop_view_mode_persistence(
             view_mode in prop_oneof![
@@ -635,12 +635,12 @@ mod tests {
             );
         }
 
-        /
-        /
-        /
-        /
-        /
-        /
+
+
+
+
+
+
         #[test]
         fn prop_hidden_files_toggle(
             initial_show_hidden in proptest::bool::ANY,

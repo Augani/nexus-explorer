@@ -240,11 +240,11 @@ fn arb_file_path() -> impl Strategy<Value = PathBuf> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_tag_persistence(
         tag_name in arb_tag_name(),
@@ -290,11 +290,11 @@ proptest! {
         );
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_multiple_tags_persistence(
         tag_names in prop::collection::vec(arb_tag_name(), 1..5),
@@ -345,11 +345,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_tag_operations_consistency(
         tag_name in arb_tag_name(),

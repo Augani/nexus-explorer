@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NetworkLocationId(pub u64);
 
@@ -13,7 +13,7 @@ impl NetworkLocationId {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetworkProtocol {
     Smb,
@@ -65,7 +65,7 @@ impl NetworkProtocol {
     }
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthMethod {
     Anonymous,
@@ -79,7 +79,7 @@ impl Default for AuthMethod {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConnectionConfig {
     pub protocol: NetworkProtocol,
@@ -122,12 +122,12 @@ impl NetworkConnectionConfig {
         self
     }
 
-    /
+
     pub fn effective_port(&self) -> u16 {
         self.port.unwrap_or_else(|| self.protocol.default_port())
     }
 
-    /
+
     pub fn to_url(&self) -> String {
         let port_str = self.port.map(|p| format!(":{}", p)).unwrap_or_default();
 
@@ -140,13 +140,13 @@ impl NetworkConnectionConfig {
         )
     }
 
-    /
+
     pub fn display_name(&self) -> &str {
         self.label.as_deref().unwrap_or(&self.host)
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionState {
     Disconnected,
@@ -161,7 +161,7 @@ impl Default for ConnectionState {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkLocation {
     pub id: NetworkLocationId,
@@ -201,7 +201,7 @@ impl NetworkLocation {
     }
 }
 
-/
+
 #[derive(Debug, Error)]
 pub enum NetworkError {
     #[error("Connection failed: {0}")]
@@ -234,7 +234,7 @@ pub enum NetworkError {
 
 pub type NetworkResult<T> = std::result::Result<T, NetworkError>;
 
-/
+
 pub struct NetworkStorageManager {
     locations: Vec<NetworkLocation>,
     recent_servers: Vec<NetworkConnectionConfig>,
@@ -264,27 +264,27 @@ impl NetworkStorageManager {
         id
     }
 
-    /
+
     pub fn locations(&self) -> &[NetworkLocation] {
         &self.locations
     }
 
-    /
+
     pub fn recent_servers(&self) -> &[NetworkConnectionConfig] {
         &self.recent_servers
     }
 
-    /
+
     pub fn get_location(&self, id: NetworkLocationId) -> Option<&NetworkLocation> {
         self.locations.iter().find(|l| l.id == id)
     }
 
-    /
+
     pub fn get_location_mut(&mut self, id: NetworkLocationId) -> Option<&mut NetworkLocation> {
         self.locations.iter_mut().find(|l| l.id == id)
     }
 
-    /
+
     pub fn add_location(&mut self, config: NetworkConnectionConfig) -> NetworkLocationId {
         let id = self.next_location_id();
         let location = NetworkLocation::new(id, config);
@@ -292,7 +292,7 @@ impl NetworkStorageManager {
         id
     }
 
-    /
+
     pub fn remove_location(&mut self, id: NetworkLocationId) -> Option<NetworkLocation> {
         if let Some(pos) = self.locations.iter().position(|l| l.id == id) {
             Some(self.locations.remove(pos))
@@ -301,7 +301,7 @@ impl NetworkStorageManager {
         }
     }
 
-    /
+
     pub fn update_location(
         &mut self,
         id: NetworkLocationId,
@@ -315,7 +315,7 @@ impl NetworkStorageManager {
         }
     }
 
-    /
+
     pub fn add_to_recent(&mut self, config: NetworkConnectionConfig) {
         self.recent_servers
             .retain(|c| c.to_url() != config.to_url());
@@ -325,12 +325,12 @@ impl NetworkStorageManager {
         self.recent_servers.truncate(self.max_recent);
     }
 
-    /
+
     pub fn clear_recent(&mut self) {
         self.recent_servers.clear();
     }
 
-    /
+
     pub fn connect(&mut self, id: NetworkLocationId) -> NetworkResult<()> {
         let config = {
             let location = self
@@ -350,7 +350,7 @@ impl NetworkStorageManager {
         Ok(())
     }
 
-    /
+
     pub fn disconnect(&mut self, id: NetworkLocationId) -> NetworkResult<()> {
         if let Some(location) = self.get_location_mut(id) {
             location.state = ConnectionState::Disconnected;
@@ -362,12 +362,12 @@ impl NetworkStorageManager {
         }
     }
 
-    /
+
     pub fn connected_locations(&self) -> Vec<&NetworkLocation> {
         self.locations.iter().filter(|l| l.is_connected()).collect()
     }
 
-    /
+
     pub fn save(&self) -> std::io::Result<()> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -394,7 +394,7 @@ impl NetworkStorageManager {
         std::fs::write(config_path, json)
     }
 
-    /
+
     pub fn load() -> Self {
         let config_path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -426,7 +426,7 @@ impl NetworkStorageManager {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CloudProvider {
     ICloud,
@@ -463,7 +463,7 @@ impl CloudProvider {
         }
     }
 
-    /
+
     #[cfg(target_os = "macos")]
     pub fn default_path(&self) -> Option<PathBuf> {
         let home = dirs::home_dir()?;
@@ -508,7 +508,7 @@ impl CloudProvider {
         }
     }
 
-    /
+
     pub fn all() -> &'static [CloudProvider] {
         &[
             CloudProvider::ICloud,
@@ -522,7 +522,7 @@ impl CloudProvider {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SyncStatus {
     Synced,
@@ -557,7 +557,7 @@ impl SyncStatus {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudLocation {
     pub provider: CloudProvider,
@@ -585,7 +585,7 @@ impl CloudLocation {
     }
 }
 
-/
+
 #[derive(Clone)]
 pub struct CloudStorageManager {
     locations: Vec<CloudLocation>,
@@ -604,12 +604,12 @@ impl CloudStorageManager {
         }
     }
 
-    /
+
     pub fn locations(&self) -> &[CloudLocation] {
         &self.locations
     }
 
-    /
+
     pub fn detect_providers(&mut self) {
         self.locations.clear();
 
@@ -622,17 +622,17 @@ impl CloudStorageManager {
         }
     }
 
-    /
+
     pub fn get_location(&self, provider: CloudProvider) -> Option<&CloudLocation> {
         self.locations.iter().find(|l| l.provider == provider)
     }
 
-    /
+
     pub fn is_cloud_path(&self, path: &PathBuf) -> Option<&CloudLocation> {
         self.locations.iter().find(|l| path.starts_with(&l.path))
     }
 
-    /
+
     pub fn get_sync_status(&self, _path: &PathBuf) -> Option<SyncStatus> {
         None
     }
@@ -718,7 +718,7 @@ mod tests {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RemoteFileEntry {
     pub name: String,
@@ -763,7 +763,7 @@ impl RemoteFileEntry {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub enum RemoteListingState {
     Idle,
@@ -778,7 +778,7 @@ impl Default for RemoteListingState {
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct NetworkFileOperation {
     pub id: u64,
@@ -852,7 +852,7 @@ impl Default for NetworkOperationState {
     }
 }
 
-/
+
 pub struct NetworkFileOperationsManager {
     operations: Vec<NetworkFileOperation>,
     next_operation_id: u64,
@@ -880,12 +880,12 @@ impl NetworkFileOperationsManager {
         id
     }
 
-    /
+
     pub fn operations(&self) -> &[NetworkFileOperation] {
         &self.operations
     }
 
-    /
+
     pub fn active_operations(&self) -> Vec<&NetworkFileOperation> {
         self.operations
             .iter()
@@ -898,7 +898,7 @@ impl NetworkFileOperationsManager {
             .collect()
     }
 
-    /
+
     pub fn has_active_operations(&self) -> bool {
         self.operations.iter().any(|op| {
             matches!(
@@ -908,7 +908,7 @@ impl NetworkFileOperationsManager {
         })
     }
 
-    /
+
     pub fn start_download(
         &mut self,
         location_id: NetworkLocationId,
@@ -929,7 +929,7 @@ impl NetworkFileOperationsManager {
         id
     }
 
-    /
+
     pub fn start_upload(
         &mut self,
         location_id: NetworkLocationId,
@@ -950,7 +950,7 @@ impl NetworkFileOperationsManager {
         id
     }
 
-    /
+
     pub fn update_progress(&mut self, operation_id: u64, progress: NetworkOperationProgress) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.progress = progress;
@@ -960,28 +960,28 @@ impl NetworkFileOperationsManager {
         }
     }
 
-    /
+
     pub fn complete_operation(&mut self, operation_id: u64) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.state = NetworkOperationState::Completed;
         }
     }
 
-    /
+
     pub fn fail_operation(&mut self, operation_id: u64) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.state = NetworkOperationState::Failed;
         }
     }
 
-    /
+
     pub fn cancel_operation(&mut self, operation_id: u64) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.state = NetworkOperationState::Cancelled;
         }
     }
 
-    /
+
     pub fn clear_finished(&mut self) {
         self.operations.retain(|op| {
             matches!(
@@ -991,7 +991,7 @@ impl NetworkFileOperationsManager {
         });
     }
 
-    /
+
     pub fn get_listing(
         &self,
         location_id: NetworkLocationId,
@@ -1000,7 +1000,7 @@ impl NetworkFileOperationsManager {
         self.listings_cache.get(&(location_id, path.to_string()))
     }
 
-    /
+
     pub fn set_listing(
         &mut self,
         location_id: NetworkLocationId,
@@ -1010,18 +1010,18 @@ impl NetworkFileOperationsManager {
         self.listings_cache.insert((location_id, path), state);
     }
 
-    /
+
     pub fn clear_listing_cache(&mut self, location_id: NetworkLocationId) {
         self.listings_cache
             .retain(|(loc_id, _), _| *loc_id != location_id);
     }
 
-    /
+
     pub fn clear_all_caches(&mut self) {
         self.listings_cache.clear();
     }
 
-    /
+
     pub fn is_loading(&self, location_id: NetworkLocationId, path: &str) -> bool {
         matches!(
             self.get_listing(location_id, path),
@@ -1030,7 +1030,7 @@ impl NetworkFileOperationsManager {
     }
 }
 
-/
+
 pub fn format_latency(latency_ms: u32) -> String {
     if latency_ms < 1000 {
         format!("{}ms", latency_ms)
@@ -1039,7 +1039,7 @@ pub fn format_latency(latency_ms: u32) -> String {
     }
 }
 
-/
+
 pub fn format_transfer_speed(bytes_per_sec: u64) -> String {
     if bytes_per_sec < 1024 {
         format!("{} B/s", bytes_per_sec)
@@ -1166,9 +1166,9 @@ mod network_operations_tests {
     }
 }
 
-/
+
 impl CloudStorageManager {
-    /
+
     pub fn detect_all_providers(&mut self) {
         self.locations.clear();
 
@@ -1350,7 +1350,7 @@ impl CloudStorageManager {
         }
     }
 
-    /
+
     pub fn get_file_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
         let cloud_location = self.is_cloud_path(path)?;
 
@@ -1421,25 +1421,25 @@ impl CloudStorageManager {
         Some(SyncStatus::Synced)
     }
 
-    /
+
     pub fn refresh_availability(&mut self) {
         for location in &mut self.locations {
             location.is_available = location.path.exists();
         }
     }
 
-    /
+
     pub fn available_locations(&self) -> Vec<&CloudLocation> {
         self.locations.iter().filter(|l| l.is_available).collect()
     }
 
-    /
+
     pub fn has_cloud_storage(&self) -> bool {
         !self.locations.is_empty()
     }
 }
 
-/
+
 #[derive(Debug, Clone)]
 pub struct NetworkSidebarState {
     pub network_locations: Vec<NetworkLocationSummary>,

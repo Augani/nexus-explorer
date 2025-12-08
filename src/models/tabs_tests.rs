@@ -187,11 +187,11 @@ fn arb_path() -> impl Strategy<Value = PathBuf> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_tab_open_increases_count(
         initial_path in arb_path(),
@@ -211,11 +211,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_tab_close_decreases_count(
         initial_path in arb_path(),
@@ -243,10 +243,10 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
+
+
+
+
     #[test]
     fn prop_tab_title_matches_directory(
         path in arb_path(),
@@ -265,9 +265,9 @@ proptest! {
         );
     }
 
-    /
-    /
-    /
+
+
+
     #[test]
     fn prop_active_tab_always_valid(
         initial_path in arb_path(),
@@ -306,8 +306,8 @@ proptest! {
         }
     }
 
-    /
-    /
+
+
     #[test]
     fn prop_tab_ids_unique(
         initial_path in arb_path(),

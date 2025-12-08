@@ -12,7 +12,7 @@ actions!(
     [ClearSearch, EscapeSearch, Backspace, Delete, SelectAll]
 );
 
-/
+
 pub struct SearchInput {
     query: String,
     placeholder: String,
@@ -22,7 +22,7 @@ pub struct SearchInput {
     last_bounds: Option<Bounds<Pixels>>,
 }
 
-/
+
 pub struct SearchInputView {
     search_input: SearchInput,
     focus_handle: FocusHandle,
@@ -507,7 +507,7 @@ impl Render for SearchInputView {
     }
 }
 
-/
+
 struct SearchTextElement {
     input: Entity<SearchInputView>,
     query: String,

@@ -1,5 +1,5 @@
-/
-/
+
+
 use super::*;
 use crate::models::{CloudSyncStatus, FileEntry, FileType, IconKey, LoadState};
 use proptest::prelude::*;
@@ -55,12 +55,12 @@ fn arb_path() -> impl Strategy<Value = PathBuf> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
     #[test]
     fn prop_loading_state_consistency(
         path in arb_path(),
@@ -103,11 +103,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_loading_state_superseded(
         path1 in arb_path(),
@@ -150,12 +150,12 @@ proptest! {
             "New request_id should be valid");
     }
 
-    /
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
+
     #[test]
     fn prop_generational_id_monotonicity(
         paths in prop::collection::vec(arb_path(), 1..20)
@@ -175,11 +175,11 @@ proptest! {
         }
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_stale_request_discarded(
         path1 in arb_path(),
@@ -224,11 +224,11 @@ proptest! {
     }
 
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_cache_hit_returns_cached_data(
         path in arb_path(),
@@ -250,11 +250,11 @@ proptest! {
             "Cache should contain all entries");
     }
 
-    /
-    /
-    /
-    /
-    /
+
+
+
+
+
     #[test]
     fn prop_cache_generation_stored(
         path in arb_path(),

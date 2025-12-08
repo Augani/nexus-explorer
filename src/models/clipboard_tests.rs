@@ -2,13 +2,13 @@ use super::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/
+
 fn path_strategy() -> impl Strategy<Value = PathBuf> {
     "[a-z]{1,10}(/[a-z]{1,10}){0,3}\\.[a-z]{1,4}"
         .prop_map(|s| PathBuf::from(format!("/tmp/{}", s)))
 }
 
-/
+
 fn paths_strategy(min: usize, max: usize) -> impl Strategy<Value = Vec<PathBuf>> {
     prop::collection::vec(path_strategy(), min..max)
 }
@@ -418,7 +418,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use tempfile::TempDir;
 
-/
+
 fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBuf {
     let path = dir.join(name);
     if let Some(parent) = path.parent() {

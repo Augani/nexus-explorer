@@ -4,13 +4,13 @@ use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
 
-/
+
 pub const MAX_BOOKMARKS: usize = 50;
 
-/
+
 pub const MAX_RECENT_LOCATIONS: usize = 20;
 
-/
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BookmarkId(pub u64);
 
@@ -20,7 +20,7 @@ impl BookmarkId {
     }
 }
 
-/
+
 #[derive(Debug, Error, PartialEq, Clone)]
 pub enum BookmarkError {
     #[error("Maximum bookmarks limit ({0}) reached")]
@@ -42,16 +42,16 @@ pub enum BookmarkError {
     Serialization(String),
 }
 
-/
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyBinding {
-    /
+
     pub key: String,
-    /
+
     pub cmd: bool,
-    /
+
     pub shift: bool,
-    /
+
     pub alt: bool,
 }
 
@@ -75,7 +75,7 @@ impl KeyBinding {
         self
     }
 
-    /
+
     pub fn display(&self) -> String {
         let mut parts = Vec::new();
         if self.cmd {
@@ -98,7 +98,7 @@ impl KeyBinding {
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Bookmark {
     pub id: BookmarkId,
@@ -140,14 +140,14 @@ impl Bookmark {
         }
     }
 
-    /
+
     pub fn validate(&mut self) -> bool {
         self.is_valid = self.path.exists();
         self.is_valid
     }
 }
 
-/
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BookmarkManager {
     bookmarks: Vec<Bookmark>,
@@ -177,7 +177,7 @@ impl BookmarkManager {
         }
     }
 
-    /
+
     pub fn add(&mut self, path: PathBuf) -> Result<BookmarkId, BookmarkError> {
         if self.bookmarks.len() >= self.max_bookmarks {
             return Err(BookmarkError::MaxReached(self.max_bookmarks));
@@ -197,7 +197,7 @@ impl BookmarkManager {
         Ok(id)
     }
 
-    /
+
     pub fn add_with_name(
         &mut self,
         path: PathBuf,
@@ -221,7 +221,7 @@ impl BookmarkManager {
         Ok(id)
     }
 
-    /
+
     pub fn remove(&mut self, id: BookmarkId) -> Result<Bookmark, BookmarkError> {
         if let Some(index) = self.bookmarks.iter().position(|b| b.id == id) {
             Ok(self.bookmarks.remove(index))
@@ -230,7 +230,7 @@ impl BookmarkManager {
         }
     }
 
-    /
+
     pub fn rename(&mut self, id: BookmarkId, name: String) -> Result<(), BookmarkError> {
         if let Some(bookmark) = self.bookmarks.iter_mut().find(|b| b.id == id) {
             bookmark.name = name;
@@ -240,7 +240,7 @@ impl BookmarkManager {
         }
     }
 
-    /
+
     pub fn set_shortcut(
         &mut self,
         id: BookmarkId,
@@ -264,44 +264,44 @@ impl BookmarkManager {
         }
     }
 
-    /
+
     pub fn bookmarks(&self) -> &[Bookmark] {
         &self.bookmarks
     }
 
-    /
+
     pub fn get(&self, id: BookmarkId) -> Option<&Bookmark> {
         self.bookmarks.iter().find(|b| b.id == id)
     }
 
-    /
+
     pub fn get_by_path(&self, path: &PathBuf) -> Option<&Bookmark> {
         self.bookmarks.iter().find(|b| &b.path == path)
     }
 
-    /
+
     pub fn find_by_shortcut(&self, shortcut: &KeyBinding) -> Option<&Bookmark> {
         self.bookmarks
             .iter()
             .find(|b| b.shortcut.as_ref().map_or(false, |s| s == shortcut))
     }
 
-    /
+
     pub fn len(&self) -> usize {
         self.bookmarks.len()
     }
 
-    /
+
     pub fn is_empty(&self) -> bool {
         self.bookmarks.is_empty()
     }
 
-    /
+
     pub fn is_full(&self) -> bool {
         self.bookmarks.len() >= self.max_bookmarks
     }
 
-    /
+
     pub fn validate_all(&mut self) -> Vec<BookmarkId> {
         let mut invalid_ids = Vec::new();
         for bookmark in &mut self.bookmarks {
@@ -312,12 +312,12 @@ impl BookmarkManager {
         invalid_ids
     }
 
-    /
+
     pub fn recent(&self) -> &VecDeque<PathBuf> {
         &self.recent_locations
     }
 
-    /
+
     pub fn add_recent(&mut self, path: PathBuf) {
         self.recent_locations.retain(|p| p != &path);
 
@@ -328,17 +328,17 @@ impl BookmarkManager {
         }
     }
 
-    /
+
     pub fn clear_recent(&mut self) {
         self.recent_locations.clear();
     }
 
-    /
+
     pub fn contains(&self, path: &PathBuf) -> bool {
         self.bookmarks.iter().any(|b| &b.path == path)
     }
 
-    /
+
     fn config_path() -> Result<PathBuf, BookmarkError> {
         let config_dir = dirs::config_dir()
             .ok_or_else(|| BookmarkError::Io("Could not find config directory".to_string()))?;
@@ -347,7 +347,7 @@ impl BookmarkManager {
         Ok(app_config.join("bookmarks.json"))
     }
 
-    /
+
     pub fn save(&self) -> Result<(), BookmarkError> {
         let path = Self::config_path()?;
 
@@ -363,7 +363,7 @@ impl BookmarkManager {
         Ok(())
     }
 
-    /
+
     pub fn load() -> Result<Self, BookmarkError> {
         let path = Self::config_path()?;
 
