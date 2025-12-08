@@ -5,11 +5,11 @@ use std::time::{Duration, Instant};
 use super::watcher::DEFAULT_COALESCE_WINDOW;
 use crate::models::FsEvent;
 
-/// Event coalescer that debounces rapid file system events on the same path.
-///
-/// When multiple events occur on the same path within the coalescing window,
-/// only the most recent event is emitted after the window expires. This prevents
-/// update storms from rapid successive changes (e.g., during file saves).
+/
+/
+/
+/
+/
 pub struct EventCoalescer {
     pending_events: HashMap<PathBuf, PendingEvent>,
     coalesce_window: Duration,
@@ -22,7 +22,7 @@ struct PendingEvent {
 }
 
 impl EventCoalescer {
-    /// Creates a new EventCoalescer with the default coalescing window (50ms).
+    /
     pub fn new() -> Self {
         Self {
             pending_events: HashMap::new(),
@@ -30,7 +30,7 @@ impl EventCoalescer {
         }
     }
 
-    /// Creates a new EventCoalescer with a custom coalescing window.
+    /
     pub fn with_window(window: Duration) -> Self {
         Self {
             pending_events: HashMap::new(),
@@ -38,20 +38,20 @@ impl EventCoalescer {
         }
     }
 
-    /// Returns the current coalescing window duration.
+    /
     pub fn coalesce_window(&self) -> Duration {
         self.coalesce_window
     }
 
-    /// Sets the coalescing window duration.
+    /
     pub fn set_coalesce_window(&mut self, window: Duration) {
         self.coalesce_window = window;
     }
 
-    /// Adds raw events to the coalescer.
-    ///
-    /// Events on the same path will be merged, with the most recent event
-    /// replacing any previous pending event for that path.
+    /
+    /
+    /
+    /
     pub fn add_events(&mut self, events: Vec<FsEvent>) {
         let now = Instant::now();
 
@@ -75,10 +75,10 @@ impl EventCoalescer {
         }
     }
 
-    /// Polls for events that have passed the coalescing window.
-    ///
-    /// Returns events whose coalescing window has expired, removing them
-    /// from the pending set.
+    /
+    /
+    /
+    /
     pub fn poll_ready(&mut self) -> Vec<FsEvent> {
         let now = Instant::now();
         let mut ready_events = Vec::new();
@@ -98,9 +98,9 @@ impl EventCoalescer {
         ready_events
     }
 
-    /// Forces all pending events to be emitted immediately, regardless of timing.
-    ///
-    /// Useful for cleanup or when immediate processing is required.
+    /
+    /
+    /
     pub fn flush_all(&mut self) -> Vec<FsEvent> {
         let events: Vec<FsEvent> = self
             .pending_events
@@ -110,19 +110,19 @@ impl EventCoalescer {
         events
     }
 
-    /// Returns the number of pending events.
+    /
     pub fn pending_count(&self) -> usize {
         self.pending_events.len()
     }
 
-    /// Returns the total number of raw events that were coalesced.
-    ///
-    /// This is the sum of all event counts for pending events.
+    /
+    /
+    /
     pub fn total_coalesced_count(&self) -> usize {
         self.pending_events.values().map(|p| p.count).sum()
     }
 
-    /// Clears all pending events without emitting them.
+    /
     pub fn clear(&mut self) {
         self.pending_events.clear();
     }
@@ -181,11 +181,9 @@ mod tests {
 
         coalescer.add_events(vec![FsEvent::Created(path.clone())]);
 
-        // Immediately after adding, events should still be pending
         let ready = coalescer.poll_ready();
         assert!(ready.is_empty(), "Events should not be ready immediately");
 
-        // Wait for the coalescing window to pass
         sleep(Duration::from_millis(60));
 
         let ready = coalescer.poll_ready();
@@ -227,8 +225,6 @@ mod tests {
         })
     }
 
-    // **Feature: file-explorer-core, Property 17: Event Coalescing**
-    // *For any* sequence of N events on the same path within a coalescing window,
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 

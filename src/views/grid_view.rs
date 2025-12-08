@@ -308,7 +308,6 @@ impl Render for GridViewComponent {
                                         }
                                     })
                                     .child(
-                                        // Icon container with share overlay
                                         div()
                                             .relative()
                                             .child(
@@ -320,7 +319,6 @@ impl Render for GridViewComponent {
                                                     .size(px(config.icon_size))
                                                     .text_color(icon_color),
                                             )
-                                            // Share overlay icon (top-right corner for shared folders)
                                             .when(is_shared && is_dir, |s| {
                                                 s.child(
                                                     div()

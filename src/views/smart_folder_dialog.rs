@@ -7,7 +7,7 @@ use crate::models::{
     theme_colors, DateFilter, SearchQuery, SizeFilter, SmartFolder, SmartFolderId,
 };
 
-/// Actions that can be triggered from the smart folder dialog
+/
 #[derive(Clone, Debug, PartialEq)]
 pub enum SmartFolderDialogAction {
     Create {
@@ -21,7 +21,7 @@ pub enum SmartFolderDialogAction {
     Cancel,
 }
 
-/// State for the query builder form
+/
 #[derive(Clone, Default)]
 pub struct QueryBuilderState {
     pub name: String,
@@ -348,7 +348,6 @@ impl Render for SmartFolderDialog {
                     .flex_col()
                     .overflow_hidden()
                     .on_mouse_down(MouseButton::Left, |_event, _window, _cx| {
-                        // Prevent click from propagating to overlay
                     })
                     .child(
                         div()
@@ -440,7 +439,6 @@ impl Render for SmartFolderDialog {
                                             }),
                                     ),
                             )
-                            // Text pattern field
                             .child(
                                 div()
                                     .flex()
@@ -474,7 +472,6 @@ impl Render for SmartFolderDialog {
                                             }),
                                     ),
                             )
-                            // File types field
                             .child(
                                 div()
                                     .flex()

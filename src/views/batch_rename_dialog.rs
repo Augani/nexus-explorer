@@ -8,21 +8,21 @@ use gpui::{
 use crate::models::{theme_colors, BatchRename, RenamePreview};
 use adabraka_ui::components::input::{InputEvent, InputState};
 
-/// Actions that can be triggered from the batch rename dialog
+/
 #[derive(Clone, Debug)]
 pub enum BatchRenameDialogAction {
     Apply { renamed_paths: Vec<PathBuf> },
     Cancel,
 }
 
-/// Mode for batch rename operation
+/
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum RenameMode {
     Pattern,
     FindReplace,
 }
 
-/// Dialog for batch renaming files
+/
 pub struct BatchRenameDialog {
     batch_rename: BatchRename,
     mode: RenameMode,
@@ -58,7 +58,6 @@ impl BatchRenameDialog {
             state
         });
 
-        // Subscribe to input changes for live preview
         cx.subscribe(&pattern_input, |dialog: &mut Self, input, event: &InputEvent, cx| {
             if let InputEvent::Change = event {
                 if dialog.mode == RenameMode::Pattern {
@@ -168,7 +167,6 @@ impl BatchRenameDialog {
                 self.pending_action = Some(BatchRenameDialogAction::Apply { renamed_paths });
             }
             Err(_) => {
-                // Error handling - could show a toast
             }
         }
         cx.notify();
@@ -222,7 +220,6 @@ impl Render for BatchRenameDialog {
             .flex_col()
             .overflow_hidden()
             .child(
-                // Header
                 div()
                     .px_4()
                     .py_3()
@@ -247,7 +244,6 @@ impl Render for BatchRenameDialog {
                     ),
             )
             .child(
-                // Mode tabs
                 div()
                     .px_4()
                     .py_2()
@@ -295,7 +291,6 @@ impl Render for BatchRenameDialog {
                     ),
             )
             .child(
-                // Content
                 div()
                     .p_4()
                     .flex()
@@ -303,7 +298,6 @@ impl Render for BatchRenameDialog {
                     .gap_4()
                     .flex_1()
                     .overflow_hidden()
-                    // Input section based on mode
                     .when(self.mode == RenameMode::Pattern, |el| {
                         el.child(
                             div()
@@ -355,7 +349,6 @@ impl Render for BatchRenameDialog {
                                         .child(self.replace_input.clone()),
                                 )
                                 .child(
-                                    // Options
                                     div()
                                         .flex()
                                         .gap_4()
@@ -416,7 +409,6 @@ impl Render for BatchRenameDialog {
                                 ),
                         )
                     })
-                    // Preview section
                     .child(
                         div()
                             .flex()
@@ -515,7 +507,6 @@ impl Render for BatchRenameDialog {
                     ),
             )
             .child(
-                // Footer with buttons
                 div()
                     .px_4()
                     .py_3()

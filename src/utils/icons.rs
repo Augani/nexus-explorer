@@ -1,21 +1,21 @@
-/// Icon decoding and BGRA swizzling utilities.
-///
-/// GPUI and many GPU APIs expect pixel data in BGRA format, while most image
-/// libraries decode to RGBA. This module provides efficient conversion utilities.
+/
+/
+/
+/
 
-/// Converts a single RGBA pixel to BGRA format.
-///
-/// Input: (r, g, b, a) - Red, Green, Blue, Alpha
-/// Output: (b, g, r, a) - Blue, Green, Red, Alpha (swapped R and B)
+/
+/
+/
+/
 #[inline]
 pub fn rgba_to_bgra_pixel(r: u8, g: u8, b: u8, a: u8) -> (u8, u8, u8, u8) {
     (b, g, r, a)
 }
 
-/// Converts RGBA pixel data to BGRA format in-place.
-///
-/// The data must be a multiple of 4 bytes (one byte per channel).
-/// This function swaps the red and blue channels for each pixel.
+/
+/
+/
+/
 pub fn rgba_to_bgra_inplace(data: &mut [u8]) {
     debug_assert!(
         data.len() % 4 == 0,
@@ -27,9 +27,9 @@ pub fn rgba_to_bgra_inplace(data: &mut [u8]) {
     }
 }
 
-/// Converts RGBA pixel data to BGRA format, returning a new Vec.
-///
-/// The data must be a multiple of 4 bytes (one byte per channel).
+/
+/
+/
 pub fn rgba_to_bgra(data: &[u8]) -> Vec<u8> {
     debug_assert!(
         data.len() % 4 == 0,
@@ -41,14 +41,14 @@ pub fn rgba_to_bgra(data: &[u8]) -> Vec<u8> {
     result
 }
 
-/// Converts BGRA pixel data back to RGBA format in-place.
-///
-/// This is the inverse operation of `rgba_to_bgra_inplace`.
+/
+/
+/
 pub fn bgra_to_rgba_inplace(data: &mut [u8]) {
     rgba_to_bgra_inplace(data);
 }
 
-/// Converts BGRA pixel data back to RGBA format, returning a new Vec.
+/
 pub fn bgra_to_rgba(data: &[u8]) -> Vec<u8> {
     rgba_to_bgra(data)
 }
@@ -59,7 +59,6 @@ mod tests {
 
     #[test]
     fn test_rgba_to_bgra_pixel() {
-        // Input: RGBA (255, 128, 64, 200) -> Output: BGRA (64, 128, 255, 200)
         let (b, g, r, a) = rgba_to_bgra_pixel(255, 128, 64, 200);
         assert_eq!((b, g, r, a), (64, 128, 255, 200));
     }
@@ -102,25 +101,23 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /// **Feature: file-explorer-core, Property 10: RGBA to BGRA Conversion**
-        /// **Validates: Requirements 4.2**
-        ///
-        /// *For any* pixel with RGBA values (r, g, b, a), the BGRA conversion
-        /// SHALL produce (b, g, r, a), preserving alpha and swapping red/blue channels.
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_rgba_to_bgra_conversion(r in any::<u8>(), g in any::<u8>(), b in any::<u8>(), a in any::<u8>()) {
             let (out_b, out_g, out_r, out_a) = rgba_to_bgra_pixel(r, g, b, a);
 
-            // Red and Blue should be swapped
             prop_assert_eq!(out_b, b, "Blue channel should be original blue");
             prop_assert_eq!(out_r, r, "Red channel should be original red");
 
-            // Green and Alpha should be preserved
             prop_assert_eq!(out_g, g, "Green channel should be preserved");
             prop_assert_eq!(out_a, a, "Alpha channel should be preserved");
         }
 
-        /// Additional property: RGBA to BGRA is its own inverse (symmetric swap)
+        /
         #[test]
         fn prop_rgba_bgra_round_trip(
             pixels in prop::collection::vec(any::<u8>(), 0..400)

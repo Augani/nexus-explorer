@@ -8,11 +8,11 @@ use lru::LruCache;
 use super::IconKey;
 use crate::utils::rgba_to_bgra_inplace;
 
-/// Default maximum number of icons in the cache
+/
 const DEFAULT_MAX_ENTRIES: usize = 500;
 
-/// Placeholder for GPU-rendered image data.
-/// In a real GPUI application, this would be `gpui::RenderImage` or similar.
+/
+/
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderImage {
     pub width: u32,
@@ -29,9 +29,8 @@ impl RenderImage {
         }
     }
 
-    /// Creates a default placeholder icon (simple colored square)
+    /
     pub fn default_placeholder() -> Self {
-        // Gray placeholder in BGRA format (16x16 pixels, 4 bytes per pixel)
         let pixel = [128u8, 128, 128, 255];
         let data: Vec<u8> = pixel.iter().cycle().take(16 * 16 * 4).copied().collect();
         Self {
@@ -41,9 +40,8 @@ impl RenderImage {
         }
     }
 
-    /// Creates a default folder icon
+    /
     pub fn default_folder() -> Self {
-        // Folder-like color in BGRA format (16x16 pixels, 4 bytes per pixel)
         let pixel = [200u8, 180, 100, 255];
         let data: Vec<u8> = pixel.iter().cycle().take(16 * 16 * 4).copied().collect();
         Self {
@@ -54,11 +52,11 @@ impl RenderImage {
     }
 }
 
-/// GPU texture management with LRU eviction.
-///
-/// The IconCache manages icon textures for file entries, using LRU eviction
-/// to bound memory usage. It provides immediate access to cached icons and
-/// queues fetch requests for uncached icons.
+/
+/
+/
+/
+/
 pub struct IconCache {
     textures: HashMap<IconKey, RenderImage>,
     lru: LruCache<IconKey, ()>,
@@ -69,12 +67,12 @@ pub struct IconCache {
 }
 
 impl IconCache {
-    /// Creates a new IconCache with the default maximum entries.
+    /
     pub fn new() -> Self {
         Self::with_capacity(DEFAULT_MAX_ENTRIES)
     }
 
-    /// Creates a new IconCache with a custom maximum entries limit.
+    /
     pub fn with_capacity(max_entries: usize) -> Self {
         let capacity =
             NonZeroUsize::new(max_entries.max(1)).expect("max_entries must be at least 1");
@@ -89,23 +87,23 @@ impl IconCache {
         }
     }
 
-    /// Returns the maximum number of entries allowed in the cache.
+    /
     pub fn max_entries(&self) -> usize {
         self.max_entries
     }
 
-    /// Returns the current number of cached icons.
+    /
     pub fn len(&self) -> usize {
         self.textures.len()
     }
 
-    /// Returns true if the cache is empty.
+    /
     pub fn is_empty(&self) -> bool {
         self.textures.is_empty()
     }
 
-    /// Gets an icon from the cache if it exists.
-    /// Returns None if the icon is not cached.
+    /
+    /
     pub fn get_icon(&mut self, key: &IconKey) -> Option<&RenderImage> {
         if self.textures.contains_key(key) {
             self.lru.get(key);
@@ -115,14 +113,13 @@ impl IconCache {
         }
     }
 
-    /// Gets an icon from the cache, or returns the default placeholder.
-    /// If the icon is not cached and not pending, it's added to the pending set.
+    /
+    /
     pub fn get_or_default(&mut self, key: &IconKey) -> &RenderImage {
         if self.textures.contains_key(key) {
             self.lru.get(key);
             self.textures.get(key).unwrap()
         } else {
-            // Add to pending if not already there
             if !self.pending.contains(key) {
                 self.pending.insert(key.clone());
             }
@@ -133,27 +130,25 @@ impl IconCache {
         }
     }
 
-    /// Checks if an icon is currently in the cache.
+    /
     pub fn contains(&self, key: &IconKey) -> bool {
         self.textures.contains_key(key)
     }
 
-    /// Checks if an icon fetch is pending.
+    /
     pub fn is_pending(&self, key: &IconKey) -> bool {
         self.pending.contains(key)
     }
 
-    /// Returns the set of pending icon keys.
+    /
     pub fn pending_keys(&self) -> &HashSet<IconKey> {
         &self.pending
     }
 
-    /// Inserts an icon into the cache, evicting LRU entries if necessary.
+    /
     pub fn insert(&mut self, key: IconKey, image: RenderImage) {
-        // Remove from pending
         self.pending.remove(&key);
 
-        // Evict if at capacity
         while self.textures.len() >= self.max_entries {
             if let Some((evicted_key, _)) = self.lru.pop_lru() {
                 self.textures.remove(&evicted_key);
@@ -162,36 +157,35 @@ impl IconCache {
             }
         }
 
-        // Insert new entry
         self.textures.insert(key.clone(), image);
         self.lru.put(key, ());
     }
 
-    /// Removes an icon from the cache.
+    /
     pub fn remove(&mut self, key: &IconKey) -> Option<RenderImage> {
         self.lru.pop(key);
         self.pending.remove(key);
         self.textures.remove(key)
     }
 
-    /// Clears all cached icons and pending requests.
+    /
     pub fn clear(&mut self) {
         self.textures.clear();
         self.lru.clear();
         self.pending.clear();
     }
 
-    /// Removes a key from the pending set (e.g., after fetch completion or failure).
+    /
     pub fn remove_pending(&mut self, key: &IconKey) {
         self.pending.remove(key);
     }
 
-    /// Returns a reference to the default placeholder icon.
+    /
     pub fn default_icon(&self) -> &RenderImage {
         &self.default_icon
     }
 
-    /// Returns a reference to the folder icon.
+    /
     pub fn folder_icon(&self) -> &RenderImage {
         &self.folder_icon
     }
@@ -203,7 +197,7 @@ impl Default for IconCache {
     }
 }
 
-/// Result of a completed icon fetch operation
+/
 #[derive(Debug, Clone)]
 pub struct IconFetchResult {
     pub key: IconKey,
@@ -233,20 +227,20 @@ impl IconFetchResult {
     }
 }
 
-/// Request to fetch an icon
+/
 #[derive(Debug, Clone)]
 pub struct IconFetchRequest {
     pub key: IconKey,
     pub path: Option<std::path::PathBuf>,
 }
 
-/// Async icon fetch pipeline for loading icons on background threads.
-///
-/// This pipeline:
-/// 1. Receives fetch requests for uncached icons
-/// 2. Decodes images on background threads using the `image` crate
-/// 3. Converts RGBA to BGRA format for GPU upload
-/// 4. Sends completed results back to the main thread
+/
+/
+/
+/
+/
+/
+/
 pub struct IconFetchPipeline {
     request_tx: Sender<IconFetchRequest>,
     result_rx: Receiver<IconFetchResult>,
@@ -254,7 +248,7 @@ pub struct IconFetchPipeline {
 }
 
 impl IconFetchPipeline {
-    /// Creates a new icon fetch pipeline with a background worker thread.
+    /
     pub fn new() -> Self {
         let (request_tx, request_rx) = flume::unbounded::<IconFetchRequest>();
         let (result_tx, result_rx) = flume::unbounded::<IconFetchResult>();
@@ -270,14 +264,14 @@ impl IconFetchPipeline {
         }
     }
 
-    /// Queues a fetch request for an icon.
+    /
     pub fn request_icon(&self, key: IconKey, path: Option<std::path::PathBuf>) {
         let request = IconFetchRequest { key, path };
         let _ = self.request_tx.send(request);
     }
 
-    /// Polls for completed fetch results without blocking.
-    /// Returns all available results.
+    /
+    /
     pub fn poll_results(&self) -> Vec<IconFetchResult> {
         let mut results = Vec::new();
         while let Ok(result) = self.result_rx.try_recv() {
@@ -286,7 +280,7 @@ impl IconFetchPipeline {
         results
     }
 
-    /// Returns the receiver for fetch results (for async integration).
+    /
     pub fn result_receiver(&self) -> &Receiver<IconFetchResult> {
         &self.result_rx
     }
@@ -314,7 +308,6 @@ impl IconFetchPipeline {
                 let (width, height) = rgba.dimensions();
                 let mut data = rgba.into_raw();
 
-                // Convert RGBA to BGRA for GPU
                 rgba_to_bgra_inplace(&mut data);
 
                 let image = RenderImage::new(width, height, data);
@@ -340,8 +333,8 @@ impl Default for IconFetchPipeline {
 }
 
 impl IconCache {
-    /// Processes completed fetch results from the pipeline and updates the cache.
-    /// Returns the number of icons successfully added to the cache.
+    /
+    /
     pub fn process_fetch_results(&mut self, results: Vec<IconFetchResult>) -> usize {
         let mut count = 0;
         for result in results {
@@ -349,14 +342,13 @@ impl IconCache {
                 self.insert(result.key, image);
                 count += 1;
             } else {
-                // Remove from pending on failure
                 self.remove_pending(&result.key);
             }
         }
         count
     }
 
-    /// Queues fetch requests for all pending icons using the provided pipeline.
+    /
     pub fn queue_pending_fetches(&self, pipeline: &IconFetchPipeline) {
         for key in &self.pending {
             let path = match key {

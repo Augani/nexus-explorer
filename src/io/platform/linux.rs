@@ -10,10 +10,10 @@ use super::coalescer::EventCoalescer;
 use super::watcher::{PlatformFs, Watcher};
 use crate::models::{FileSystemError, FsEvent, Result};
 
-/// inotify watcher for Linux.
-///
-/// Uses the notify crate which wraps inotify on Linux to provide
-/// efficient file system monitoring.
+/
+/
+/
+/
 pub struct LinuxPlatform;
 
 impl PlatformFs for LinuxPlatform {
@@ -30,7 +30,7 @@ impl PlatformFs for LinuxPlatform {
     }
 }
 
-/// Linux-specific file system watcher using inotify via notify crate.
+/
 pub struct LinuxWatcher {
     watcher: Option<RecommendedWatcher>,
     event_rx: Option<Receiver<notify::Result<Event>>>,

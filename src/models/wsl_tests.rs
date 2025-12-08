@@ -2,14 +2,13 @@ use super::wsl::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/// Unit tests for WSL path translation
+/
 #[cfg(test)]
 mod unit_tests {
     use super::*;
 
     #[test]
     fn test_windows_to_wsl_path_unc() {
-        // Test \\wsl$\Ubuntu\home\user -> /home/user
         let windows_path = PathBuf::from("\\\\wsl$\\Ubuntu\\home\\user");
         let result = WslManager::windows_to_wsl_path(&windows_path);
         assert!(result.is_ok());
@@ -18,7 +17,6 @@ mod unit_tests {
 
     #[test]
     fn test_windows_to_wsl_path_unc_localhost() {
-        // Test \\wsl.localhost\Ubuntu\home\user -> /home/user
         let windows_path = PathBuf::from("\\\\wsl.localhost\\Ubuntu\\home\\user");
         let result = WslManager::windows_to_wsl_path(&windows_path);
         assert!(result.is_ok());
@@ -27,7 +25,6 @@ mod unit_tests {
 
     #[test]
     fn test_windows_to_wsl_path_drive() {
-        // Test C:\Users\test -> /mnt/c/Users/test
         let windows_path = PathBuf::from("C:\\Users\\test");
         let result = WslManager::windows_to_wsl_path(&windows_path);
         assert!(result.is_ok());
@@ -36,7 +33,6 @@ mod unit_tests {
 
     #[test]
     fn test_windows_to_wsl_path_drive_lowercase() {
-        // Test D:\Projects -> /mnt/d/Projects
         let windows_path = PathBuf::from("D:\\Projects");
         let result = WslManager::windows_to_wsl_path(&windows_path);
         assert!(result.is_ok());
@@ -45,7 +41,6 @@ mod unit_tests {
 
     #[test]
     fn test_wsl_to_windows_path_mnt() {
-        // Test /mnt/c/Users/test -> C:\Users\test
         let result = WslManager::wsl_to_windows_path("Ubuntu", "/mnt/c/Users/test");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), PathBuf::from("C:\\Users\\test"));
@@ -53,7 +48,6 @@ mod unit_tests {
 
     #[test]
     fn test_wsl_to_windows_path_linux() {
-        // Test /home/user -> \\wsl$\Ubuntu\home\user
         let result = WslManager::wsl_to_windows_path("Ubuntu", "/home/user");
         assert!(result.is_ok());
         assert_eq!(
@@ -133,24 +127,24 @@ mod unit_tests {
     }
 }
 
-/// Property-based tests for WSL path translation
-/// **Feature: ui-enhancements, Property 47: WSL Path Translation**
-/// **Validates: Requirements 27.4**
+/
+/
+/
 #[cfg(test)]
 mod property_tests {
     use super::*;
 
-    /// Strategy for generating valid Windows drive letters
+    /
     fn drive_letter_strategy() -> impl Strategy<Value = char> {
         prop_oneof![Just('C'), Just('D'), Just('E'), Just('F'),]
     }
 
-    /// Strategy for generating valid path components (no special chars)
+    /
     fn path_component_strategy() -> impl Strategy<Value = String> {
         "[a-zA-Z0-9_-]{1,20}".prop_map(|s| s)
     }
 
-    /// Strategy for generating valid WSL distribution names
+    /
     fn distro_name_strategy() -> impl Strategy<Value = String> {
         prop_oneof![
             Just("Ubuntu".to_string()),
@@ -161,8 +155,8 @@ mod property_tests {
     }
 
     proptest! {
-        /// Property 47: WSL Path Translation
-        /// For any valid Windows drive path, translating to WSL and back should preserve the path
+        /
+        /
         #[test]
         fn prop_windows_drive_path_roundtrip(
             drive in drive_letter_strategy(),
@@ -176,7 +170,6 @@ mod property_tests {
             prop_assert!(wsl_path.is_ok(), "Failed to convert Windows path to WSL: {:?}", windows_path);
             let wsl_path = wsl_path.unwrap();
 
-            // Verify the WSL path format
             let expected_prefix = format!("/mnt/{}", drive.to_ascii_lowercase());
             prop_assert!(
                 wsl_path.starts_with(&expected_prefix),
@@ -185,12 +178,10 @@ mod property_tests {
                 wsl_path
             );
 
-            // WSL -> Windows (using any distro name since it's a /mnt/ path)
             let back_to_windows = WslManager::wsl_to_windows_path("Ubuntu", &wsl_path);
             prop_assert!(back_to_windows.is_ok(), "Failed to convert WSL path back to Windows: {}", wsl_path);
             let back_to_windows = back_to_windows.unwrap();
 
-            // The paths should be equivalent (case-insensitive on Windows)
             prop_assert_eq!(
                 windows_path.to_string_lossy().to_lowercase(),
                 back_to_windows.to_string_lossy().to_lowercase(),
@@ -201,7 +192,7 @@ mod property_tests {
             );
         }
 
-        /// Property: WSL UNC paths should correctly extract distribution names
+        /
         #[test]
         fn prop_unc_path_distro_extraction(
             distro in distro_name_strategy(),
@@ -220,7 +211,7 @@ mod property_tests {
             prop_assert_eq!(extracted.unwrap(), distro);
         }
 
-        /// Property: Linux paths in WSL should translate to valid UNC paths
+        /
         #[test]
         fn prop_linux_path_to_unc(
             distro in distro_name_strategy(),
@@ -232,19 +223,17 @@ mod property_tests {
             prop_assert!(windows_path.is_ok(), "Failed to convert Linux path: {}", linux_path);
             let windows_path = windows_path.unwrap();
 
-            // Should be a UNC path
             prop_assert!(
                 WslManager::is_wsl_path(&windows_path),
                 "Result should be a WSL UNC path: {:?}",
                 windows_path
             );
 
-            // Should contain the distro name
             let extracted = WslManager::extract_distro_name(&windows_path);
             prop_assert_eq!(extracted, Some(distro.clone()));
         }
 
-        /// Property: Permission mode formatting should be consistent
+        /
         #[test]
         fn prop_permission_format_length(mode in 0u32..0o777) {
             let perms = LinuxPermissions {
@@ -255,10 +244,8 @@ mod property_tests {
 
             let formatted = perms.format_mode();
 
-            // Should always be 9 characters
             prop_assert_eq!(formatted.len(), 9, "Permission string should be 9 chars: {}", formatted);
 
-            // Should only contain r, w, x, or -
             prop_assert!(
                 formatted.chars().all(|c| matches!(c, 'r' | 'w' | 'x' | '-')),
                 "Invalid characters in permission string: {}",

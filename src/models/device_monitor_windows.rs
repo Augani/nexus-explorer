@@ -10,7 +10,7 @@ use super::device_monitor::{
 };
 use std::path::PathBuf;
 
-/// Drive type constants from GetDriveTypeW
+/
 const DRIVE_UNKNOWN: u32 = 0;
 const DRIVE_NO_ROOT_DIR: u32 = 1;
 const DRIVE_REMOVABLE: u32 = 2;
@@ -19,7 +19,7 @@ const DRIVE_REMOTE: u32 = 4;
 const DRIVE_CDROM: u32 = 5;
 const DRIVE_RAMDISK: u32 = 6;
 
-/// Represents a logical disk from WMI Win32_LogicalDisk
+/
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone)]
 pub struct WmiLogicalDisk {
@@ -32,7 +32,7 @@ pub struct WmiLogicalDisk {
     pub volume_serial_number: Option<String>,
 }
 
-/// Represents a physical disk from WMI Win32_DiskDrive
+/
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone)]
 pub struct WmiDiskDrive {
@@ -45,10 +45,9 @@ pub struct WmiDiskDrive {
 }
 
 impl DeviceMonitor {
-    /// Enumerate devices on Windows using WMI and drive letter scanning
+    /
     #[cfg(target_os = "windows")]
     pub fn enumerate_windows_devices(&mut self) {
-        // Try WMI-based enumeration first for richer metadata
         if let Ok(wmi_devices) = enumerate_wmi_logical_disks() {
             for wmi_disk in wmi_devices {
                 if let Some(device) = wmi_disk_to_device(&wmi_disk) {
@@ -56,15 +55,13 @@ impl DeviceMonitor {
                 }
             }
         } else {
-            // Fall back to basic drive letter enumeration
             self.enumerate_windows_drives_basic();
         }
 
-        // Enumerate WSL distributions
         self.enumerate_wsl_distributions();
     }
 
-    /// Basic drive letter enumeration fallback
+    /
     #[cfg(target_os = "windows")]
     fn enumerate_windows_drives_basic(&mut self) {
         for letter in b'A'..=b'Z' {
@@ -97,12 +94,11 @@ impl DeviceMonitor {
         }
     }
 
-    /// Enumerate WSL distributions
+    /
     #[cfg(target_os = "windows")]
     fn enumerate_wsl_distributions(&mut self) {
         self.wsl_distributions_mut().clear();
 
-        // Try to list WSL distributions using wsl.exe
         if let Ok(output) = std::process::Command::new("wsl")
             .args(["--list", "--verbose"])
             .output()
@@ -110,14 +106,12 @@ impl DeviceMonitor {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
 
-                // Parse the output (skip header line)
                 for line in stdout.lines().skip(1) {
                     let line = line.trim();
                     if line.is_empty() {
                         continue;
                     }
 
-                    // Parse: "* Ubuntu    Running    2" or "  Debian    Stopped    1"
                     let line = line.trim_start_matches('*').trim();
 
                     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -137,7 +131,6 @@ impl DeviceMonitor {
 
                         self.wsl_distributions_mut().push(distro);
 
-                        // Also add as a device if running
                         if is_running {
                             let device = Device::new(
                                 DeviceId::new(0),
@@ -155,7 +148,7 @@ impl DeviceMonitor {
         }
     }
 
-    /// Eject a device on Windows
+    /
     #[cfg(target_os = "windows")]
     pub fn eject(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         let device = self
@@ -192,14 +185,14 @@ impl DeviceMonitor {
         }
     }
 
-    /// Unmount a device on Windows (same as eject for most cases)
+    /
     #[cfg(target_os = "windows")]
     pub fn unmount(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         self.eject(id)
     }
 }
 
-/// Enumerate logical disks using WMI
+/
 #[cfg(target_os = "windows")]
 pub fn enumerate_wmi_logical_disks() -> Result<Vec<WmiLogicalDisk>, String> {
     use serde::Deserialize;
@@ -240,7 +233,7 @@ pub fn enumerate_wmi_logical_disks() -> Result<Vec<WmiLogicalDisk>, String> {
         .collect())
 }
 
-/// Enumerate physical disk drives using WMI
+/
 #[cfg(target_os = "windows")]
 pub fn enumerate_wmi_disk_drives() -> Result<Vec<WmiDiskDrive>, String> {
     use serde::Deserialize;
@@ -279,12 +272,11 @@ pub fn enumerate_wmi_disk_drives() -> Result<Vec<WmiDiskDrive>, String> {
         .collect())
 }
 
-/// Convert WMI logical disk to Device
+/
 #[cfg(target_os = "windows")]
 fn wmi_disk_to_device(wmi_disk: &WmiLogicalDisk) -> Option<Device> {
     let path = PathBuf::from(format!("{}\\", wmi_disk.device_id));
     
-    // Skip drives that don't exist
     if !path.exists() {
         return None;
     }
@@ -313,7 +305,7 @@ fn wmi_disk_to_device(wmi_disk: &WmiLogicalDisk) -> Option<Device> {
     Some(device)
 }
 
-/// Convert WMI drive type to DeviceType
+/
 #[cfg(target_os = "windows")]
 fn wmi_drive_type_to_device_type(drive_type: u32) -> DeviceType {
     match drive_type {
@@ -326,7 +318,7 @@ fn wmi_drive_type_to_device_type(drive_type: u32) -> DeviceType {
     }
 }
 
-/// Detect the type of Windows drive using GetDriveTypeW
+/
 #[cfg(target_os = "windows")]
 pub fn detect_windows_drive_type(path: &PathBuf) -> DeviceType {
     use std::os::windows::ffi::OsStrExt;
@@ -351,7 +343,7 @@ pub fn detect_windows_drive_type(path: &PathBuf) -> DeviceType {
     }
 }
 
-/// Get the volume name for a Windows drive using GetVolumeInformationW
+/
 #[cfg(target_os = "windows")]
 pub fn get_windows_volume_name(path: &PathBuf) -> Option<String> {
     use std::os::windows::ffi::OsStrExt;
@@ -393,7 +385,7 @@ pub fn get_windows_volume_name(path: &PathBuf) -> Option<String> {
     None
 }
 
-/// Get the filesystem type for a Windows drive
+/
 #[cfg(target_os = "windows")]
 pub fn get_windows_filesystem_type(path: &PathBuf) -> Option<String> {
     use std::os::windows::ffi::OsStrExt;
@@ -435,7 +427,7 @@ pub fn get_windows_filesystem_type(path: &PathBuf) -> Option<String> {
     None
 }
 
-/// Check if a drive is read-only on Windows
+/
 #[cfg(target_os = "windows")]
 pub fn is_drive_read_only(path: &PathBuf) -> bool {
     use std::os::windows::ffi::OsStrExt;
@@ -455,7 +447,7 @@ pub fn is_drive_read_only(path: &PathBuf) -> bool {
     false
 }
 
-/// Get all available drive letters on Windows
+/
 #[cfg(target_os = "windows")]
 pub fn get_available_drive_letters() -> Vec<char> {
     let mut drives = Vec::new();
@@ -472,7 +464,7 @@ pub fn get_available_drive_letters() -> Vec<char> {
     drives
 }
 
-/// Get detailed drive information for a specific drive letter
+/
 #[cfg(target_os = "windows")]
 pub fn get_drive_info(drive_letter: char) -> Option<DriveInfo> {
     let path = PathBuf::from(format!("{}:\\", drive_letter));
@@ -499,7 +491,7 @@ pub fn get_drive_info(drive_letter: char) -> Option<DriveInfo> {
     })
 }
 
-/// Detailed drive information structure
+/
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone)]
 pub struct DriveInfo {
@@ -515,7 +507,7 @@ pub struct DriveInfo {
 
 #[cfg(target_os = "windows")]
 impl DriveInfo {
-    /// Check if this is a removable drive
+    /
     pub fn is_removable(&self) -> bool {
         matches!(
             self.drive_type,
@@ -523,7 +515,7 @@ impl DriveInfo {
         )
     }
 
-    /// Get display name for the drive
+    /
     pub fn display_name(&self) -> String {
         self.volume_name
             .clone()

@@ -13,14 +13,14 @@ use crate::io::{
     TraversalConfig,
 };
 
-/// Default cache capacity for directory states
+/
 const DEFAULT_CACHE_CAPACITY: usize = 100;
 
-/// Central file system state and I/O coordination.
-///
-/// The FileSystem model manages directory navigation, caching, and async I/O coordination.
-/// It uses generational ID tracking to prevent stale results from being displayed when
-/// rapid navigation occurs.
+/
+/
+/
+/
+/
 pub struct FileSystem {
     current_path: PathBuf,
     entries: Vec<FileEntry>,
@@ -30,7 +30,7 @@ pub struct FileSystem {
 }
 
 impl FileSystem {
-    /// Creates a new FileSystem model with the given initial path.
+    /
     pub fn new(initial_path: PathBuf) -> Self {
         let cache_capacity = NonZeroUsize::new(DEFAULT_CACHE_CAPACITY)
             .expect("DEFAULT_CACHE_CAPACITY must be non-zero");
@@ -44,7 +44,7 @@ impl FileSystem {
         }
     }
 
-    /// Creates a new FileSystem model with a custom cache capacity.
+    /
     pub fn with_cache_capacity(initial_path: PathBuf, capacity: usize) -> Self {
         let cache_capacity =
             NonZeroUsize::new(capacity.max(1)).expect("capacity must be at least 1");
@@ -58,37 +58,36 @@ impl FileSystem {
         }
     }
 
-    /// Returns a reference to the current file entries.
+    /
     pub fn entries(&self) -> &[FileEntry] {
         &self.entries
     }
 
-    /// Returns the current directory path.
+    /
     pub fn current_path(&self) -> &Path {
         &self.current_path
     }
 
-    /// Returns the current loading state.
+    /
     pub fn state(&self) -> &LoadState {
         &self.state
     }
 
-    /// Returns the current request ID for generational tracking.
+    /
     pub fn request_id(&self) -> usize {
         self.request_id
     }
 
-    /// Initiates a navigation request to the specified path.
-    ///
-    /// This increments the request_id for generational tracking.
-    /// Always clears entries to prevent duplication when processing batches.
-    ///
-    /// Returns the new request_id for tracking async operations.
+    /
+    /
+    /
+    /
+    /
+    /
     pub fn begin_load(&mut self, path: PathBuf) -> usize {
         self.request_id = self.request_id.wrapping_add(1);
         self.current_path = path.clone();
 
-        // Always clear entries before loading to prevent duplication
         self.entries.clear();
         self.state = LoadState::Loading {
             request_id: self.request_id,
@@ -97,18 +96,18 @@ impl FileSystem {
         self.request_id
     }
 
-    /// Validates if the given request_id matches the current generation.
-    ///
-    /// Used to prevent stale async results from being applied when a newer
-    /// navigation request has superseded the original.
+    /
+    /
+    /
+    /
     pub fn is_valid_request(&self, request_id: usize) -> bool {
         self.request_id == request_id
     }
 
-    /// Applies loaded entries if the request_id is still valid.
-    ///
-    /// Returns true if the update was applied, false if it was discarded
-    /// due to a stale request_id.
+    /
+    /
+    /
+    /
     pub fn complete_load(
         &mut self,
         request_id: usize,
@@ -122,7 +121,6 @@ impl FileSystem {
 
         let count = entries.len();
 
-        // Cache the directory state with current generation
         let cached = CachedDirectory::new(entries.clone(), request_id, mtime);
         self.cache.put(self.current_path.clone(), cached);
 
@@ -132,9 +130,9 @@ impl FileSystem {
         true
     }
 
-    /// Sets an error state if the request_id is still valid.
-    ///
-    /// Returns true if the error was applied, false if discarded.
+    /
+    /
+    /
     pub fn set_error(&mut self, request_id: usize, message: String) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
@@ -144,30 +142,30 @@ impl FileSystem {
         true
     }
 
-    /// Gets cached directory data if available.
+    /
     pub fn get_cached(&mut self, path: &Path) -> Option<&CachedDirectory> {
         self.cache.get(path)
     }
 
-    /// Checks if a path exists in the cache.
+    /
     pub fn is_cached(&self, path: &Path) -> bool {
         self.cache.contains(path)
     }
 
-    /// Returns the number of cached directories.
+    /
     pub fn cache_len(&self) -> usize {
         self.cache.len()
     }
 
-    /// Clears all cached directory states.
+    /
     pub fn clear_cache(&mut self) {
         self.cache.clear();
     }
 
-    /// Appends entries to the current list if the request_id is still valid.
-    /// Used for incremental batch updates during traversal.
-    ///
-    /// Returns true if the update was applied, false if discarded.
+    /
+    /
+    /
+    /
     pub fn append_entries(&mut self, request_id: usize, new_entries: Vec<FileEntry>) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
@@ -178,7 +176,7 @@ impl FileSystem {
     }
 }
 
-/// Result of starting a directory load operation
+/
 pub struct LoadOperation {
     pub request_id: usize,
     pub batch_receiver: Receiver<Vec<FileEntry>>,
@@ -186,15 +184,15 @@ pub struct LoadOperation {
 }
 
 impl FileSystem {
-    /// Initiates an asynchronous load of the specified directory path.
-    ///
-    /// This method:
-    /// 1. Increments the request_id for generational tracking
-    /// 2. Checks cache for immediate display
-    /// 3. Spawns a background traversal with batch aggregation
-    ///
-    /// Returns a LoadOperation containing the request_id and receivers for
-    /// processing batched results.
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     pub fn load_path(
         &mut self,
         path: PathBuf,
@@ -244,12 +242,12 @@ impl FileSystem {
         }
     }
 
-    /// Processes batched entries from a load operation.
-    ///
-    /// This method should be called repeatedly to process incoming batches
-    /// until the receiver is disconnected.
-    ///
-    /// Returns the number of entries added, or None if the request was stale.
+    /
+    /
+    /
+    /
+    /
+    /
     pub fn process_batch(&mut self, request_id: usize, batch: Vec<FileEntry>) -> Option<usize> {
         if !self.is_valid_request(request_id) {
             return None;
@@ -260,9 +258,9 @@ impl FileSystem {
         Some(count)
     }
 
-    /// Completes a load operation, finalizing the state.
-    ///
-    /// This should be called after all batches have been processed.
+    /
+    /
+    /
     pub fn finalize_load(&mut self, request_id: usize, duration: Duration) -> bool {
         if !self.is_valid_request(request_id) {
             return false;
@@ -274,7 +272,6 @@ impl FileSystem {
             .and_then(|m| m.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH);
 
-        // Cache the directory state
         let cached = CachedDirectory::new(self.entries.clone(), request_id, mtime);
         self.cache.put(self.current_path.clone(), cached);
 
@@ -282,8 +279,8 @@ impl FileSystem {
         true
     }
 
-    /// Updates sync status for all entries based on cloud storage manager
-    /// Call this after loading entries when the current path is in a cloud storage location
+    /
+    /
     pub fn update_sync_status(&mut self, cloud_manager: &super::CloudStorageManager) {
         if cloud_manager.is_cloud_path(&self.current_path).is_some() {
             for entry in &mut self.entries {
@@ -301,16 +298,16 @@ impl FileSystem {
         }
     }
 
-    /// Get mutable access to entries for external sync status updates
+    /
     pub fn entries_mut(&mut self) -> &mut Vec<FileEntry> {
         &mut self.entries
     }
 }
 
-/// Synchronously loads a directory and processes all batches.
-///
-/// This is a convenience function for simple use cases where async
-/// processing is not needed.
+/
+/
+/
+/
 pub fn load_directory_sync(
     fs: &mut FileSystem,
     path: PathBuf,
@@ -326,7 +323,6 @@ pub fn load_directory_sync(
         fs.process_batch(request_id, batch);
     }
 
-    // Wait for traversal to complete
     let result = op.traversal_handle.join().map_err(|_| {
         crate::models::FileSystemError::Platform("Traversal thread panicked".to_string())
     })?;
@@ -345,16 +341,16 @@ impl Default for FileSystem {
 
 use super::FsEvent;
 
-/// File event processing for the FileSystem model.
-///
-/// These methods handle real-time file system events from watchers,
-/// updating the entries list to reflect changes without requiring
-/// a full directory reload.
+/
+/
+/
+/
+/
 impl FileSystem {
-    /// Processes a file system event and updates entries accordingly.
-    ///
-    /// Returns true if the entries were modified, false otherwise.
-    /// Events for paths outside the current directory are ignored.
+    /
+    /
+    /
+    /
     pub fn process_event(&mut self, event: FsEvent) -> bool {
         match event {
             FsEvent::Created(path) => self.handle_created(path),
@@ -364,9 +360,9 @@ impl FileSystem {
         }
     }
 
-    /// Processes multiple file system events.
-    ///
-    /// Returns the number of events that resulted in entry modifications.
+    /
+    /
+    /
     pub fn process_events(&mut self, events: Vec<FsEvent>) -> usize {
         events
             .into_iter()
@@ -466,7 +462,7 @@ impl FileSystem {
         self.cache.pop(&self.current_path);
     }
 
-    /// Checks if a path exists in the current entries.
+    /
     pub fn contains_path(&self, path: &Path) -> bool {
         self.entries.iter().any(|e| e.path == path)
     }

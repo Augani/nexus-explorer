@@ -4,7 +4,7 @@ use crate::models::{
 };
 use std::path::PathBuf;
 
-/// Actions for the checksum dialog
+/
 #[derive(Clone, PartialEq)]
 pub enum ChecksumDialogAction {
     Calculate,
@@ -15,7 +15,7 @@ pub enum ChecksumDialogAction {
     Close,
 }
 
-/// State for the checksum dialog
+/
 pub struct ChecksumDialog {
     file_path: PathBuf,
     file_name: String,
@@ -74,39 +74,36 @@ impl ChecksumDialog {
         self
     }
 
-    /// Set the selected algorithm
+    /
     pub fn set_algorithm(&mut self, algorithm: HashAlgorithm) {
         self.selected_algorithm = algorithm;
-        // Clear previous results when algorithm changes
         self.calculated_hash = None;
         self.comparison_result = None;
         self.error_message = None;
     }
 
-    /// Set the comparison hash input
+    /
     pub fn set_comparison_hash(&mut self, hash: String) {
         self.comparison_hash = hash;
-        // Auto-detect algorithm from pasted hash
         if let Some(detected) = detect_algorithm(&self.comparison_hash) {
             self.selected_algorithm = detected;
         }
-        // Update comparison result if we have a calculated hash
         self.update_comparison();
     }
 
-    /// Start hash calculation
+    /
     pub fn start_calculation(&mut self) {
         self.is_calculating = true;
         self.error_message = None;
         self.progress = Some(HashProgress::new(0, self.file_size));
     }
 
-    /// Update progress during calculation
+    /
     pub fn update_progress(&mut self, progress: HashProgress) {
         self.progress = Some(progress);
     }
 
-    /// Set calculation result
+    /
     pub fn set_result(&mut self, result: Result<HashResult, String>) {
         self.is_calculating = false;
         self.progress = None;
@@ -123,7 +120,7 @@ impl ChecksumDialog {
         }
     }
 
-    /// Calculate hash synchronously (for smaller files)
+    /
     pub fn calculate_sync(&mut self) {
         self.start_calculation();
         
@@ -137,7 +134,7 @@ impl ChecksumDialog {
         }
     }
 
-    /// Update comparison result
+    /
     fn update_comparison(&mut self) {
         if let Some(ref hash_result) = self.calculated_hash {
             if !self.comparison_hash.is_empty() {
@@ -151,7 +148,7 @@ impl ChecksumDialog {
         }
     }
 
-    /// Copy hash to clipboard
+    /
     pub fn copy_hash(&self) {
         if let Some(ref hash_result) = self.calculated_hash {
             if let Some(ref callback) = self.on_copy {
@@ -160,14 +157,13 @@ impl ChecksumDialog {
         }
     }
 
-    /// Handle close action
+    /
     pub fn handle_close(&self) {
         if let Some(ref callback) = self.on_close {
             callback();
         }
     }
 
-    // Getters
     pub fn file_path(&self) -> &PathBuf {
         &self.file_path
     }
@@ -229,7 +225,7 @@ impl ChecksumDialog {
     }
 }
 
-/// Format bytes to human-readable size
+/
 fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;

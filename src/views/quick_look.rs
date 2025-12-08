@@ -10,7 +10,7 @@ use std::time::SystemTime;
 use crate::models::{theme_colors, FileEntry};
 use crate::views::preview::{format_date, format_size};
 
-/// Quick Look content types
+/
 #[derive(Debug, Clone, PartialEq)]
 pub enum QuickLookContent {
     Image {
@@ -34,7 +34,7 @@ pub enum QuickLookContent {
     None,
 }
 
-/// Quick Look state model
+/
 #[derive(Debug, Clone)]
 pub struct QuickLook {
     is_visible: bool,
@@ -93,7 +93,7 @@ impl QuickLook {
         self.modified
     }
 
-    /// Show Quick Look for a file
+    /
     pub fn show(&mut self, path: PathBuf) {
         self.current_path = Some(path.clone());
         self.is_visible = true;
@@ -101,12 +101,12 @@ impl QuickLook {
         self.load_content(&path);
     }
 
-    /// Hide Quick Look
+    /
     pub fn hide(&mut self) {
         self.is_visible = false;
     }
 
-    /// Toggle Quick Look visibility
+    /
     pub fn toggle(&mut self, path: PathBuf) {
         if self.is_visible && self.current_path.as_ref() == Some(&path) {
             self.hide();
@@ -115,13 +115,12 @@ impl QuickLook {
         }
     }
 
-    /// Navigate to next file in the list
+    /
     pub fn next(&mut self, entries: &[FileEntry], current_index: usize) {
         if entries.is_empty() {
             return;
         }
 
-        // Find next non-directory file
         let mut next_idx = (current_index + 1) % entries.len();
         let start_idx = next_idx;
 
@@ -137,13 +136,12 @@ impl QuickLook {
         }
     }
 
-    /// Navigate to previous file in the list
+    /
     pub fn previous(&mut self, entries: &[FileEntry], current_index: usize) {
         if entries.is_empty() {
             return;
         }
 
-        // Find previous non-directory file
         let mut prev_idx = if current_index == 0 {
             entries.len() - 1
         } else {
@@ -167,17 +165,17 @@ impl QuickLook {
         }
     }
 
-    /// Zoom in on image
+    /
     pub fn zoom_in(&mut self) {
         self.zoom_level = (self.zoom_level * 1.25).min(4.0);
     }
 
-    /// Zoom out on image
+    /
     pub fn zoom_out(&mut self) {
         self.zoom_level = (self.zoom_level / 1.25).max(0.25);
     }
 
-    /// Reset zoom to 100%
+    /
     pub fn reset_zoom(&mut self) {
         self.zoom_level = 1.0;
     }
@@ -209,7 +207,6 @@ impl QuickLook {
             return;
         }
 
-        // Unsupported file type
         self.content = QuickLookContent::Unsupported {
             file_type: extension.unwrap_or_else(|| "Unknown".to_string()),
         };
@@ -235,7 +232,6 @@ impl QuickLook {
                 let line_count = content.lines().count();
                 let language = extension.and_then(|ext| detect_language(&ext));
 
-                // Limit content size for preview
                 let preview_content = if content.len() > 100000 {
                     format!(
                         "{}...\n\n[Content truncated - file too large]",
@@ -260,7 +256,7 @@ impl QuickLook {
     }
 }
 
-/// Check if extension indicates an image file
+/
 fn is_image_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -268,7 +264,7 @@ fn is_image_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/// Check if extension indicates a text file
+/
 fn is_text_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -359,7 +355,7 @@ fn is_text_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/// Check if file is likely text by reading first bytes
+/
 fn is_likely_text_file(path: &Path) -> bool {
     if let Ok(data) = fs::read(path) {
         let sample: Vec<u8> = data.into_iter().take(512).collect();
@@ -374,7 +370,7 @@ fn is_likely_text_file(path: &Path) -> bool {
     }
 }
 
-/// Detect programming language from extension
+/
 fn detect_language(ext: &str) -> Option<String> {
     let lang = match ext {
         "rs" => "Rust",
@@ -428,9 +424,8 @@ fn detect_language(ext: &str) -> Option<String> {
     Some(lang.to_string())
 }
 
-/// Get image dimensions (basic implementation)
+/
 fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
-    // Try to read image dimensions using the image crate
     if let Ok(reader) = image::ImageReader::open(path) {
         if let Ok(dimensions) = reader.into_dimensions() {
             return Some(dimensions);
@@ -439,7 +434,6 @@ fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
     None
 }
 
-// Define actions for Quick Look key bindings
 actions!(
     quick_look,
     [
@@ -453,7 +447,7 @@ actions!(
     ]
 );
 
-/// Quick Look view component
+/
 pub struct QuickLookView {
     quick_look: QuickLook,
     focus_handle: FocusHandle,
@@ -609,11 +603,8 @@ impl Render for QuickLookView {
             .on_action(cx.listener(|view, _: &QuickLookResetZoom, _window, _cx| {
                 view.reset_zoom();
             }))
-            // Header with file info
             .child(self.render_header(text_primary, text_muted))
-            // Main content area
             .child(self.render_content(panel_bg, border_color, text_primary, text_muted))
-            // Footer with controls
             .child(self.render_footer(text_muted))
     }
 }
@@ -1061,7 +1052,6 @@ mod tests {
         }
         assert!(ql.zoom_level() <= 4.0);
 
-        // Zoom out to min
         for _ in 0..40 {
             ql.zoom_out();
         }

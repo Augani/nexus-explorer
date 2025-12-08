@@ -36,7 +36,6 @@ impl WindowsDeviceNotificationMonitor {
                 
                 let current_drives = get_current_drives();
                 
-                // Check for new drives
                 for drive in &current_drives {
                     if !known_drives.contains(drive) {
                         if let Some(device) = create_device_for_drive(*drive) {
@@ -45,7 +44,6 @@ impl WindowsDeviceNotificationMonitor {
                     }
                 }
                 
-                // Check for removed drives
                 for drive in &known_drives {
                     if !current_drives.contains(drive) {
                         let _ = sender.send(DeviceEvent::Disconnected(DeviceId::new(*drive as u64)));

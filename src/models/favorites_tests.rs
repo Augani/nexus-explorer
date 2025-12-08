@@ -99,14 +99,12 @@ fn test_favorites_add_max_reached() {
     let temp = create_temp_dir();
     let mut favs = Favorites::new();
 
-    // Add MAX_FAVORITES items
     for i in 0..MAX_FAVORITES {
         let subdir = temp.path().join(format!("dir{}", i));
         std::fs::create_dir(&subdir).unwrap();
         favs.add(subdir).unwrap();
     }
 
-    // Try to add one more
     let extra = temp.path().join("extra");
     std::fs::create_dir(&extra).unwrap();
     let result = favs.add(extra);
@@ -174,7 +172,6 @@ fn test_favorites_reorder() {
         favs.add(p.clone()).unwrap();
     }
 
-    // Reorder: move first to last
     favs.reorder(0, 2).unwrap();
 
     assert_eq!(favs.items()[0].path, paths[1]);
@@ -211,7 +208,6 @@ fn test_favorites_validate_all() {
     let mut favs = Favorites::new();
     favs.add(valid_path).unwrap();
 
-    // Manually add an invalid favorite
     favs.items_mut().push(Favorite {
         name: "Invalid".to_string(),
         path: PathBuf::from("/nonexistent/path"),
@@ -277,15 +273,14 @@ fn test_favorites_is_full() {
     assert!(favs.is_full());
 }
 
-// Property-based tests using proptest
 #[cfg(test)]
 mod property_tests {
     use super::*;
     use proptest::prelude::*;
     use tempfile::TempDir;
 
-    /// Property 14: Favorites Add Persistence
-    /// For any valid path added to favorites, saving and loading should preserve the favorite
+    /
+    /
     #[test]
     fn property_favorites_add_persistence() {
         let temp = TempDir::new().unwrap();
@@ -295,7 +290,6 @@ mod property_tests {
         let mut favs = Favorites::new();
         favs.add(test_dir.clone()).unwrap();
 
-        // Save to a custom location for testing
         let config_path = temp.path().join("favorites_test.json");
         let json = serde_json::to_string_pretty(&favs).unwrap();
         std::fs::write(&config_path, &json).unwrap();
@@ -304,15 +298,14 @@ mod property_tests {
         let mut loaded: Favorites = serde_json::from_str(&loaded_json).unwrap();
         loaded.validate_all();
 
-        // Verify the favorite was persisted
         assert_eq!(loaded.len(), favs.len());
         assert!(loaded.contains(&test_dir));
         assert_eq!(loaded.items()[0].name, favs.items()[0].name);
     }
 
     proptest! {
-        /// Property 15: Favorites Reorder Preservation
-        /// For any valid reorder operation, all original items should still be present
+        /
+        /
         #[test]
         fn property_favorites_reorder_preservation(
             num_items in 2usize..=5,
@@ -330,22 +323,19 @@ mod property_tests {
                 favs.add(p).unwrap();
             }
 
-            // Only reorder if indices are valid
             if from < num_items && to < num_items {
                 favs.reorder(from, to).unwrap();
 
-                // All original paths should still be present
                 for path in &paths {
                     prop_assert!(favs.contains(path));
                 }
 
-                // Length should be unchanged
                 prop_assert_eq!(favs.len(), num_items);
             }
         }
 
-        /// Property 16: Favorites Invalid Path Detection
-        /// For any path that doesn't exist, validate should mark it as invalid
+        /
+        /
         #[test]
         fn property_favorites_invalid_path_detection(
             path_suffix in "[a-z]{5,10}"

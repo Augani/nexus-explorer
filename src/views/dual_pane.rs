@@ -8,13 +8,12 @@ use gpui::{
 use crate::models::{theme_colors, DragPayload, DualPane, FileEntry, PaneSide};
 use crate::views::FileListView;
 
-// Define actions for dual pane
 actions!(
     dual_pane,
     [ToggleDualPane, SwitchPane, CopyToOther, MoveToOther,]
 );
 
-/// Data transferred during drag operations between panes
+/
 #[derive(Clone, Debug)]
 pub struct PaneDragData {
     pub paths: Vec<PathBuf>,
@@ -34,7 +33,7 @@ impl PaneDragData {
     }
 }
 
-/// View for rendering dragged files between panes
+/
 pub struct PaneDragView {
     count: usize,
     name: String,
@@ -61,7 +60,7 @@ impl Render for PaneDragView {
     }
 }
 
-/// Pending operation from dual pane
+/
 #[derive(Debug, Clone)]
 pub enum DualPaneAction {
     CopyFiles {
@@ -76,7 +75,7 @@ pub enum DualPaneAction {
     NavigateRight(PathBuf),
 }
 
-/// View component for dual pane file browsing
+/
 pub struct DualPaneView {
     dual_pane: DualPane,
     left_file_list: Entity<FileListView>,
@@ -85,7 +84,7 @@ pub struct DualPaneView {
     pending_action: Option<DualPaneAction>,
     left_drop_hover: bool,
     right_drop_hover: bool,
-    /// Currently dragging from which pane (if any)
+    /
     dragging_from: Option<PaneSide>,
 }
 
@@ -126,7 +125,7 @@ impl DualPaneView {
         }
     }
 
-    /// Register key bindings for dual pane operations
+    /
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("cmd-shift-d", ToggleDualPane, Some("DualPane")),
@@ -136,57 +135,57 @@ impl DualPaneView {
         ]);
     }
 
-    /// Returns whether dual pane mode is enabled
+    /
     pub fn is_enabled(&self) -> bool {
         self.dual_pane.is_enabled()
     }
 
-    /// Enables dual pane mode
+    /
     pub fn enable(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.enable();
         cx.notify();
     }
 
-    /// Disables dual pane mode
+    /
     pub fn disable(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.disable();
         cx.notify();
     }
 
-    /// Toggles dual pane mode
+    /
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.toggle();
         cx.notify();
     }
 
-    /// Returns the active pane side
+    /
     pub fn active_side(&self) -> PaneSide {
         self.dual_pane.active_side()
     }
 
-    /// Switches the active pane
+    /
     pub fn switch_active(&mut self, cx: &mut Context<Self>) {
         self.dual_pane.switch_active();
         cx.notify();
     }
 
-    /// Sets the active pane
+    /
     pub fn set_active(&mut self, side: PaneSide, cx: &mut Context<Self>) {
         self.dual_pane.set_active(side);
         cx.notify();
     }
 
-    /// Returns a reference to the underlying DualPane model
+    /
     pub fn inner(&self) -> &DualPane {
         &self.dual_pane
     }
 
-    /// Returns a mutable reference to the underlying DualPane model
+    /
     pub fn inner_mut(&mut self) -> &mut DualPane {
         &mut self.dual_pane
     }
 
-    /// Sets entries for the left pane
+    /
     pub fn set_left_entries(&mut self, entries: Vec<FileEntry>, cx: &mut Context<Self>) {
         self.dual_pane.left_pane_mut().set_entries(entries.clone());
         self.left_file_list.update(cx, |view, _| {
@@ -195,7 +194,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /// Sets entries for the right pane
+    /
     pub fn set_right_entries(&mut self, entries: Vec<FileEntry>, cx: &mut Context<Self>) {
         self.dual_pane.right_pane_mut().set_entries(entries.clone());
         self.right_file_list.update(cx, |view, _| {
@@ -204,7 +203,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /// Sets entries for a specific pane
+    /
     pub fn set_pane_entries(
         &mut self,
         side: PaneSide,
@@ -217,36 +216,36 @@ impl DualPaneView {
         }
     }
 
-    /// Navigates the left pane to a new path
+    /
     pub fn navigate_left(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.dual_pane.left_pane_mut().navigate_to(path.clone());
         self.pending_action = Some(DualPaneAction::NavigateLeft(path));
         cx.notify();
     }
 
-    /// Navigates the right pane to a new path
+    /
     pub fn navigate_right(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.dual_pane.right_pane_mut().navigate_to(path.clone());
         self.pending_action = Some(DualPaneAction::NavigateRight(path));
         cx.notify();
     }
 
-    /// Takes the pending action, if any
+    /
     pub fn take_pending_action(&mut self) -> Option<DualPaneAction> {
         self.pending_action.take()
     }
 
-    /// Returns the left pane's current path
+    /
     pub fn left_path(&self) -> &PathBuf {
         &self.dual_pane.left_pane().path
     }
 
-    /// Returns the right pane's current path
+    /
     pub fn right_path(&self) -> &PathBuf {
         &self.dual_pane.right_pane().path
     }
 
-    /// Returns the active pane's current path
+    /
     pub fn active_path(&self) -> &PathBuf {
         &self.dual_pane.active_pane().path
     }
@@ -293,7 +292,7 @@ impl DualPaneView {
         }
     }
 
-    /// Handles a drop on the left pane
+    /
     pub fn handle_drop_left(&mut self, payload: DragPayload, cx: &mut Context<Self>) {
         self.left_drop_hover = false;
         self.dragging_from = None;
@@ -305,7 +304,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /// Handles a drop on the right pane
+    /
     pub fn handle_drop_right(&mut self, payload: DragPayload, cx: &mut Context<Self>) {
         self.right_drop_hover = false;
         self.dragging_from = None;
@@ -317,7 +316,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /// Handles a drop from PaneDragData on the left pane
+    /
     fn handle_pane_drop_left(&mut self, data: &PaneDragData, cx: &mut Context<Self>) {
         self.left_drop_hover = false;
         self.dragging_from = None;
@@ -332,7 +331,7 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /// Handles a drop from PaneDragData on the right pane
+    /
     fn handle_pane_drop_right(&mut self, data: &PaneDragData, cx: &mut Context<Self>) {
         self.right_drop_hover = false;
         self.dragging_from = None;
@@ -347,25 +346,25 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /// Sets the left pane drop hover state
+    /
     pub fn set_left_drop_hover(&mut self, hover: bool, cx: &mut Context<Self>) {
         self.left_drop_hover = hover;
         cx.notify();
     }
 
-    /// Sets the right pane drop hover state
+    /
     pub fn set_right_drop_hover(&mut self, hover: bool, cx: &mut Context<Self>) {
         self.right_drop_hover = hover;
         cx.notify();
     }
 
-    /// Starts a drag operation from the specified pane
+    /
     pub fn start_drag(&mut self, side: PaneSide, cx: &mut Context<Self>) {
         self.dragging_from = Some(side);
         cx.notify();
     }
 
-    /// Clears the drag state
+    /
     pub fn clear_drag(&mut self, cx: &mut Context<Self>) {
         self.dragging_from = None;
         self.left_drop_hover = false;
@@ -373,12 +372,12 @@ impl DualPaneView {
         cx.notify();
     }
 
-    /// Returns the paths of selected files in the specified pane
+    /
     pub fn selected_paths(&self, side: PaneSide) -> Vec<PathBuf> {
         self.dual_pane.pane(side).selected_paths()
     }
 
-    /// Returns the first selected entry name in the specified pane
+    /
     pub fn first_selected_name(&self, side: PaneSide) -> Option<String> {
         self.dual_pane
             .pane(side)
@@ -499,7 +498,6 @@ impl Render for DualPaneView {
                                 view.set_active(PaneSide::Left, cx);
                             }),
                         )
-                        // Drag support - drag selected files from left pane
                         .when(!left_selected.is_empty(), |s| {
                             let paths = left_selected.clone();
                             let name = left_first_name.clone();
@@ -514,7 +512,6 @@ impl Render for DualPaneView {
                                 },
                             )
                         })
-                        // Drop support - accept drops from right pane
                         .on_drag_move(cx.listener(
                             |view, _event: &DragMoveEvent<PaneDragData>, _window, cx| {
                                 view.set_left_drop_hover(true, cx);
@@ -554,7 +551,6 @@ impl Render for DualPaneView {
                                 view.set_active(PaneSide::Right, cx);
                             }),
                         )
-                        // Drag support - drag selected files from right pane
                         .when(!right_selected.is_empty(), |s| {
                             let paths = right_selected.clone();
                             let name = right_first_name.clone();
@@ -569,7 +565,6 @@ impl Render for DualPaneView {
                                 },
                             )
                         })
-                        // Drop support - accept drops from left pane
                         .on_drag_move(cx.listener(
                             |view, _event: &DragMoveEvent<PaneDragData>, _window, cx| {
                                 view.set_right_drop_hover(true, cx);
@@ -588,7 +583,6 @@ impl Render for DualPaneView {
                 )
             })
             .when(!is_enabled, |this| {
-                // Single pane mode - just show left pane
                 this.child(
                     div()
                         .flex_1()

@@ -8,14 +8,14 @@ use gpui::{
 use crate::models::theme_colors;
 use adabraka_ui::components::input::{InputEvent, InputState};
 
-/// Actions that can be triggered from the symlink dialog
+/
 #[derive(Clone, Debug)]
 pub enum SymlinkDialogAction {
     Create { target: PathBuf, link_path: PathBuf },
     Cancel,
 }
 
-/// Dialog for creating symbolic links
+/
 pub struct SymlinkDialog {
     target_path: PathBuf,
     link_name_input: Entity<InputState>,
@@ -127,7 +127,6 @@ impl Render for SymlinkDialog {
             .flex_col()
             .overflow_hidden()
             .child(
-                // Header
                 div()
                     .px_4()
                     .py_3()
@@ -152,14 +151,12 @@ impl Render for SymlinkDialog {
                     ),
             )
             .child(
-                // Content
                 div()
                     .p_4()
                     .flex()
                     .flex_col()
                     .gap_4()
                     .child(
-                        // Target info
                         div()
                             .flex()
                             .flex_col()
@@ -187,7 +184,6 @@ impl Render for SymlinkDialog {
                             ),
                     )
                     .child(
-                        // Link name input
                         div()
                             .flex()
                             .flex_col()
@@ -202,7 +198,6 @@ impl Render for SymlinkDialog {
                             .child(self.link_name_input.clone()),
                     )
                     .child(
-                        // Link location input
                         div()
                             .flex()
                             .flex_col()
@@ -218,7 +213,6 @@ impl Render for SymlinkDialog {
                     ),
             )
             .child(
-                // Footer with buttons
                 div()
                     .px_4()
                     .py_3()
@@ -265,7 +259,7 @@ impl Render for SymlinkDialog {
     }
 }
 
-/// Creates a symbolic link at the specified path pointing to the target
+/
 pub fn create_symbolic_link(target: &PathBuf, link_path: &PathBuf) -> std::io::Result<()> {
     #[cfg(unix)]
     {

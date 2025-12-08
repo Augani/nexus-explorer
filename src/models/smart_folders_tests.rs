@@ -56,12 +56,10 @@ fn create_entry_with_extension(name: &str, ext: &str, size: u64) -> FileEntry {
     }
 }
 
-// Strategy for generating valid file names
 fn file_name_strategy() -> impl Strategy<Value = String> {
     "[a-zA-Z][a-zA-Z0-9_]{0,15}".prop_map(|s| s)
 }
 
-// Strategy for generating file extensions
 fn extension_strategy() -> impl Strategy<Value = String> {
     prop_oneof![
         Just("rs".to_string()),
@@ -74,7 +72,6 @@ fn extension_strategy() -> impl Strategy<Value = String> {
     ]
 }
 
-// Strategy for generating file entries
 fn file_entry_strategy() -> impl Strategy<Value = FileEntry> {
     (
         file_name_strategy(),
@@ -91,7 +88,6 @@ fn file_entry_strategy() -> impl Strategy<Value = FileEntry> {
         })
 }
 
-// Strategy for generating search queries
 fn search_query_strategy() -> impl Strategy<Value = SearchQuery> {
     (
         prop::option::of(file_name_strategy()),
@@ -137,11 +133,11 @@ fn search_query_strategy() -> impl Strategy<Value = SearchQuery> {
         )
 }
 
-/// **Feature: ui-enhancements, Property 44: Smart Folder Query Consistency**
-/// **Validates: Requirements 24.3**
-///
-/// *For any* saved smart folder, opening it SHALL return the same results
-/// as running the query manually against the same set of files.
+/
+/
+/
+/
+/
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -155,15 +151,12 @@ proptest! {
 
         let id = manager.create(folder_name, query.clone()).unwrap();
 
-        // Execute the query through the smart folder
         let smart_folder_results = manager
             .execute(id, &entries, |_| HashSet::new())
             .unwrap();
 
-        // Execute the same query manually
         let manual_results = manager.execute_query(&query, &entries, |_| HashSet::new());
 
-        // Results should be identical
         prop_assert_eq!(
             smart_folder_results.len(),
             manual_results.len(),
@@ -187,7 +180,6 @@ proptest! {
         let manager = SmartFolderManager::new();
         let results = manager.execute_query(&query, &entries, |_| HashSet::new());
 
-        // Every result should match the query
         for entry in &results {
             let matches = query.matches(entry, &HashSet::new());
             prop_assert!(
@@ -198,7 +190,6 @@ proptest! {
             );
         }
 
-        // Every entry that matches should be in results
         for entry in &entries {
             let matches = query.matches(entry, &HashSet::new());
             let in_results = results.iter().any(|r| r.path == entry.path);
@@ -267,7 +258,6 @@ proptest! {
 
         let results = manager.execute_query(&query, &entries, |_| HashSet::new());
 
-        // All results should be directories
         for entry in &results {
             prop_assert!(
                 entry.is_dir,
@@ -276,7 +266,6 @@ proptest! {
             );
         }
 
-        // Count should match
         let expected_count = entries.iter().filter(|e| e.is_dir).count();
         prop_assert_eq!(results.len(), expected_count);
     }
@@ -295,7 +284,6 @@ proptest! {
 
         let results = manager.execute_query(&query, &entries, |_| HashSet::new());
 
-        // All results should be files
         for entry in &results {
             prop_assert!(
                 !entry.is_dir,
@@ -304,7 +292,6 @@ proptest! {
             );
         }
 
-        // Count should match
         let expected_count = entries.iter().filter(|e| !e.is_dir).count();
         prop_assert_eq!(results.len(), expected_count);
     }
@@ -324,7 +311,6 @@ proptest! {
 
         let results = manager.execute_query(&query, &entries, |_| HashSet::new());
 
-        // All file results should have size > threshold
         for entry in &results {
             if !entry.is_dir {
                 prop_assert!(
@@ -352,7 +338,6 @@ proptest! {
 
         let results = manager.execute_query(&query, &entries, |_| HashSet::new());
 
-        // All file results should have one of the specified extensions
         for entry in &results {
             if !entry.is_dir {
                 let ext = entry
@@ -386,11 +371,9 @@ fn test_smart_folder_persistence_round_trip() {
         .create("Test Folder".to_string(), query.clone())
         .unwrap();
 
-    // Serialize and deserialize
     let json = serde_json::to_string(&manager).unwrap();
     let loaded: SmartFolderManager = serde_json::from_str(&json).unwrap();
 
-    // Verify the folder was preserved
     let folder = loaded.get(id).unwrap();
     assert_eq!(folder.name, "Test Folder");
     assert_eq!(folder.query.text, Some("test".to_string()));
@@ -410,7 +393,6 @@ fn test_query_with_tags() {
         create_test_entry("file2.txt", false, 100),
     ];
 
-    // File 1 has tag1, file 2 has tag2
     let results = manager.execute_query(&query, &entries, |path| {
         let mut tags = HashSet::new();
         if path.to_string_lossy().contains("file1") {

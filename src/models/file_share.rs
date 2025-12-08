@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use thiserror::Error;
 
-/// Errors that can occur during file sharing operations
+/
 #[derive(Debug, Error)]
 pub enum ShareError {
     #[error("Share creation failed: {0}")]
@@ -43,16 +43,16 @@ pub enum ShareError {
     TransferCancelled,
 }
 
-/// Platform-specific sharing methods available
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlatformShareMethod {
-    /// macOS AirDrop
+    /
     AirDrop,
-    /// Windows Nearby Share
+    /
     NearbyShare,
-    /// Network SMB/Samba share
+    /
     NetworkShare,
-    /// Copy to clipboard
+    /
     Clipboard,
 }
 
@@ -85,30 +85,30 @@ impl PlatformShareMethod {
     }
 }
 
-/// Status of a platform share transfer
+/
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformShareStatus {
-    /// Checking availability
+    /
     Checking,
-    /// Ready to share
+    /
     Ready,
-    /// Waiting for recipient selection
+    /
     WaitingForRecipient,
-    /// Transfer in progress
+    /
     InProgress { progress_percent: u8 },
-    /// Transfer completed successfully
+    /
     Completed,
-    /// Transfer failed
+    /
     Failed(String),
-    /// Transfer was cancelled
+    /
     Cancelled,
-    /// Feature not available
+    /
     Unavailable(String),
 }
 
 pub type ShareResult<T> = std::result::Result<T, ShareError>;
 
-/// Permission level for network shares
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SharePermission {
     #[default]
@@ -127,7 +127,7 @@ impl SharePermission {
     }
 }
 
-/// Configuration for creating a network share
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShareConfig {
     pub share_name: String,
@@ -178,7 +178,7 @@ impl ShareConfig {
     }
 }
 
-/// Information about an active share
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShareInfo {
     pub share_name: String,
@@ -202,7 +202,7 @@ impl ShareInfo {
     }
 }
 
-/// Manager for file sharing operations
+/
 pub struct ShareManager {
     shares: HashMap<PathBuf, ShareInfo>,
 }
@@ -220,22 +220,22 @@ impl ShareManager {
         }
     }
 
-    /// Check if a path is currently shared
+    /
     pub fn is_shared(&self, path: &PathBuf) -> bool {
         self.shares.contains_key(path)
     }
 
-    /// Get share info for a path
+    /
     pub fn get_share(&self, path: &PathBuf) -> Option<&ShareInfo> {
         self.shares.get(path)
     }
 
-    /// Get all active shares
+    /
     pub fn list_shares(&self) -> Vec<&ShareInfo> {
         self.shares.values().collect()
     }
 
-    /// Create a new network share
+    /
     pub fn create_share(&mut self, config: ShareConfig) -> ShareResult<ShareInfo> {
         if !config.path.exists() {
             return Err(ShareError::PathNotFound(config.path));
@@ -247,14 +247,12 @@ impl ShareManager {
             ));
         }
 
-        // Validate share name (no special characters)
         if config.share_name.contains(['\\', '/', ':', '*', '?', '"', '<', '>', '|']) {
             return Err(ShareError::InvalidShareName(
                 "Share name contains invalid characters".to_string(),
             ));
         }
 
-        // Platform-specific share creation
         #[cfg(target_os = "windows")]
         {
             create_windows_share(&config)?;
@@ -283,7 +281,7 @@ impl ShareManager {
         Ok(info)
     }
 
-    /// Remove a network share
+    /
     pub fn remove_share(&mut self, path: &PathBuf) -> ShareResult<()> {
         let share = self
             .shares
@@ -311,7 +309,7 @@ impl ShareManager {
         Ok(())
     }
 
-    /// Refresh the list of shares from the system
+    /
     pub fn refresh_shares(&mut self) -> ShareResult<()> {
         self.shares.clear();
 
@@ -344,26 +342,21 @@ impl ShareManager {
 }
 
 
-// Windows-specific share implementation
 #[cfg(target_os = "windows")]
 fn create_windows_share(config: &ShareConfig) -> ShareResult<()> {
     use std::process::Command;
 
     let path_str = config.path.to_string_lossy();
 
-    // Use net share command to create the share
-    // net share <sharename>=<path> /GRANT:<user>,<permission> /REMARK:"<description>"
     let mut args = vec![
         "share".to_string(),
         format!("{}={}", config.share_name, path_str),
     ];
 
-    // Add description if provided
     if !config.description.is_empty() {
         args.push(format!("/REMARK:{}", config.description));
     }
 
-    // Add permission grants
     let permission_str = match config.permission {
         SharePermission::ReadOnly => "READ",
         SharePermission::ReadWrite => "CHANGE",
@@ -371,7 +364,6 @@ fn create_windows_share(config: &ShareConfig) -> ShareResult<()> {
     };
 
     if config.users.is_empty() {
-        // Grant to Everyone if no specific users
         args.push(format!("/GRANT:Everyone,{}", permission_str));
     } else {
         for user in &config.users {
@@ -379,7 +371,6 @@ fn create_windows_share(config: &ShareConfig) -> ShareResult<()> {
         }
     }
 
-    // Add max users if specified
     if let Some(max) = config.max_users {
         args.push(format!("/USERS:{}", max));
     }
@@ -436,22 +427,17 @@ fn enumerate_windows_shares() -> ShareResult<Vec<ShareInfo>> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut shares = Vec::new();
 
-    // Parse net share output
-    // Format: Share name   Resource                        Remark
     for line in stdout.lines().skip(4) {
-        // Skip header lines
         let line = line.trim();
         if line.is_empty() || line.starts_with("The command") {
             continue;
         }
 
-        // Parse the line - columns are space-separated
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let share_name = parts[0].to_string();
             let path_str = parts[1];
 
-            // Skip system shares (ending with $)
             if share_name.ends_with('$') {
                 continue;
             }
@@ -467,7 +453,7 @@ fn enumerate_windows_shares() -> ShareResult<Vec<ShareInfo>> {
                     share_name,
                     path,
                     description,
-                    permission: SharePermission::ReadOnly, // Default, actual permission requires more API calls
+                    permission: SharePermission::ReadOnly,
                     current_users: 0,
                     max_users: None,
                 });
@@ -478,14 +464,12 @@ fn enumerate_windows_shares() -> ShareResult<Vec<ShareInfo>> {
     Ok(shares)
 }
 
-// Linux-specific share implementation using Samba
 #[cfg(target_os = "linux")]
 fn create_linux_share(config: &ShareConfig) -> ShareResult<()> {
     use std::process::Command;
 
     let path_str = config.path.to_string_lossy();
 
-    // Try using net usershare first (doesn't require root)
     let guest_ok = if config.password.is_none() { "y" } else { "n" };
 
     let acl = match config.permission {
@@ -512,7 +496,6 @@ fn create_linux_share(config: &ShareConfig) -> ShareResult<()> {
             Err(ShareError::CreationFailed(error.to_string()))
         }
         Err(e) => {
-            // net usershare not available, try alternative method
             Err(ShareError::CreationFailed(format!(
                 "net usershare not available: {}. Install samba-common-bin package.",
                 e
@@ -560,7 +543,6 @@ fn enumerate_linux_shares() -> ShareResult<Vec<ShareInfo>> {
     let mut shares = Vec::new();
 
     for share_name in share_names {
-        // Get info for each share
         let info_output = Command::new("net")
             .args(["usershare", "info", &share_name])
             .output();
@@ -602,16 +584,12 @@ fn parse_linux_share_info(share_name: &str, info: &str) -> Option<ShareInfo> {
     })
 }
 
-// macOS-specific share implementation
 #[cfg(target_os = "macos")]
 fn create_macos_share(config: &ShareConfig) -> ShareResult<()> {
     use std::process::Command;
 
-    // macOS uses sharing command or System Preferences
-    // For programmatic access, we use the sharing command
     let path_str = config.path.to_string_lossy();
 
-    // Enable SMB sharing for the folder
     let output = Command::new("sharing")
         .args([
             "-a",
@@ -619,7 +597,7 @@ fn create_macos_share(config: &ShareConfig) -> ShareResult<()> {
             "-n",
             &config.share_name,
             "-s",
-            "001", // SMB sharing
+            "001",
         ])
         .output()
         .map_err(|e| ShareError::Io(e))?;
@@ -692,7 +670,6 @@ fn parse_macos_shares(output: &str) -> Vec<ShareInfo> {
         }
     }
 
-    // Don't forget the last share
     if let (Some(name), Some(path)) = (current_name, current_path) {
         shares.push(ShareInfo {
             share_name: name,
@@ -707,7 +684,7 @@ fn parse_macos_shares(output: &str) -> Vec<ShareInfo> {
     shares
 }
 
-/// Get available platform-specific sharing methods for the current platform
+/
 pub fn get_available_share_methods() -> Vec<PlatformShareMethod> {
     let mut methods = Vec::new();
 
@@ -725,14 +702,13 @@ pub fn get_available_share_methods() -> Vec<PlatformShareMethod> {
         }
     }
 
-    // Network share is available on all platforms
     methods.push(PlatformShareMethod::NetworkShare);
     methods.push(PlatformShareMethod::Clipboard);
 
     methods
 }
 
-/// Check if a specific share method is available
+/
 pub fn is_share_method_available(method: PlatformShareMethod) -> bool {
     match method {
         PlatformShareMethod::AirDrop => {
@@ -760,18 +736,12 @@ pub fn is_share_method_available(method: PlatformShareMethod) -> bool {
     }
 }
 
-// ============================================================================
-// macOS AirDrop Implementation
-// ============================================================================
 
 #[cfg(target_os = "macos")]
 pub fn is_airdrop_available() -> bool {
     use std::process::Command;
 
-    // Check if AirDrop is available by checking Bluetooth and WiFi status
-    // AirDrop requires both Bluetooth and WiFi to be enabled
     
-    // Check if the system supports AirDrop (macOS 10.7+)
     let output = Command::new("system_profiler")
         .args(["SPBluetoothDataType", "-json"])
         .output();
@@ -779,16 +749,13 @@ pub fn is_airdrop_available() -> bool {
     match output {
         Ok(result) if result.status.success() => {
             let stdout = String::from_utf8_lossy(&result.stdout);
-            // Check if Bluetooth is available and powered on
             stdout.contains("\"controller_state\" : \"attrib_on\"") 
                 || stdout.contains("state_on")
                 || stdout.contains("\"bluetooth_power\" : \"on\"")
                 || stdout.contains("\"controller_powerState\" : \"attrib_on\"")
-                // Fallback: if we can query Bluetooth, assume it might be available
                 || stdout.contains("SPBluetoothDataType")
         }
         _ => {
-            // Fallback: check if AirDrop service exists
             std::path::Path::new("/System/Library/CoreServices/Finder.app").exists()
         }
     }
@@ -799,8 +766,8 @@ pub fn is_airdrop_available() -> bool {
     false
 }
 
-/// Share files via AirDrop (macOS only)
-/// Opens Finder, selects the files, and triggers the Share menu
+/
+/
 #[cfg(target_os = "macos")]
 pub fn share_via_airdrop(paths: &[PathBuf]) -> ShareResult<()> {
     use std::process::Command;
@@ -815,7 +782,6 @@ pub fn share_via_airdrop(paths: &[PathBuf]) -> ShareResult<()> {
         }
     }
 
-    // Build POSIX file references for AppleScript
     let file_refs: Vec<String> = paths
         .iter()
         .map(|p| {
@@ -825,7 +791,6 @@ pub fn share_via_airdrop(paths: &[PathBuf]) -> ShareResult<()> {
         .collect();
     let files_str = file_refs.join(", ");
 
-    // Use Finder to select files and open the Share menu
     let script = format!(
         r#"
 tell application "Finder"
@@ -868,7 +833,7 @@ pub fn share_via_airdrop(_paths: &[PathBuf]) -> ShareResult<()> {
     ))
 }
 
-/// Open AirDrop window (macOS only)
+/
 #[cfg(target_os = "macos")]
 pub fn open_airdrop_window() -> ShareResult<()> {
     use std::process::Command;
@@ -893,10 +858,9 @@ pub fn open_airdrop_window() -> ShareResult<()> {
     ))
 }
 
-/// Open the native macOS share sheet for files (includes AirDrop, Messages, Mail, etc.)
+/
 #[cfg(target_os = "macos")]
 pub fn open_macos_share_sheet(paths: &[PathBuf]) -> ShareResult<()> {
-    // Just delegate to share_via_airdrop which now opens the full share menu
     share_via_airdrop(paths)
 }
 
@@ -907,15 +871,11 @@ pub fn open_macos_share_sheet(_paths: &[PathBuf]) -> ShareResult<()> {
     ))
 }
 
-// ============================================================================
-// Windows Nearby Share Implementation
-// ============================================================================
 
 #[cfg(target_os = "windows")]
 pub fn is_nearby_share_available() -> bool {
     use std::process::Command;
 
-    // Check Windows version (Nearby Share requires Windows 10 1803+)
     let output = Command::new("cmd")
         .args(["/C", "ver"])
         .output();
@@ -923,11 +883,9 @@ pub fn is_nearby_share_available() -> bool {
     match output {
         Ok(result) if result.status.success() => {
             let version = String::from_utf8_lossy(&result.stdout);
-            // Windows 10 build 17134 (1803) or later supports Nearby Share
             if let Some(build) = extract_windows_build(&version) {
                 build >= 17134
             } else {
-                // Assume available on modern Windows
                 true
             }
         }
@@ -937,12 +895,10 @@ pub fn is_nearby_share_available() -> bool {
 
 #[cfg(target_os = "windows")]
 fn extract_windows_build(version_str: &str) -> Option<u32> {
-    // Parse version string like "Microsoft Windows [Version 10.0.19041.1234]"
     let start = version_str.find('[')?;
     let end = version_str.find(']')?;
     let version_part = &version_str[start + 1..end];
     
-    // Extract build number (third part after "Version X.Y.")
     let parts: Vec<&str> = version_part.split('.').collect();
     if parts.len() >= 3 {
         parts[2].split('.').next()?.parse().ok()
@@ -956,8 +912,8 @@ pub fn is_nearby_share_available() -> bool {
     false
 }
 
-/// Share files via Windows Nearby Share
-/// Uses Windows.ApplicationModel.DataTransfer APIs via PowerShell
+/
+/
 #[cfg(target_os = "windows")]
 pub fn share_via_nearby_share(paths: &[PathBuf]) -> ShareResult<()> {
     use std::process::Command;
@@ -966,15 +922,12 @@ pub fn share_via_nearby_share(paths: &[PathBuf]) -> ShareResult<()> {
         return Err(ShareError::CreationFailed("No files to share".to_string()));
     }
 
-    // Verify all paths exist
     for path in paths {
         if !path.exists() {
             return Err(ShareError::PathNotFound(path.clone()));
         }
     }
 
-    // Build PowerShell script to invoke Windows Share UI
-    // This uses the DataTransferManager to show the native share dialog
     let file_paths: Vec<String> = paths
         .iter()
         .map(|p| p.to_string_lossy().replace('\\', "\\\\"))
@@ -1046,7 +999,7 @@ pub fn share_via_nearby_share(_paths: &[PathBuf]) -> ShareResult<()> {
     ))
 }
 
-/// Open Windows Nearby Share settings
+/
 #[cfg(target_os = "windows")]
 pub fn open_nearby_share_settings() -> ShareResult<()> {
     use std::process::Command;
@@ -1071,23 +1024,18 @@ pub fn open_nearby_share_settings() -> ShareResult<()> {
     ))
 }
 
-// ============================================================================
-// Generic Platform Share Function
-// ============================================================================
 
-/// Share files using the specified platform method
+/
 pub fn share_files(paths: &[PathBuf], method: PlatformShareMethod) -> ShareResult<()> {
     match method {
         PlatformShareMethod::AirDrop => share_via_airdrop(paths),
         PlatformShareMethod::NearbyShare => share_via_nearby_share(paths),
         PlatformShareMethod::NetworkShare => {
-            // Network share requires the ShareManager and ShareConfig
             Err(ShareError::CreationFailed(
                 "Use ShareManager.create_share() for network shares".to_string(),
             ))
         }
         PlatformShareMethod::Clipboard => {
-            // Copy paths to clipboard
             let paths_str: Vec<String> = paths.iter().map(|p| p.display().to_string()).collect();
             let clipboard_text = paths_str.join("\n");
             copy_to_clipboard(&clipboard_text)
@@ -1095,7 +1043,7 @@ pub fn share_files(paths: &[PathBuf], method: PlatformShareMethod) -> ShareResul
     }
 }
 
-/// Copy text to system clipboard
+/
 fn copy_to_clipboard(text: &str) -> ShareResult<()> {
     #[cfg(target_os = "macos")]
     {
@@ -1142,7 +1090,6 @@ fn copy_to_clipboard(text: &str) -> ShareResult<()> {
         use std::process::{Command, Stdio};
         use std::io::Write;
 
-        // Try xclip first, then xsel
         let result = Command::new("xclip")
             .args(["-selection", "clipboard"])
             .stdin(Stdio::piped())
@@ -1157,7 +1104,6 @@ fn copy_to_clipboard(text: &str) -> ShareResult<()> {
                 Ok(())
             }
             Err(_) => {
-                // Try xsel as fallback
                 let mut child = Command::new("xsel")
                     .args(["--clipboard", "--input"])
                     .stdin(Stdio::piped())
@@ -1181,7 +1127,7 @@ fn copy_to_clipboard(text: &str) -> ShareResult<()> {
     }
 }
 
-/// Get a user-friendly message about why a share method is unavailable
+/
 pub fn get_share_method_unavailable_reason(method: PlatformShareMethod) -> Option<String> {
     match method {
         PlatformShareMethod::AirDrop => {

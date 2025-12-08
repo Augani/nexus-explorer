@@ -75,14 +75,12 @@ fn test_pane_state_selection() {
     assert!(pane.is_selected(1));
     assert!(!pane.is_selected(0));
 
-    // Toggle selection
     pane.toggle_selection(2);
     assert_eq!(pane.selection, vec![1, 2]);
 
     pane.toggle_selection(1);
     assert_eq!(pane.selection, vec![2]);
 
-    // Clear selection
     pane.clear_selection();
     assert!(pane.selection.is_empty());
 }
@@ -172,11 +170,9 @@ fn test_dual_pane_set_active() {
 fn test_dual_pane_active_inactive_pane() {
     let mut dual = DualPane::with_paths(PathBuf::from("/left"), PathBuf::from("/right"));
 
-    // Left is active by default
     assert_eq!(dual.active_pane().path, PathBuf::from("/left"));
     assert_eq!(dual.inactive_pane().path, PathBuf::from("/right"));
 
-    // Switch to right
     dual.switch_active();
     assert_eq!(dual.active_pane().path, PathBuf::from("/right"));
     assert_eq!(dual.inactive_pane().path, PathBuf::from("/left"));
@@ -198,7 +194,6 @@ fn test_dual_pane_pane_access() {
 fn test_dual_pane_copy_move_operations() {
     let mut dual = DualPane::with_paths(PathBuf::from("/source"), PathBuf::from("/dest"));
 
-    // Add entries to left pane and select some
     dual.left_pane_mut().entries = vec![
         create_test_entry("file1.txt", false),
         create_test_entry("file2.txt", false),
@@ -223,13 +218,12 @@ fn test_dual_pane_sync_panes() {
     assert_eq!(dual.right_pane().path, PathBuf::from("/active"));
 }
 
-// Property-based tests
 
-/// **Feature: ui-enhancements, Property 42: Dual Pane Independence**
-/// **Validates: Requirements 22.2**
-///
-/// *For any* dual pane state, modifying one pane's path, entries, or selection
-/// should not affect the other pane's state.
+/
+/
+/
+/
+/
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -267,17 +261,14 @@ proptest! {
             }
         }
 
-        // Capture right pane state
         let right_path_before = dual.right_pane().path.clone();
         let right_entries_before = dual.right_pane().entries.len();
         let right_selection_before = dual.right_pane().selection.clone();
 
-        // Modify left pane
         dual.left_pane_mut().navigate_to(PathBuf::from("/modified"));
         dual.left_pane_mut().set_entries(vec![create_test_entry("new.txt", false)]);
         dual.left_pane_mut().select(0);
 
-        // Verify right pane is unchanged
         prop_assert_eq!(dual.right_pane().path.clone(), right_path_before);
         prop_assert_eq!(dual.right_pane().entries.len(), right_entries_before);
         prop_assert_eq!(&dual.right_pane().selection, &right_selection_before);

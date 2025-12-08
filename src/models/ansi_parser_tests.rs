@@ -1,11 +1,11 @@
 use crate::models::ansi_parser::{color_from_256, AnsiParser, ParsedSegment, ANSI_COLORS};
 use proptest::prelude::*;
 
-/// **Feature: ui-enhancements, Property 20: ANSI Color Parsing**
-/// **Validates: Requirements 6.4**
-///
-/// *For any* valid ANSI SGR color code (0-255 for 256-color, or RGB values),
-/// the parser SHALL correctly interpret and apply the color to the current style.
+/
+/
+/
+/
+/
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -173,7 +173,6 @@ proptest! {
     ) {
         let mut parser = AnsiParser::new();
 
-        // Apply some styles
         if bold {
             parser.parse(b"\x1B[1m");
         }
@@ -199,17 +198,14 @@ proptest! {
         parser.parse(b"\x1B[1;31m");
         let style_before = parser.current_style().clone();
 
-        // Parse some text
         let segments = parser.parse(text.as_bytes());
 
-        // Style should be preserved
         prop_assert_eq!(
             parser.current_style(),
             &style_before,
             "Style should be preserved after parsing text"
         );
 
-        // Text segment should have the style
         if !text.is_empty() {
             prop_assert!(!segments.is_empty(), "Should have at least one segment");
             if let ParsedSegment::Text(_, seg_style) = &segments[0] {

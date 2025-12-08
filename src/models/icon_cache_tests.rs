@@ -32,7 +32,6 @@ fn test_get_or_default_returns_default_for_missing() {
     let result = cache.get_or_default(&key);
 
     assert_eq!(result, &expected_default);
-    // Should add to pending
     assert!(cache.is_pending(&key));
 }
 
@@ -53,11 +52,9 @@ fn test_insert_removes_from_pending() {
     let mut cache = IconCache::new();
     let key = IconKey::Extension("rs".to_string());
 
-    // First access adds to pending
     let _ = cache.get_or_default(&key);
     assert!(cache.is_pending(&key));
 
-    // Insert removes from pending
     cache.insert(key.clone(), RenderImage::default_placeholder());
     assert!(!cache.is_pending(&key));
 }
@@ -105,7 +102,6 @@ fn test_capacity_minimum_is_one() {
     assert_eq!(cache.max_entries(), 1);
 }
 
-// Property-based tests
 use proptest::prelude::*;
 use std::path::PathBuf;
 
@@ -122,16 +118,15 @@ fn arb_icon_key() -> impl Strategy<Value = IconKey> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: file-explorer-core, Property 9: Icon Cache Miss Returns Default**
-    /// **Validates: Requirements 4.1**
-    ///
-    /// *For any* IconKey not present in the cache, `get_or_default` SHALL return
-    /// the default placeholder icon AND add the key to the pending fetch set.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_icon_cache_miss_returns_default(key in arb_icon_key()) {
         let mut cache = IconCache::new();
 
-        // Ensure key is not in cache
         prop_assert!(!cache.contains(&key));
 
         let expected_default = match &key {
@@ -152,11 +147,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: file-explorer-core, Property 12: LRU Eviction Bounds Cache Size**
-    /// **Validates: Requirements 4.4**
-    ///
-    /// *For any* sequence of icon insertions, when cache size exceeds `max_entries`,
-    /// the least recently accessed icons SHALL be evicted until size is within bounds.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_lru_eviction_bounds_cache_size(
         max_entries in 1usize..50,
@@ -164,13 +159,11 @@ proptest! {
     ) {
         let mut cache = IconCache::with_capacity(max_entries);
 
-        // Insert more items than capacity
         for i in 0..num_insertions {
             let key = IconKey::Extension(format!("ext{}", i));
             let image = RenderImage::new(16, 16, vec![i as u8; 16 * 16 * 4]);
             cache.insert(key, image);
 
-            // Cache size should never exceed max_entries
             prop_assert!(
                 cache.len() <= max_entries,
                 "Cache size {} exceeded max_entries {} after {} insertions",
@@ -178,7 +171,6 @@ proptest! {
             );
         }
 
-        // Final size should be at most max_entries
         prop_assert!(
             cache.len() <= max_entries,
             "Final cache size {} exceeded max_entries {}",
@@ -215,7 +207,6 @@ fn test_process_fetch_results() {
     let mut cache = IconCache::new();
     let key = IconKey::Extension("txt".to_string());
 
-    // Add to pending first
     let _ = cache.get_or_default(&key);
     assert!(cache.is_pending(&key));
 
@@ -235,7 +226,6 @@ fn test_process_fetch_results_failure_removes_pending() {
     let mut cache = IconCache::new();
     let key = IconKey::Extension("txt".to_string());
 
-    // Add to pending first
     let _ = cache.get_or_default(&key);
     assert!(cache.is_pending(&key));
 
@@ -251,7 +241,6 @@ fn test_process_fetch_results_failure_removes_pending() {
 fn test_icon_fetch_pipeline_default_icons() {
     let pipeline = IconFetchPipeline::new();
 
-    // Request default icons (no path)
     pipeline.request_icon(IconKey::Directory, None);
     pipeline.request_icon(IconKey::GenericFile, None);
 
@@ -268,33 +257,28 @@ fn test_icon_fetch_pipeline_default_icons() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: file-explorer-core, Property 11: Icon Fetch Completion Updates Cache**
-    /// **Validates: Requirements 4.3**
-    ///
-    /// *For any* completed icon fetch for key K, the cache SHALL contain the decoded
-    /// texture for K AND K SHALL be removed from the pending set.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_icon_fetch_completion_updates_cache(key in arb_icon_key()) {
         let mut cache = IconCache::new();
 
-        // First, trigger a cache miss to add to pending
         let _ = cache.get_or_default(&key);
         prop_assert!(cache.is_pending(&key), "Key should be in pending set after cache miss");
 
-        // Simulate a successful fetch completion
         let image = RenderImage::new(32, 32, vec![0u8; 32 * 32 * 4]);
         let result = IconFetchResult::success(key.clone(), image.clone());
 
         let count = cache.process_fetch_results(vec![result]);
 
-        // Verify: cache should contain the icon
         prop_assert_eq!(count, 1, "Should have processed 1 result");
         prop_assert!(cache.contains(&key), "Cache should contain key after fetch completion");
 
-        // Verify: key should be removed from pending
         prop_assert!(!cache.is_pending(&key), "Key should be removed from pending after fetch completion");
 
-        // Verify: we can retrieve the icon
         let retrieved = cache.get_icon(&key);
         prop_assert!(retrieved.is_some(), "Should be able to retrieve the icon");
         prop_assert_eq!(retrieved.unwrap(), &image, "Retrieved icon should match inserted icon");

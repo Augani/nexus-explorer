@@ -2,13 +2,13 @@ use super::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/// Generate arbitrary FileReferenceNumber
+/
 fn arb_frn() -> impl Strategy<Value = FileReferenceNumber> {
     (0u64..0x0000_FFFF_FFFF_FFFFu64, 0u16..=u16::MAX)
         .prop_map(|(record, seq)| FileReferenceNumber::new(record, seq))
 }
 
-/// Generate arbitrary FileNode
+/
 fn arb_file_node() -> impl Strategy<Value = FileNode> {
     (
         "[a-zA-Z0-9_.-]{1,50}",
@@ -24,8 +24,8 @@ fn arb_file_node() -> impl Strategy<Value = FileNode> {
         })
 }
 
-/// Generate a valid tree structure for MftIndex testing
-/// Ensures unique FRNs by using sequential record numbers
+/
+/
 fn arb_mft_tree(
     max_depth: usize,
     max_children: usize,
@@ -40,7 +40,6 @@ fn arb_mft_tree(
         let mut result = Vec::new();
         let mut available_parents = vec![root_frn];
 
-        // Use strictly sequential record numbers to ensure uniqueness
         for (i, (name, is_dir)) in items.into_iter().enumerate() {
             let frn = FileReferenceNumber::new(100 + i as u64, 1);
             let parent_idx = i % available_parents.len().max(1);
@@ -110,7 +109,6 @@ fn test_path_reconstruction_simple() {
         ),
     );
 
-    // Add a file in root
     let file_frn = FileReferenceNumber::new(100, 1);
     index.insert(
         file_frn,
@@ -126,7 +124,6 @@ fn test_path_reconstruction_simple() {
     );
 
     let path = index.reconstruct_path(&file_frn).unwrap();
-    // Path should be volume + filename
     assert!(path.ends_with("test.txt"));
     assert!(path.starts_with("C:"));
 }
@@ -168,7 +165,6 @@ fn test_path_reconstruction_nested() {
         FileNode::new("Projects".to_string(), folder_frn, true, 0, 0, 0, 0x10),
     );
 
-    // Add file in subfolder
     let file_frn = FileReferenceNumber::new(102, 1);
     index.insert(
         file_frn,
@@ -176,7 +172,6 @@ fn test_path_reconstruction_nested() {
     );
 
     let path = index.reconstruct_path(&file_frn).unwrap();
-    // Verify path components
     let components: Vec<_> = path.components().collect();
     assert!(components.len() >= 4);
     assert!(path.ends_with("readme.md"));
@@ -271,9 +266,6 @@ fn test_usn_apply_delete() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    // **Feature: file-explorer-core, Property 18: MFT Index Path Reconstruction**
-    // For any FileReferenceNumber in the MFT index, path reconstruction SHALL produce
-    // a valid absolute path by traversing parent references to the root.
     #[test]
     fn prop_mft_path_reconstruction(tree in arb_mft_tree(5, 10)) {
         let volume_root = PathBuf::from("C:");
@@ -284,27 +276,22 @@ proptest! {
             FileNode::new(String::new(), FileReferenceNumber::ROOT, true, 0, 0, 0, 0x10),
         );
 
-        // Add all nodes from the tree
         for (frn, node) in &tree {
             index.insert(*frn, node.clone());
         }
 
-        // Verify all nodes can have their paths reconstructed
         for (frn, node) in &tree {
             let path = index.reconstruct_path(frn);
 
-            // Path must be reconstructable
             prop_assert!(path.is_some(), "Failed to reconstruct path for {:?}", frn);
 
             let path = path.unwrap();
 
-            // Path must start with volume root
             prop_assert!(
                 path.starts_with(&volume_root),
                 "Path doesn't start with volume: {:?}", path
             );
 
-            // Path must end with the file's name
             if !node.name.is_empty() {
                 let file_name = path.file_name().and_then(|n| n.to_str());
                 prop_assert!(
@@ -317,7 +304,6 @@ proptest! {
         }
     }
 
-    // **Feature: file-explorer-core, Property 19: MFT Index Event Consistency**
     #[test]
     fn prop_mft_event_consistency(
         creates in prop::collection::vec(
@@ -373,7 +359,6 @@ proptest! {
 
                 monitor.apply_to_index(&mut index, &[record]);
 
-                // After delete, entry must not exist
                 prop_assert!(
                     !index.contains(&frn),
                     "Entry still exists after delete: {:?}",
@@ -416,7 +401,6 @@ fn test_mft_serialization_basic() {
 
     index.set_usn_cursor(12345);
 
-    // Serialize and deserialize
     let serialized = index.serialize().expect("Serialization should succeed");
     let deserialized = MftIndex::deserialize(&serialized).expect("Deserialization should succeed");
 
@@ -429,12 +413,10 @@ fn test_mft_serialization_basic() {
 
 #[test]
 fn test_mft_corrupted_data_rejection() {
-    // Random garbage data should fail to deserialize
     let garbage = vec![0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD];
     let result = MftIndex::deserialize(&garbage);
     assert!(result.is_err(), "Corrupted data should be rejected");
 
-    // Truncated data should fail
     let mut index = MftIndex::new(PathBuf::from("C:"));
     index.insert(
         FileReferenceNumber::ROOT,
@@ -454,7 +436,7 @@ fn test_mft_corrupted_data_rejection() {
     assert!(result.is_err(), "Truncated data should be rejected");
 }
 
-/// Generate arbitrary MftIndex for property testing
+/
 fn arb_mft_index() -> impl Strategy<Value = MftIndex> {
     ("[A-Z]:", 0u64..u64::MAX, arb_mft_tree(3, 5)).prop_map(|(volume, cursor, tree)| {
         let mut index = MftIndex::new(PathBuf::from(volume));
@@ -484,9 +466,6 @@ fn arb_mft_index() -> impl Strategy<Value = MftIndex> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    // **Feature: file-explorer-core, Property 23: MFT Index Serialization Round-Trip**
-    // For any valid MftIndex, serializing then deserializing SHALL produce an equivalent
-    // index with identical file mappings.
     #[test]
     fn prop_mft_serialization_roundtrip(index in arb_mft_index()) {
         let serialized = index.serialize();
@@ -497,7 +476,6 @@ proptest! {
         prop_assert!(deserialized.is_ok(), "Deserialization should succeed");
         let deserialized = deserialized.unwrap();
 
-        // Verify equivalence
         prop_assert_eq!(
             deserialized.len(),
             index.len(),
@@ -516,7 +494,6 @@ proptest! {
             "Volume path should match"
         );
 
-        // Verify all files are present with correct data
         for (frn, original_node) in &index.files {
             let deserialized_node = deserialized.get(frn);
             prop_assert!(

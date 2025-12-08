@@ -10,10 +10,10 @@ use super::coalescer::EventCoalescer;
 use super::watcher::{PlatformFs, Watcher};
 use crate::models::{FileSystemError, FsEvent, Result};
 
-/// FSEvents watcher for macOS.
-///
-/// Uses the notify crate which wraps FSEvents on macOS to provide
-/// efficient file system monitoring.
+/
+/
+/
+/
 pub struct MacOsPlatform;
 
 impl PlatformFs for MacOsPlatform {
@@ -30,7 +30,7 @@ impl PlatformFs for MacOsPlatform {
     }
 }
 
-/// macOS-specific file system watcher using FSEvents via notify crate.
+/
 pub struct MacOsWatcher {
     watcher: Option<RecommendedWatcher>,
     event_rx: Option<Receiver<notify::Result<Event>>>,

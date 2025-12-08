@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use super::device_monitor::{Device, DeviceEvent, DeviceId, DeviceResult, SmartData};
 
-/// Errors specific to platform adapter operations
+/
 #[derive(Debug, Error)]
 pub enum PlatformError {
     #[error("Device not found: {0:?}")]
@@ -33,26 +33,22 @@ pub enum PlatformError {
 
 pub type PlatformResult<T> = std::result::Result<T, PlatformError>;
 
-/// Supported file system types for formatting
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FileSystemType {
-    // Cross-platform
     Fat32,
     ExFat,
-    // Windows
     Ntfs,
     ReFS,
-    // macOS
     Apfs,
     HfsPlus,
-    // Linux
     Ext4,
     Btrfs,
     Xfs,
 }
 
 impl FileSystemType {
-    /// Get human-readable name
+    /
     pub fn display_name(&self) -> &'static str {
         match self {
             FileSystemType::Fat32 => "FAT32",
@@ -68,7 +64,7 @@ impl FileSystemType {
     }
 
 
-    /// Get compatibility information for this filesystem
+    /
     pub fn compatibility_info(&self) -> &'static str {
         match self {
             FileSystemType::Fat32 => "Compatible with Windows, macOS, Linux. Max file size: 4GB",
@@ -83,7 +79,7 @@ impl FileSystemType {
         }
     }
 
-    /// Check if this filesystem is available on the current platform
+    /
     pub fn is_available_on_current_platform(&self) -> bool {
         #[cfg(target_os = "windows")]
         {
@@ -123,7 +119,7 @@ impl FileSystemType {
     }
 }
 
-/// Options for formatting a device
+/
 #[derive(Debug, Clone)]
 pub struct FormatOptions {
     pub filesystem: FileSystemType,
@@ -143,7 +139,7 @@ impl Default for FormatOptions {
     }
 }
 
-/// Context menu item for platform-specific actions
+/
 #[derive(Debug, Clone)]
 pub struct ContextMenuItem {
     pub id: String,
@@ -180,171 +176,169 @@ impl ContextMenuItem {
     }
 }
 
-/// Platform-specific actions that can be executed
+/
 #[derive(Debug, Clone)]
 pub enum PlatformAction {
-    /// Eject a removable device
+    /
     Eject(DeviceId),
-    /// Format a device with options
+    /
     Format(DeviceId, FormatOptions),
-    /// Mount a disk image
+    /
     MountImage(PathBuf),
-    /// Unmount a disk image or device
+    /
     Unmount(PathBuf),
-    /// Open terminal at path (Linux)
+    /
     OpenTerminal(PathBuf),
-    /// Pin to Quick Access (Windows)
+    /
     PinToQuickAccess(PathBuf),
-    /// Scan with antivirus (Windows)
+    /
     ScanWithDefender(PathBuf),
-    /// Share via AirDrop (macOS)
+    /
     ShareAirDrop(Vec<PathBuf>),
-    /// Execute Quick Action (macOS)
+    /
     QuickAction(String, Vec<PathBuf>),
-    /// Custom platform action
+    /
     Custom(String, Vec<String>),
 }
 
 
-/// Platform abstraction trait for device operations
-/// 
-/// This trait provides a unified interface for device management across
-/// Windows, macOS, and Linux platforms. Each platform implements this
-/// trait with platform-specific APIs.
+/
+/
+/
+/
+/
 pub trait PlatformAdapter: Send + Sync {
-    /// Enumerate all connected storage devices
-    /// 
-    /// Returns a list of all currently connected and mounted storage devices.
-    /// Each device includes metadata such as name, path, capacity, and type.
+    /
+    /
+    /
+    /
     fn enumerate_devices(&self) -> Vec<Device>;
 
-    /// Start monitoring for device changes (connect/disconnect)
-    /// 
-    /// Begins listening for device hotplug events. When a device is connected
-    /// or disconnected, a DeviceEvent is sent through the provided channel.
-    /// 
-    /// # Arguments
-    /// * `sender` - Channel sender for device events
-    /// 
-    /// # Returns
-    /// * `Ok(())` if monitoring started successfully
-    /// * `Err(PlatformError)` if monitoring could not be started
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn start_monitoring(&self, sender: flume::Sender<DeviceEvent>) -> PlatformResult<()>;
 
-    /// Stop monitoring for device changes
-    /// 
-    /// Stops the device change listener. After calling this, no more
-    /// DeviceEvents will be sent through the channel.
+    /
+    /
+    /
+    /
     fn stop_monitoring(&self) -> PlatformResult<()>;
 
-    /// Safely eject a removable device
-    /// 
-    /// Flushes all pending writes and unmounts the device, making it
-    /// safe for physical removal.
-    /// 
-    /// # Arguments
-    /// * `device_id` - ID of the device to eject
-    /// 
-    /// # Returns
-    /// * `Ok(())` if ejection was successful
-    /// * `Err(PlatformError)` if ejection failed
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn eject_device(&self, device_id: DeviceId) -> PlatformResult<()>;
 
-    /// Format a device with the specified filesystem
-    /// 
-    /// Formats the device, erasing all data. This operation requires
-    /// appropriate permissions and the device must not be in use.
-    /// 
-    /// # Arguments
-    /// * `device_id` - ID of the device to format
-    /// * `options` - Format options including filesystem type and label
-    /// 
-    /// # Returns
-    /// * `Ok(())` if formatting was successful
-    /// * `Err(PlatformError)` if formatting failed
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn format_device(&self, device_id: DeviceId, options: FormatOptions) -> PlatformResult<()>;
 
-    /// Get SMART health data for a device
-    /// 
-    /// Retrieves Self-Monitoring, Analysis and Reporting Technology data
-    /// for storage devices that support it.
-    /// 
-    /// # Arguments
-    /// * `device_id` - ID of the device to query
-    /// 
-    /// # Returns
-    /// * `Ok(Some(SmartData))` if SMART data is available
-    /// * `Ok(None)` if the device doesn't support SMART
-    /// * `Err(PlatformError)` if query failed
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn get_smart_data(&self, device_id: DeviceId) -> PlatformResult<Option<SmartData>>;
 
-    /// Mount a disk image file
-    /// 
-    /// Mounts an ISO, DMG, VHD, or other disk image file and returns
-    /// the path where it was mounted.
-    /// 
-    /// # Arguments
-    /// * `path` - Path to the disk image file
-    /// 
-    /// # Returns
-    /// * `Ok(PathBuf)` - Mount point path
-    /// * `Err(PlatformError)` if mounting failed
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn mount_image(&self, path: &Path) -> PlatformResult<PathBuf>;
 
-    /// Unmount a disk image
-    /// 
-    /// Unmounts a previously mounted disk image.
-    /// 
-    /// # Arguments
-    /// * `mount_point` - Path where the image is mounted
-    /// 
-    /// # Returns
-    /// * `Ok(())` if unmounting was successful
-    /// * `Err(PlatformError)` if unmounting failed
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn unmount_image(&self, mount_point: &Path) -> PlatformResult<()>;
 
-    /// Get platform-specific context menu items for paths
-    /// 
-    /// Returns a list of context menu items that are available for
-    /// the given paths on the current platform.
-    /// 
-    /// # Arguments
-    /// * `paths` - Paths to get context menu items for
-    /// 
-    /// # Returns
-    /// List of available context menu items
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn get_context_menu_items(&self, paths: &[PathBuf]) -> Vec<ContextMenuItem>;
 
-    /// Execute a platform-specific action
-    /// 
-    /// Executes a platform action such as ejecting a device, opening
-    /// a terminal, or sharing via AirDrop.
-    /// 
-    /// # Arguments
-    /// * `action` - The action to execute
-    /// 
-    /// # Returns
-    /// * `Ok(())` if the action was successful
-    /// * `Err(PlatformError)` if the action failed
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
+    /
     fn execute_action(&self, action: PlatformAction) -> PlatformResult<()>;
 
-    /// Get available filesystem types for formatting on this platform
-    /// 
-    /// Returns a list of filesystem types that can be used for formatting
-    /// devices on the current platform.
+    /
+    /
+    /
+    /
     fn available_filesystems(&self) -> Vec<FileSystemType>;
 
-    /// Check if the platform adapter is currently monitoring
+    /
     fn is_monitoring(&self) -> bool;
 }
 
-// Platform-specific adapter implementations are defined below
-// and in separate files for complex platform-specific logic
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-/// Windows platform adapter using WMI for device enumeration
+/
 #[cfg(target_os = "windows")]
 pub struct WindowsAdapter {
     is_monitoring: Arc<AtomicBool>,
@@ -364,7 +358,7 @@ impl WindowsAdapter {
         }
     }
 
-    /// Get extended device information for a drive letter using WMI
+    /
     pub fn get_device_info(&self, drive_letter: &str) -> Option<super::windows_wmi::WmiDeviceInfo> {
         self.wmi_enumerator.get_device_info(drive_letter)
     }
@@ -380,13 +374,11 @@ impl Default for WindowsAdapter {
 #[cfg(target_os = "windows")]
 impl PlatformAdapter for WindowsAdapter {
     fn enumerate_devices(&self) -> Vec<Device> {
-        // Try WMI-based enumeration first for richer metadata
         let wmi_devices = self.wmi_enumerator.enumerate_devices();
         if !wmi_devices.is_empty() {
             return wmi_devices;
         }
 
-        // Fall back to direct Win32 API enumeration
         let mut devices = Vec::new();
         
         for letter in b'A'..=b'Z' {
@@ -450,7 +442,6 @@ impl PlatformAdapter for WindowsAdapter {
     }
 
     fn eject_device(&self, device_id: DeviceId) -> PlatformResult<()> {
-        // Find the device by ID from enumerated devices
         let devices = self.enumerate_devices();
         let device = devices.iter()
             .find(|d| d.id.0 == device_id.0)
@@ -460,28 +451,23 @@ impl PlatformAdapter for WindowsAdapter {
             return Err(PlatformError::EjectFailed("Device is not removable".to_string()));
         }
 
-        // Get the drive letter from the path
         let path_str = device.path.to_string_lossy();
         let drive_letter = path_str.chars().next()
             .ok_or(PlatformError::EjectFailed("Invalid drive path".to_string()))?;
 
-        // Try using the Windows eject functionality
         eject_windows_drive(drive_letter)
     }
 
     fn format_device(&self, device_id: DeviceId, options: FormatOptions) -> PlatformResult<()> {
-        // Find the device by ID from enumerated devices
         let devices = self.enumerate_devices();
         let device = devices.iter()
             .find(|d| d.id.0 == device_id.0)
             .ok_or(PlatformError::DeviceNotFound(device_id))?;
 
-        // Get the drive letter from the path
         let path_str = device.path.to_string_lossy();
         let drive_letter = path_str.chars().next()
             .ok_or(PlatformError::FormatFailed("Invalid drive path".to_string()))?;
 
-        // Map filesystem type to Windows format command parameter
         let fs_param = match options.filesystem {
             FileSystemType::Ntfs => "NTFS",
             FileSystemType::Fat32 => "FAT32",
@@ -492,32 +478,26 @@ impl PlatformAdapter for WindowsAdapter {
             )),
         };
 
-        // Build format command arguments
-        // format.com syntax: format <drive>: /FS:<filesystem> /V:<label> /Q (quick format)
         let mut args = vec![
             format!("{}:", drive_letter),
             format!("/FS:{}", fs_param),
-            "/Y".to_string(), // Suppress confirmation prompt
+            "/Y".to_string(),
         ];
 
-        // Add volume label if provided
         if !options.label.is_empty() {
             args.push(format!("/V:{}", options.label));
         } else {
-            args.push("/V:".to_string()); // Empty label
+            args.push("/V:".to_string());
         }
 
-        // Add quick format flag
         if options.quick_format {
             args.push("/Q".to_string());
         }
 
-        // Add compression flag for NTFS
         if options.enable_compression && options.filesystem == FileSystemType::Ntfs {
             args.push("/C".to_string());
         }
 
-        // Execute format command
         let output = std::process::Command::new("format.com")
             .args(&args)
             .output()
@@ -529,7 +509,6 @@ impl PlatformAdapter for WindowsAdapter {
             let error = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
             
-            // format.com often outputs errors to stdout
             let error_msg = if error.is_empty() {
                 stdout.to_string()
             } else {
@@ -558,7 +537,6 @@ impl PlatformAdapter for WindowsAdapter {
             ContextMenuItem::new("scan_defender", "Scan with Windows Defender").with_icon("shield"),
         ];
 
-        // Add mount option for disk images
         if paths.len() == 1 {
             if let Some(ext) = paths[0].extension().and_then(|e| e.to_str()) {
                 let ext_lower = ext.to_lowercase();
@@ -589,7 +567,7 @@ impl PlatformAdapter for WindowsAdapter {
     }
 }
 
-/// Format a drive name based on its type
+/
 #[cfg(target_os = "windows")]
 fn format_drive_name_by_type(letter: char, device_type: &super::device_monitor::DeviceType) -> String {
     let type_name = match device_type {
@@ -675,17 +653,15 @@ fn get_windows_volume_name(path: &PathBuf) -> Option<String> {
     None
 }
 
-/// Eject a Windows drive using CM_Request_Device_Eject or PowerShell fallback
+/
 #[cfg(target_os = "windows")]
 fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
     use std::os::windows::ffi::OsStrExt;
 
-    // First, try to lock and dismount the volume
     let volume_path = format!("\\\\.\\{}:", drive_letter);
     let wide_path: Vec<u16> = volume_path.encode_utf16().chain(std::iter::once(0)).collect();
 
     unsafe {
-        // Open the volume
         let handle = windows_sys::Win32::Storage::FileSystem::CreateFileW(
             wide_path.as_ptr(),
             windows_sys::Win32::Storage::FileSystem::GENERIC_READ | windows_sys::Win32::Storage::FileSystem::GENERIC_WRITE,
@@ -697,11 +673,9 @@ fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
         );
 
         if handle == windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE {
-            // Fall back to PowerShell method
             return eject_windows_drive_powershell(drive_letter);
         }
 
-        // Try to lock the volume (FSCTL_LOCK_VOLUME)
         const FSCTL_LOCK_VOLUME: u32 = 0x00090018;
         let mut bytes_returned: u32 = 0;
         let lock_result = windows_sys::Win32::System::IO::DeviceIoControl(
@@ -717,11 +691,9 @@ fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
 
         if lock_result == 0 {
             windows_sys::Win32::Foundation::CloseHandle(handle);
-            // Volume is busy, fall back to PowerShell
             return eject_windows_drive_powershell(drive_letter);
         }
 
-        // Dismount the volume (FSCTL_DISMOUNT_VOLUME)
         const FSCTL_DISMOUNT_VOLUME: u32 = 0x00090020;
         let dismount_result = windows_sys::Win32::System::IO::DeviceIoControl(
             handle,
@@ -735,7 +707,6 @@ fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
         );
 
         if dismount_result == 0 {
-            // Unlock before closing
             const FSCTL_UNLOCK_VOLUME: u32 = 0x0009001C;
             let _ = windows_sys::Win32::System::IO::DeviceIoControl(
                 handle,
@@ -751,7 +722,6 @@ fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
             return eject_windows_drive_powershell(drive_letter);
         }
 
-        // Prepare for safe removal (IOCTL_STORAGE_EJECT_MEDIA)
         const IOCTL_STORAGE_EJECT_MEDIA: u32 = 0x002D4808;
         let _ = windows_sys::Win32::System::IO::DeviceIoControl(
             handle,
@@ -770,7 +740,7 @@ fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
     Ok(())
 }
 
-/// Fallback eject method using PowerShell Shell.Application
+/
 #[cfg(target_os = "windows")]
 fn eject_windows_drive_powershell(drive_letter: char) -> PlatformResult<()> {
     let script = format!(
@@ -789,7 +759,6 @@ fn eject_windows_drive_powershell(drive_letter: char) -> PlatformResult<()> {
     } else {
         let error = String::from_utf8_lossy(&output.stderr);
         if error.is_empty() {
-            // PowerShell eject doesn't always return error text
             Err(PlatformError::EjectFailed(
                 "Failed to eject drive. The drive may be in use.".to_string()
             ))
@@ -799,19 +768,16 @@ fn eject_windows_drive_powershell(drive_letter: char) -> PlatformResult<()> {
     }
 }
 
-/// Mount a Windows disk image (ISO, VHD, VHDX) using PowerShell Mount-DiskImage
+/
 #[cfg(target_os = "windows")]
 fn mount_windows_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     let path_str = path.to_string_lossy();
     
-    // Determine the image type based on extension
     let ext = path.extension()
         .and_then(|e| e.to_str())
         .map(|e| e.to_lowercase())
         .unwrap_or_default();
     
-    // Use PowerShell Mount-DiskImage cmdlet
-    // This works for ISO, VHD, and VHDX files
     let script = format!(
         "$image = Mount-DiskImage -ImagePath '{}' -PassThru; \
          $volume = $image | Get-Volume; \
@@ -845,7 +811,6 @@ fn mount_windows_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     let drive_letter = stdout.trim();
     
     if drive_letter.is_empty() || !drive_letter.ends_with(':') {
-        // Try alternative method to get the mount point
         return get_mounted_image_path(path);
     }
 
@@ -860,7 +825,7 @@ fn mount_windows_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     }
 }
 
-/// Get the mount point for an already mounted disk image
+/
 #[cfg(target_os = "windows")]
 fn get_mounted_image_path(image_path: &Path) -> PlatformResult<PathBuf> {
     let path_str = image_path.to_string_lossy();
@@ -897,17 +862,14 @@ fn get_mounted_image_path(image_path: &Path) -> PlatformResult<PathBuf> {
     Ok(PathBuf::from(format!("{}\\", drive_letter)))
 }
 
-/// Unmount a Windows disk image using PowerShell Dismount-DiskImage
+/
 #[cfg(target_os = "windows")]
 fn unmount_windows_disk_image(mount_point: &Path) -> PlatformResult<()> {
     let path_str = mount_point.to_string_lossy();
     
-    // First, try to find the disk image by the mount point (drive letter)
-    // Then dismount it
     let drive_letter = path_str.chars().next()
         .ok_or_else(|| PlatformError::MountFailed("Invalid mount point".to_string()))?;
     
-    // Get the image path from the mounted volume and dismount
     let script = format!(
         "$volume = Get-Volume -DriveLetter '{}' -ErrorAction SilentlyContinue; \
          if ($volume) {{ \
@@ -954,7 +916,7 @@ fn unmount_windows_disk_image(mount_point: &Path) -> PlatformResult<()> {
     }
 }
 
-/// Check if a file is a supported disk image format on Windows
+/
 #[cfg(target_os = "windows")]
 pub fn is_windows_disk_image(path: &Path) -> bool {
     path.extension()
@@ -966,7 +928,7 @@ pub fn is_windows_disk_image(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Check if a disk image is currently mounted on Windows
+/
 #[cfg(target_os = "windows")]
 pub fn is_windows_image_mounted(image_path: &Path) -> bool {
     let path_str = image_path.to_string_lossy();
@@ -987,7 +949,7 @@ pub fn is_windows_image_mounted(image_path: &Path) -> bool {
     }
 }
 
-/// macOS platform adapter using DiskArbitration framework
+/
 #[cfg(target_os = "macos")]
 pub struct MacOSAdapter {
     is_monitoring: Arc<AtomicBool>,
@@ -1005,12 +967,12 @@ impl MacOSAdapter {
         }
     }
 
-    /// Check if a path is a disk image mount
+    /
     pub fn is_disk_image(&self, path: &Path) -> bool {
         super::device_monitor_macos::is_disk_image(&path.to_path_buf())
     }
 
-    /// Get all mounted disk images
+    /
     pub fn get_mounted_disk_images(&self) -> Vec<PathBuf> {
         super::device_monitor_macos::get_mounted_disk_images()
     }
@@ -1058,7 +1020,6 @@ impl PlatformAdapter for MacOSAdapter {
             devices.push(device);
         }
 
-        // Cache devices for later lookup
         if let Ok(mut cache) = self.devices_cache.lock() {
             *cache = devices.clone();
         }
@@ -1085,7 +1046,6 @@ impl PlatformAdapter for MacOSAdapter {
     }
 
     fn eject_device(&self, device_id: DeviceId) -> PlatformResult<()> {
-        // Find the device path from cache
         let path = {
             let cache = self.devices_cache.lock()
                 .map_err(|e| PlatformError::PlatformNotSupported(format!("Lock error: {}", e)))?;
@@ -1096,7 +1056,6 @@ impl PlatformAdapter for MacOSAdapter {
                 .ok_or(PlatformError::DeviceNotFound(device_id))?
         };
 
-        // Use diskutil to eject
         let output = std::process::Command::new("diskutil")
             .args(["eject", path.to_str().unwrap_or("")])
             .output()
@@ -1111,7 +1070,6 @@ impl PlatformAdapter for MacOSAdapter {
     }
 
     fn format_device(&self, device_id: DeviceId, options: FormatOptions) -> PlatformResult<()> {
-        // Find the device path from cache
         let path = {
             let cache = self.devices_cache.lock()
                 .map_err(|e| PlatformError::PlatformNotSupported(format!("Lock error: {}", e)))?;
@@ -1122,7 +1080,6 @@ impl PlatformAdapter for MacOSAdapter {
                 .ok_or(PlatformError::DeviceNotFound(device_id))?
         };
 
-        // Map filesystem type to diskutil format
         let fs_format = match options.filesystem {
             FileSystemType::Apfs => "APFS",
             FileSystemType::HfsPlus => "HFS+",
@@ -1139,7 +1096,6 @@ impl PlatformAdapter for MacOSAdapter {
             options.label
         };
 
-        // Use diskutil to format
         let output = std::process::Command::new("diskutil")
             .args(["eraseDisk", fs_format, &label, path.to_str().unwrap_or("")])
             .output()
@@ -1154,8 +1110,6 @@ impl PlatformAdapter for MacOSAdapter {
     }
 
     fn get_smart_data(&self, device_id: DeviceId) -> PlatformResult<Option<SmartData>> {
-        // SMART data on macOS requires smartmontools or system_profiler
-        // For now, return None as it requires additional setup
         Ok(None)
     }
 
@@ -1170,10 +1124,8 @@ impl PlatformAdapter for MacOSAdapter {
             return Err(PlatformError::MountFailed(error.to_string()));
         }
 
-        // Parse plist output to find mount point
         let output_str = String::from_utf8_lossy(&output.stdout);
         
-        // Simple parsing - look for mount-point in the output
         for line in output_str.lines() {
             let line = line.trim();
             if line.starts_with("/Volumes/") {
@@ -1181,7 +1133,6 @@ impl PlatformAdapter for MacOSAdapter {
             }
         }
 
-        // If we can't parse the plist, try to find the mount point by name
         let image_name = path.file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("disk image");
@@ -1213,10 +1164,8 @@ impl PlatformAdapter for MacOSAdapter {
             ContextMenuItem::new("quick_look", "Quick Look").with_icon("eye"),
         ];
 
-        // Add AirDrop if available
         items.push(ContextMenuItem::new("airdrop", "Share via AirDrop").with_icon("share"));
 
-        // Add mount option for disk images
         if paths.len() == 1 {
             let path = &paths[0];
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
@@ -1227,7 +1176,6 @@ impl PlatformAdapter for MacOSAdapter {
             }
         }
 
-        // Add Quick Actions for supported file types
         if paths.len() == 1 {
             let path = &paths[0];
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
@@ -1256,9 +1204,6 @@ impl PlatformAdapter for MacOSAdapter {
             }
             PlatformAction::Unmount(path) => self.unmount_image(&path),
             PlatformAction::ShareAirDrop(paths) => {
-                // Use NSWorkspace to share via AirDrop
-                // This requires Objective-C bridging which is complex
-                // For now, open the share sheet via AppleScript
                 let paths_str: Vec<String> = paths.iter()
                     .filter_map(|p| p.to_str())
                     .map(|s| format!("POSIX file \"{}\"", s))
@@ -1282,7 +1227,6 @@ impl PlatformAdapter for MacOSAdapter {
                 Ok(())
             }
             PlatformAction::QuickAction(action_name, paths) => {
-                // Execute Quick Action via Automator
                 let paths_str: String = paths.iter()
                     .filter_map(|p| p.to_str())
                     .collect::<Vec<_>>()
@@ -1314,7 +1258,7 @@ impl PlatformAdapter for MacOSAdapter {
     }
 }
 
-/// Linux platform adapter using udev and udisks2
+/
 #[cfg(target_os = "linux")]
 pub struct LinuxAdapter {
     is_monitoring: Arc<AtomicBool>,
@@ -1334,23 +1278,23 @@ impl LinuxAdapter {
         }
     }
 
-    /// Get device info using udev
+    /
     pub fn get_device_info(&self, device_node: &str) -> Option<super::device_monitor_linux::UdevDeviceInfo> {
         let enumerator = super::device_monitor_linux::UdevDeviceEnumerator::new();
         enumerator.get_device_info(device_node)
     }
 
-    /// Get device properties using udisks2
+    /
     pub fn get_udisks2_properties(&self, block_device: &str) -> Option<super::device_monitor_linux::UDisks2DeviceProperties> {
         self.udisks2_client.get_device_properties(block_device)
     }
 
-    /// Mount a device using udisks2
+    /
     pub fn mount_device(&self, block_device: &str) -> Result<PathBuf, String> {
         self.udisks2_client.mount(block_device)
     }
 
-    /// Unmount a device using udisks2
+    /
     pub fn unmount_device(&self, block_device: &str) -> Result<(), String> {
         self.udisks2_client.unmount(block_device)
     }
@@ -1372,7 +1316,6 @@ impl PlatformAdapter for LinuxAdapter {
         let mut devices = Vec::new();
         let mut next_id = 1u64;
 
-        // Add root filesystem
         let root_path = PathBuf::from("/");
         if let Ok((total, free)) = super::device_monitor::get_disk_space(&root_path) {
             let root_device = Device::new(
@@ -1387,10 +1330,8 @@ impl PlatformAdapter for LinuxAdapter {
             devices.push(root_device);
         }
 
-        // Add devices from udev enumeration
         for block_device in block_devices {
             if let Some(mount_point) = block_device.mount_point {
-                // Skip root (already added)
                 if mount_point == PathBuf::from("/") {
                     continue;
                 }
@@ -1415,7 +1356,6 @@ impl PlatformAdapter for LinuxAdapter {
             }
         }
 
-        // Cache devices for later lookup
         if let Ok(mut cache) = self.devices_cache.lock() {
             *cache = devices.clone();
         }
@@ -1442,7 +1382,6 @@ impl PlatformAdapter for LinuxAdapter {
     }
 
     fn eject_device(&self, device_id: DeviceId) -> PlatformResult<()> {
-        // Find the device from cache
         let path = {
             let cache = self.devices_cache.lock()
                 .map_err(|e| PlatformError::PlatformNotSupported(format!("Lock error: {}", e)))?;
@@ -1458,18 +1397,15 @@ impl PlatformAdapter for LinuxAdapter {
             device.path.clone()
         };
 
-        // Use udisks2 to unmount and power off
         self.udisks2_client.unmount(path.to_str().unwrap_or(""))
             .map_err(|e| PlatformError::EjectFailed(e))?;
         
-        // Try to power off (ignore errors as not all devices support this)
         let _ = self.udisks2_client.power_off(path.to_str().unwrap_or(""));
         
         Ok(())
     }
 
     fn format_device(&self, device_id: DeviceId, options: FormatOptions) -> PlatformResult<()> {
-        // Find the device from cache
         let path = {
             let cache = self.devices_cache.lock()
                 .map_err(|e| PlatformError::PlatformNotSupported(format!("Lock error: {}", e)))?;
@@ -1480,10 +1416,8 @@ impl PlatformAdapter for LinuxAdapter {
                 .ok_or(PlatformError::DeviceNotFound(device_id))?
         };
 
-        // Unmount first
         let _ = self.udisks2_client.unmount(path.to_str().unwrap_or(""));
 
-        // Determine mkfs command based on filesystem type
         let (mkfs_cmd, mkfs_args) = match options.filesystem {
             FileSystemType::Ext4 => ("mkfs.ext4", vec!["-L", &options.label]),
             FileSystemType::Btrfs => ("mkfs.btrfs", vec!["-L", &options.label, "-f"]),
@@ -1495,7 +1429,6 @@ impl PlatformAdapter for LinuxAdapter {
             )),
         };
 
-        // Run mkfs command
         let mut cmd = std::process::Command::new(mkfs_cmd);
         cmd.args(&mkfs_args);
         cmd.arg(path.to_str().unwrap_or(""));
@@ -1512,8 +1445,6 @@ impl PlatformAdapter for LinuxAdapter {
     }
 
     fn get_smart_data(&self, device_id: DeviceId) -> PlatformResult<Option<SmartData>> {
-        // SMART data requires smartctl from smartmontools
-        // For now, return None
         Ok(None)
     }
 
@@ -1530,7 +1461,6 @@ impl PlatformAdapter for LinuxAdapter {
             ContextMenuItem::new("open_terminal", "Open Terminal Here").with_icon("terminal"),
         ];
 
-        // Add mount option for disk images
         if paths.len() == 1 {
             if let Some(ext) = paths[0].extension().and_then(|e| e.to_str()) {
                 let ext_lower = ext.to_lowercase();
@@ -1540,12 +1470,10 @@ impl PlatformAdapter for LinuxAdapter {
             }
         }
 
-        // Add "Open as Root" for directories
         if paths.len() == 1 && paths[0].is_dir() {
             items.push(ContextMenuItem::new("open_as_root", "Open as Root").with_icon("shield"));
         }
 
-        // Add "Run as Root" for executable files
         if paths.len() == 1 && paths[0].is_file() {
             use std::os::unix::fs::PermissionsExt;
             if let Ok(meta) = std::fs::metadata(&paths[0]) {
@@ -1568,7 +1496,6 @@ impl PlatformAdapter for LinuxAdapter {
             }
             PlatformAction::Unmount(path) => self.unmount_image(&path),
             PlatformAction::OpenTerminal(path) => {
-                // Try common terminal emulators
                 let terminals = ["gnome-terminal", "konsole", "xfce4-terminal", "xterm"];
                 
                 for terminal in terminals {
@@ -1618,15 +1545,13 @@ impl PlatformAdapter for LinuxAdapter {
     }
 }
 
-/// Mount a Linux disk image (ISO, IMG) using loop devices
+/
 #[cfg(target_os = "linux")]
 fn mount_linux_disk_image(path: &Path) -> PlatformResult<PathBuf> {
-    // Create a unique mount point
     let image_name = path.file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("disk_image");
     
-    // Use /run/media or /tmp for mount points
     let base_mount_dir = if PathBuf::from("/run/media").exists() {
         PathBuf::from("/run/media")
     } else {
@@ -1635,30 +1560,26 @@ fn mount_linux_disk_image(path: &Path) -> PlatformResult<PathBuf> {
     
     let mount_point = base_mount_dir.join(format!("nexus_mount_{}", image_name));
     
-    // Create mount point directory
     std::fs::create_dir_all(&mount_point)
         .map_err(|e| PlatformError::MountFailed(format!("Failed to create mount point: {}", e)))?;
 
-    // Try mounting with different privilege escalation methods
     let mount_result = try_mount_with_privilege(path, &mount_point);
     
     match mount_result {
         Ok(()) => Ok(mount_point),
         Err(e) => {
-            // Clean up mount point on failure
             let _ = std::fs::remove_dir(&mount_point);
             Err(e)
         }
     }
 }
 
-/// Try to mount with various privilege escalation methods
+/
 #[cfg(target_os = "linux")]
 fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformResult<()> {
     let image_str = image_path.to_str().unwrap_or("");
     let mount_str = mount_point.to_str().unwrap_or("");
     
-    // First, try direct mount (works if user has permissions or is root)
     let output = std::process::Command::new("mount")
         .args(["-o", "loop,ro", image_str, mount_str])
         .output()
@@ -1668,7 +1589,6 @@ fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformRe
         return Ok(());
     }
 
-    // Try with pkexec (PolicyKit)
     let output = std::process::Command::new("pkexec")
         .args(["mount", "-o", "loop,ro", image_str, mount_str])
         .output();
@@ -1679,7 +1599,6 @@ fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformRe
         }
     }
 
-    // Try with sudo (if available and configured)
     let output = std::process::Command::new("sudo")
         .args(["-n", "mount", "-o", "loop,ro", image_str, mount_str])
         .output();
@@ -1690,7 +1609,6 @@ fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformRe
         }
     }
 
-    // Try using udisksctl for loop setup (doesn't require root for some setups)
     let output = std::process::Command::new("udisksctl")
         .args(["loop-setup", "-f", image_str])
         .output();
@@ -1698,19 +1616,15 @@ fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformRe
     if let Ok(out) = output {
         if out.status.success() {
             let stdout = String::from_utf8_lossy(&out.stdout);
-            // Parse the loop device from output like "Mapped file /path/to/image as /dev/loop0."
             if let Some(loop_dev) = parse_udisksctl_loop_device(&stdout) {
-                // Now mount the loop device
                 let mount_output = std::process::Command::new("udisksctl")
                     .args(["mount", "-b", &loop_dev])
                     .output();
                 
                 if let Ok(mount_out) = mount_output {
                     if mount_out.status.success() {
-                        // Get the actual mount point from udisksctl
                         let mount_stdout = String::from_utf8_lossy(&mount_out.stdout);
                         if let Some(actual_mount) = parse_udisksctl_mount_point(&mount_stdout) {
-                            // Create a symlink from our mount point to the actual mount
                             let _ = std::fs::remove_dir(mount_point);
                             let _ = std::os::unix::fs::symlink(&actual_mount, mount_point);
                             return Ok(());
@@ -1726,10 +1640,9 @@ fn try_mount_with_privilege(image_path: &Path, mount_point: &Path) -> PlatformRe
     ))
 }
 
-/// Parse loop device from udisksctl output
+/
 #[cfg(target_os = "linux")]
 fn parse_udisksctl_loop_device(output: &str) -> Option<String> {
-    // Output format: "Mapped file /path/to/image as /dev/loop0."
     for line in output.lines() {
         if line.contains("/dev/loop") {
             if let Some(start) = line.find("/dev/loop") {
@@ -1743,10 +1656,9 @@ fn parse_udisksctl_loop_device(output: &str) -> Option<String> {
     None
 }
 
-/// Parse mount point from udisksctl mount output
+/
 #[cfg(target_os = "linux")]
 fn parse_udisksctl_mount_point(output: &str) -> Option<PathBuf> {
-    // Output format: "Mounted /dev/loop0 at /run/media/user/Volume."
     for line in output.lines() {
         if line.contains(" at ") {
             if let Some(at_pos) = line.find(" at ") {
@@ -1758,32 +1670,28 @@ fn parse_udisksctl_mount_point(output: &str) -> Option<PathBuf> {
     None
 }
 
-/// Unmount a Linux disk image
+/
 #[cfg(target_os = "linux")]
 fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
     let mount_str = mount_point.to_str().unwrap_or("");
     
-    // Check if it's a symlink to an actual mount point
     let actual_mount = if mount_point.is_symlink() {
         std::fs::read_link(mount_point).ok()
     } else {
         None
     };
     
-    // Try direct umount first
     let output = std::process::Command::new("umount")
         .arg(mount_str)
         .output()
         .map_err(|e| PlatformError::Io(e))?;
 
     if output.status.success() {
-        // Clean up mount point directory or symlink
         let _ = std::fs::remove_dir(mount_point);
         let _ = std::fs::remove_file(mount_point);
         return Ok(());
     }
 
-    // Try with pkexec
     let output = std::process::Command::new("pkexec")
         .args(["umount", mount_str])
         .output();
@@ -1796,7 +1704,6 @@ fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
         }
     }
 
-    // Try with sudo
     let output = std::process::Command::new("sudo")
         .args(["-n", "umount", mount_str])
         .output();
@@ -1809,7 +1716,6 @@ fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
         }
     }
 
-    // If we have an actual mount from udisksctl, try unmounting that
     if let Some(actual) = actual_mount {
         let output = std::process::Command::new("udisksctl")
             .args(["unmount", "-b", actual.to_str().unwrap_or("")])
@@ -1838,7 +1744,7 @@ fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
     ))
 }
 
-/// Check if a file is a supported disk image format on Linux
+/
 #[cfg(target_os = "linux")]
 pub fn is_linux_disk_image(path: &Path) -> bool {
     path.extension()
@@ -1863,7 +1769,6 @@ fn should_skip_linux_mount(device: &str, mount_point: &str, fs_type: &str) -> bo
         return true;
     }
 
-    // Skip snap mounts
     if mount_point.starts_with("/snap") {
         return true;
     }
@@ -1873,7 +1778,6 @@ fn should_skip_linux_mount(device: &str, mount_point: &str, fs_type: &str) -> bo
 
 #[cfg(target_os = "linux")]
 fn detect_linux_device_type(device: &str, fs_type: &str, mount_point: &str) -> super::device_monitor::DeviceType {
-    // Network filesystems
     if ["nfs", "nfs4", "cifs", "smbfs", "sshfs", "fuse.sshfs"].contains(&fs_type) {
         return super::device_monitor::DeviceType::NetworkDrive;
     }
@@ -1910,7 +1814,6 @@ fn get_linux_device_name(path: &PathBuf, device: &str) -> String {
         }
     }
 
-    // Fall back to mount point name
     path.file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("Unknown")
@@ -1931,19 +1834,19 @@ fn is_linux_removable(device: &str) -> bool {
     false
 }
 
-/// Get the appropriate platform adapter for the current OS
+/
 #[cfg(target_os = "windows")]
 pub fn get_platform_adapter() -> Box<dyn PlatformAdapter> {
     Box::new(WindowsAdapter::new())
 }
 
-/// Get the appropriate platform adapter for the current OS
+/
 #[cfg(target_os = "macos")]
 pub fn get_platform_adapter() -> Box<dyn PlatformAdapter> {
     Box::new(MacOSAdapter::new())
 }
 
-/// Get the appropriate platform adapter for the current OS
+/
 #[cfg(target_os = "linux")]
 pub fn get_platform_adapter() -> Box<dyn PlatformAdapter> {
     Box::new(LinuxAdapter::new())
@@ -2015,10 +1918,8 @@ mod tests {
         let adapter = get_platform_adapter();
         let devices = adapter.enumerate_devices();
         
-        // Should have at least one device (root filesystem)
         assert!(!devices.is_empty(), "Should detect at least one device");
         
-        // All devices should have valid metadata
         for device in &devices {
             assert!(!device.name.is_empty(), "Device name should not be empty");
             assert!(device.path.exists() || device.path.to_string_lossy().starts_with("\\\\"), 
@@ -2031,10 +1932,8 @@ mod tests {
         let adapter = get_platform_adapter();
         let filesystems = adapter.available_filesystems();
         
-        // Should have at least one filesystem available
         assert!(!filesystems.is_empty(), "Should have at least one available filesystem");
         
-        // All filesystems should be available on current platform
         for fs in &filesystems {
             assert!(fs.is_available_on_current_platform(), 
                 "Filesystem {:?} should be available on current platform", fs);
@@ -2047,7 +1946,6 @@ mod property_tests {
     use super::*;
     use proptest::prelude::*;
 
-    // Generator for device types
     prop_compose! {
         fn arb_device_type()(variant in 0u8..8) -> super::super::device_monitor::DeviceType {
             match variant {
@@ -2063,7 +1961,6 @@ mod property_tests {
         }
     }
 
-    // Generator for valid device metadata
     prop_compose! {
         fn arb_device_metadata()(
             id in 1u64..1000,
@@ -2091,17 +1988,11 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 1: Device Detection Completeness**
-    // **Validates: Requirements 1.1, 1.2, 1.8**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
         #[test]
         fn prop_device_detection_completeness(device in arb_device_metadata()) {
-            // Property: For any device, it should have valid metadata
-            // - Non-empty name
-            // - Valid path (non-empty)
-            // - Non-zero capacity for storage devices (except virtual devices)
             
             prop_assert!(!device.name.is_empty(), 
                 "Device name must not be empty");
@@ -2109,7 +2000,6 @@ mod property_tests {
             prop_assert!(!device.path.as_os_str().is_empty(), 
                 "Device path must not be empty");
             
-            // For storage devices (not WSL or cloud), capacity should be non-zero
             let is_virtual = matches!(
                 device.device_type,
                 super::super::device_monitor::DeviceType::WslDistribution 
@@ -2121,25 +2011,20 @@ mod property_tests {
                     "Storage device total_space must be non-zero");
             }
             
-            // Free space should not exceed total space
             prop_assert!(device.free_space <= device.total_space,
                 "Free space ({}) must not exceed total space ({})", 
                 device.free_space, device.total_space);
         }
     }
 
-    // **Feature: advanced-device-management, Property 1: Device Detection Completeness (Event Emission)**
-    // **Validates: Requirements 1.1, 1.2, 1.8**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
         #[test]
         fn prop_device_event_contains_valid_metadata(device in arb_device_metadata()) {
-            // When a device is connected, the DeviceEvent::Connected should contain valid metadata
             let event = DeviceEvent::Connected(device.clone());
             
             if let DeviceEvent::Connected(connected_device) = event {
-                // Verify the event contains the same device with valid metadata
                 prop_assert_eq!(connected_device.id, device.id);
                 prop_assert_eq!(&connected_device.name, &device.name);
                 prop_assert_eq!(&connected_device.path, &device.path);
@@ -2150,8 +2035,6 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 2: Device Disconnection Consistency**
-    // **Validates: Requirements 1.3**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
@@ -2162,30 +2045,24 @@ mod property_tests {
             let mut monitor = DeviceMonitor::new();
             let receiver = monitor.subscribe().expect("Should be able to subscribe");
             
-            // Add all devices
             let mut added_ids = Vec::new();
             for device in &devices {
                 let id = monitor.add_device(device.clone());
                 added_ids.push(id);
             }
             
-            // Drain connect events
             while receiver.try_recv().is_ok() {}
             
-            // Remove each device and verify consistency
             for id in &added_ids {
                 let removed = monitor.remove_device(*id);
                 
-                // Property: remove_device should return the removed device
                 prop_assert!(removed.is_some(), 
                     "remove_device should return the removed device for id {:?}", id);
                 
-                // Property: Device should no longer appear in devices() list
                 prop_assert!(monitor.get_device(*id).is_none(),
                     "Device {:?} should not appear in devices() after removal", id);
             }
             
-            // Collect disconnect events
             let mut disconnect_events = Vec::new();
             while let Ok(event) = receiver.try_recv() {
                 if let DeviceEvent::Disconnected(id) = event {
@@ -2193,31 +2070,25 @@ mod property_tests {
                 }
             }
             
-            // Property: Should have received a Disconnected event for each removed device
             prop_assert_eq!(disconnect_events.len(), added_ids.len(),
                 "Should receive {} disconnect events, got {}", 
                 added_ids.len(), disconnect_events.len());
             
-            // Property: All disconnect events should match the removed device IDs
             for id in &added_ids {
                 prop_assert!(disconnect_events.contains(id),
                     "Should have received Disconnected event for device {:?}", id);
             }
             
-            // Property: devices() should be empty after all removals
             prop_assert!(monitor.devices().is_empty(),
                 "devices() should be empty after removing all devices");
         }
     }
 
-    // **Feature: advanced-device-management, Property 2: Device Disconnection Event Correctness**
-    // **Validates: Requirements 1.3**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
         #[test]
         fn prop_disconnection_event_contains_correct_id(device in arb_device_metadata()) {
-            // When a device is disconnected, the DeviceEvent::Disconnected should contain the correct ID
             let event = DeviceEvent::Disconnected(device.id);
             
             if let DeviceEvent::Disconnected(disconnected_id) = event {
@@ -2229,7 +2100,6 @@ mod property_tests {
         }
     }
 
-    // Generator for removable devices (for eject testing)
     prop_compose! {
         fn arb_removable_device()(
             id in 1u64..1000,
@@ -2260,8 +2130,6 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 3: Eject Operation State Consistency**
-    // **Validates: Requirements 2.2, 2.3**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
@@ -2269,53 +2137,40 @@ mod property_tests {
         fn prop_eject_operation_state_consistency(devices in prop::collection::vec(arb_removable_device(), 1..5)) {
             use super::super::device_monitor::DeviceMonitor;
             
-            // Property: For any successful eject operation on device D, after completion:
-            // 1. Device D SHALL NOT appear in the mounted devices list
-            // 2. DeviceEvent::Disconnected SHALL be emitted (simulating EjectCompleted)
             
             let mut monitor = DeviceMonitor::new();
             let receiver = monitor.subscribe().expect("Should be able to subscribe");
             
-            // Add all removable devices
             let mut added_ids = Vec::new();
             for device in &devices {
                 let id = monitor.add_device(device.clone());
                 added_ids.push(id);
             }
             
-            // Drain connect events
             while receiver.try_recv().is_ok() {}
             
-            // Simulate eject operation for each device
-            // In a real scenario, eject would call remove_device after successful unmount
             for id in &added_ids {
-                // Verify device exists before eject
                 let device_before = monitor.get_device(*id);
                 prop_assert!(device_before.is_some(), 
                     "Device {:?} should exist before eject", id);
                 
-                // Verify device is removable
                 if let Some(dev) = device_before {
                     prop_assert!(dev.is_removable,
                         "Device {:?} should be removable for eject", id);
                 }
                 
-                // Simulate successful eject by removing the device
                 let removed = monitor.remove_device(*id);
                 prop_assert!(removed.is_some(),
                     "Eject should successfully remove device {:?}", id);
                 
-                // Property 1: Device SHALL NOT appear in mounted devices list after eject
                 prop_assert!(monitor.get_device(*id).is_none(),
                     "Device {:?} should not appear in devices() after eject", id);
                 
-                // Property 2: Verify device is not in the devices list
                 let device_ids: Vec<_> = monitor.devices().iter().map(|d| d.id).collect();
                 prop_assert!(!device_ids.contains(id),
                     "Device {:?} should not be in devices list after eject", id);
             }
             
-            // Collect disconnect events (simulating EjectCompleted)
             let mut disconnect_events = Vec::new();
             while let Ok(event) = receiver.try_recv() {
                 if let DeviceEvent::Disconnected(id) = event {
@@ -2323,12 +2178,10 @@ mod property_tests {
                 }
             }
             
-            // Property 2: Should have received a Disconnected event for each ejected device
             prop_assert_eq!(disconnect_events.len(), added_ids.len(),
                 "Should receive {} disconnect events after eject, got {}", 
                 added_ids.len(), disconnect_events.len());
             
-            // All ejected devices should have corresponding disconnect events
             for id in &added_ids {
                 prop_assert!(disconnect_events.contains(id),
                     "Should have received Disconnected event for ejected device {:?}", id);
@@ -2336,8 +2189,6 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 3: Non-Removable Device Eject Rejection**
-    // **Validates: Requirements 2.2, 2.3**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
@@ -2348,8 +2199,6 @@ mod property_tests {
             path in "/[a-zA-Z0-9/]{1,50}",
             total_space in 1u64..u64::MAX,
         ) {
-            // Property: Eject operation on non-removable devices should be rejected
-            // This tests that the system correctly identifies non-removable devices
             
             let device = Device {
                 id: DeviceId::new(id),
@@ -2365,17 +2214,14 @@ mod property_tests {
                 smart_status: None,
             };
             
-            // Non-removable devices should have is_removable = false
             prop_assert!(!device.is_removable,
                 "Internal drives should not be marked as removable");
             
-            // The device type should be InternalDrive
             prop_assert_eq!(device.device_type, super::super::device_monitor::DeviceType::InternalDrive,
                 "Device type should be InternalDrive");
         }
     }
 
-    // Generator for all filesystem types
     fn arb_filesystem_type() -> impl Strategy<Value = FileSystemType> {
         prop_oneof![
             Just(FileSystemType::Fat32),
@@ -2390,39 +2236,29 @@ mod property_tests {
         ]
     }
 
-    // **Feature: advanced-device-management, Property 4: Platform-Appropriate Filesystem Options**
-    // **Validates: Requirements 3.3**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
         #[test]
         fn prop_platform_appropriate_filesystem_options(fs_type in arb_filesystem_type()) {
-            // Property: For any platform P, the available_filesystems() function SHALL return
-            // only filesystem types that are supported for formatting on platform P
             
             let adapter = get_platform_adapter();
             let available = adapter.available_filesystems();
             
-            // All filesystems returned by available_filesystems() must be available on current platform
             for fs in &available {
                 prop_assert!(fs.is_available_on_current_platform(),
                     "Filesystem {:?} returned by available_filesystems() must be available on current platform",
                     fs);
             }
             
-            // If a filesystem is available on current platform and in the available list,
-            // it should be formattable
             if fs_type.is_available_on_current_platform() && available.contains(&fs_type) {
-                // The filesystem should be in the available list
                 prop_assert!(available.contains(&fs_type),
                     "Filesystem {:?} is available on platform but not in available_filesystems()",
                     fs_type);
             }
             
-            // Platform-specific checks
             #[cfg(target_os = "windows")]
             {
-                // Windows should support NTFS, FAT32, exFAT, and optionally ReFS
                 prop_assert!(available.contains(&FileSystemType::Ntfs),
                     "Windows should support NTFS");
                 prop_assert!(available.contains(&FileSystemType::Fat32),
@@ -2430,7 +2266,6 @@ mod property_tests {
                 prop_assert!(available.contains(&FileSystemType::ExFat),
                     "Windows should support exFAT");
                 
-                // Windows should NOT support Linux/macOS-only filesystems
                 prop_assert!(!available.contains(&FileSystemType::Apfs),
                     "Windows should not support APFS");
                 prop_assert!(!available.contains(&FileSystemType::HfsPlus),
@@ -2445,7 +2280,6 @@ mod property_tests {
             
             #[cfg(target_os = "macos")]
             {
-                // macOS should support APFS, HFS+, FAT32, exFAT
                 prop_assert!(available.contains(&FileSystemType::Apfs),
                     "macOS should support APFS");
                 prop_assert!(available.contains(&FileSystemType::HfsPlus),
@@ -2455,7 +2289,6 @@ mod property_tests {
                 prop_assert!(available.contains(&FileSystemType::ExFat),
                     "macOS should support exFAT");
                 
-                // macOS should NOT support Windows/Linux-only filesystems
                 prop_assert!(!available.contains(&FileSystemType::Ntfs),
                     "macOS should not support NTFS formatting");
                 prop_assert!(!available.contains(&FileSystemType::ReFS),
@@ -2470,7 +2303,6 @@ mod property_tests {
             
             #[cfg(target_os = "linux")]
             {
-                // Linux should support ext4, Btrfs, XFS, FAT32, exFAT
                 prop_assert!(available.contains(&FileSystemType::Ext4),
                     "Linux should support ext4");
                 prop_assert!(available.contains(&FileSystemType::Btrfs),
@@ -2482,7 +2314,6 @@ mod property_tests {
                 prop_assert!(available.contains(&FileSystemType::ExFat),
                     "Linux should support exFAT");
                 
-                // Linux should NOT support Windows/macOS-only filesystems
                 prop_assert!(!available.contains(&FileSystemType::Ntfs),
                     "Linux should not support NTFS formatting");
                 prop_assert!(!available.contains(&FileSystemType::ReFS),
@@ -2495,46 +2326,34 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 4: Available Filesystems Non-Empty**
-    // **Validates: Requirements 3.3**
     #[test]
     fn prop_available_filesystems_non_empty() {
         let adapter = get_platform_adapter();
         let available = adapter.available_filesystems();
         
-        // Every platform should have at least one available filesystem
         assert!(!available.is_empty(), 
             "available_filesystems() should return at least one filesystem");
         
-        // Cross-platform filesystems (FAT32, exFAT) should be available on all platforms
         assert!(available.contains(&FileSystemType::Fat32) || available.contains(&FileSystemType::ExFat),
             "At least one cross-platform filesystem (FAT32 or exFAT) should be available");
     }
 
-    // **Feature: advanced-device-management, Property 5: Filesystem Compatibility Information**
-    // **Validates: Requirements 3.4**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
         #[test]
         fn prop_filesystem_compatibility_info(fs_type in arb_filesystem_type()) {
-            // Property: For any FileSystemType, the compatibility_info() function SHALL return
-            // a non-empty description indicating which platforms can read/write the filesystem
             
             let info = fs_type.compatibility_info();
             
-            // Compatibility info must not be empty
             prop_assert!(!info.is_empty(),
                 "Compatibility info for {:?} must not be empty", fs_type);
             
-            // Compatibility info should contain meaningful content (at least 10 characters)
             prop_assert!(info.len() >= 10,
                 "Compatibility info for {:?} should be descriptive (got: '{}')", fs_type, info);
             
-            // Cross-platform filesystems should mention multiple platforms
             match fs_type {
                 FileSystemType::Fat32 | FileSystemType::ExFat => {
-                    // These should mention Windows, macOS, and Linux
                     prop_assert!(info.contains("Windows") || info.contains("windows"),
                         "FAT32/exFAT compatibility info should mention Windows");
                     prop_assert!(info.contains("macOS") || info.contains("Mac"),
@@ -2543,22 +2362,18 @@ mod property_tests {
                         "FAT32/exFAT compatibility info should mention Linux");
                 }
                 FileSystemType::Ntfs => {
-                    // NTFS should mention Windows as native
                     prop_assert!(info.contains("Windows") || info.contains("windows"),
                         "NTFS compatibility info should mention Windows");
                 }
                 FileSystemType::Apfs | FileSystemType::HfsPlus => {
-                    // Apple filesystems should mention macOS
                     prop_assert!(info.contains("macOS") || info.contains("Mac"),
                         "APFS/HFS+ compatibility info should mention macOS");
                 }
                 FileSystemType::Ext4 | FileSystemType::Btrfs | FileSystemType::Xfs => {
-                    // Linux filesystems should mention Linux
                     prop_assert!(info.contains("Linux") || info.contains("linux"),
                         "ext4/Btrfs/XFS compatibility info should mention Linux");
                 }
                 FileSystemType::ReFS => {
-                    // ReFS should mention Windows
                     prop_assert!(info.contains("Windows") || info.contains("windows"),
                         "ReFS compatibility info should mention Windows");
                 }
@@ -2566,8 +2381,6 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 5: All Filesystems Have Compatibility Info**
-    // **Validates: Requirements 3.4**
     #[test]
     fn prop_all_filesystems_have_compatibility_info() {
         let all_filesystems = [
@@ -2591,7 +2404,6 @@ mod property_tests {
         }
     }
 
-    // Generator for disk image file extensions based on platform
     fn arb_disk_image_ext() -> impl Strategy<Value = &'static str> {
         #[cfg(target_os = "windows")]
         {
@@ -2627,7 +2439,6 @@ mod property_tests {
         }
     }
 
-    // Generator for disk image file paths
     prop_compose! {
         fn arb_disk_image_path()(
             name in "[a-zA-Z0-9_-]{1,20}",
@@ -2637,7 +2448,6 @@ mod property_tests {
         }
     }
 
-    // Generator for mount point paths
     prop_compose! {
         fn arb_mount_point()(
             name in "[a-zA-Z0-9_-]{1,20}",
@@ -2661,27 +2471,16 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 18: Disk Image Mount Accessibility**
-    // **Validates: Requirements 12.1**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
         #[test]
         fn prop_disk_image_mount_accessibility(mount_point in arb_mount_point()) {
-            // Property: For any successfully mounted disk image, the returned mount point path
-            // SHALL exist and be readable.
-            //
-            // Since we cannot actually mount disk images in tests (requires real files and
-            // potentially elevated privileges), we test the property by verifying:
-            // 1. Mount point paths follow platform conventions
-            // 2. If a mount point exists, it should be accessible
             
-            // Verify mount point path follows platform conventions
             let path_str = mount_point.to_string_lossy();
             
             #[cfg(target_os = "windows")]
             {
-                // Windows mount points should be drive letters
                 prop_assert!(path_str.len() >= 2,
                     "Windows mount point should be at least 2 characters (drive letter + colon)");
                 let first_char = path_str.chars().next().unwrap_or(' ');
@@ -2691,14 +2490,12 @@ mod property_tests {
             
             #[cfg(target_os = "macos")]
             {
-                // macOS mount points should be under /Volumes
                 prop_assert!(path_str.starts_with("/Volumes/"),
                     "macOS mount point should be under /Volumes/");
             }
             
             #[cfg(target_os = "linux")]
             {
-                // Linux mount points should be under /tmp, /mnt, /media, or /run/media
                 prop_assert!(
                     path_str.starts_with("/tmp/") || 
                     path_str.starts_with("/mnt/") || 
@@ -2708,13 +2505,10 @@ mod property_tests {
                 );
             }
             
-            // If the mount point happens to exist (from a previous mount), verify it's accessible
             if mount_point.exists() {
-                // Should be readable
                 prop_assert!(mount_point.is_dir() || mount_point.is_symlink(),
                     "Existing mount point should be a directory or symlink");
                 
-                // Should be able to read directory contents (if it's a directory)
                 if mount_point.is_dir() {
                     let read_result = std::fs::read_dir(&mount_point);
                     prop_assert!(read_result.is_ok(),
@@ -2724,21 +2518,17 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 18: Disk Image Path Validation**
-    // **Validates: Requirements 12.1**
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         
         #[test]
         fn prop_disk_image_path_validation(image_path in arb_disk_image_path()) {
-            // Property: Disk image paths should have valid extensions for the platform
             
             let ext = image_path.extension()
                 .and_then(|e| e.to_str())
                 .map(|e| e.to_lowercase())
                 .unwrap_or_default();
             
-            // All platforms support ISO and IMG
             let is_universal = ext == "iso" || ext == "img";
             
             #[cfg(target_os = "windows")]
@@ -2763,11 +2553,8 @@ mod property_tests {
         }
     }
 
-    // **Feature: advanced-device-management, Property 18: Mount Point Uniqueness**
-    // **Validates: Requirements 12.1**
     #[test]
     fn prop_mount_point_generation_uniqueness() {
-        // Property: Generated mount points for different images should be unique
         
         let image_names = ["test1", "test2", "image_a", "image_b", "my_disk"];
         let mut mount_points = std::collections::HashSet::new();
@@ -2775,8 +2562,6 @@ mod property_tests {
         for name in image_names {
             #[cfg(target_os = "windows")]
             {
-                // Windows uses drive letters, uniqueness is handled by the OS
-                // We just verify the format is correct
                 let path = PathBuf::from(format!("{}:\\", 'D'));
                 assert!(path.to_string_lossy().ends_with(":\\"));
             }

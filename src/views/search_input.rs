@@ -12,7 +12,7 @@ actions!(
     [ClearSearch, EscapeSearch, Backspace, Delete, SelectAll]
 );
 
-/// Search input state for managing query and focus
+/
 pub struct SearchInput {
     query: String,
     placeholder: String,
@@ -22,7 +22,7 @@ pub struct SearchInput {
     last_bounds: Option<Bounds<Pixels>>,
 }
 
-/// View wrapper for SearchInput with GPUI integration
+/
 pub struct SearchInputView {
     search_input: SearchInput,
     focus_handle: FocusHandle,
@@ -507,7 +507,7 @@ impl Render for SearchInputView {
     }
 }
 
-/// Custom element that handles text input via window.handle_input()
+/
 struct SearchTextElement {
     input: Entity<SearchInputView>,
     query: String,
@@ -577,7 +577,6 @@ impl gpui::Element for SearchTextElement {
     ) {
         let focus_handle = self.input.read(cx).focus_handle.clone();
 
-        // This is the key call that enables text input
         window.handle_input(
             &focus_handle,
             ElementInputHandler::new(bounds, self.input.clone()),
@@ -606,7 +605,6 @@ impl gpui::Element for SearchTextElement {
             .text_system()
             .shape_line(display_text.into(), font_size, &[run], None);
 
-        // Draw selection if any
         if self.is_focused && !self.selected_range.is_empty() && !self.query.is_empty() {
             let start_x = line.x_for_index(self.selected_range.start);
             let end_x = line.x_for_index(self.selected_range.end);
@@ -619,7 +617,6 @@ impl gpui::Element for SearchTextElement {
 
         let _ = line.paint(bounds.origin, window.line_height(), window, cx);
 
-        // Draw cursor if focused and no selection
         if self.is_focused && self.selected_range.is_empty() {
             let cursor_x = if self.query.is_empty() {
                 px(0.0)
@@ -633,7 +630,6 @@ impl gpui::Element for SearchTextElement {
             window.paint_quad(gpui::fill(cursor_bounds, self.cursor_color));
         }
 
-        // Store bounds for hit testing
         self.input.update(cx, |input, _| {
             input.search_input.last_bounds = Some(bounds);
         });

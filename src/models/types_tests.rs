@@ -1,5 +1,5 @@
-/// Property-based tests for core types
-/// **Feature: file-explorer-core**
+/
+/
 use super::{CloudSyncStatus, FileEntry, FileType, IconKey, SortColumn, SortDirection, SortState};
 use proptest::prelude::*;
 use std::path::PathBuf;
@@ -64,11 +64,11 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: file-explorer-core, Property 21: FileEntry Serialization Round-Trip**
-    /// **Validates: Requirements 10.1, 10.4**
-    ///
-    /// *For any* valid FileEntry, serializing then deserializing SHALL produce
-    /// an equivalent FileEntry with identical field values.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_file_entry_serialization_round_trip(entry in arb_file_entry()) {
         let serialized = bincode::serialize(&entry)
@@ -86,11 +86,11 @@ proptest! {
         prop_assert_eq!(entry.icon_key, deserialized.icon_key);
     }
 
-    /// **Feature: file-explorer-core, Property 22: Corrupted Data Rejection**
-    /// **Validates: Requirements 10.2**
-    ///
-    /// *For any* byte sequence that is not a valid serialized format,
-    /// deserialization SHALL return an error rather than producing an invalid or partial structure.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_corrupted_data_rejection(random_bytes in prop::collection::vec(any::<u8>(), 0..1000)) {
         let result: std::result::Result<FileEntry, _> = bincode::deserialize(&random_bytes);
@@ -105,16 +105,15 @@ proptest! {
                     "If random bytes happen to deserialize, the result must be consistent");
             }
             Err(_) => {
-                // Expected behavior: corrupted data should be rejected
             }
         }
     }
 
-    /// **Feature: ui-enhancements, Property 7: Sort by Name Ordering**
-    /// **Validates: Requirements 3.1**
-    ///
-    /// *For any* list of file entries sorted by name in ascending order,
-    /// each entry's name (case-insensitive) SHALL be <= the next entry's name.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_sort_by_name_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -136,11 +135,11 @@ proptest! {
         }
     }
 
-    /// **Feature: ui-enhancements, Property 8: Sort by Date Ordering**
-    /// **Validates: Requirements 3.2**
-    ///
-    /// *For any* list of file entries sorted by date in descending order (newest first),
-    /// each entry's modified time SHALL be >= the next entry's modified time.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_sort_by_date_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -162,11 +161,11 @@ proptest! {
         }
     }
 
-    /// **Feature: ui-enhancements, Property 9: Sort by Type Ordering**
-    /// **Validates: Requirements 3.3**
-    ///
-    /// *For any* list of file entries sorted by type (extension) in ascending order,
-    /// each entry's extension (case-insensitive) SHALL be <= the next entry's extension.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_sort_by_type_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -197,11 +196,11 @@ proptest! {
         }
     }
 
-    /// **Feature: ui-enhancements, Property 10: Sort by Size Ordering**
-    /// **Validates: Requirements 3.4**
-    ///
-    /// *For any* list of file entries sorted by size in descending order (largest first),
-    /// each entry's size SHALL be >= the next entry's size.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_sort_by_size_ordering(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -227,11 +226,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: ui-enhancements, Property 11: Sort Toggle Reversal**
-    /// **Validates: Requirements 3.5**
-    ///
-    /// *For any* SortState with a given column, clicking the same column header twice
-    /// SHALL reverse the sort direction (ascending becomes descending, descending becomes ascending).
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_sort_toggle_reversal(
         column in prop_oneof![
@@ -246,7 +245,6 @@ proptest! {
         sort_state.toggle_column(column);
         let first_direction = sort_state.direction;
 
-        // Second click on same column should reverse direction
         sort_state.toggle_column(column);
         let second_direction = sort_state.direction;
 
@@ -268,11 +266,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: ui-enhancements, Property 12: Directories First Invariant**
-    /// **Validates: Requirements 3.7**
-    ///
-    /// *For any* sorted list with directories_first enabled, all directory entries
-    /// SHALL appear before all file entries.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_directories_first_invariant(entries in prop::collection::vec(arb_file_entry(), 0..50)) {
         let mut entries = entries;
@@ -281,10 +279,8 @@ proptest! {
 
         sort_state.sort_entries(&mut entries);
 
-        // Find the first file (non-directory) index
         let first_file_idx = entries.iter().position(|e| !e.is_dir);
 
-        // If there are files, all entries after the first file should also be files
         if let Some(first_file) = first_file_idx {
             for (i, entry) in entries.iter().enumerate().skip(first_file) {
                 prop_assert!(
@@ -295,7 +291,6 @@ proptest! {
             }
         }
 
-        // All entries before the first file should be directories
         if let Some(first_file) = first_file_idx {
             for (i, entry) in entries.iter().enumerate().take(first_file) {
                 prop_assert!(
@@ -311,11 +306,11 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: ui-enhancements, Property 13: Sort Stability on Update**
-    /// **Validates: Requirements 3.8**
-    ///
-    /// *For any* SortState and list of entries, when new entries are added and sorted,
-    /// the sort order SHALL be maintained consistently (same column and direction).
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_sort_stability_on_update(
         initial_count in 1usize..50,
@@ -352,7 +347,6 @@ proptest! {
 
         verify_sort_order(&entries, column, sort_state.direction)?;
 
-        // Add new entries
         let new_entries: Vec<FileEntry> = (0..additional_count)
             .map(|i| {
                 let name = format!("new_file_{:04}.txt", i);
@@ -368,7 +362,6 @@ proptest! {
 
         entries.extend(new_entries);
 
-        // Re-sort with same sort state
         sort_state.sort_entries(&mut entries);
 
         verify_sort_order(&entries, column, sort_state.direction)?;
@@ -438,41 +431,35 @@ mod symlink_tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /// **Feature: advanced-device-management, Property 12: Symbolic Link Detection**
-        /// **Validates: Requirements 9.3**
-        ///
-        /// *For any* file path that is a symbolic link, the `is_symlink()` function SHALL return true,
-        /// and `symlink_target()` SHALL return the target path.
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_symbolic_link_detection(
             file_name in "[a-zA-Z0-9]{1,20}",
             link_name in "[a-zA-Z0-9]{1,20}",
         ) {
-            // Skip if names are the same
             prop_assume!(file_name != link_name);
 
             let temp_dir = TempDir::new().expect("Failed to create temp dir");
             let file_path = temp_dir.path().join(&file_name);
             let link_path = temp_dir.path().join(&link_name);
 
-            // Create a regular file
             File::create(&file_path).expect("Failed to create file");
 
-            // Create a symbolic link to the file
             symlink(&file_path, &link_path).expect("Failed to create symlink");
 
-            // Test symlink detection using FileEntry::from_path
             let entry = FileEntry::from_path(&link_path)
                 .expect("Failed to create FileEntry from symlink path");
 
-            // Property: is_symlink() should return true for symbolic links
             prop_assert!(
                 entry.is_symlink(),
                 "is_symlink() should return true for symbolic link at {:?}",
                 link_path
             );
 
-            // Property: symlink_target() should return the target path
             let target = entry.symlink_target();
             prop_assert!(
                 target.is_some(),
@@ -480,7 +467,6 @@ mod symlink_tests {
                 link_path
             );
 
-            // The target should match the original file path
             let target_path = target.unwrap();
             prop_assert_eq!(
                 target_path,
@@ -488,13 +474,11 @@ mod symlink_tests {
                 "symlink_target() should return the correct target path"
             );
 
-            // Property: is_broken_symlink() should return false for valid symlinks
             prop_assert!(
                 !entry.is_broken_symlink(),
                 "is_broken_symlink() should return false for valid symlink"
             );
 
-            // Test that regular files are NOT detected as symlinks
             let regular_entry = FileEntry::from_path(&file_path)
                 .expect("Failed to create FileEntry from regular file path");
 
@@ -510,51 +494,43 @@ mod symlink_tests {
             );
         }
 
-        /// **Feature: advanced-device-management, Property 13: Broken Symbolic Link Detection**
-        /// **Validates: Requirements 9.5**
-        ///
-        /// *For any* symbolic link where the target does not exist, `is_broken_symlink()` SHALL return true.
+        /
+        /
+        /
+        /
         #[test]
         fn prop_broken_symbolic_link_detection(
             target_name in "[a-zA-Z0-9]{1,20}",
             link_name in "[a-zA-Z0-9]{1,20}",
         ) {
-            // Skip if names are the same
             prop_assume!(target_name != link_name);
 
             let temp_dir = TempDir::new().expect("Failed to create temp dir");
             let target_path = temp_dir.path().join(&target_name);
             let link_path = temp_dir.path().join(&link_name);
 
-            // Create a symbolic link to a non-existent target
-            // The target_path does NOT exist - we're creating a broken symlink
             symlink(&target_path, &link_path).expect("Failed to create symlink");
 
-            // Verify the target doesn't exist
             prop_assert!(
                 !target_path.exists(),
                 "Target path should not exist for broken symlink test"
             );
 
-            // Test broken symlink detection using FileEntry::from_path
             let entry = FileEntry::from_path(&link_path)
                 .expect("Failed to create FileEntry from broken symlink path");
 
-            // Property: is_symlink() should return true for broken symbolic links
             prop_assert!(
                 entry.is_symlink(),
                 "is_symlink() should return true for broken symbolic link at {:?}",
                 link_path
             );
 
-            // Property: is_broken_symlink() should return true for broken symlinks
             prop_assert!(
                 entry.is_broken_symlink(),
                 "is_broken_symlink() should return true for broken symlink at {:?}",
                 link_path
             );
 
-            // Property: symlink_target() should still return the target path (even if broken)
             let target = entry.symlink_target();
             prop_assert!(
                 target.is_some(),
@@ -562,19 +538,16 @@ mod symlink_tests {
                 link_path
             );
 
-            // Now create the target file and verify the symlink is no longer broken
             File::create(&target_path).expect("Failed to create target file");
 
             let fixed_entry = FileEntry::from_path(&link_path)
                 .expect("Failed to create FileEntry from fixed symlink path");
 
-            // Property: After creating target, is_broken_symlink() should return false
             prop_assert!(
                 !fixed_entry.is_broken_symlink(),
                 "is_broken_symlink() should return false after target is created"
             );
 
-            // Property: is_symlink() should still return true
             prop_assert!(
                 fixed_entry.is_symlink(),
                 "is_symlink() should still return true after target is created"
@@ -592,12 +565,12 @@ mod symlink_tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /// **Feature: advanced-device-management, Property 12: Symbolic Link Detection**
-        /// **Validates: Requirements 9.3**
-        ///
-        /// *For any* file path that is a symbolic link, the `is_symlink()` function SHALL return true,
-        /// and `symlink_target()` SHALL return the target path.
-        /// Note: On Windows, symlink creation requires elevated privileges, so we test with regular files.
+        /
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_symbolic_link_detection_regular_files(
             file_name in "[a-zA-Z0-9]{1,20}",
@@ -605,10 +578,8 @@ mod symlink_tests {
             let temp_dir = TempDir::new().expect("Failed to create temp dir");
             let file_path = temp_dir.path().join(&file_name);
 
-            // Create a regular file
             File::create(&file_path).expect("Failed to create file");
 
-            // Test that regular files are NOT detected as symlinks
             let entry = FileEntry::from_path(&file_path)
                 .expect("Failed to create FileEntry from file path");
 

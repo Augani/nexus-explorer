@@ -14,7 +14,7 @@ use crate::models::{
 };
 use crate::views::sidebar::{DraggedFolder, DraggedFolderView};
 
-/// Context menu actions that can be triggered on files/folders
+/
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContextMenuAction {
     Open(PathBuf),
@@ -42,11 +42,11 @@ pub enum ContextMenuAction {
     ExtractHere(PathBuf),
     ExtractToFolder(PathBuf),
     Share(PathBuf),
-    /// Share via AirDrop (macOS only)
+    /
     ShareViaAirDrop(PathBuf),
-    /// Share via Nearby Share (Windows only)
+    /
     ShareViaNearbyShare(PathBuf),
-    /// Share via network share dialog
+    /
     ShareViaNetwork(PathBuf),
     CopyPath(PathBuf),
     ShowInFinder(PathBuf),
@@ -60,7 +60,6 @@ pub enum ContextMenuAction {
     UnmountImage(PathBuf),
 }
 
-// Define actions for keyboard navigation
 actions!(
     file_list,
     [
@@ -71,11 +70,9 @@ actions!(
     ]
 );
 
-// Use typography constants for row height (40px as per design spec)
 pub const DEFAULT_ROW_HEIGHT: f32 = file_list_spacing::ROW_HEIGHT;
 pub const DEFAULT_BUFFER_SIZE: usize = 5;
 
-// RPG styling constants
 const ICON_SIZE: f32 = file_list_spacing::ICON_SIZE;
 const ICON_GAP: f32 = file_list_spacing::ICON_GAP;
 const ROW_PADDING_X: f32 = file_list_spacing::ROW_PADDING_X;
@@ -95,7 +92,7 @@ pub struct FileList {
     sort_state: SortState,
 }
 
-/// A filtered entry with its original index and match positions
+/
 #[derive(Debug, Clone)]
 pub struct FilteredEntry {
     pub original_index: usize,
@@ -167,7 +164,7 @@ impl FileListView {
         self.pending_navigation.take()
     }
 
-    /// Check and clear the pending parent navigation flag
+    /
     pub fn take_pending_parent_navigation(&mut self) -> bool {
         let result = self.pending_parent_navigation;
         self.pending_parent_navigation = false;
@@ -188,7 +185,7 @@ impl FileListView {
         }
     }
 
-    /// Register key bindings for file list navigation
+    /
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("up", MoveSelectionUp, Some("FileList")),
@@ -198,7 +195,7 @@ impl FileListView {
         ]);
     }
 
-    /// Move selection up by one item
+    /
     fn handle_move_up(
         &mut self,
         _: &MoveSelectionUp,
@@ -221,7 +218,7 @@ impl FileListView {
         cx.notify();
     }
 
-    /// Move selection down by one item
+    /
     fn handle_move_down(
         &mut self,
         _: &MoveSelectionDown,
@@ -245,7 +242,7 @@ impl FileListView {
         cx.notify();
     }
 
-    /// Open the selected item (navigate into directory)
+    /
     fn handle_open_selected(
         &mut self,
         _: &OpenSelected,
@@ -268,25 +265,24 @@ impl FileListView {
         }
     }
 
-    /// Navigate to parent directory
+    /
     fn handle_navigate_to_parent(
         &mut self,
         _: &NavigateToParent,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        // Signal to workspace to navigate to parent directory
         self.pending_parent_navigation = true;
         cx.notify();
     }
 
-    /// Scroll to ensure the given index is visible
+    /
     fn scroll_to_index(&self, index: usize) {
         self.scroll_handle
             .scroll_to_item(index, ScrollStrategy::Center);
     }
 
-    /// Move selection up by one item (public API for testing)
+    /
     pub fn move_selection_up(&mut self) {
         let item_count = self.file_list.item_count();
         if item_count == 0 {
@@ -302,7 +298,7 @@ impl FileListView {
         self.file_list.selected_index = Some(new_index);
     }
 
-    /// Move selection down by one item (public API for testing)
+    /
     pub fn move_selection_down(&mut self) {
         let item_count = self.file_list.item_count();
         if item_count == 0 {
@@ -336,7 +332,6 @@ impl Render for FileListView {
 
         let colors = theme_colors();
 
-        // Background colors from theme
         let bg_darker = colors.bg_void;
         let bg_dark = colors.bg_primary;
         let border_color = colors.border_default;
@@ -350,7 +345,6 @@ impl Render for FileListView {
         let _file_color = colors.text_muted;
         let menu_bg = colors.bg_tertiary;
 
-        // Accent colors for glow effects and selection
         let _accent_glow = colors.accent_glow;
         let accent_primary = colors.accent_primary;
 
@@ -380,7 +374,6 @@ impl Render for FileListView {
                 let entity_type = entity.clone();
                 let entity_size = entity.clone();
 
-                // Header row with RPG styling
                 div()
                     .flex()
                     .h(px(HEADER_HEIGHT))
@@ -542,7 +535,6 @@ impl Render for FileListView {
                                         let entity = entity.clone();
                                         let entity_for_ctx = entity.clone();
 
-                                        // RPG-styled file row with 40px height, hover glow, themed selection
                                         items.push(
                                                 div()
                                                     .id(SharedString::from(format!("file-{}", ix)))
@@ -554,13 +546,11 @@ impl Render for FileListView {
                                                     .cursor_pointer()
                                                     .border_b_1()
                                                     .border_color(border_subtle)
-                                                    // Selected state with themed accent color
                                                     .when(is_selected, |s| s
                                                         .bg(selected_bg)
                                                         .border_l_2()
                                                         .border_color(accent_primary)
                                                     )
-                                                    // Hover state with subtle glow effect
                                                     .when(!is_selected, |s| s.hover(|h| h
                                                         .bg(hover_bg)
                                                     ))
@@ -610,7 +600,6 @@ impl Render for FileListView {
                                                                     .items_center()
                                                                     .gap(px(ICON_GAP))
                                                                     .child(
-                                                                        // Icon container with symlink overlay
                                                                         div()
                                                                             .relative()
                                                                             .flex_shrink_0()
@@ -620,17 +609,16 @@ impl Render for FileListView {
                                                                                     .size(px(ICON_SIZE))
                                                                                     .text_color(icon_color),
                                                                             )
-                                                                            // Symlink overlay icon (bottom-right corner)
                                                                             .when(is_symlink, |s| {
                                                                                 let overlay_color = if is_broken_symlink {
-                                                                                    gpui::rgb(0xf85149) // Red for broken symlinks
+                                                                                    gpui::rgb(0xf85149)
                                                                                 } else {
-                                                                                    gpui::rgb(0x58a6ff) // Blue for valid symlinks
+                                                                                    gpui::rgb(0x58a6ff)
                                                                                 };
                                                                                 let overlay_icon = if is_broken_symlink {
-                                                                                    "link-2-off" // Broken link icon
+                                                                                    "link-2-off"
                                                                                 } else {
-                                                                                    "link-2" // Link icon
+                                                                                    "link-2"
                                                                                 };
                                                                                 s.child(
                                                                                     div()
@@ -647,7 +635,6 @@ impl Render for FileListView {
                                                                                         )
                                                                                 )
                                                                             })
-                                                                            // Share overlay icon (top-right corner for shared folders)
                                                                             .when(is_shared && is_dir, |s| {
                                                                                 s.child(
                                                                                     div()
@@ -660,7 +647,7 @@ impl Render for FileListView {
                                                                                             svg()
                                                                                                 .path("assets/icons/share-2.svg")
                                                                                                 .size(px(10.0))
-                                                                                                .text_color(gpui::rgb(0x3fb950)) // Green for shared
+                                                                                                .text_color(gpui::rgb(0x3fb950))
                                                                                         )
                                                                                 )
                                                                             }),
@@ -674,7 +661,6 @@ impl Render for FileListView {
                                                                             accent_primary,
                                                                         ),
                                                                     )
-                                                                    // Broken symlink warning indicator
                                                                     .when(is_broken_symlink, |s| {
                                                                         s.child(
                                                                             div()
@@ -689,7 +675,6 @@ impl Render for FileListView {
                                                                                 )
                                                                         )
                                                                     })
-                                                                    // Cloud sync status indicator
                                                                     .when(sync_status.icon_name().is_some(), |s| {
                                                                         let icon = sync_status.icon_name().unwrap_or("check");
                                                                         let color = sync_status.color().unwrap_or(0x8b949e);
@@ -746,7 +731,6 @@ impl Render for FileListView {
                         )
                     }),
             )
-            // Footer/status bar with RPG styling
             .child(
                 div()
                     .h(px(FOOTER_HEIGHT))
@@ -1150,7 +1134,6 @@ fn render_highlighted_name(
     text_light: gpui::Rgba,
     accent_color: gpui::Rgba,
 ) -> impl IntoElement {
-    // Use theme accent color for search highlights
     let highlight_color = accent_color;
     let text_color = if is_selected {
         gpui::rgb(0xffffff)
@@ -1165,7 +1148,6 @@ fn render_highlighted_name(
 
     match match_positions {
         Some(positions) if !positions.is_empty() => {
-            // Render with highlights
             let chars: Vec<char> = name.chars().collect();
             let mut elements: Vec<gpui::AnyElement> = Vec::new();
             let mut current_segment = String::new();
@@ -1175,7 +1157,6 @@ fn render_highlighted_name(
                 let should_highlight = positions.contains(&i);
 
                 if should_highlight != in_highlight {
-                    // Flush current segment
                     if !current_segment.is_empty() {
                         if in_highlight {
                             elements.push(
@@ -1201,7 +1182,6 @@ fn render_highlighted_name(
                 current_segment.push(*ch);
             }
 
-            // Flush remaining segment
             if !current_segment.is_empty() {
                 if in_highlight {
                     elements.push(
@@ -1229,7 +1209,6 @@ fn render_highlighted_name(
                 .into_any_element()
         }
         _ => {
-            // No highlights, render normally
             div()
                 .text_color(text_color)
                 .font_weight(font_weight)
@@ -1466,7 +1445,6 @@ fn render_share_submenu(
     let entity_for_nearby = entity.clone();
     let entity_for_network = entity.clone();
 
-    // Check which platform-specific methods are available
     let has_airdrop = available_methods.contains(&PlatformShareMethod::AirDrop);
     let has_nearby = available_methods.contains(&PlatformShareMethod::NearbyShare);
 
@@ -1474,7 +1452,6 @@ fn render_share_submenu(
         .id("share-menu-wrapper")
         .flex()
         .flex_col()
-        // Main Share option (opens share dialog)
         .child(
             div()
                 .id("share-trigger")
@@ -1513,7 +1490,6 @@ fn render_share_submenu(
                         .child("Share..."),
                 ),
         )
-        // Platform-specific share options
         .child(
             div()
                 .id("share-options-list")
@@ -1523,7 +1499,6 @@ fn render_share_submenu(
                 .border_l_1()
                 .border_color(border_color)
                 .ml_4()
-                // AirDrop (macOS only)
                 .when(has_airdrop, |submenu| {
                     submenu.child(
                         div()
@@ -1560,7 +1535,6 @@ fn render_share_submenu(
                             .child("AirDrop"),
                     )
                 })
-                // Nearby Share (Windows only)
                 .when(has_nearby, |submenu| {
                     submenu.child(
                         div()
@@ -1597,7 +1571,6 @@ fn render_share_submenu(
                             .child("Nearby Share"),
                     )
                 })
-                // Network Share (always available)
                 .child(
                     div()
                         .id("share-network")
@@ -1822,17 +1795,17 @@ impl FileList {
         &self.entries
     }
 
-    /// Returns the currently selected index
+    /
     pub fn selected_index(&self) -> Option<usize> {
         self.selected_index
     }
 
-    /// Sets the selected index
+    /
     pub fn set_selected_index(&mut self, index: Option<usize>) {
         self.selected_index = index;
     }
 
-    /// Returns the currently visible entries (filtered if search is active)
+    /
     pub fn visible_entries(&self) -> Vec<&FileEntry> {
         if let Some(filtered) = &self.filtered_entries {
             filtered.iter().map(|f| &f.entry).collect()
@@ -1841,7 +1814,7 @@ impl FileList {
         }
     }
 
-    /// Get entry at display index (accounts for filtering)
+    /
     pub fn get_display_entry(&self, display_index: usize) -> Option<&FileEntry> {
         if let Some(filtered) = &self.filtered_entries {
             filtered.get(display_index).map(|f| &f.entry)
@@ -1850,12 +1823,12 @@ impl FileList {
         }
     }
 
-    /// Get filtered entry with match positions at display index
+    /
     pub fn get_filtered_entry(&self, display_index: usize) -> Option<&FilteredEntry> {
         self.filtered_entries.as_ref()?.get(display_index)
     }
 
-    /// Apply search filter using nucleo fuzzy matching results
+    /
     pub fn apply_search_filter(&mut self, query: &str, matches: Vec<(usize, Vec<usize>, u32)>) {
         self.search_query = query.to_string();
 
@@ -1881,14 +1854,14 @@ impl FileList {
         self.scroll_offset = 0.0;
     }
 
-    /// Clear search filter and show all entries
+    /
     pub fn clear_search_filter(&mut self) {
         self.filtered_entries = None;
         self.search_query.clear();
         self.selected_index = None;
     }
 
-    /// Get match positions for a display index (for highlighting)
+    /
     pub fn get_match_positions(&self, display_index: usize) -> Option<&[usize]> {
         self.filtered_entries
             .as_ref()?
@@ -2040,7 +2013,7 @@ pub fn format_date(time: SystemTime) -> String {
 #[path = "file_list_tests.rs"]
 mod tests;
 
-/// Check if a file is a disk image that can be mounted
+/
 pub fn is_disk_image_file(path: &std::path::Path) -> bool {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         let ext_lower = ext.to_lowercase();

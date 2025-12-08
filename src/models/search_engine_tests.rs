@@ -2,11 +2,11 @@ use super::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/// **Feature: file-explorer-core, Property 13: Search Pattern Update**
-/// **Validates: Requirements 5.1**
-///
-/// *For any* pattern string P, after calling `set_pattern(P)`, the SearchEngine's
-/// internal pattern state SHALL equal P.
+/
+/
+/
+/
+/
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -21,11 +21,11 @@ proptest! {
     }
 }
 
-/// **Feature: file-explorer-core, Property 15: Injected Items Searchable**
-/// **Validates: Requirements 5.5**
-///
-/// *For any* path P injected into the SearchEngine, a subsequent search with a pattern
-/// matching P's filename SHALL include P in the results.
+/
+/
+/
+/
+/
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -46,24 +46,22 @@ proptest! {
 
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        // Search for the exact filename
         engine.set_pattern(&filename);
 
         std::thread::sleep(std::time::Duration::from_millis(50));
 
         let snapshot = engine.snapshot();
 
-        // The injected path should be found in results
         let found = snapshot.matches.iter().any(|m| m.path == path);
         prop_assert!(found, "Injected path {:?} not found in search results for pattern '{}'", path, filename);
     }
 }
 
-/// **Feature: file-explorer-core, Property 14: Match Positions Validity**
-/// **Validates: Requirements 5.2**
-///
-/// *For any* MatchedItem with positions array, each position SHALL be a valid index
-/// into the matched file name string (0 <= pos < name.len()).
+/
+/
+/
+/
+/
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -78,7 +76,6 @@ proptest! {
 
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        // Search for a substring of the filename (first 3 chars)
         let search_pattern = &filename[0..3.min(filename.len())];
         engine.set_pattern(search_pattern);
 
@@ -86,7 +83,6 @@ proptest! {
 
         let snapshot = engine.snapshot();
 
-        // For each matched item, verify all positions are valid indices
         for matched_item in &snapshot.matches {
             let path_str = matched_item.path.to_string_lossy();
             let path_len = path_str.len();
@@ -163,7 +159,6 @@ mod unit_tests {
 
         engine.set_pattern("report");
 
-        // Poll for results with timeout
         let mut found = false;
         for _ in 0..20 {
             std::thread::sleep(std::time::Duration::from_millis(50));

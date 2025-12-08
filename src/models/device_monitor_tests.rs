@@ -220,7 +220,6 @@ fn test_device_read_only_flag() {
     assert!(device.is_read_only);
 }
 
-// macOS-specific tests
 #[cfg(target_os = "macos")]
 mod macos_tests {
     use super::*;
@@ -237,10 +236,8 @@ mod macos_tests {
         let monitor = MacOSDiskMonitor::new();
         let volumes = monitor.enumerate_volumes();
         
-        // Should have at least the root volume
         assert!(!volumes.is_empty(), "Should detect at least one volume");
         
-        // Root volume should be present
         let has_root = volumes.iter().any(|v| {
             v.volume_path.as_ref().map(|p| p.as_path() == std::path::Path::new("/")).unwrap_or(false)
         });
@@ -253,11 +250,9 @@ mod macos_tests {
         let volumes = monitor.enumerate_volumes();
         
         for volume in &volumes {
-            // Each volume should have a name
             assert!(volume.volume_name.is_some() || volume.volume_path.is_some(),
                 "Volume should have either a name or path");
             
-            // Volume path should exist if set
             if let Some(ref path) = volume.volume_path {
                 assert!(path.exists() || path.to_string_lossy().starts_with("/"),
                     "Volume path should exist: {:?}", path);
@@ -277,7 +272,6 @@ mod macos_tests {
         assert!(root.is_some(), "Root volume should be found");
         let root = root.unwrap();
         
-        // Root should be internal and not removable
         assert!(root.is_internal, "Root volume should be internal");
         assert!(!root.is_removable, "Root volume should not be removable");
         assert!(!root.is_ejectable, "Root volume should not be ejectable");
@@ -364,10 +358,8 @@ mod macos_tests {
         let mut monitor = DeviceMonitor::new();
         monitor.enumerate_macos_devices();
         
-        // Should have at least one device (root)
         assert!(!monitor.devices().is_empty(), "Should detect at least one device");
         
-        // All devices should have valid paths
         for device in monitor.devices() {
             assert!(!device.name.is_empty(), "Device name should not be empty");
             assert!(device.path.exists() || device.path.to_string_lossy().starts_with("/"),
@@ -388,10 +380,8 @@ mod macos_tests {
         let adapter = get_platform_adapter();
         let devices = adapter.enumerate_devices();
         
-        // Should have at least one device
         assert!(!devices.is_empty(), "Should detect at least one device");
         
-        // Root volume should be present
         let has_root = devices.iter().any(|d| d.path == PathBuf::from("/"));
         assert!(has_root, "Root volume should be detected");
     }
@@ -403,14 +393,12 @@ mod macos_tests {
         let adapter = get_platform_adapter();
         let filesystems = adapter.available_filesystems();
         
-        // Should include APFS and HFS+
         assert!(filesystems.contains(&FileSystemType::Apfs), "APFS should be available");
         assert!(filesystems.contains(&FileSystemType::HfsPlus), "HFS+ should be available");
         assert!(filesystems.contains(&FileSystemType::ExFat), "exFAT should be available");
     }
 }
 
-// SMART data parsing tests
 #[test]
 fn test_health_status_default() {
     assert_eq!(HealthStatus::default(), HealthStatus::Unknown);
@@ -461,34 +449,27 @@ fn test_smart_attribute_creation() {
 
 #[test]
 fn test_smart_attribute_is_failing() {
-    // Value below threshold - failing
     let failing = SmartAttribute::new(5, "Test".to_string(), 5, 5, 10, "100".to_string());
     assert!(failing.is_failing());
 
-    // Value at threshold - failing
     let at_threshold = SmartAttribute::new(5, "Test".to_string(), 10, 10, 10, "100".to_string());
     assert!(at_threshold.is_failing());
 
-    // Value above threshold - not failing
     let healthy = SmartAttribute::new(5, "Test".to_string(), 100, 100, 10, "0".to_string());
     assert!(!healthy.is_failing());
 
-    // Zero threshold - not failing
     let no_threshold = SmartAttribute::new(5, "Test".to_string(), 100, 100, 0, "0".to_string());
     assert!(!no_threshold.is_failing());
 }
 
 #[test]
 fn test_smart_attribute_is_warning() {
-    // Value close to threshold - warning
     let warning = SmartAttribute::new(5, "Test".to_string(), 15, 15, 10, "50".to_string());
     assert!(warning.is_warning());
 
-    // Value well above threshold - not warning
     let healthy = SmartAttribute::new(5, "Test".to_string(), 100, 100, 10, "0".to_string());
     assert!(!healthy.is_warning());
 
-    // Value at threshold - not warning (it's failing)
     let failing = SmartAttribute::new(5, "Test".to_string(), 10, 10, 10, "100".to_string());
     assert!(!failing.is_warning());
 }
@@ -540,7 +521,6 @@ fn test_smart_data_from_attributes_warning() {
 
     let data = SmartData::from_attributes(attributes);
 
-    // Should be warning because reallocated_sectors > 0
     assert_eq!(data.health_status, HealthStatus::Warning);
     assert_eq!(data.reallocated_sectors, Some(5));
 }
@@ -554,22 +534,18 @@ fn test_smart_data_from_attributes_critical() {
 
     let data = SmartData::from_attributes(attributes);
 
-    // Should be critical because reallocated_sectors > 100 or pending_sectors > 10
     assert_eq!(data.health_status, HealthStatus::Critical);
 }
 
 #[test]
 fn test_smart_data_determine_health_status_temperature() {
-    // High temperature warning
     let mut data = SmartData::default();
     data.temperature_celsius = Some(55);
     assert_eq!(data.determine_health_status(), HealthStatus::Warning);
 
-    // Critical temperature
     data.temperature_celsius = Some(65);
     assert_eq!(data.determine_health_status(), HealthStatus::Critical);
 
-    // Normal temperature
     data.temperature_celsius = Some(35);
     assert_eq!(data.determine_health_status(), HealthStatus::Good);
 }
@@ -586,7 +562,6 @@ fn test_smart_data_health_summary() {
     data.health_status = HealthStatus::Unknown;
     assert_eq!(data.health_summary(), "Health data unavailable");
 
-    // Warning with reallocated sectors
     data.health_status = HealthStatus::Warning;
     data.reallocated_sectors = Some(5);
     assert!(data.health_summary().contains("reallocated sectors"));
@@ -674,7 +649,6 @@ fn test_device_with_encrypted() {
     assert!(device.is_encrypted);
 }
 
-// Property-based tests using proptest
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -723,30 +697,25 @@ mod property_tests {
         }
     }
 
-    // **Feature: ui-enhancements, Property 45: Device Detection Completeness**
     proptest! {
         #[test]
         fn prop_device_detection_completeness(devices in prop::collection::vec(arb_device(), 0..20)) {
             let mut monitor = DeviceMonitor::new();
 
-            // Add all devices
             let mut added_ids = Vec::new();
             for device in &devices {
                 let id = monitor.add_device(device.clone());
                 added_ids.push(id);
             }
 
-            // Verify all devices are present
             prop_assert_eq!(monitor.devices().len(), devices.len());
 
-            // Verify each device can be found by ID
             for id in &added_ids {
                 prop_assert!(monitor.get_device(*id).is_some());
             }
         }
     }
 
-    // **Feature: ui-enhancements, Property 46: Device Event Ordering**
     proptest! {
         #[test]
         fn prop_device_event_ordering(devices in prop::collection::vec(arb_device(), 1..10)) {
@@ -755,13 +724,11 @@ mod property_tests {
 
             let mut added_ids = Vec::new();
 
-            // Add devices and collect IDs
             for device in &devices {
                 let id = monitor.add_device(device.clone());
                 added_ids.push(id);
             }
 
-            // Collect connect events
             let mut connect_events = Vec::new();
             while let Ok(event) = receiver.try_recv() {
                 if let DeviceEvent::Connected(_) = event {
@@ -769,12 +736,10 @@ mod property_tests {
                 }
             }
 
-            // Remove devices in order
             for id in &added_ids {
                 monitor.remove_device(*id);
             }
 
-            // Collect disconnect events
             let mut disconnect_events = Vec::new();
             while let Ok(event) = receiver.try_recv() {
                 if let DeviceEvent::Disconnected(_) = event {
@@ -782,11 +747,9 @@ mod property_tests {
                 }
             }
 
-            // Verify event counts match
             prop_assert_eq!(connect_events.len(), devices.len());
             prop_assert_eq!(disconnect_events.len(), devices.len());
 
-            // Verify disconnect events are in same order as added_ids
             for (i, event) in disconnect_events.iter().enumerate() {
                 if let DeviceEvent::Disconnected(id) = event {
                     prop_assert_eq!(*id, added_ids[i]);
@@ -795,7 +758,6 @@ mod property_tests {
         }
     }
 
-    // **Feature: ui-enhancements, Property 48: Device Space Accuracy**
     proptest! {
         #[test]
         fn prop_device_space_accuracy(
@@ -812,13 +774,10 @@ mod property_tests {
             )
             .with_space(total, free);
 
-            // Property: total_space >= free_space
             prop_assert!(device.total_space >= device.free_space);
 
-            // Property: used_space = total_space - free_space
             prop_assert_eq!(device.used_space(), device.total_space.saturating_sub(device.free_space));
 
-            // Property: usage_percentage is between 0 and 1
             let usage = device.usage_percentage();
             prop_assert!(usage >= 0.0 && usage <= 1.0);
         }

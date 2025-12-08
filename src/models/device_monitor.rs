@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
 
-/// Unique identifier for a device
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DeviceId(pub u64);
 
@@ -14,7 +14,7 @@ impl DeviceId {
     }
 }
 
-/// Type of storage device
+/
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeviceType {
     InternalDrive,
@@ -42,7 +42,7 @@ impl DeviceType {
     }
 }
 
-/// Represents a mounted storage device
+/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Device {
     pub id: DeviceId,
@@ -101,12 +101,12 @@ impl Device {
         self
     }
 
-    /// Calculate used space
+    /
     pub fn used_space(&self) -> u64 {
         self.total_space.saturating_sub(self.free_space)
     }
 
-    /// Calculate usage percentage (0.0 - 1.0)
+    /
     pub fn usage_percentage(&self) -> f64 {
         if self.total_space == 0 {
             0.0
@@ -115,7 +115,7 @@ impl Device {
         }
     }
 
-    /// Check if the device has a health warning or critical status
+    /
     pub fn has_health_warning(&self) -> bool {
         matches!(
             self.smart_status,
@@ -124,7 +124,7 @@ impl Device {
     }
 }
 
-/// WSL distribution information (Windows only)
+/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WslDistribution {
     pub name: String,
@@ -144,7 +144,7 @@ impl WslDistribution {
     }
 }
 
-/// Events emitted by the device monitor
+/
 #[derive(Debug, Clone, PartialEq)]
 pub enum DeviceEvent {
     Connected(Device),
@@ -154,7 +154,7 @@ pub enum DeviceEvent {
     WslStopped(String),
 }
 
-/// Health status indicator for SMART data
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HealthStatus {
     Good,
@@ -170,7 +170,7 @@ impl Default for HealthStatus {
 }
 
 impl HealthStatus {
-    /// Get the icon name for this health status
+    /
     pub fn icon_name(&self) -> &'static str {
         match self {
             HealthStatus::Good => "check",
@@ -180,17 +180,17 @@ impl HealthStatus {
         }
     }
 
-    /// Get the color for this health status (as hex RGB)
+    /
     pub fn color(&self) -> u32 {
         match self {
-            HealthStatus::Good => 0x3fb950,    // Green
-            HealthStatus::Warning => 0xd29922, // Yellow/Orange
-            HealthStatus::Critical => 0xf85149, // Red
-            HealthStatus::Unknown => 0x8b949e, // Gray
+            HealthStatus::Good => 0x3fb950,
+            HealthStatus::Warning => 0xd29922,
+            HealthStatus::Critical => 0xf85149,
+            HealthStatus::Unknown => 0x8b949e,
         }
     }
 
-    /// Get a human-readable description
+    /
     pub fn description(&self) -> &'static str {
         match self {
             HealthStatus::Good => "Good",
@@ -200,13 +200,13 @@ impl HealthStatus {
         }
     }
 
-    /// Check if this status requires user attention
+    /
     pub fn requires_attention(&self) -> bool {
         matches!(self, HealthStatus::Warning | HealthStatus::Critical)
     }
 }
 
-/// Well-known SMART attribute IDs
+/
 pub mod smart_attributes {
     pub const RAW_READ_ERROR_RATE: u8 = 1;
     pub const THROUGHPUT_PERFORMANCE: u8 = 2;
@@ -231,7 +231,7 @@ pub mod smart_attributes {
     pub const TOTAL_LBAS_READ: u8 = 242;
 }
 
-/// Individual SMART attribute
+/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SmartAttribute {
     pub id: u8,
@@ -254,12 +254,12 @@ impl SmartAttribute {
         }
     }
 
-    /// Check if this attribute is below its threshold (failing)
+    /
     pub fn is_failing(&self) -> bool {
         self.value > 0 && self.threshold > 0 && self.value <= self.threshold
     }
 
-    /// Check if this attribute is approaching its threshold (warning)
+    /
     pub fn is_warning(&self) -> bool {
         if self.threshold == 0 {
             return false;
@@ -268,7 +268,7 @@ impl SmartAttribute {
         self.value > self.threshold && self.value <= warning_threshold
     }
 
-    /// Get the attribute name from ID if not provided
+    /
     pub fn get_standard_name(id: u8) -> &'static str {
         match id {
             smart_attributes::RAW_READ_ERROR_RATE => "Raw Read Error Rate",
@@ -296,7 +296,7 @@ impl SmartAttribute {
     }
 }
 
-/// SMART health data for a storage device
+/
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SmartData {
     pub health_status: HealthStatus,
@@ -321,7 +321,7 @@ impl Default for SmartData {
 }
 
 impl SmartData {
-    /// Create SmartData from a list of attributes, extracting key metrics
+    /
     pub fn from_attributes(attributes: Vec<SmartAttribute>) -> Self {
         let mut data = SmartData {
             attributes: attributes.clone(),
@@ -358,9 +358,8 @@ impl SmartData {
         data
     }
 
-    /// Determine overall health status based on attributes
+    /
     pub fn determine_health_status(&self) -> HealthStatus {
-        // Check for critical conditions
         if let Some(reallocated) = self.reallocated_sectors {
             if reallocated > 100 {
                 return HealthStatus::Critical;
@@ -373,14 +372,12 @@ impl SmartData {
             }
         }
 
-        // Check for any failing attributes
         for attr in &self.attributes {
             if attr.is_failing() {
                 return HealthStatus::Critical;
             }
         }
 
-        // Check for warning conditions
         if let Some(reallocated) = self.reallocated_sectors {
             if reallocated > 0 {
                 return HealthStatus::Warning;
@@ -393,14 +390,12 @@ impl SmartData {
             }
         }
 
-        // Check for attributes approaching threshold
         for attr in &self.attributes {
             if attr.is_warning() {
                 return HealthStatus::Warning;
             }
         }
 
-        // Check temperature (warning if > 50°C, critical if > 60°C)
         if let Some(temp) = self.temperature_celsius {
             if temp > 60 {
                 return HealthStatus::Critical;
@@ -413,7 +408,7 @@ impl SmartData {
         HealthStatus::Good
     }
 
-    /// Get a human-readable summary of the health status
+    /
     pub fn health_summary(&self) -> String {
         match self.health_status {
             HealthStatus::Good => "Drive is healthy".to_string(),
@@ -445,13 +440,13 @@ impl SmartData {
         }
     }
 
-    /// Get an attribute by ID
+    /
     pub fn get_attribute(&self, id: u8) -> Option<&SmartAttribute> {
         self.attributes.iter().find(|a| a.id == id)
     }
 }
 
-/// Errors that can occur during device operations
+/
 #[derive(Debug, Error)]
 pub enum DeviceError {
     #[error("Device not found: {0:?}")]
@@ -472,7 +467,7 @@ pub enum DeviceError {
 
 pub type DeviceResult<T> = std::result::Result<T, DeviceError>;
 
-/// Device monitor for tracking connected storage devices
+/
 pub struct DeviceMonitor {
     devices: Vec<Device>,
     wsl_distributions: Vec<WslDistribution>,
@@ -501,51 +496,51 @@ impl DeviceMonitor {
         }
     }
 
-    /// Generate a new unique device ID
+    /
     fn next_device_id(&mut self) -> DeviceId {
         let id = DeviceId::new(self.next_id);
         self.next_id += 1;
         id
     }
 
-    /// Get all currently detected devices
+    /
     pub fn devices(&self) -> &[Device] {
         &self.devices
     }
 
-    /// Get all WSL distributions (Windows only)
+    /
     pub fn wsl_distributions(&self) -> &[WslDistribution] {
         &self.wsl_distributions
     }
 
-    /// Get mutable access to WSL distributions (Windows only)
+    /
     pub fn wsl_distributions_mut(&mut self) -> &mut Vec<WslDistribution> {
         &mut self.wsl_distributions
     }
 
-    /// Find a device by ID
+    /
     pub fn get_device(&self, id: DeviceId) -> Option<&Device> {
         self.devices.iter().find(|d| d.id == id)
     }
 
-    /// Find a device by path
+    /
     pub fn get_device_by_path(&self, path: &PathBuf) -> Option<&Device> {
         self.devices.iter().find(|d| &d.path == path)
     }
 
-    /// Subscribe to device events
+    /
     pub fn subscribe(&self) -> Option<flume::Receiver<DeviceEvent>> {
         self.event_receiver.clone()
     }
 
-    /// Send a device event to subscribers
+    /
     fn send_event(&self, event: DeviceEvent) {
         if let Some(sender) = &self.event_sender {
             let _ = sender.send(event);
         }
     }
 
-    /// Add a device to the monitor
+    /
     pub fn add_device(&mut self, mut device: Device) -> DeviceId {
         device.id = self.next_device_id();
         let id = device.id;
@@ -554,7 +549,7 @@ impl DeviceMonitor {
         id
     }
 
-    /// Remove a device from the monitor
+    /
     pub fn remove_device(&mut self, id: DeviceId) -> Option<Device> {
         if let Some(pos) = self.devices.iter().position(|d| d.id == id) {
             let device = self.devices.remove(pos);
@@ -565,7 +560,7 @@ impl DeviceMonitor {
         }
     }
 
-    /// Update a device's information
+    /
     pub fn update_device(&mut self, device: Device) {
         if let Some(existing) = self.devices.iter_mut().find(|d| d.id == device.id) {
             *existing = device.clone();
@@ -573,12 +568,12 @@ impl DeviceMonitor {
         }
     }
 
-    /// Check if monitoring is active
+    /
     pub fn is_monitoring(&self) -> bool {
         self.is_monitoring.load(Ordering::SeqCst)
     }
 
-    /// Start monitoring for device changes
+    /
     pub fn start_monitoring(&mut self) {
         if self.is_monitoring.load(Ordering::SeqCst) {
             return;
@@ -588,12 +583,12 @@ impl DeviceMonitor {
         self.enumerate_devices();
     }
 
-    /// Stop monitoring for device changes
+    /
     pub fn stop_monitoring(&mut self) {
         self.is_monitoring.store(false, Ordering::SeqCst);
     }
 
-    /// Enumerate all devices on the system
+    /
     pub fn enumerate_devices(&mut self) {
         self.devices.clear();
 
@@ -607,7 +602,7 @@ impl DeviceMonitor {
         self.enumerate_linux_devices();
     }
 
-    /// Refresh space information for all devices
+    /
     pub fn refresh_space_info(&mut self) {
         for device in &mut self.devices {
             if let Ok((total, free)) = get_disk_space(&device.path) {
@@ -618,7 +613,7 @@ impl DeviceMonitor {
     }
 }
 
-/// Get disk space for a path (cross-platform)
+/
 pub fn get_disk_space(path: &PathBuf) -> std::io::Result<(u64, u64)> {
     #[cfg(unix)]
     {

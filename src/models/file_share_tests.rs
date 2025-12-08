@@ -2,12 +2,12 @@ use super::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/// Generate a valid share name (alphanumeric, no special chars)
+/
 fn valid_share_name_strategy() -> impl Strategy<Value = String> {
     "[a-zA-Z][a-zA-Z0-9_]{0,30}".prop_map(|s| s)
 }
 
-/// Generate a valid path for testing
+/
 fn valid_path_strategy() -> impl Strategy<Value = PathBuf> {
     prop::collection::vec("[a-zA-Z0-9_]+", 1..4)
         .prop_map(|parts| {
@@ -20,11 +20,11 @@ fn valid_path_strategy() -> impl Strategy<Value = PathBuf> {
 }
 
 proptest! {
-    /// **Feature: advanced-device-management, Property 24: Share Status Tracking**
-    /// **Validates: Requirements 27.6**
-    /// 
-    /// *For any* folder that has been shared, `is_shared()` SHALL return true,
-    /// and after `remove_share()` it SHALL return false.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn test_share_status_tracking(
         share_name in valid_share_name_strategy(),
@@ -32,10 +32,8 @@ proptest! {
     ) {
         let mut manager = ShareManager::new();
 
-        // Initially, the path should not be shared
         prop_assert!(!manager.is_shared(&path), "Path should not be shared initially");
 
-        // Manually add a share to the internal tracking (simulating successful share creation)
         let share_info = ShareInfo {
             share_name: share_name.clone(),
             path: path.clone(),
@@ -46,25 +44,20 @@ proptest! {
         };
         manager.shares.insert(path.clone(), share_info);
 
-        // After adding, is_shared() should return true
         prop_assert!(manager.is_shared(&path), "Path should be shared after adding");
 
-        // Get share should return the share info
         let retrieved = manager.get_share(&path);
         prop_assert!(retrieved.is_some(), "get_share should return Some after adding");
         prop_assert_eq!(&retrieved.unwrap().share_name, &share_name, "Share name should match");
 
-        // Remove from internal tracking
         manager.shares.remove(&path);
 
-        // After removing, is_shared() should return false
         prop_assert!(!manager.is_shared(&path), "Path should not be shared after removal");
 
-        // Get share should return None
         prop_assert!(manager.get_share(&path).is_none(), "get_share should return None after removal");
     }
 
-    /// Test that share names with invalid characters are rejected during validation
+    /
     #[test]
     fn test_invalid_share_name_validation(
         invalid_char in prop::sample::select(vec!['\\', '/', ':', '*', '?', '"', '<', '>', '|']),
@@ -73,21 +66,19 @@ proptest! {
     ) {
         let invalid_name = format!("{}{}{}", prefix, invalid_char, suffix);
 
-        // Validate that the name contains invalid characters
         let has_invalid = invalid_name.contains(['\\', '/', ':', '*', '?', '"', '<', '>', '|']);
         prop_assert!(has_invalid, "Generated name should contain invalid character");
     }
 
-    /// Test that valid share names pass validation
+    /
     #[test]
     fn test_valid_share_name_validation(name in valid_share_name_strategy()) {
-        // Valid names should not contain any invalid characters
         let invalid_chars = ['\\', '/', ':', '*', '?', '"', '<', '>', '|'];
         let has_invalid = name.chars().any(|c| invalid_chars.contains(&c));
         prop_assert!(!has_invalid, "Valid share name should not contain invalid characters");
     }
 
-    /// Test that list_shares returns all tracked shares
+    /
     #[test]
     fn test_list_shares_completeness(
         shares in prop::collection::vec(
@@ -98,7 +89,6 @@ proptest! {
         let mut manager = ShareManager::new();
         let mut unique_paths = std::collections::HashSet::new();
 
-        // Add shares with unique paths
         for (name, path) in shares {
             if unique_paths.insert(path.clone()) {
                 let share_info = ShareInfo {
@@ -113,12 +103,10 @@ proptest! {
             }
         }
 
-        // list_shares should return exactly the number of unique shares
         let listed = manager.list_shares();
         prop_assert_eq!(listed.len(), unique_paths.len(),
             "list_shares should return all tracked shares");
 
-        // Each listed share should be retrievable via get_share
         for share in listed {
             prop_assert!(manager.is_shared(&share.path),
                 "Listed share should be marked as shared");

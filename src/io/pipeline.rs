@@ -4,13 +4,13 @@ use flume::{Receiver, Sender};
 
 use crate::models::FileEntry;
 
-/// Default batch size threshold (number of items)
+/
 pub const DEFAULT_BATCH_SIZE: usize = 100;
 
-/// Default time threshold for flushing batches (16ms for 60fps)
+/
 pub const DEFAULT_FLUSH_INTERVAL: Duration = Duration::from_millis(16);
 
-/// Configuration for the batch aggregator
+/
 #[derive(Debug, Clone)]
 pub struct BatchConfig {
     pub batch_size: usize,
@@ -26,14 +26,14 @@ impl Default for BatchConfig {
     }
 }
 
-/// Batch aggregator that collects FileEntry items and delivers them in batches.
-///
-/// Batches are flushed when either:
-/// - The batch reaches `batch_size` items (default: 100)
-/// - The `flush_interval` has elapsed since the last flush (default: 16ms)
-///
-/// This ensures the UI receives updates at a reasonable rate without being
-/// overwhelmed by individual item updates.
+/
+/
+/
+/
+/
+/
+/
+/
 pub struct BatchAggregator {
     config: BatchConfig,
     input: Receiver<FileEntry>,
@@ -53,15 +53,14 @@ impl BatchAggregator {
         }
     }
 
-    /// Runs the batch aggregation loop until the input channel is closed.
-    /// Returns the total number of items processed.
+    /
+    /
     pub fn run(self) -> usize {
         let mut batch = Vec::with_capacity(self.config.batch_size);
         let mut last_flush = Instant::now();
         let mut total_items = 0;
 
         loop {
-            // Try to receive with a timeout based on remaining flush interval
             let elapsed = last_flush.elapsed();
             let remaining = self.config.flush_interval.saturating_sub(elapsed);
 
@@ -70,7 +69,6 @@ impl BatchAggregator {
                     batch.push(entry);
                     total_items += 1;
 
-                    // Flush if batch is full
                     if batch.len() >= self.config.batch_size {
                         if self.flush_batch(&mut batch).is_err() {
                             break;
@@ -79,7 +77,6 @@ impl BatchAggregator {
                     }
                 }
                 Err(flume::RecvTimeoutError::Timeout) => {
-                    // Time-based flush
                     if !batch.is_empty() {
                         if self.flush_batch(&mut batch).is_err() {
                             break;
@@ -88,7 +85,6 @@ impl BatchAggregator {
                     last_flush = Instant::now();
                 }
                 Err(flume::RecvTimeoutError::Disconnected) => {
-                    // Input channel closed, flush remaining items
                     if !batch.is_empty() {
                         let _ = self.flush_batch(&mut batch);
                     }
@@ -110,12 +106,12 @@ impl BatchAggregator {
     }
 }
 
-/// Creates a batch aggregation pipeline.
-///
-/// Returns a tuple of:
-/// - Sender for individual FileEntry items
-/// - Receiver for batched Vec<FileEntry>
-/// - JoinHandle for the aggregator thread
+/
+/
+/
+/
+/
+/
 pub fn create_batch_pipeline(
     config: BatchConfig,
 ) -> (
@@ -132,9 +128,9 @@ pub fn create_batch_pipeline(
     (entry_tx, batch_rx, handle)
 }
 
-/// Calculates the maximum number of batches for N items.
-///
-/// Formula: ceil(N / batch_size) + 1 (accounting for time-based flushes)
+/
+/
+/
 pub fn max_batches_for_items(item_count: usize, batch_size: usize) -> usize {
     if batch_size == 0 {
         return 0;
@@ -159,7 +155,6 @@ mod tests {
 
         let (entry_tx, batch_rx, handle) = create_batch_pipeline(config);
 
-        // Send exactly 10 items (should trigger one batch)
         for i in 0..10 {
             let entry = FileEntry::new(
                 format!("file_{}.txt", i),
@@ -171,7 +166,6 @@ mod tests {
             entry_tx.send(entry).unwrap();
         }
 
-        // Should receive a batch of 10
         let batch = batch_rx.recv_timeout(Duration::from_millis(100)).unwrap();
         assert_eq!(batch.len(), 10);
 
@@ -189,7 +183,6 @@ mod tests {
 
         let (entry_tx, batch_rx, handle) = create_batch_pipeline(config);
 
-        // Send 5 items (less than batch size)
         for i in 0..5 {
             let entry = FileEntry::new(
                 format!("file_{}.txt", i),
@@ -201,10 +194,8 @@ mod tests {
             entry_tx.send(entry).unwrap();
         }
 
-        // Wait for time-based flush
         thread::sleep(Duration::from_millis(100));
 
-        // Should receive a batch of 5 due to time threshold
         let batch = batch_rx.recv_timeout(Duration::from_millis(100)).unwrap();
         assert_eq!(batch.len(), 5);
 
@@ -233,10 +224,8 @@ mod tests {
             entry_tx.send(entry).unwrap();
         }
 
-        // Close the sender to trigger final flush
         drop(entry_tx);
 
-        // Should receive remaining items
         let batch = batch_rx.recv_timeout(Duration::from_millis(100)).unwrap();
         assert_eq!(batch.len(), 7);
 
@@ -246,19 +235,14 @@ mod tests {
 
     #[test]
     fn test_max_batches_calculation() {
-        // 100 items with batch size 100 = 1 batch + 1 potential time flush = 2
         assert_eq!(max_batches_for_items(100, 100), 2);
 
-        // 150 items with batch size 100 = 2 batches + 1 = 3
         assert_eq!(max_batches_for_items(150, 100), 3);
 
-        // 0 items = 0 + 1 = 1
         assert_eq!(max_batches_for_items(0, 100), 1);
 
-        // 99 items with batch size 100 = 1 + 1 = 2
         assert_eq!(max_batches_for_items(99, 100), 2);
 
-        // Edge case: batch size 0
         assert_eq!(max_batches_for_items(100, 0), 0);
     }
 
@@ -271,7 +255,6 @@ mod tests {
 
         let (entry_tx, batch_rx, handle) = create_batch_pipeline(config);
 
-        // Send 25 items (should produce 2 full batches + 1 partial)
         for i in 0..25 {
             let entry = FileEntry::new(
                 format!("file_{}.txt", i),
@@ -283,18 +266,14 @@ mod tests {
             entry_tx.send(entry).unwrap();
         }
 
-        // First batch of 10
         let batch1 = batch_rx.recv_timeout(Duration::from_millis(100)).unwrap();
         assert_eq!(batch1.len(), 10);
 
-        // Second batch of 10
         let batch2 = batch_rx.recv_timeout(Duration::from_millis(100)).unwrap();
         assert_eq!(batch2.len(), 10);
 
-        // Close sender to flush remaining
         drop(entry_tx);
 
-        // Final batch of 5
         let batch3 = batch_rx.recv_timeout(Duration::from_millis(100)).unwrap();
         assert_eq!(batch3.len(), 5);
 
@@ -302,7 +281,7 @@ mod tests {
         assert_eq!(total, 25);
     }
 
-    /// Helper to create a FileEntry for testing
+    /
     fn make_test_entry(index: usize) -> FileEntry {
         FileEntry::new(
             format!("file_{}.txt", index),
@@ -314,18 +293,17 @@ mod tests {
     }
 
     proptest! {
-        /// **Feature: file-explorer-core, Property 2: Batch Size Bounds**
-        /// **Validates: Requirements 1.3, 3.3**
-        ///
-        /// For any stream of N file entries from directory traversal, the number of
-        /// batch updates delivered to the UI SHALL be at most ceil(N / 100) + 1
-        /// (accounting for time-based flushes).
+        /
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_batch_size_bounds(
             item_count in 0usize..1000,
             batch_size in 1usize..200
         ) {
-            // Use a very long flush interval to test size-based batching only
             let config = BatchConfig {
                 batch_size,
                 flush_interval: Duration::from_secs(60),
@@ -337,10 +315,8 @@ mod tests {
                 entry_tx.send(make_test_entry(i)).unwrap();
             }
 
-            // Close sender to trigger final flush
             drop(entry_tx);
 
-            // Collect all batches
             let mut batch_count = 0;
             let mut total_items = 0;
             while let Ok(batch) = batch_rx.recv_timeout(Duration::from_millis(100)) {
@@ -348,13 +324,11 @@ mod tests {
                 total_items += batch.len();
             }
 
-            // Wait for aggregator to finish
             let processed = handle.join().unwrap();
 
             prop_assert_eq!(processed, item_count);
             prop_assert_eq!(total_items, item_count);
 
-            // Verify batch count is within bounds: ceil(N / batch_size) + 1
             let max_batches = max_batches_for_items(item_count, batch_size);
             prop_assert!(
                 batch_count <= max_batches,

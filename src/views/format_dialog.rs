@@ -1,7 +1,7 @@
 use crate::models::{Device, DeviceId, FileSystemType, FormatOptions};
 use gpui::*;
 
-/// Actions for the format dialog
+/
 #[derive(Clone, PartialEq)]
 pub enum FormatDialogAction {
     Format,
@@ -12,7 +12,7 @@ pub enum FormatDialogAction {
     CompressionChanged(bool),
 }
 
-/// State for the format dialog
+/
 pub struct FormatDialog {
     device: Device,
     filesystem: FileSystemType,
@@ -63,7 +63,7 @@ impl FormatDialog {
     }
 
 
-    /// Build the format options from current state
+    /
     pub fn build_options(&self) -> FormatOptions {
         FormatOptions {
             filesystem: self.filesystem,
@@ -73,11 +73,10 @@ impl FormatDialog {
         }
     }
 
-    /// Validate the volume label against filesystem constraints
+    /
     pub fn validate_label(&self) -> Result<(), String> {
         let label = &self.label;
         
-        // Check label length based on filesystem
         let max_len = match self.filesystem {
             FileSystemType::Fat32 => 11,
             FileSystemType::ExFat => 11,
@@ -98,10 +97,8 @@ impl FormatDialog {
             ));
         }
 
-        // Check for invalid characters based on filesystem
         match self.filesystem {
             FileSystemType::Fat32 | FileSystemType::ExFat => {
-                // FAT/exFAT: no special characters
                 let invalid_chars = ['*', '?', '<', '>', '|', '"', ':', '/', '\\'];
                 for c in invalid_chars {
                     if label.contains(c) {
@@ -110,7 +107,6 @@ impl FormatDialog {
                 }
             }
             FileSystemType::Ntfs | FileSystemType::ReFS => {
-                // NTFS/ReFS: similar restrictions
                 let invalid_chars = ['*', '?', '<', '>', '|', '"', '/', '\\'];
                 for c in invalid_chars {
                     if label.contains(c) {
@@ -119,7 +115,6 @@ impl FormatDialog {
                 }
             }
             _ => {
-                // Unix filesystems: generally more permissive
                 if label.contains('/') {
                     return Err("Label cannot contain '/'".to_string());
                 }
@@ -129,12 +124,12 @@ impl FormatDialog {
         Ok(())
     }
 
-    /// Validate all inputs
+    /
     pub fn validate(&self) -> Result<(), String> {
         self.validate_label()
     }
 
-    /// Request format (shows confirmation first)
+    /
     pub fn request_format(&mut self) {
         if let Err(msg) = self.validate() {
             self.error_message = Some(msg);
@@ -144,7 +139,7 @@ impl FormatDialog {
         self.show_confirmation = true;
     }
 
-    /// Confirm and execute format
+    /
     pub fn confirm_format(&mut self) {
         self.show_confirmation = false;
         self.is_formatting = true;
@@ -156,49 +151,47 @@ impl FormatDialog {
         }
     }
 
-    /// Cancel confirmation
+    /
     pub fn cancel_confirmation(&mut self) {
         self.show_confirmation = false;
     }
 
-    /// Handle cancel action
+    /
     pub fn handle_cancel(&self) {
         if let Some(callback) = &self.on_cancel {
             callback();
         }
     }
 
-    /// Set filesystem type
+    /
     pub fn set_filesystem(&mut self, filesystem: FileSystemType) {
         self.filesystem = filesystem;
         self.error_message = None;
         
-        // Disable compression for non-NTFS filesystems
         if filesystem != FileSystemType::Ntfs {
             self.enable_compression = false;
         }
     }
 
-    /// Set volume label
+    /
     pub fn set_label(&mut self, label: String) {
         self.label = label;
         self.error_message = None;
     }
 
-    /// Set quick format option
+    /
     pub fn set_quick_format(&mut self, quick: bool) {
         self.quick_format = quick;
     }
 
-    /// Set compression option
+    /
     pub fn set_compression(&mut self, enabled: bool) {
-        // Only allow compression for NTFS
         if self.filesystem == FileSystemType::Ntfs {
             self.enable_compression = enabled;
         }
     }
 
-    /// Set formatting complete (called after format finishes)
+    /
     pub fn set_format_complete(&mut self, success: bool, error: Option<String>) {
         self.is_formatting = false;
         if !success {
@@ -206,7 +199,6 @@ impl FormatDialog {
         }
     }
 
-    // Getters
     pub fn device(&self) -> &Device {
         &self.device
     }
@@ -247,12 +239,12 @@ impl FormatDialog {
         self.show_confirmation
     }
 
-    /// Get compatibility info for current filesystem
+    /
     pub fn compatibility_info(&self) -> &'static str {
         self.filesystem.compatibility_info()
     }
 
-    /// Get device info summary
+    /
     pub fn device_info_summary(&self) -> String {
         let size = format_size(self.device.total_space);
         format!(
@@ -263,7 +255,7 @@ impl FormatDialog {
         )
     }
 
-    /// Get warning message for format operation
+    /
     pub fn format_warning(&self) -> String {
         format!(
             "WARNING: All data on \"{}\" will be permanently erased. This action cannot be undone.",
@@ -272,7 +264,7 @@ impl FormatDialog {
     }
 }
 
-/// Format bytes to human-readable size
+/
 fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -294,7 +286,6 @@ fn format_size(bytes: u64) -> String {
 
 impl Default for FormatDialog {
     fn default() -> Self {
-        // Create a dummy device for default - should not be used in practice
         let dummy_device = Device::new(
             DeviceId::new(0),
             "Unknown".to_string(),
@@ -304,5 +295,3 @@ impl Default for FormatDialog {
         Self::new(dummy_device, vec![FileSystemType::ExFat])
     }
 }
-
-

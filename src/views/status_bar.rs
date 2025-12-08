@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, FileEntry, ViewMode};
 
-/// State for the status bar display
+/
 #[derive(Debug, Clone)]
 pub struct StatusBarState {
     pub total_items: usize,
@@ -38,7 +38,7 @@ impl StatusBarState {
         Self::default()
     }
 
-    /// Update state from file list entries and selection
+    /
     pub fn update_from_entries(&mut self, entries: &[FileEntry], selected_indices: &[usize]) {
         self.total_items = entries.len();
         self.selected_count = selected_indices.len();
@@ -49,7 +49,7 @@ impl StatusBarState {
             .sum();
     }
 
-    /// Update state from file list with single selection
+    /
     pub fn update_from_file_list(&mut self, entries: &[FileEntry], selected_index: Option<usize>) {
         self.total_items = entries.len();
         if let Some(idx) = selected_index {
@@ -61,7 +61,7 @@ impl StatusBarState {
         }
     }
 
-    /// Detect git branch from the given directory path
+    /
     pub fn detect_git_branch(&mut self, path: &Path) {
         self.git_branch = detect_git_branch(path);
     }
@@ -79,20 +79,17 @@ impl StatusBarState {
     }
 }
 
-/// Detect the current git branch for a directory
+/
 pub fn detect_git_branch(path: &Path) -> Option<String> {
-    // Walk up the directory tree to find .git
     let mut current = Some(path);
 
     while let Some(dir) = current {
         let git_dir = dir.join(".git");
 
         if git_dir.is_dir() {
-            // Found .git directory, read HEAD
             let head_path = git_dir.join("HEAD");
             if let Ok(content) = std::fs::read_to_string(&head_path) {
                 let content = content.trim();
-                // HEAD format: "ref: refs/heads/branch-name" or a commit hash
                 if let Some(branch) = content.strip_prefix("ref: refs/heads/") {
                     return Some(branch.to_string());
                 } else if content.len() >= 7 {
@@ -101,7 +98,6 @@ pub fn detect_git_branch(path: &Path) -> Option<String> {
             }
             return None;
         } else if git_dir.is_file() {
-            // .git file (worktree) - read the gitdir path
             if let Ok(content) = std::fs::read_to_string(&git_dir) {
                 if let Some(gitdir) = content.trim().strip_prefix("gitdir: ") {
                     let head_path = Path::new(gitdir).join("HEAD");
@@ -121,7 +117,7 @@ pub fn detect_git_branch(path: &Path) -> Option<String> {
     None
 }
 
-/// Format file size for display
+/
 pub fn format_size(size: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -141,14 +137,14 @@ pub fn format_size(size: u64) -> String {
     }
 }
 
-/// Actions that can be triggered from the status bar
+/
 #[derive(Debug, Clone, PartialEq)]
 pub enum StatusBarAction {
     ToggleTerminal,
     ToggleViewMode,
 }
 
-/// Status bar view component
+/
 pub struct StatusBarView {
     state: StatusBarState,
     focus_handle: FocusHandle,
@@ -172,18 +168,18 @@ impl StatusBarView {
         &mut self.state
     }
 
-    /// Take any pending action (for parent to handle)
+    /
     pub fn take_pending_action(&mut self) -> Option<StatusBarAction> {
         self.pending_action.take()
     }
 
-    /// Update the status bar state
+    /
     pub fn update_state(&mut self, state: StatusBarState, cx: &mut Context<Self>) {
         self.state = state;
         cx.notify();
     }
 
-    /// Update from file entries
+    /
     pub fn update_from_entries(
         &mut self,
         entries: &[FileEntry],
@@ -194,19 +190,19 @@ impl StatusBarView {
         cx.notify();
     }
 
-    /// Set the current directory for git detection
+    /
     pub fn set_current_directory(&mut self, path: &Path, cx: &mut Context<Self>) {
         self.state.detect_git_branch(path);
         cx.notify();
     }
 
-    /// Set view mode
+    /
     pub fn set_view_mode(&mut self, mode: ViewMode, cx: &mut Context<Self>) {
         self.state.set_view_mode(mode);
         cx.notify();
     }
 
-    /// Set terminal open state
+    /
     pub fn set_terminal_open(&mut self, is_open: bool, cx: &mut Context<Self>) {
         self.state.set_terminal_open(is_open);
         cx.notify();
@@ -249,7 +245,6 @@ impl Render for StatusBarView {
             .px_3()
             .text_xs()
             .child(
-                // Left section: Item counts
                 div()
                     .flex()
                     .items_center()
@@ -288,12 +283,10 @@ impl Render for StatusBarView {
                     }),
             )
             .child(
-                // Right section: Actions and git branch
                 div()
                     .flex()
                     .items_center()
                     .gap_2()
-                    // Git branch (if available)
                     .when_some(git_branch, |el, branch| {
                         el.child(
                             div()
@@ -311,7 +304,6 @@ impl Render for StatusBarView {
                         )
                         .child(div().h(px(12.0)).w(px(1.0)).bg(border_color).mx_1())
                     })
-                    // Terminal toggle
                     .child(
                         div()
                             .id("status-terminal-toggle")
@@ -348,7 +340,6 @@ impl Render for StatusBarView {
                             ),
                     )
                     .child(div().h(px(12.0)).w(px(1.0)).bg(border_color))
-                    // View mode toggle
                     .child(
                         div()
                             .id("status-view-toggle")
@@ -517,16 +508,12 @@ mod tests {
 
     #[test]
     fn test_detect_git_branch_in_git_repo() {
-        // Test with current directory (which should be a git repo)
         let current_dir = std::env::current_dir().unwrap();
         let branch = detect_git_branch(&current_dir);
 
-        // We expect to find a branch since we're in a git repo
-        // The branch name should be non-empty if found
         if let Some(ref b) = branch {
             assert!(!b.is_empty(), "Branch name should not be empty");
         }
-        // Note: branch could be None if not in a git repo, which is also valid
     }
 
     #[test]
@@ -534,12 +521,10 @@ mod tests {
         let temp_dir = std::env::temp_dir();
         let branch = detect_git_branch(&temp_dir);
 
-        // Temp dir is unlikely to be a git repo (unless nested in one)
-        // This test mainly verifies the function doesn't panic
         let _ = branch;
     }
 
-    /// Generate arbitrary file entries for property testing
+    /
     fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
         ("[a-zA-Z0-9_]{1,20}", prop::bool::ANY, 0u64..10_000_000_000).prop_map(
             |(name, is_dir, size)| {
@@ -549,7 +534,7 @@ mod tests {
         )
     }
 
-    /// Generate a vector of file entries
+    /
     fn arb_entries() -> impl Strategy<Value = Vec<FileEntry>> {
         prop::collection::vec(arb_file_entry(), 0..100)
     }
@@ -557,11 +542,11 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
-        /// **Feature: ui-enhancements, Property 31: Status Bar Item Count**
-        /// **Validates: Requirements 10.2**
-        ///
-        /// *For any* list of file entries, when the status bar state is updated,
-        /// the total_items count SHALL equal the number of entries in the list.
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_status_bar_item_count(entries in arb_entries()) {
             let mut state = StatusBarState::new();
@@ -575,11 +560,11 @@ mod tests {
             );
         }
 
-        /// **Feature: ui-enhancements, Property 31b: Status Bar Selected Count**
-        /// **Validates: Requirements 10.2**
-        ///
-        /// *For any* list of file entries and valid selection index,
-        /// the selected_count SHALL be 1 when an item is selected, 0 otherwise.
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_status_bar_selected_count(
             entries in arb_entries(),
@@ -587,11 +572,9 @@ mod tests {
         ) {
             let mut state = StatusBarState::new();
 
-            // Test with no selection
             state.update_from_file_list(&entries, None);
             prop_assert_eq!(state.selected_count, 0, "No selection should have count 0");
 
-            // Test with valid selection
             if !entries.is_empty() {
                 let valid_index = selection_offset % entries.len();
                 state.update_from_file_list(&entries, Some(valid_index));
@@ -602,11 +585,11 @@ mod tests {
             }
         }
 
-        /// **Feature: ui-enhancements, Property 31c: Status Bar Multiple Selection Count**
-        /// **Validates: Requirements 10.2**
-        ///
-        /// *For any* list of file entries and selection indices,
-        /// the selected_count SHALL equal the number of valid selected indices.
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_status_bar_multiple_selection_count(
             entries in arb_entries(),
@@ -614,7 +597,6 @@ mod tests {
         ) {
             let mut state = StatusBarState::new();
 
-            // Filter to valid indices and deduplicate
             let valid_indices: Vec<usize> = selection_indices
                 .into_iter()
                 .filter(|&idx| idx < entries.len())
@@ -632,11 +614,11 @@ mod tests {
             );
         }
 
-        /// **Feature: ui-enhancements, Property 32: Status Bar Selection Size**
-        /// **Validates: Requirements 10.3**
-        ///
-        /// *For any* list of file entries and selection indices,
-        /// the selected_size SHALL equal the sum of sizes of all selected entries.
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_status_bar_selection_size(
             entries in arb_entries(),
@@ -644,7 +626,6 @@ mod tests {
         ) {
             let mut state = StatusBarState::new();
 
-            // Filter to valid indices and deduplicate
             let valid_indices: Vec<usize> = selection_indices
                 .into_iter()
                 .filter(|&idx| idx < entries.len())
@@ -654,7 +635,6 @@ mod tests {
 
             state.update_from_entries(&entries, &valid_indices);
 
-            // Calculate expected size
             let expected_size: u64 = valid_indices
                 .iter()
                 .filter_map(|&idx| entries.get(idx))
@@ -669,11 +649,11 @@ mod tests {
             );
         }
 
-        /// **Feature: ui-enhancements, Property 32b: Status Bar Single Selection Size**
-        /// **Validates: Requirements 10.3**
-        ///
-        /// *For any* list of file entries and valid selection index,
-        /// the selected_size SHALL equal the size of the selected entry.
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_status_bar_single_selection_size(
             entries in arb_entries(),
@@ -681,11 +661,9 @@ mod tests {
         ) {
             let mut state = StatusBarState::new();
 
-            // Test with no selection
             state.update_from_file_list(&entries, None);
             prop_assert_eq!(state.selected_size, 0, "No selection should have size 0");
 
-            // Test with valid selection
             if !entries.is_empty() {
                 let valid_index = selection_offset % entries.len();
                 state.update_from_file_list(&entries, Some(valid_index));

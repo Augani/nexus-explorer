@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use flume::{Receiver, Sender};
 
-/// Clipboard operation type
+/
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClipboardOperation {
     Copy { paths: Vec<PathBuf> },
@@ -30,7 +30,7 @@ impl ClipboardOperation {
     }
 }
 
-/// Progress information for paste operations
+/
 #[derive(Debug, Clone, Default)]
 pub struct PasteProgress {
     pub current_file: PathBuf,
@@ -69,7 +69,7 @@ impl PasteProgress {
 }
 
 
-/// Conflict resolution options for paste operations
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConflictResolution {
     Skip,
@@ -79,7 +79,7 @@ pub enum ConflictResolution {
     ReplaceIfLarger,
 }
 
-/// Result of a paste operation
+/
 #[derive(Debug, Clone)]
 pub struct PasteResult {
     pub successful_files: Vec<PathBuf>,
@@ -115,7 +115,7 @@ impl Default for PasteResult {
     }
 }
 
-/// Clipboard entry for history tracking
+/
 #[derive(Debug, Clone)]
 pub struct ClipboardEntry {
     pub operation: ClipboardOperation,
@@ -131,7 +131,7 @@ impl ClipboardEntry {
     }
 }
 
-/// Cancellation token for paste operations
+/
 #[derive(Debug, Clone)]
 pub struct PasteCancellationToken {
     cancelled: Arc<AtomicBool>,
@@ -159,7 +159,7 @@ impl Default for PasteCancellationToken {
     }
 }
 
-/// Progress update messages for paste operations
+/
 #[derive(Debug, Clone)]
 pub enum PasteProgressUpdate {
     Started { total_files: usize, total_bytes: u64 },
@@ -173,11 +173,11 @@ pub enum PasteProgressUpdate {
     ConflictDetected { source: PathBuf, destination: PathBuf },
 }
 
-/// Maximum clipboard history size
+/
 const MAX_CLIPBOARD_HISTORY: usize = 10;
 
 
-/// Manages clipboard operations with progress tracking
+/
 pub struct ClipboardManager {
     operation: Option<ClipboardOperation>,
     history: VecDeque<ClipboardEntry>,
@@ -197,20 +197,19 @@ impl ClipboardManager {
         }
     }
 
-    /// Copy files to clipboard
+    /
     pub fn copy(&mut self, paths: Vec<PathBuf>) {
         let operation = ClipboardOperation::Copy { paths };
         self.set_operation(operation);
     }
 
-    /// Cut files to clipboard
+    /
     pub fn cut(&mut self, paths: Vec<PathBuf>) {
         let operation = ClipboardOperation::Cut { paths };
         self.set_operation(operation);
     }
 
     fn set_operation(&mut self, operation: ClipboardOperation) {
-        // Add current operation to history before replacing
         if let Some(current) = self.operation.take() {
             self.history.push_front(ClipboardEntry::new(current));
             while self.history.len() > MAX_CLIPBOARD_HISTORY {
@@ -220,32 +219,32 @@ impl ClipboardManager {
         self.operation = Some(operation);
     }
 
-    /// Check if clipboard has content
+    /
     pub fn has_content(&self) -> bool {
         self.operation.is_some()
     }
 
-    /// Get clipboard operation type
+    /
     pub fn operation_type(&self) -> Option<&ClipboardOperation> {
         self.operation.as_ref()
     }
 
-    /// Get the paths in the clipboard
+    /
     pub fn paths(&self) -> Option<&[PathBuf]> {
         self.operation.as_ref().map(|op| op.paths())
     }
 
-    /// Check if the current operation is a cut
+    /
     pub fn is_cut(&self) -> bool {
         self.operation.as_ref().map_or(false, |op| op.is_cut())
     }
 
-    /// Check if the current operation is a copy
+    /
     pub fn is_copy(&self) -> bool {
         self.operation.as_ref().map_or(false, |op| op.is_copy())
     }
 
-    /// Clear the clipboard
+    /
     pub fn clear(&mut self) {
         if let Some(current) = self.operation.take() {
             self.history.push_front(ClipboardEntry::new(current));
@@ -255,19 +254,19 @@ impl ClipboardManager {
         }
     }
 
-    /// Get clipboard history
+    /
     pub fn history(&self) -> &VecDeque<ClipboardEntry> {
         &self.history
     }
 
-    /// Check if a path is in the clipboard (for visual feedback on cut items)
+    /
     pub fn contains_path(&self, path: &PathBuf) -> bool {
         self.operation
             .as_ref()
             .map_or(false, |op| op.paths().contains(path))
     }
 
-    /// Check if a path is cut (for reduced opacity display)
+    /
     pub fn is_path_cut(&self, path: &PathBuf) -> bool {
         match &self.operation {
             Some(ClipboardOperation::Cut { paths }) => paths.contains(path),
@@ -275,7 +274,7 @@ impl ClipboardManager {
         }
     }
 
-    /// Setup progress channels for paste operation
+    /
     pub fn setup_progress_channels(&mut self) -> Receiver<PasteProgressUpdate> {
         let (tx, rx) = flume::unbounded();
         self.progress_sender = Some(tx);
@@ -283,42 +282,41 @@ impl ClipboardManager {
         rx
     }
 
-    /// Get progress sender for paste operation
+    /
     pub fn progress_sender(&self) -> Option<Sender<PasteProgressUpdate>> {
         self.progress_sender.clone()
     }
 
-    /// Start a paste operation and return cancellation token
+    /
     pub fn start_paste(&mut self) -> PasteCancellationToken {
         let token = PasteCancellationToken::new();
         self.active_paste = Some(token.clone());
         token
     }
 
-    /// Cancel the active paste operation
+    /
     pub fn cancel_paste(&mut self) {
         if let Some(token) = &self.active_paste {
             token.cancel();
         }
     }
 
-    /// Check if a paste operation is active
+    /
     pub fn is_paste_active(&self) -> bool {
         self.active_paste
             .as_ref()
             .map_or(false, |t| !t.is_cancelled())
     }
 
-    /// Complete the paste operation (clears cut items from clipboard)
+    /
     pub fn complete_paste(&mut self, was_cut: bool) {
         self.active_paste = None;
         if was_cut {
-            // Clear clipboard after successful cut-paste
             self.operation = None;
         }
     }
 
-    /// Get the number of items in clipboard
+    /
     pub fn item_count(&self) -> usize {
         self.operation.as_ref().map_or(0, |op| op.paths().len())
     }
@@ -331,7 +329,7 @@ impl Default for ClipboardManager {
 }
 
 
-/// Paste executor for handling file copy/move operations with progress
+/
 pub struct PasteExecutor {
     cancellation_token: PasteCancellationToken,
     progress_sender: Sender<PasteProgressUpdate>,
@@ -348,7 +346,7 @@ impl PasteExecutor {
         }
     }
 
-    /// Execute paste operation with progress tracking
+    /
     pub fn execute(
         &self,
         sources: &[PathBuf],
@@ -359,7 +357,6 @@ impl PasteExecutor {
         let start_time = Instant::now();
         let mut result = PasteResult::new();
 
-        // Calculate total size and file count
         let (total_files, total_bytes) = self.calculate_totals(sources);
         
         let _ = self.progress_sender.send(PasteProgressUpdate::Started {
@@ -382,7 +379,6 @@ impl PasteExecutor {
 
             let dest_path = self.compute_destination(source, destination);
 
-            // Check for conflicts
             if dest_path.exists() {
                 let _ = self.progress_sender.send(PasteProgressUpdate::ConflictDetected {
                     source: source.clone(),
@@ -401,7 +397,6 @@ impl PasteExecutor {
                         continue;
                     }
                     ConflictResolution::KeepBoth => {
-                        // Generate unique name
                         let unique_dest = self.generate_unique_name(&dest_path);
                         match self.copy_with_progress(
                             source,
@@ -426,7 +421,6 @@ impl PasteExecutor {
                     ConflictResolution::Replace
                     | ConflictResolution::ReplaceIfNewer
                     | ConflictResolution::ReplaceIfLarger => {
-                        // Check conditions for conditional replacements
                         let should_replace = match resolution {
                             ConflictResolution::ReplaceIfNewer => {
                                 self.is_source_newer(source, &dest_path)
@@ -438,7 +432,6 @@ impl PasteExecutor {
                         };
 
                         if should_replace {
-                            // Remove existing file first
                             if dest_path.is_dir() {
                                 let _ = std::fs::remove_dir_all(&dest_path);
                             } else {
@@ -474,7 +467,6 @@ impl PasteExecutor {
                     }
                 }
             } else {
-                // No conflict, proceed with copy
                 match self.copy_with_progress(
                     source,
                     &dest_path,
@@ -502,7 +494,6 @@ impl PasteExecutor {
             });
         }
 
-        // If this was a cut operation and successful, delete source files
         if is_cut && result.failed_files.is_empty() {
             for source in sources {
                 if !result.skipped_files.contains(source) {
@@ -529,7 +520,6 @@ impl PasteExecutor {
 
         for source in sources {
             if source.is_dir() {
-                // Use recursive directory traversal
                 self.count_dir_contents(source, &mut total_files, &mut total_bytes);
             } else if let Ok(meta) = source.metadata() {
                 total_files += 1;
@@ -588,7 +578,7 @@ impl PasteExecutor {
         
         match (source_time, dest_time) {
             (Some(s), Some(d)) => s > d,
-            _ => true, // Default to replacing if we can't determine
+            _ => true,
         }
     }
 
@@ -627,7 +617,6 @@ impl PasteExecutor {
     ) -> Result<u64, String> {
         use std::io::{Read, Write};
 
-        // Ensure parent directory exists
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("Failed to create directory: {}", e))?;
@@ -645,12 +634,11 @@ impl PasteExecutor {
         let mut dst_file = std::fs::File::create(dest)
             .map_err(|e| format!("Failed to create destination: {}", e))?;
 
-        let mut buffer = vec![0u8; 64 * 1024]; // 64KB buffer
+        let mut buffer = vec![0u8; 64 * 1024];
         let mut file_bytes_copied = 0u64;
 
         loop {
             if self.cancellation_token.is_cancelled() {
-                // Clean up partial file
                 drop(dst_file);
                 let _ = std::fs::remove_file(dest);
                 return Err("Operation cancelled".to_string());
@@ -727,7 +715,7 @@ impl PasteExecutor {
     }
 }
 
-/// Tracks transfer speed for ETA calculation
+/
 struct SpeedTracker {
     start_time: Instant,
     bytes_transferred: u64,
@@ -749,7 +737,6 @@ impl SpeedTracker {
         
         self.samples.push_back((now, bytes));
         
-        // Keep only last 10 samples for moving average
         while self.samples.len() > 10 {
             self.samples.pop_front();
         }

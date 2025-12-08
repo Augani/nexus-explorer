@@ -84,7 +84,6 @@ fn test_encrypted_volume_manager_creation() {
     let manager = EncryptedVolumeManager::new();
     let _default_manager = EncryptedVolumeManager::default();
     
-    // Manager should be creatable without panicking
     assert!(!manager.is_encrypted("nonexistent_device"));
 }
 
@@ -135,8 +134,6 @@ mod windows_tests {
     }
 }
 
-// **Feature: advanced-device-management, Property 21: Encrypted Volume Detection**
-// **Validates: Requirements 21.1**
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -172,14 +169,11 @@ mod property_tests {
                 encryption_percentage: Some(100),
             };
 
-            // Property: is_encrypted() returns true for BitLocker and LUKS
             prop_assert!(info.is_encrypted());
 
-            // Property: is_locked() and is_unlocked() are mutually exclusive
             prop_assert!(info.is_locked() != info.is_unlocked() || 
                          matches!(info.protection_status, ProtectionStatus::Unknown));
 
-            // Property: device_id is preserved
             prop_assert_eq!(info.device_id, device_id);
         }
 
@@ -198,7 +192,6 @@ mod property_tests {
                 encryption_percentage: None,
             };
 
-            // Property: Unknown encryption type means not encrypted
             prop_assert!(!info.is_encrypted());
         }
     }

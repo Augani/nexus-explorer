@@ -11,7 +11,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
-/// Errors that can occur during encrypted volume operations
+/
 #[derive(Debug, Error)]
 pub enum EncryptedVolumeError {
     #[error("Volume not found: {0}")]
@@ -47,7 +47,7 @@ pub enum EncryptedVolumeError {
 
 pub type EncryptedVolumeResult<T> = Result<T, EncryptedVolumeError>;
 
-/// Type of encryption used on a volume
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncryptionType {
     BitLocker,
@@ -67,14 +67,14 @@ impl EncryptionType {
     }
 }
 
-/// Protection status of an encrypted volume
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProtectionStatus {
-    /// Volume is unlocked and accessible
+    /
     Unlocked,
-    /// Volume is locked and requires credentials to access
+    /
     Locked,
-    /// Protection status is unknown
+    /
     Unknown,
 }
 
@@ -88,22 +88,22 @@ impl ProtectionStatus {
     }
 }
 
-/// Information about an encrypted volume
+/
 #[derive(Debug, Clone)]
 pub struct EncryptedVolumeInfo {
-    /// Drive letter (Windows) or device path (Linux)
+    /
     pub device_id: String,
-    /// Mount point path (if mounted)
+    /
     pub mount_point: Option<PathBuf>,
-    /// Type of encryption
+    /
     pub encryption_type: EncryptionType,
-    /// Current protection status
+    /
     pub protection_status: ProtectionStatus,
-    /// Volume label (if available)
+    /
     pub label: Option<String>,
-    /// Total size in bytes
+    /
     pub size: u64,
-    /// Encryption percentage (0-100, for volumes being encrypted)
+    /
     pub encryption_percentage: Option<u8>,
 }
 
@@ -121,14 +121,14 @@ impl EncryptedVolumeInfo {
     }
 }
 
-/// Credential type for unlocking encrypted volumes
+/
 #[derive(Debug, Clone)]
 pub enum UnlockCredential {
     Password(String),
     RecoveryKey(String),
 }
 
-/// Manager for encrypted volume operations
+/
 pub struct EncryptedVolumeManager {
     #[cfg(target_os = "windows")]
     _windows_marker: std::marker::PhantomData<()>,
@@ -152,14 +152,14 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /// Check if a volume is encrypted
+    /
     pub fn is_encrypted(&self, device_id: &str) -> bool {
         self.get_volume_info(device_id)
             .map(|info| info.is_encrypted())
             .unwrap_or(false)
     }
 
-    /// Get information about an encrypted volume
+    /
     pub fn get_volume_info(&self, device_id: &str) -> EncryptedVolumeResult<EncryptedVolumeInfo> {
         #[cfg(target_os = "windows")]
         {
@@ -179,7 +179,7 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /// List all encrypted volumes on the system
+    /
     pub fn list_encrypted_volumes(&self) -> Vec<EncryptedVolumeInfo> {
         #[cfg(target_os = "windows")]
         {
@@ -197,7 +197,7 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /// Unlock an encrypted volume with the provided credentials
+    /
     pub fn unlock(&self, device_id: &str, credential: UnlockCredential) -> EncryptedVolumeResult<PathBuf> {
         #[cfg(target_os = "windows")]
         {
@@ -217,7 +217,7 @@ impl EncryptedVolumeManager {
         }
     }
 
-    /// Lock an encrypted volume
+    /
     pub fn lock(&self, device_id: &str) -> EncryptedVolumeResult<()> {
         #[cfg(target_os = "windows")]
         {
@@ -239,9 +239,6 @@ impl EncryptedVolumeManager {
 }
 
 
-// ============================================================================
-// Windows BitLocker Implementation
-// ============================================================================
 
 #[cfg(target_os = "windows")]
 fn get_bitlocker_info(drive_letter: &str) -> EncryptedVolumeResult<EncryptedVolumeInfo> {
@@ -416,9 +413,6 @@ fn normalize_drive_letter(input: &str) -> char {
         .unwrap_or('C')
 }
 
-// ============================================================================
-// Linux LUKS Implementation
-// ============================================================================
 
 #[cfg(target_os = "linux")]
 fn get_luks_info(device_path: &str) -> EncryptedVolumeResult<EncryptedVolumeInfo> {
@@ -620,11 +614,8 @@ fn extract_device_from_lsblk_line(line: &str) -> Option<String> {
     None
 }
 
-// ============================================================================
-// Public API Functions
-// ============================================================================
 
-/// Check if encrypted volume support is available on this platform
+/
 pub fn is_encrypted_volume_support_available() -> bool {
     #[cfg(target_os = "windows")]
     {
@@ -648,7 +639,7 @@ pub fn is_encrypted_volume_support_available() -> bool {
     }
 }
 
-/// Check if a specific device is encrypted
+/
 pub fn check_device_encrypted(device_id: &str) -> bool {
     let manager = EncryptedVolumeManager::new();
     manager.is_encrypted(device_id)

@@ -2,19 +2,17 @@ use super::*;
 use proptest::prelude::*;
 use std::path::PathBuf;
 
-/// Strategy to generate valid file paths
+/
 fn path_strategy() -> impl Strategy<Value = PathBuf> {
     "[a-z]{1,10}(/[a-z]{1,10}){0,3}\\.[a-z]{1,4}"
         .prop_map(|s| PathBuf::from(format!("/tmp/{}", s)))
 }
 
-/// Strategy to generate a vector of paths
+/
 fn paths_strategy(min: usize, max: usize) -> impl Strategy<Value = Vec<PathBuf>> {
     prop::collection::vec(path_strategy(), min..max)
 }
 
-// **Feature: advanced-device-management, Property 10: Clipboard Copy State**
-// **Validates: Requirements 7.1**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     
@@ -22,10 +20,8 @@ proptest! {
     fn prop_clipboard_copy_state(paths in paths_strategy(1, 20)) {
         let mut manager = ClipboardManager::new();
         
-        // Perform copy operation
         manager.copy(paths.clone());
         
-        // Property: After copy(P), clipboard SHALL contain exactly the paths P
         let clipboard_paths = manager.paths();
         prop_assert!(clipboard_paths.is_some(), "Clipboard should have paths after copy");
         
@@ -49,13 +45,11 @@ proptest! {
             );
         }
         
-        // Property: has_content() SHALL return true
         prop_assert!(
             manager.has_content(),
             "has_content() should return true after copy"
         );
         
-        // Property: Operation should be Copy, not Cut
         prop_assert!(
             manager.is_copy(),
             "Operation should be copy"
@@ -70,10 +64,8 @@ proptest! {
     fn prop_clipboard_cut_state(paths in paths_strategy(1, 20)) {
         let mut manager = ClipboardManager::new();
         
-        // Perform cut operation
         manager.cut(paths.clone());
         
-        // Property: After cut(P), clipboard SHALL contain exactly the paths P
         let clipboard_paths = manager.paths();
         prop_assert!(clipboard_paths.is_some(), "Clipboard should have paths after cut");
         
@@ -86,13 +78,11 @@ proptest! {
             clipboard_paths.len()
         );
         
-        // Property: has_content() SHALL return true
         prop_assert!(
             manager.has_content(),
             "has_content() should return true after cut"
         );
         
-        // Property: Operation should be Cut, not Copy
         prop_assert!(
             manager.is_cut(),
             "Operation should be cut"
@@ -108,7 +98,6 @@ proptest! {
         let mut manager = ClipboardManager::new();
         manager.copy(paths.clone());
         
-        // Property: All copied paths should be contained in clipboard
         for path in &paths {
             prop_assert!(
                 manager.contains_path(path),
@@ -117,7 +106,6 @@ proptest! {
             );
         }
         
-        // Property: Non-copied paths should not be contained
         let non_existent = PathBuf::from("/non/existent/path/that/was/not/copied.txt");
         prop_assert!(
             !manager.contains_path(&non_existent),
@@ -130,7 +118,6 @@ proptest! {
         let mut manager = ClipboardManager::new();
         manager.cut(paths.clone());
         
-        // Property: All cut paths should be marked as cut
         for path in &paths {
             prop_assert!(
                 manager.is_path_cut(path),
@@ -139,7 +126,6 @@ proptest! {
             );
         }
         
-        // Property: Non-cut paths should not be marked as cut
         let non_existent = PathBuf::from("/non/existent/path.txt");
         prop_assert!(
             !manager.is_path_cut(&non_existent),
@@ -200,7 +186,6 @@ fn test_clipboard_clear() {
     assert!(!manager.has_content());
     assert_eq!(manager.item_count(), 0);
     
-    // Should be in history
     assert_eq!(manager.history().len(), 1);
 }
 
@@ -208,15 +193,12 @@ fn test_clipboard_clear() {
 fn test_clipboard_history() {
     let mut manager = ClipboardManager::new();
     
-    // First copy
     manager.copy(vec![PathBuf::from("/file1.txt")]);
     
-    // Second copy (first goes to history)
     manager.copy(vec![PathBuf::from("/file2.txt")]);
     
     assert_eq!(manager.history().len(), 1);
     
-    // Third copy (second goes to history)
     manager.copy(vec![PathBuf::from("/file3.txt")]);
     
     assert_eq!(manager.history().len(), 2);
@@ -242,14 +224,12 @@ fn test_clipboard_is_path_cut() {
     let path1 = PathBuf::from("/home/user/file1.txt");
     let path2 = PathBuf::from("/home/user/file2.txt");
     
-    // Copy operation - paths should not be marked as cut
     manager.copy(vec![path1.clone()]);
     assert!(!manager.is_path_cut(&path1));
     
-    // Cut operation - paths should be marked as cut
     manager.cut(vec![path2.clone()]);
     assert!(manager.is_path_cut(&path2));
-    assert!(!manager.is_path_cut(&path1)); // path1 is no longer in clipboard
+    assert!(!manager.is_path_cut(&path1));
 }
 
 #[test]
@@ -269,15 +249,13 @@ fn test_clipboard_paste_lifecycle() {
     manager.cut(paths);
     assert!(manager.has_content());
     
-    // Start paste
     let token = manager.start_paste();
     assert!(manager.is_paste_active());
     assert!(!token.is_cancelled());
     
-    // Complete paste (cut operation clears clipboard)
     manager.complete_paste(true);
     assert!(!manager.is_paste_active());
-    assert!(!manager.has_content()); // Cleared after cut-paste
+    assert!(!manager.has_content());
 }
 
 #[test]
@@ -287,11 +265,10 @@ fn test_clipboard_paste_copy_preserves_content() {
     
     manager.copy(paths.clone());
     
-    // Start and complete paste (copy operation preserves clipboard)
     let _token = manager.start_paste();
     manager.complete_paste(false);
     
-    assert!(manager.has_content()); // Still has content after copy-paste
+    assert!(manager.has_content());
     assert_eq!(manager.paths().unwrap(), &paths);
 }
 
@@ -321,7 +298,6 @@ fn test_paste_progress_percentage() {
 fn test_paste_progress_percentage_zero_bytes() {
     let mut progress = PasteProgress::new(10, 0);
     
-    // When total_bytes is 0, use file count
     progress.completed_files = 5;
     assert_eq!(progress.percentage(), 50.0);
 }
@@ -373,7 +349,6 @@ fn test_clipboard_operation_paths() {
 }
 
 
-// Tests for paste cancellation cleanup
 #[test]
 fn test_paste_cancellation_token_clone() {
     let token = PasteCancellationToken::new();
@@ -384,7 +359,6 @@ fn test_paste_cancellation_token_clone() {
     
     token.cancel();
     
-    // Both should be cancelled since they share the same Arc
     assert!(token.is_cancelled());
     assert!(token_clone.is_cancelled());
 }
@@ -407,7 +381,6 @@ fn test_clipboard_cancel_paste() {
 
 #[test]
 fn test_paste_progress_update_variants() {
-    // Test that all variants can be created
     let _started = PasteProgressUpdate::Started {
         total_files: 10,
         total_bytes: 1000,
@@ -445,7 +418,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use tempfile::TempDir;
 
-/// Helper to create a test file with specific content
+/
 fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBuf {
     let path = dir.join(name);
     if let Some(parent) = path.parent() {
@@ -456,8 +429,6 @@ fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBu
     path
 }
 
-// **Feature: advanced-device-management, Property 11: Paste Cancellation Cleanup**
-// **Validates: Requirements 7.5**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     
@@ -472,7 +443,6 @@ proptest! {
         fs::create_dir_all(&source_dir).unwrap();
         fs::create_dir_all(&dest_dir).unwrap();
         
-        // Create test files
         let actual_count = file_count.min(file_sizes.len());
         let mut source_files = Vec::new();
         
@@ -483,14 +453,12 @@ proptest! {
             source_files.push(path);
         }
         
-        // Create a cancellation token that's already cancelled
         let token = PasteCancellationToken::new();
         token.cancel();
         
         let (tx, _rx) = flume::unbounded();
         let executor = PasteExecutor::new(token, tx);
         
-        // Execute paste with pre-cancelled token
         let result = executor.execute(
             &source_files,
             &dest_dir,
@@ -498,19 +466,14 @@ proptest! {
             |_, _| ConflictResolution::Replace,
         );
         
-        // Property: After cancellation, no partial files should remain at destination
-        // Check that destination directory is empty or only contains complete files
         let dest_entries: Vec<_> = fs::read_dir(&dest_dir)
             .unwrap()
             .filter_map(|e| e.ok())
             .collect();
         
-        // If operation was cancelled immediately, no files should be at destination
-        // If some files were copied before cancellation, they should be complete
         for entry in &dest_entries {
             let dest_path = entry.path();
             if dest_path.is_file() {
-                // Find corresponding source file
                 let file_name = dest_path.file_name().unwrap();
                 let source_path = source_dir.join(file_name);
                 
@@ -518,8 +481,6 @@ proptest! {
                     let source_size = source_path.metadata().unwrap().len();
                     let dest_size = dest_path.metadata().unwrap().len();
                     
-                    // Property: Files are either fully copied or not present
-                    // A partial file would have size < source_size
                     prop_assert!(
                         dest_size == source_size || dest_size == 0,
                         "File {:?} should be fully copied ({} bytes) or not present, but has {} bytes",
@@ -531,10 +492,8 @@ proptest! {
             }
         }
         
-        // Property: Result should indicate cancellation or success
         match result {
             Ok(paste_result) => {
-                // Either cancelled with no files or completed some files
                 let total = paste_result.successful_files.len() 
                     + paste_result.skipped_files.len() 
                     + paste_result.failed_files.len();
@@ -544,7 +503,6 @@ proptest! {
                 );
             }
             Err(e) => {
-                // Error is acceptable for cancelled operations
                 prop_assert!(
                     e.contains("cancelled") || e.contains("error"),
                     "Error should indicate cancellation: {}",
@@ -563,7 +521,6 @@ fn test_paste_executor_basic() {
     fs::create_dir_all(&source_dir).unwrap();
     fs::create_dir_all(&dest_dir).unwrap();
     
-    // Create a test file
     let source_file = create_test_file(&source_dir, "test.txt", b"Hello, World!");
     
     let token = PasteCancellationToken::new();
@@ -582,12 +539,10 @@ fn test_paste_executor_basic() {
     assert_eq!(paste_result.successful_files.len(), 1);
     assert!(paste_result.failed_files.is_empty());
     
-    // Verify file was copied
     let dest_file = dest_dir.join("test.txt");
     assert!(dest_file.exists());
     assert_eq!(fs::read_to_string(&dest_file).unwrap(), "Hello, World!");
     
-    // Verify progress updates were sent
     let mut updates = Vec::new();
     while let Ok(update) = rx.try_recv() {
         updates.push(update);
@@ -603,10 +558,8 @@ fn test_paste_executor_with_cancellation() {
     fs::create_dir_all(&source_dir).unwrap();
     fs::create_dir_all(&dest_dir).unwrap();
     
-    // Create test files
     let source_file = create_test_file(&source_dir, "test.txt", b"Hello, World!");
     
-    // Pre-cancel the token
     let token = PasteCancellationToken::new();
     token.cancel();
     
@@ -620,11 +573,9 @@ fn test_paste_executor_with_cancellation() {
         |_, _| ConflictResolution::Replace,
     );
     
-    // Operation should complete but with no files copied
     assert!(result.is_ok());
     let paste_result = result.unwrap();
     
-    // No files should be at destination since we cancelled before starting
     let dest_file = dest_dir.join("test.txt");
     assert!(!dest_file.exists() || paste_result.successful_files.is_empty());
 }
@@ -637,10 +588,8 @@ fn test_paste_executor_conflict_skip() {
     fs::create_dir_all(&source_dir).unwrap();
     fs::create_dir_all(&dest_dir).unwrap();
     
-    // Create source file
     let source_file = create_test_file(&source_dir, "test.txt", b"New content");
     
-    // Create existing file at destination
     create_test_file(&dest_dir, "test.txt", b"Existing content");
     
     let token = PasteCancellationToken::new();
@@ -658,7 +607,6 @@ fn test_paste_executor_conflict_skip() {
     let paste_result = result.unwrap();
     assert_eq!(paste_result.skipped_files.len(), 1);
     
-    // Verify original file was not overwritten
     let dest_file = dest_dir.join("test.txt");
     assert_eq!(fs::read_to_string(&dest_file).unwrap(), "Existing content");
 }
@@ -671,10 +619,8 @@ fn test_paste_executor_conflict_replace() {
     fs::create_dir_all(&source_dir).unwrap();
     fs::create_dir_all(&dest_dir).unwrap();
     
-    // Create source file
     let source_file = create_test_file(&source_dir, "test.txt", b"New content");
     
-    // Create existing file at destination
     create_test_file(&dest_dir, "test.txt", b"Existing content");
     
     let token = PasteCancellationToken::new();
@@ -692,7 +638,6 @@ fn test_paste_executor_conflict_replace() {
     let paste_result = result.unwrap();
     assert_eq!(paste_result.successful_files.len(), 1);
     
-    // Verify file was replaced
     let dest_file = dest_dir.join("test.txt");
     assert_eq!(fs::read_to_string(&dest_file).unwrap(), "New content");
 }
@@ -705,10 +650,8 @@ fn test_paste_executor_conflict_keep_both() {
     fs::create_dir_all(&source_dir).unwrap();
     fs::create_dir_all(&dest_dir).unwrap();
     
-    // Create source file
     let source_file = create_test_file(&source_dir, "test.txt", b"New content");
     
-    // Create existing file at destination
     create_test_file(&dest_dir, "test.txt", b"Existing content");
     
     let token = PasteCancellationToken::new();
@@ -726,12 +669,10 @@ fn test_paste_executor_conflict_keep_both() {
     let paste_result = result.unwrap();
     assert_eq!(paste_result.successful_files.len(), 1);
     
-    // Verify both files exist
     let original_file = dest_dir.join("test.txt");
     assert!(original_file.exists());
     assert_eq!(fs::read_to_string(&original_file).unwrap(), "Existing content");
     
-    // New file should have a unique name
     let new_file = &paste_result.successful_files[0];
     assert!(new_file.exists());
     assert_eq!(fs::read_to_string(new_file).unwrap(), "New content");
@@ -745,7 +686,6 @@ fn test_paste_executor_cut_operation() {
     fs::create_dir_all(&source_dir).unwrap();
     fs::create_dir_all(&dest_dir).unwrap();
     
-    // Create source file
     let source_file = create_test_file(&source_dir, "test.txt", b"Content to move");
     
     let token = PasteCancellationToken::new();
@@ -755,7 +695,7 @@ fn test_paste_executor_cut_operation() {
     let result = executor.execute(
         &[source_file.clone()],
         &dest_dir,
-        true, // is_cut = true
+        true,
         |_, _| ConflictResolution::Replace,
     );
     
@@ -763,7 +703,6 @@ fn test_paste_executor_cut_operation() {
     let paste_result = result.unwrap();
     assert_eq!(paste_result.successful_files.len(), 1);
     
-    // Verify file was moved (source deleted, dest exists)
     assert!(!source_file.exists(), "Source file should be deleted after cut");
     
     let dest_file = dest_dir.join("test.txt");
@@ -780,7 +719,6 @@ fn test_paste_executor_directory() {
     fs::create_dir_all(&subdir).unwrap();
     fs::create_dir_all(&dest_dir).unwrap();
     
-    // Create files in subdirectory
     create_test_file(&subdir, "file1.txt", b"Content 1");
     create_test_file(&subdir, "file2.txt", b"Content 2");
     
@@ -797,7 +735,6 @@ fn test_paste_executor_directory() {
     
     assert!(result.is_ok());
     
-    // Verify directory was copied
     let dest_subdir = dest_dir.join("subdir");
     assert!(dest_subdir.exists());
     assert!(dest_subdir.join("file1.txt").exists());

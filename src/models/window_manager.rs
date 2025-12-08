@@ -10,7 +10,7 @@ use crate::app::Workspace;
 
 static NEXT_WINDOW_ID: AtomicU64 = AtomicU64::new(1);
 
-/// Unique identifier for application windows
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AppWindowId(u64);
 
@@ -26,7 +26,7 @@ impl Default for AppWindowId {
     }
 }
 
-/// Represents the state of a single window
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowState {
     pub id: AppWindowId,
@@ -35,7 +35,7 @@ pub struct WindowState {
     pub is_active: bool,
 }
 
-/// Serializable window bounds for persistence
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowBoundsState {
     pub x: f32,
@@ -69,18 +69,18 @@ impl WindowBoundsState {
 }
 
 #[cfg(not(test))]
-/// Manages multiple application windows
+/
 pub struct WindowManager {
-    /// Map of window IDs to their GPUI window handles
+    /
     windows: HashMap<AppWindowId, WindowHandle<Workspace>>,
-    /// Map of window IDs to their state
+    /
     window_states: HashMap<AppWindowId, WindowState>,
-    /// Currently active window
+    /
     active_window: Option<AppWindowId>,
-    /// Default window size
+    /
     default_width: f32,
     default_height: f32,
-    /// Offset for cascading new windows
+    /
     cascade_offset: f32,
 }
 
@@ -97,22 +97,22 @@ impl WindowManager {
         }
     }
 
-    /// Returns the number of open windows
+    /
     pub fn window_count(&self) -> usize {
         self.windows.len()
     }
 
-    /// Returns whether there are any open windows
+    /
     pub fn has_windows(&self) -> bool {
         !self.windows.is_empty()
     }
 
-    /// Returns the active window ID
+    /
     pub fn active_window(&self) -> Option<AppWindowId> {
         self.active_window
     }
 
-    /// Sets the active window
+    /
     pub fn set_active(&mut self, id: AppWindowId) {
         if self.windows.contains_key(&id) {
             if let Some(prev_id) = self.active_window {
@@ -127,26 +127,25 @@ impl WindowManager {
         }
     }
 
-    /// Returns all window IDs
+    /
     pub fn window_ids(&self) -> Vec<AppWindowId> {
         self.windows.keys().copied().collect()
     }
 
-    /// Returns the window handle for a given ID
+    /
     pub fn get_window(&self, id: AppWindowId) -> Option<&WindowHandle<Workspace>> {
         self.windows.get(&id)
     }
 
-    /// Returns the window state for a given ID
+    /
     pub fn get_window_state(&self, id: AppWindowId) -> Option<&WindowState> {
         self.window_states.get(&id)
     }
 
-    /// Opens a new window with the given path
+    /
     pub fn open_window(&mut self, path: PathBuf, cx: &mut App) -> Option<AppWindowId> {
         let id = AppWindowId::new();
 
-        // Calculate cascaded position for new window
         let offset = self.windows.len() as f32 * self.cascade_offset;
         let bounds = Bounds::centered(
             None,
@@ -179,7 +178,6 @@ impl WindowManager {
             Workspace::build(path_clone, cx)
         }) {
             Ok(handle) => {
-                // Store window state
                 let state = WindowState {
                     id,
                     path,
@@ -200,7 +198,7 @@ impl WindowManager {
         }
     }
 
-    /// Closes a window by ID
+    /
     pub fn close_window(&mut self, id: AppWindowId, cx: &mut App) {
         if let Some(handle) = self.windows.remove(&id) {
             self.window_states.remove(&id);
@@ -214,12 +212,11 @@ impl WindowManager {
                 }
             }
 
-            // Note: GPUI windows are closed when their handle is dropped
             drop(handle);
         }
     }
 
-    /// Registers an existing window (used for the initial window)
+    /
     pub fn register_window(
         &mut self,
         handle: WindowHandle<Workspace>,
@@ -241,14 +238,14 @@ impl WindowManager {
         id
     }
 
-    /// Updates the stored bounds for a window
+    /
     pub fn update_window_bounds(&mut self, id: AppWindowId, bounds: Bounds<gpui::Pixels>) {
         if let Some(state) = self.window_states.get_mut(&id) {
             state.bounds = Some(WindowBoundsState::from_bounds(&bounds));
         }
     }
 
-    /// Updates the stored path for a window
+    /
     pub fn update_window_path(&mut self, id: AppWindowId, path: PathBuf) {
         if let Some(state) = self.window_states.get_mut(&id) {
             state.path = path;
@@ -265,7 +262,7 @@ impl Default for WindowManager {
 #[cfg(not(test))]
 impl Global for WindowManager {}
 
-/// Persisted window manager state for save/restore
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowManagerState {
     pub windows: Vec<WindowState>,
@@ -274,7 +271,7 @@ pub struct WindowManagerState {
 
 #[cfg(not(test))]
 impl WindowManager {
-    /// Saves the current window state to disk
+    /
     pub fn save_state(&self) -> std::io::Result<()> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -296,7 +293,7 @@ impl WindowManager {
         std::fs::write(config_path, json)
     }
 
-    /// Loads window state from disk
+    /
     pub fn load_state() -> Option<WindowManagerState> {
         let config_path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -314,14 +311,12 @@ impl WindowManager {
         None
     }
 
-    /// Restores windows from saved state
+    /
     pub fn restore_state(&mut self, state: WindowManagerState, cx: &mut App) {
         for window_state in state.windows {
-            // Only restore if the path still exists
             if window_state.path.exists() {
                 let id = AppWindowId::new();
 
-                // Use saved bounds or default
                 let bounds = window_state
                     .bounds
                     .as_ref()
@@ -404,7 +399,6 @@ mod tests {
         let state = WindowBoundsState::from_bounds(&bounds);
         let restored = state.to_bounds();
 
-        // Compare using Into<f32> conversion
         let orig_x: f32 = bounds.origin.x.into();
         let orig_y: f32 = bounds.origin.y.into();
         let orig_w: f32 = bounds.size.width.into();

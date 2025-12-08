@@ -8,31 +8,31 @@ use super::coalescer::EventCoalescer;
 use super::watcher::{PlatformFs, Watcher, DEFAULT_COALESCE_WINDOW};
 use crate::models::{FileSystemError, FsEvent, Result};
 
-/// NTFS File Reference Number - unique identifier for files in MFT
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FileReferenceNumber(pub u64);
 
 impl FileReferenceNumber {
-    /// Extract the file record number (lower 48 bits)
+    /
     pub fn record_number(&self) -> u64 {
         self.0 & 0x0000_FFFF_FFFF_FFFF
     }
 
-    /// Extract the sequence number (upper 16 bits)
+    /
     pub fn sequence_number(&self) -> u16 {
         ((self.0 >> 48) & 0xFFFF) as u16
     }
 
-    /// Create from record and sequence numbers
+    /
     pub fn new(record_number: u64, sequence_number: u16) -> Self {
         Self((record_number & 0x0000_FFFF_FFFF_FFFF) | ((sequence_number as u64) << 48))
     }
 
-    /// Root directory reference number (always 5 in NTFS)
+    /
     pub const ROOT: Self = Self(5);
 }
 
-/// File node in the MFT index
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileNode {
     pub name: String,
@@ -66,22 +66,22 @@ impl FileNode {
     }
 }
 
-/// MFT Index - in-memory index of all files on an NTFS volume
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MftIndex {
-    /// Map from FileReferenceNumber to FileNode for O(1) lookup
+    /
     pub files: HashMap<FileReferenceNumber, FileNode>,
-    /// Current USN Journal cursor position
+    /
     pub usn_cursor: u64,
-    /// Volume path this index was built from
+    /
     pub volume_path: PathBuf,
-    /// Cache of reconstructed paths for performance
+    /
     #[serde(skip)]
     path_cache: HashMap<FileReferenceNumber, PathBuf>,
 }
 
 impl MftIndex {
-    /// Create a new empty MFT index for a volume
+    /
     pub fn new(volume_path: PathBuf) -> Self {
         Self {
             files: HashMap::new(),
@@ -91,42 +91,42 @@ impl MftIndex {
         }
     }
 
-    /// Insert a file node into the index
+    /
     pub fn insert(&mut self, frn: FileReferenceNumber, node: FileNode) {
         self.path_cache.remove(&frn);
         self.files.insert(frn, node);
     }
 
-    /// Remove a file from the index
+    /
     pub fn remove(&mut self, frn: &FileReferenceNumber) -> Option<FileNode> {
         self.path_cache.remove(frn);
         self.files.remove(frn)
     }
 
-    /// Get a file node by reference number
+    /
     pub fn get(&self, frn: &FileReferenceNumber) -> Option<&FileNode> {
         self.files.get(frn)
     }
 
-    /// Check if a file exists in the index
+    /
     pub fn contains(&self, frn: &FileReferenceNumber) -> bool {
         self.files.contains_key(frn)
     }
 
-    /// Get the number of files in the index
+    /
     pub fn len(&self) -> usize {
         self.files.len()
     }
 
-    /// Check if the index is empty
+    /
     pub fn is_empty(&self) -> bool {
         self.files.is_empty()
     }
 
-    /// Reconstruct the full path for a file reference number
-    ///
-    /// Traverses parent references up to the root to build the complete path.
-    /// Results are cached for performance.
+    /
+    /
+    /
+    /
     pub fn reconstruct_path(&mut self, frn: &FileReferenceNumber) -> Option<PathBuf> {
         if let Some(cached) = self.path_cache.get(frn) {
             return Some(cached.clone());
@@ -137,13 +137,12 @@ impl MftIndex {
         Some(path)
     }
 
-    /// Build path without caching (internal helper)
+    /
     fn build_path_uncached(&self, frn: &FileReferenceNumber) -> Option<PathBuf> {
         let mut components: Vec<&str> = Vec::new();
         let mut current = *frn;
         let mut visited = std::collections::HashSet::new();
 
-        // Traverse up to root, collecting path components
         loop {
             if !visited.insert(current) {
                 return None;
@@ -159,7 +158,6 @@ impl MftIndex {
             current = node.parent;
         }
 
-        // Build path from root to file
         components.reverse();
         let mut path = self.volume_path.clone();
         for component in components {
@@ -169,19 +167,18 @@ impl MftIndex {
         Some(path)
     }
 
-    /// Clear the path cache (useful after bulk updates)
+    /
     pub fn clear_path_cache(&mut self) {
         self.path_cache.clear();
     }
 
-    /// Update USN cursor position
+    /
     pub fn set_usn_cursor(&mut self, cursor: u64) {
         self.usn_cursor = cursor;
     }
 
-    /// Find a file by path (linear search - use for verification only)
+    /
     pub fn find_by_path(&mut self, path: &Path) -> Option<FileReferenceNumber> {
-        // Collect FRNs first to avoid borrow issues
         let frns: Vec<FileReferenceNumber> = self.files.keys().copied().collect();
 
         for frn in frns {
@@ -194,34 +191,34 @@ impl MftIndex {
         None
     }
 
-    /// Serialize the MFT index to bytes using bincode
+    /
     pub fn serialize(&self) -> Result<Vec<u8>> {
         bincode::serialize(self).map_err(FileSystemError::Serialization)
     }
 
-    /// Deserialize an MFT index from bytes
+    /
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         bincode::deserialize(data).map_err(FileSystemError::Serialization)
     }
 
-    /// Save the MFT index to a file
+    /
     pub fn save_to_file(&self, path: &Path) -> Result<()> {
         let data = self.serialize()?;
         std::fs::write(path, data)?;
         Ok(())
     }
 
-    /// Load an MFT index from a file
+    /
     pub fn load_from_file(path: &Path) -> Result<Self> {
         let data = std::fs::read(path)?;
         Self::deserialize(&data)
     }
 }
 
-/// MFT Parser for building the file index from NTFS Master File Table
-///
-/// On Windows, this uses direct MFT access via DeviceIoControl.
-/// On other platforms, this is a stub that returns an error.
+/
+/
+/
+/
 pub struct MftParser {
     volume_path: PathBuf,
 }
@@ -231,17 +228,16 @@ impl MftParser {
         Self { volume_path }
     }
 
-    /// Parse the MFT and build an in-memory index
-    ///
-    /// This is the main entry point for building the file index.
-    /// On Windows, it reads the $MFT file directly.
+    /
+    /
+    /
+    /
     #[cfg(target_os = "windows")]
     pub fn parse(&self) -> Result<MftIndex> {
         use std::fs::OpenOptions;
         use std::os::windows::fs::OpenOptionsExt;
         use std::os::windows::io::AsRawHandle;
 
-        // Open volume with read access
         let volume_handle = OpenOptions::new()
             .read(true)
             .custom_flags(0x80000000)
@@ -250,7 +246,6 @@ impl MftParser {
 
         let mut index = MftIndex::new(self.volume_path.clone());
 
-        // Add root directory entry
         index.insert(
             FileReferenceNumber::ROOT,
             FileNode::new(
@@ -264,16 +259,11 @@ impl MftParser {
             ),
         );
 
-        // In a real implementation, we would:
-        // 2. Read MFT records directly
-        // 3. Parse FILE_NAME attributes to build the index
-        // For now, we use a simplified approach that works with the USN Journal
-        // which is more practical for real-time monitoring
 
         Ok(index)
     }
 
-    /// Stub implementation for non-Windows platforms
+    /
     #[cfg(not(target_os = "windows"))]
     pub fn parse(&self) -> Result<MftIndex> {
         Err(FileSystemError::Platform(
@@ -282,7 +272,7 @@ impl MftParser {
     }
 }
 
-/// USN Journal record representing a file system change
+/
 #[derive(Debug, Clone)]
 pub struct UsnRecord {
     pub frn: FileReferenceNumber,
@@ -293,7 +283,7 @@ pub struct UsnRecord {
     pub file_attributes: u32,
 }
 
-/// USN Journal change reasons
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UsnReason(pub u32);
 
@@ -337,7 +327,7 @@ impl UsnReason {
     }
 }
 
-/// USN Journal monitor for real-time file system change detection
+/
 pub struct UsnJournalMonitor {
     volume_path: PathBuf,
     usn_cursor: u64,
@@ -353,22 +343,19 @@ impl UsnJournalMonitor {
         }
     }
 
-    /// Set the starting cursor position (usually from a saved MftIndex)
+    /
     pub fn set_cursor(&mut self, cursor: u64) {
         self.usn_cursor = cursor;
     }
 
-    /// Get the current cursor position
+    /
     pub fn cursor(&self) -> u64 {
         self.usn_cursor
     }
 
-    /// Read new USN Journal records since the last cursor position
+    /
     #[cfg(target_os = "windows")]
     pub fn read_journal(&mut self) -> Result<Vec<UsnRecord>> {
-        // In a real implementation, this would:
-        // 2. Use FSCTL_READ_USN_JOURNAL to read records
-        // 3. Parse USN_RECORD_V2/V3 structures
 
         Ok(Vec::new())
     }
@@ -380,7 +367,7 @@ impl UsnJournalMonitor {
         ))
     }
 
-    /// Apply USN records to update the MFT index
+    /
     pub fn apply_to_index(&self, index: &mut MftIndex, records: &[UsnRecord]) {
         for record in records {
             if record.reason.is_create() {
@@ -412,7 +399,7 @@ impl UsnJournalMonitor {
         }
     }
 
-    /// Convert USN records to FsEvents for the watcher interface
+    /
     pub fn records_to_events(&self, index: &mut MftIndex, records: &[UsnRecord]) -> Vec<FsEvent> {
         let mut events = Vec::new();
 
@@ -432,7 +419,7 @@ impl UsnJournalMonitor {
     }
 }
 
-/// USN Journal and MFT parser for Windows.
+/
 pub struct WindowsPlatform;
 
 impl PlatformFs for WindowsPlatform {
@@ -449,7 +436,7 @@ impl PlatformFs for WindowsPlatform {
     }
 }
 
-/// Windows-specific file system watcher using USN Journal
+/
 pub struct WindowsWatcher {
     coalesce_window: Duration,
     coalescer: EventCoalescer,
@@ -469,7 +456,7 @@ impl WindowsWatcher {
         }
     }
 
-    /// Initialize MFT index for a volume
+    /
     pub fn init_mft_index(&mut self, volume_path: PathBuf) -> Result<()> {
         let parser = MftParser::new(volume_path.clone());
         let index = parser.parse()?;
@@ -483,12 +470,12 @@ impl WindowsWatcher {
         Ok(())
     }
 
-    /// Get a reference to the MFT index
+    /
     pub fn mft_index(&self) -> Option<&MftIndex> {
         self.mft_index.as_ref()
     }
 
-    /// Get a mutable reference to the MFT index
+    /
     pub fn mft_index_mut(&mut self) -> Option<&mut MftIndex> {
         self.mft_index.as_mut()
     }
@@ -516,14 +503,11 @@ impl Watcher for WindowsWatcher {
     fn poll_events(&mut self) -> Vec<FsEvent> {
         let mut events = Vec::new();
 
-        // Read from USN Journal if available
         if let (Some(monitor), Some(index)) = (&mut self.usn_monitor, &mut self.mft_index) {
             if let Ok(records) = monitor.read_journal() {
                 if !records.is_empty() {
-                    // Apply changes to index
                     monitor.apply_to_index(index, &records);
 
-                    // Convert to FsEvents
                     let new_events = monitor.records_to_events(index, &records);
                     self.coalescer.add_events(new_events);
                 }

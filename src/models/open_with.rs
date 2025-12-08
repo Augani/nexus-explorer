@@ -1,14 +1,14 @@
-/// Application discovery for "Open With" functionality
-///
-/// Provides cross-platform support for finding applications that can open specific file types.
-/// Uses a preloaded registry that's populated in the background at startup to avoid UI freezes.
+/
+/
+/
+/
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
-/// Represents an application that can open files
+/
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AppInfo {
     pub name: String,
@@ -33,8 +33,8 @@ impl AppInfo {
     }
 }
 
-/// Global application registry that maps file extensions to applications
-/// This is loaded once at startup in a background thread
+/
+/
 pub struct AppRegistry {
     extension_to_apps: HashMap<String, Vec<AppInfo>>,
     all_apps: Vec<AppInfo>,
@@ -78,8 +78,8 @@ lazy_static::lazy_static! {
     static ref LOADING_STARTED: AtomicBool = AtomicBool::new(false);
 }
 
-/// Initialize the app registry in a background thread
-/// Call this once at application startup
+/
+/
 pub fn init_app_registry() {
     if LOADING_STARTED.swap(true, Ordering::SeqCst) {
         return;
@@ -93,15 +93,13 @@ pub fn init_app_registry() {
     });
 }
 
-/// Get the icon path for an application
-/// On macOS, this extracts the .icns file path from the app bundle
+/
+/
 pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
     #[cfg(target_os = "macos")]
     {
-        // Try to find the icon in the app bundle
         let resources = app_path.join("Contents/Resources");
         if resources.exists() {
-            // First try to get icon name from Info.plist
             let info_plist = app_path.join("Contents/Info.plist");
             if info_plist.exists() {
                 if let Ok(output) = Command::new("defaults")
@@ -127,7 +125,6 @@ pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
                 }
             }
 
-            // Fallback: look for common icon names
             for name in ["AppIcon.icns", "app.icns", "icon.icns"] {
                 let icon_path = resources.join(name);
                 if icon_path.exists() {
@@ -135,7 +132,6 @@ pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
                 }
             }
 
-            // Last resort: find any .icns file
             if let Ok(entries) = std::fs::read_dir(&resources) {
                 for entry in entries.flatten() {
                     let path = entry.path();
@@ -155,9 +151,8 @@ pub fn get_app_icon_path(app_path: &Path) -> Option<String> {
     }
 }
 
-/// Get applications for a file (uses preloaded registry)
+/
 pub fn get_apps_for_file(file_path: &Path) -> Vec<AppInfo> {
-    // Handle directories specially
     if file_path.is_dir() {
         if let Ok(registry) = APP_REGISTRY.read() {
             if registry.is_loaded() {
@@ -179,11 +174,10 @@ pub fn get_apps_for_file(file_path: &Path) -> Vec<AppInfo> {
         }
     }
 
-    // Fallback: return empty if not loaded yet (don't block UI)
     Vec::new()
 }
 
-/// Check if the registry is loaded
+/
 pub fn is_registry_loaded() -> bool {
     if let Ok(registry) = APP_REGISTRY.read() {
         registry.is_loaded()
@@ -192,7 +186,7 @@ pub fn is_registry_loaded() -> bool {
     }
 }
 
-/// Open a file with a specific application
+/
 pub fn open_file_with_app(file_path: &Path, app: &AppInfo) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -228,7 +222,7 @@ pub fn open_file_with_app(file_path: &Path, app: &AppInfo) -> Result<(), String>
     }
 }
 
-/// Show the system's "Open With" dialog
+/
 pub fn show_open_with_dialog(file_path: &Path) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -305,10 +299,8 @@ fn load_app_registry_macos() -> AppRegistry {
     let mut all_apps: Vec<AppInfo> = Vec::new();
     let mut seen_apps: HashSet<PathBuf> = HashSet::new();
 
-    // Scan application directories and read Info.plist for each app
     scan_applications_with_plist(&mut extension_to_apps, &mut all_apps, &mut seen_apps);
 
-    // Sort apps by name for consistent display
     for apps in extension_to_apps.values_mut() {
         apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
         apps.dedup_by(|a, b| a.path == b.path);
@@ -336,8 +328,6 @@ fn scan_applications_with_plist(
             .unwrap_or_default(),
     ];
 
-    // Comprehensive mappings for common applications
-    // These are apps that can open various file types but may not declare them in Info.plist
     let editor_extensions: Vec<&str> = vec![
         "txt",
         "md",
@@ -463,7 +453,6 @@ fn scan_applications_with_plist(
     ];
 
     let common_mappings: HashMap<&str, Vec<&str>> = [
-        // Text Editors & IDEs - can open most text files
         ("Visual Studio Code", editor_extensions.clone()),
         ("VSCodium", editor_extensions.clone()),
         ("Cursor", editor_extensions.clone()),
@@ -476,7 +465,6 @@ fn scan_applications_with_plist(
         ("Nova", editor_extensions.clone()),
         ("MacVim", editor_extensions.clone()),
         ("Neovide", editor_extensions.clone()),
-        // JetBrains IDEs
         ("WebStorm", editor_extensions.clone()),
         ("IntelliJ IDEA", editor_extensions.clone()),
         ("IntelliJ IDEA CE", editor_extensions.clone()),
@@ -489,7 +477,6 @@ fn scan_applications_with_plist(
         ("Rider", editor_extensions.clone()),
         ("DataGrip", vec!["sql", "json", "csv"]),
         ("Fleet", editor_extensions.clone()),
-        // Apple apps
         ("TextEdit", vec!["txt", "rtf", "rtfd", "html", "htm", "doc"]),
         (
             "Xcode",
@@ -540,7 +527,6 @@ fn scan_applications_with_plist(
         ("Notes", vec!["txt", "md"]),
         ("Terminal", vec!["sh", "bash", "zsh", "command", "tool"]),
         ("Script Editor", vec!["scpt", "applescript", "scptd"]),
-        // Browsers
         (
             "Firefox",
             vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
@@ -565,7 +551,6 @@ fn scan_applications_with_plist(
             "Opera",
             vec!["html", "htm", "xhtml", "svg", "pdf", "json", "xml"],
         ),
-        // Media players
         (
             "VLC",
             vec![
@@ -584,7 +569,6 @@ fn scan_applications_with_plist(
             vec!["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm"],
         ),
         ("Spotify", vec!["mp3", "m4a", "ogg"]),
-        // Image editors
         (
             "Pixelmator Pro",
             vec![
@@ -612,7 +596,6 @@ fn scan_applications_with_plist(
             vec!["psd", "png", "jpg", "jpeg", "gif", "tiff", "bmp", "raw"],
         ),
         ("Adobe Illustrator", vec!["ai", "svg", "eps", "pdf", "png"]),
-        // Archive utilities
         (
             "Archive Utility",
             vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz"],
@@ -634,7 +617,6 @@ fn scan_applications_with_plist(
             "BetterZip",
             vec!["zip", "tar", "gz", "bz2", "xz", "7z", "rar", "tgz", "tbz"],
         ),
-        // Development tools
         (
             "Android Studio",
             vec!["java", "kt", "kts", "xml", "gradle", "json"],
@@ -642,11 +624,9 @@ fn scan_applications_with_plist(
         ("Docker", vec!["dockerfile", "yaml", "yml", "json"]),
         ("Postman", vec!["json", "xml"]),
         ("Insomnia", vec!["json", "xml", "yaml", "yml"]),
-        // Database tools
         ("TablePlus", vec!["sql", "csv", "json"]),
         ("Sequel Pro", vec!["sql"]),
         ("DBeaver", vec!["sql", "csv", "json", "xml"]),
-        // Other utilities
         ("Finder", vec![]),
         ("iTerm", vec!["sh", "bash", "zsh", "command"]),
         ("Warp", vec!["sh", "bash", "zsh", "command"]),
@@ -656,7 +636,6 @@ fn scan_applications_with_plist(
     .into_iter()
     .collect();
 
-    // Scan all app directories
     for app_dir in &app_dirs {
         if !app_dir.exists() {
             continue;
@@ -671,7 +650,6 @@ fn scan_applications_with_plist(
         );
     }
 
-    // Add folder support for IDEs
     for ide_name in &ide_folder_apps {
         if let Some(app) = all_apps.iter().find(|a| a.name == *ide_name) {
             extension_to_apps
@@ -698,7 +676,6 @@ fn scan_app_directory(
     for entry in entries.flatten() {
         let path = entry.path();
 
-        // Handle nested directories (like /Applications/Utilities)
         if path.is_dir() && path.extension().is_none() {
             scan_app_directory(
                 &path,
@@ -723,10 +700,8 @@ fn scan_app_directory(
 
         let app_info = AppInfo::new(name.clone(), path.clone());
 
-        // First, try to read extensions from Info.plist
         let plist_extensions = read_app_document_types(&path);
 
-        // Add extensions from Info.plist
         for ext in &plist_extensions {
             extension_to_apps
                 .entry(ext.to_lowercase())
@@ -734,7 +709,6 @@ fn scan_app_directory(
                 .push(app_info.clone());
         }
 
-        // Also add from common mappings (these may not be in Info.plist)
         if let Some(extensions) = common_mappings.get(name.as_str()) {
             for ext in extensions {
                 let ext_lower = ext.to_lowercase();
@@ -759,7 +733,6 @@ fn read_app_document_types(app_path: &Path) -> Vec<String> {
         return extensions;
     }
 
-    // Use plutil to convert plist to JSON for easier parsing
     let Ok(output) = Command::new("plutil")
         .args([
             "-convert",
@@ -775,12 +748,9 @@ fn read_app_document_types(app_path: &Path) -> Vec<String> {
 
     let json_str = String::from_utf8_lossy(&output.stdout);
 
-    // Parse CFBundleDocumentTypes to get supported extensions
-    // Look for patterns like "CFBundleTypeExtensions": ["ext1", "ext2"]
     if let Some(doc_types_start) = json_str.find("CFBundleDocumentTypes") {
         let remaining = &json_str[doc_types_start..];
 
-        // Find all extension arrays
         let mut pos = 0;
         while let Some(ext_start) = remaining[pos..].find("CFBundleTypeExtensions") {
             let search_start = pos + ext_start;
@@ -788,7 +758,6 @@ fn read_app_document_types(app_path: &Path) -> Vec<String> {
                 let arr_begin = search_start + arr_start;
                 if let Some(arr_end) = remaining[arr_begin..].find(']') {
                     let arr_content = &remaining[arr_begin + 1..arr_begin + arr_end];
-                    // Extract extensions from the array
                     for part in arr_content.split(',') {
                         let ext = part
                             .trim()
@@ -807,18 +776,14 @@ fn read_app_document_types(app_path: &Path) -> Vec<String> {
         }
     }
 
-    // Also check UTExportedTypeDeclarations and UTImportedTypeDeclarations
     for uti_key in ["UTExportedTypeDeclarations", "UTImportedTypeDeclarations"] {
         if let Some(uti_start) = json_str.find(uti_key) {
             let remaining = &json_str[uti_start..];
-            // Look for public.filename-extension patterns
             let mut pos = 0;
             while let Some(ext_tag_start) = remaining[pos..].find("public.filename-extension") {
                 let search_start = pos + ext_tag_start;
-                // Find the value after this key
                 if let Some(colon) = remaining[search_start..].find(':') {
                     let value_start = search_start + colon + 1;
-                    // Could be a string or array
                     let value_area = &remaining
                         [value_start..value_start.saturating_add(200).min(remaining.len())];
 
@@ -850,8 +815,6 @@ fn load_app_registry_windows() -> AppRegistry {
     let mut all_apps: Vec<AppInfo> = Vec::new();
     let mut seen_apps: HashSet<PathBuf> = HashSet::new();
 
-    // Query Windows registry for file associations
-    // HKEY_CLASSES_ROOT contains file extension associations
     if let Ok(output) = Command::new("reg")
         .args(["query", "HKEY_CLASSES_ROOT", "/s", "/f", "OpenWithProgids"])
         .output()
@@ -865,7 +828,6 @@ fn load_app_registry_windows() -> AppRegistry {
         );
     }
 
-    // Scan common application directories
     let app_dirs = [
         PathBuf::from(r"C:\Program Files"),
         PathBuf::from(r"C:\Program Files (x86)"),
@@ -878,7 +840,6 @@ fn load_app_registry_windows() -> AppRegistry {
         scan_windows_apps(&app_dir, &mut all_apps, &mut seen_apps);
     }
 
-    // Sort apps
     for apps in extension_to_apps.values_mut() {
         apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
         apps.dedup_by(|a, b| a.path == b.path);
@@ -898,8 +859,6 @@ fn parse_windows_registry(
     _all_apps: &mut Vec<AppInfo>,
     _seen_apps: &mut HashSet<PathBuf>,
 ) {
-    // Windows registry parsing is complex - for now we rely on scanning app directories
-    // A full implementation would parse HKEY_CLASSES_ROOT\.ext\OpenWithProgids
 }
 
 #[cfg(target_os = "windows")]
@@ -912,7 +871,6 @@ fn scan_windows_apps(dir: &Path, all_apps: &mut Vec<AppInfo>, seen_apps: &mut Ha
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
-                // Look for .exe files in subdirectories
                 if let Ok(sub_entries) = std::fs::read_dir(&path) {
                     for sub_entry in sub_entries.flatten() {
                         let exe_path = sub_entry.path();
@@ -942,7 +900,6 @@ fn load_app_registry_linux() -> AppRegistry {
     let mut all_apps: Vec<AppInfo> = Vec::new();
     let mut seen_apps: HashSet<PathBuf> = HashSet::new();
 
-    // Parse .desktop files from standard locations
     let desktop_dirs = [
         PathBuf::from("/usr/share/applications"),
         PathBuf::from("/usr/local/share/applications"),
@@ -957,7 +914,6 @@ fn load_app_registry_linux() -> AppRegistry {
         }
     }
 
-    // Sort apps
     for apps in extension_to_apps.values_mut() {
         apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
         apps.dedup_by(|a, b| a.path == b.path);
@@ -1039,7 +995,6 @@ fn parse_single_desktop_file(
 
         let app_info = AppInfo::new(name, exec_path.clone());
 
-        // Convert MIME types to extensions
         for mime in &mime_types {
             if let Some(ext) = mime_to_extension(mime) {
                 extension_to_apps
@@ -1056,7 +1011,6 @@ fn parse_single_desktop_file(
 
 #[cfg(target_os = "linux")]
 fn mime_to_extension(mime: &str) -> Option<String> {
-    // Common MIME type to extension mappings
     let mapping: HashMap<&str, &str> = [
         ("text/plain", "txt"),
         ("text/html", "html"),

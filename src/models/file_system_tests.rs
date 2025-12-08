@@ -1,5 +1,5 @@
-/// Property-based tests for FileSystem model
-/// **Feature: file-explorer-core**
+/
+/
 use super::*;
 use crate::models::{CloudSyncStatus, FileEntry, FileType, IconKey, LoadState};
 use proptest::prelude::*;
@@ -55,12 +55,12 @@ fn arb_path() -> impl Strategy<Value = PathBuf> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: file-explorer-core, Property 1: Loading State Consistency**
-    /// **Validates: Requirements 1.2**
-    ///
-    /// *For any* FileSystem model transitioning to a loading state, the `state` field
-    /// SHALL be `LoadState::Loading` with a valid `request_id` until the operation
-    /// completes or is superseded.
+    /
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_loading_state_consistency(
         path in arb_path(),
@@ -77,8 +77,6 @@ proptest! {
                     state_id, request_id);
             }
             LoadState::Cached { .. } => {
-                // This is valid if the path was previously cached
-                // In this case, we should verify the path is in cache
                 prop_assert!(fs.is_cached(&path),
                     "If state is Cached, path should be in cache");
             }
@@ -105,11 +103,11 @@ proptest! {
         }
     }
 
-    /// **Feature: file-explorer-core, Property 1: Loading State Superseded**
-    /// **Validates: Requirements 1.2**
-    ///
-    /// When a new navigation request supersedes a loading operation, the state
-    /// should transition to the new Loading state with the new request_id.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_loading_state_superseded(
         path1 in arb_path(),
@@ -124,7 +122,6 @@ proptest! {
                 prop_assert_eq!(*request_id, id1);
             }
             LoadState::Cached { .. } => {
-                // Valid if path1 was cached
             }
             other => {
                 prop_assert!(false, "Unexpected state: {:?}", other);
@@ -141,26 +138,24 @@ proptest! {
                     id2, request_id);
             }
             LoadState::Cached { .. } => {
-                // Valid if path2 was cached
             }
             other => {
                 prop_assert!(false, "Unexpected state after supersede: {:?}", other);
             }
         }
 
-        // First request_id should now be invalid
         prop_assert!(!fs.is_valid_request(id1),
             "Old request_id should be invalid after supersede");
         prop_assert!(fs.is_valid_request(id2),
             "New request_id should be valid");
     }
 
-    /// **Feature: file-explorer-core, Property 4: Generational ID Monotonicity and Validation**
-    /// **Validates: Requirements 1.5, 8.1, 8.2, 8.3**
-    ///
-    /// *For any* sequence of N navigation requests, each request SHALL receive a strictly
-    /// increasing request_id, and only results matching the current request_id SHALL be
-    /// applied to the model state.
+    /
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_generational_id_monotonicity(
         paths in prop::collection::vec(arb_path(), 1..20)
@@ -171,7 +166,6 @@ proptest! {
         for path in &paths {
             let new_id = fs.begin_load(path.clone());
 
-            // Each request_id must be strictly greater than the previous
             prop_assert!(new_id > prev_id,
                 "Request ID {} should be greater than previous {}", new_id, prev_id);
 
@@ -181,11 +175,11 @@ proptest! {
         }
     }
 
-    /// **Feature: file-explorer-core, Property 4: Generational ID Validation**
-    /// **Validates: Requirements 1.5, 8.1, 8.2, 8.3**
-    ///
-    /// Only results matching the current request_id SHALL be applied to the model state.
-    /// Stale results (with old request_ids) must be discarded.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_stale_request_discarded(
         path1 in arb_path(),
@@ -212,7 +206,6 @@ proptest! {
                 prop_assert_eq!(*request_id, id2);
             }
             LoadState::Cached { .. } => {
-                // This is also valid if path2 was cached
             }
             other => {
                 prop_assert!(false, "Unexpected state after stale rejection: {:?}", other);
@@ -231,11 +224,11 @@ proptest! {
     }
 
 
-    /// **Feature: file-explorer-core, Property 3: Cache Hit Returns Cached Data**
-    /// **Validates: Requirements 1.4**
-    ///
-    /// *For any* path that exists in the LRU cache, calling begin_load SHALL immediately
-    /// make cached entries available via get_cached() for instant restoration.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_cache_hit_returns_cached_data(
         path in arb_path(),
@@ -249,7 +242,6 @@ proptest! {
 
         let _ = fs.begin_load(PathBuf::from("/other"));
 
-        // Cache should still contain the original path's data
         let cached = fs.get_cached(&path);
         prop_assert!(cached.is_some(), "Path should be in cache");
 
@@ -258,11 +250,11 @@ proptest! {
             "Cache should contain all entries");
     }
 
-    /// **Feature: file-explorer-core, Property 20: Cache Generation Stored**
-    /// **Validates: Requirements 8.4**
-    ///
-    /// *For any* CachedDirectory, the generation field SHALL equal the request_id
-    /// that was active when the cache entry was created.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_cache_generation_stored(
         path in arb_path(),
@@ -275,7 +267,6 @@ proptest! {
 
         fs.complete_load(request_id, entries.clone(), Duration::from_millis(50), mtime);
 
-        // Retrieve cached entry and verify generation matches request_id
         let cached = fs.get_cached(&path)
             .expect("Path should be cached after complete_load");
 
@@ -455,14 +446,12 @@ mod unit_tests {
         let mut fs = FileSystem::with_cache_capacity(PathBuf::from("/"), 3);
         let mtime = SystemTime::now();
 
-        // Fill cache beyond capacity
         for i in 0..5 {
             let path = PathBuf::from(format!("/path{}", i));
             let id = fs.begin_load(path.clone());
             fs.complete_load(id, vec![], Duration::from_millis(10), mtime);
         }
 
-        // Cache should be bounded to capacity
         assert!(fs.cache_len() <= 3);
     }
 
@@ -493,7 +482,6 @@ mod unit_tests {
         assert!(result.is_ok());
         assert_eq!(fs.entries().len(), 4);
 
-        // Verify sorted order (directories first)
         assert!(fs.entries()[0].is_dir);
         assert_eq!(fs.entries()[0].name, "subdir");
 
@@ -562,15 +550,12 @@ mod unit_tests {
             mtime,
         )];
 
-        // Append first batch
         assert!(fs.append_entries(id, entries1));
         assert_eq!(fs.entries().len(), 1);
 
-        // Append second batch
         assert!(fs.append_entries(id, entries2));
         assert_eq!(fs.entries().len(), 2);
 
-        // Try to append with stale ID
         let _ = fs.begin_load(PathBuf::from("/other"));
         let entries3 = vec![FileEntry::new(
             "file3.txt".into(),

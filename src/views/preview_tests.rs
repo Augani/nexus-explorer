@@ -21,10 +21,6 @@ fn create_test_subdir(dir: &TempDir, name: &str) -> PathBuf {
     path
 }
 
-// ============================================================================
-// Property 22: Preview Metadata Completeness
-// For any valid file path, the preview metadata SHALL contain name, size, type, date, and permissions
-// ============================================================================
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -39,34 +35,24 @@ proptest! {
 
         let metadata = FileMetadata::from_path(&file_path);
 
-        // Property: Metadata must be present for valid files
         prop_assert!(metadata.is_some(), "Metadata should be present for valid file");
 
         let meta = metadata.unwrap();
 
-        // Property: Name must not be empty
         prop_assert!(!meta.name.is_empty(), "Name should not be empty");
 
-        // Property: Name should match the file name
         prop_assert_eq!(&meta.name, &file_name, "Name should match file name");
 
-        // Property: Size should match content length
         prop_assert_eq!(meta.size, content.len() as u64, "Size should match content length");
 
-        // Property: File type should not be empty
         prop_assert!(!meta.file_type.is_empty(), "File type should not be empty");
 
-        // Property: is_dir should be false for files
         prop_assert!(!meta.is_dir, "is_dir should be false for files");
 
         prop_assert!(meta.has_all_fields(), "has_all_fields should return true");
     }
 }
 
-// ============================================================================
-// Property 23: Preview Text Line Numbers
-// For any text file, the preview SHALL display line numbers matching the actual line count
-// ============================================================================
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -82,10 +68,8 @@ proptest! {
         let mut preview = Preview::new();
         preview.load_file(&file_path);
 
-        // Property: Content should be Text type
         match preview.content() {
             PreviewContent::Text { line_count, .. } => {
-                // Property: Line count should match actual lines
                 let expected_lines = content.lines().count();
                 prop_assert_eq!(
                     *line_count, expected_lines,
@@ -100,10 +84,6 @@ proptest! {
     }
 }
 
-// ============================================================================
-// Property 24: Preview Image Dimensions
-// For any image file, the preview SHALL display format information
-// ============================================================================
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
@@ -119,10 +99,8 @@ proptest! {
         let mut preview = Preview::new();
         preview.load_file(&file_path);
 
-        // Property: Content should be Image type for image extensions
         match preview.content() {
             PreviewContent::Image { format, .. } => {
-                // Property: Format should match extension (uppercase)
                 prop_assert_eq!(
                     format.to_lowercase(), ext.to_lowercase(),
                     "Format should match extension"
@@ -135,10 +113,6 @@ proptest! {
     }
 }
 
-// ============================================================================
-// Property 25: Preview Hex Dump Size
-// For any binary file, the hex dump SHALL show at most 256 bytes
-// ============================================================================
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -148,23 +122,19 @@ proptest! {
         content in prop::collection::vec(any::<u8>(), 1..1000)
     ) {
         let temp_dir = create_test_dir();
-        // Use .bin extension to ensure binary treatment
         let file_path = create_test_file(&temp_dir, "test.bin", &content);
 
         let mut preview = Preview::new();
         preview.load_file(&file_path);
 
-        // Property: Content should be HexDump type for binary files
         match preview.content() {
             PreviewContent::HexDump { bytes, total_size } => {
-                // Property: Bytes should be at most 256
                 prop_assert!(
                     bytes.len() <= 256,
                     "Hex dump should show at most 256 bytes, got {}",
                     bytes.len()
                 );
 
-                // Property: Bytes should be min(256, content.len())
                 let expected_len = content.len().min(256);
                 prop_assert_eq!(
                     bytes.len(), expected_len,
@@ -172,13 +142,11 @@ proptest! {
                     expected_len, bytes.len()
                 );
 
-                // Property: Total size should match actual file size
                 prop_assert_eq!(
                     *total_size, content.len() as u64,
                     "Total size should match file size"
                 );
 
-                // Property: Bytes should match the first N bytes of content
                 prop_assert_eq!(
                     bytes.as_slice(), &content[..expected_len],
                     "Hex dump bytes should match file content"
@@ -191,10 +159,6 @@ proptest! {
     }
 }
 
-// ============================================================================
-// Property 26: Preview Directory Statistics
-// For any directory, the preview SHALL show correct item count, total size, and subdirectory count
-// ============================================================================
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
@@ -223,7 +187,6 @@ proptest! {
         let mut preview = Preview::new();
         preview.load_file(temp_dir.path());
 
-        // Property: Content should be Directory type
         match preview.content() {
             PreviewContent::Directory {
                 item_count,
@@ -233,28 +196,24 @@ proptest! {
             } => {
                 let expected_item_count = actual_file_count + subdir_count;
 
-                // Property: Item count should match total items
                 prop_assert_eq!(
                     *item_count, expected_item_count,
                     "Item count should be {}, got {}",
                     expected_item_count, item_count
                 );
 
-                // Property: Subdir count should match
                 prop_assert_eq!(
                     *reported_subdirs, subdir_count,
                     "Subdir count should be {}, got {}",
                     subdir_count, reported_subdirs
                 );
 
-                // Property: File count should match
                 prop_assert_eq!(
                     *reported_files, actual_file_count,
                     "File count should be {}, got {}",
                     actual_file_count, reported_files
                 );
 
-                // Property: Total size should match sum of file sizes
                 prop_assert_eq!(
                     *reported_size, total_size,
                     "Total size should be {}, got {}",
@@ -268,8 +227,6 @@ proptest! {
     }
 }
 
-// ============================================================================
-// ============================================================================
 
 #[test]
 fn test_format_size() {

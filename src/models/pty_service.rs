@@ -5,11 +5,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use thiserror::Error;
 
-/// Default terminal size
+/
 pub const DEFAULT_PTY_COLS: u16 = 80;
 pub const DEFAULT_PTY_ROWS: u16 = 24;
 
-/// Errors that can occur with PTY operations
+/
 #[derive(Error, Debug)]
 pub enum PtyError {
     #[error("Failed to create PTY: {0}")]
@@ -26,7 +26,7 @@ pub enum PtyError {
     NotRunning,
 }
 
-/// PTY service for managing a pseudo-terminal
+/
 pub struct PtyService {
     pty_pair: Option<PtyPair>,
     writer: Option<Box<dyn Write + Send>>,
@@ -82,7 +82,7 @@ impl PtyService {
         self.working_directory = path;
     }
 
-    /// Start the PTY with the default shell
+    /
     pub fn start(&mut self) -> Result<(), PtyError> {
         if self.is_running() {
             return Ok(());
@@ -109,7 +109,6 @@ impl PtyService {
             cmd.env("TERM", "xterm-256color");
         }
 
-        // Spawn the shell
         let _child = pty_pair
             .slave
             .spawn_command(cmd)
@@ -129,7 +128,6 @@ impl PtyService {
         let is_running = Arc::clone(&self.is_running);
         let output_sender = self.output_sender.clone();
 
-        // Start reader thread
         let reader_thread = thread::spawn(move || {
             let mut buffer = [0u8; 4096];
             loop {
@@ -165,21 +163,19 @@ impl PtyService {
         Ok(())
     }
 
-    /// Stop the PTY
+    /
     pub fn stop(&mut self) {
         *self.is_running.lock().unwrap() = false;
 
-        // Drop writer to close the PTY
         self.writer = None;
         self.pty_pair = None;
 
-        // Wait for reader thread to finish
         if let Some(handle) = self.reader_thread.take() {
             let _ = handle.join();
         }
     }
 
-    /// Write data to the PTY
+    /
     pub fn write(&mut self, data: &[u8]) -> Result<(), PtyError> {
         if let Some(writer) = &mut self.writer {
             writer
@@ -194,12 +190,12 @@ impl PtyService {
         }
     }
 
-    /// Write a string to the PTY
+    /
     pub fn write_str(&mut self, s: &str) -> Result<(), PtyError> {
         self.write(s.as_bytes())
     }
 
-    /// Resize the PTY
+    /
     pub fn resize(&mut self, cols: u16, rows: u16) -> Result<(), PtyError> {
         self.cols = cols;
         self.rows = rows;
@@ -218,12 +214,12 @@ impl PtyService {
         Ok(())
     }
 
-    /// Try to receive output (non-blocking)
+    /
     pub fn try_recv(&self) -> Option<Vec<u8>> {
         self.output_receiver.try_recv().ok()
     }
 
-    /// Receive all available output
+    /
     pub fn drain_output(&self) -> Vec<u8> {
         let mut output = Vec::new();
         while let Ok(data) = self.output_receiver.try_recv() {
@@ -245,7 +241,7 @@ impl Drop for PtyService {
     }
 }
 
-/// Get the default shell for the current platform
+/
 fn get_default_shell() -> String {
     #[cfg(target_os = "windows")]
     {
@@ -268,7 +264,7 @@ fn get_default_shell() -> String {
     }
 }
 
-/// Key codes for special keys
+/
 pub mod key_codes {
     pub const ENTER: &[u8] = b"\r";
     pub const TAB: &[u8] = b"\t";

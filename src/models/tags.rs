@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-/// Unique identifier for a tag
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TagId(pub u64);
 
@@ -13,7 +13,7 @@ impl TagId {
     }
 }
 
-/// Predefined tag colors matching macOS Finder style
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum TagColor {
     #[default]
@@ -27,7 +27,7 @@ pub enum TagColor {
 }
 
 impl TagColor {
-    /// Returns the RGBA color value for this tag color
+    /
     pub fn to_rgba(&self) -> (u8, u8, u8, u8) {
         match self {
             TagColor::Red => (0xE5, 0x3E, 0x3E, 0xFF),
@@ -40,7 +40,7 @@ impl TagColor {
         }
     }
 
-    /// Returns all available tag colors
+    /
     pub fn all() -> &'static [TagColor] {
         &[
             TagColor::Red,
@@ -53,7 +53,7 @@ impl TagColor {
         ]
     }
 
-    /// Returns the display name for this color
+    /
     pub fn display_name(&self) -> &'static str {
         match self {
             TagColor::Red => "Red",
@@ -67,7 +67,7 @@ impl TagColor {
     }
 }
 
-/// A tag that can be applied to files
+/
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tag {
     pub id: TagId,
@@ -81,7 +81,7 @@ impl Tag {
     }
 }
 
-/// Errors that can occur during tag operations
+/
 #[derive(Debug, Error)]
 pub enum TagError {
     #[error("Tag not found: {0:?}")]
@@ -100,21 +100,21 @@ pub enum TagError {
     XattrNotSupported,
 }
 
-/// Result type for tag operations
+/
 pub type TagResult<T> = std::result::Result<T, TagError>;
 
-/// Manages file tags - creating, deleting, and applying tags to files
-///
-/// Tags are stored in two ways:
-/// 1. Extended attributes (xattr) on supported platforms for per-file storage
-/// 2. A local JSON database as fallback or for platforms without xattr support
+/
+/
+/
+/
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TagManager {
-    /// All defined tags
+    /
     tags: HashMap<TagId, Tag>,
-    /// Mapping from file paths to their tag IDs
+    /
     file_tags: HashMap<PathBuf, HashSet<TagId>>,
-    /// Next available tag ID
+    /
     next_id: u64,
 }
 
@@ -125,7 +125,7 @@ impl Default for TagManager {
 }
 
 impl TagManager {
-    /// Creates a new TagManager with default color tags
+    /
     pub fn new() -> Self {
         let mut manager = Self {
             tags: HashMap::new(),
@@ -140,7 +140,7 @@ impl TagManager {
         manager
     }
 
-    /// Creates a new tag with the given name and color
+    /
     pub fn create_tag(&mut self, name: String, color: TagColor) -> TagResult<TagId> {
         if self
             .tags
@@ -159,7 +159,7 @@ impl TagManager {
         Ok(id)
     }
 
-    /// Deletes a tag and removes it from all files
+    /
     pub fn delete_tag(&mut self, id: TagId) -> TagResult<()> {
         if !self.tags.contains_key(&id) {
             return Err(TagError::TagNotFound(id));
@@ -167,18 +167,16 @@ impl TagManager {
 
         self.tags.remove(&id);
 
-        // Remove this tag from all files
         for tags in self.file_tags.values_mut() {
             tags.remove(&id);
         }
 
-        // Clean up empty entries
         self.file_tags.retain(|_, tags| !tags.is_empty());
 
         Ok(())
     }
 
-    /// Applies a tag to a file
+    /
     pub fn apply_tag(&mut self, path: &Path, tag_id: TagId) -> TagResult<()> {
         if !self.tags.contains_key(&tag_id) {
             return Err(TagError::TagNotFound(tag_id));
@@ -192,7 +190,7 @@ impl TagManager {
         Ok(())
     }
 
-    /// Removes a tag from a file
+    /
     pub fn remove_tag(&mut self, path: &Path, tag_id: TagId) -> TagResult<()> {
         if !self.tags.contains_key(&tag_id) {
             return Err(TagError::TagNotFound(tag_id));
@@ -208,7 +206,7 @@ impl TagManager {
         Ok(())
     }
 
-    /// Returns all tags applied to a file
+    /
     pub fn tags_for_file(&self, path: &Path) -> Vec<&Tag> {
         self.file_tags
             .get(path)
@@ -216,7 +214,7 @@ impl TagManager {
             .unwrap_or_default()
     }
 
-    /// Returns all files that have a specific tag
+    /
     pub fn files_with_tag(&self, tag_id: TagId) -> Vec<&PathBuf> {
         self.file_tags
             .iter()
@@ -225,34 +223,34 @@ impl TagManager {
             .collect()
     }
 
-    /// Returns all defined tags
+    /
     pub fn all_tags(&self) -> Vec<&Tag> {
         self.tags.values().collect()
     }
 
-    /// Returns a tag by ID
+    /
     pub fn get_tag(&self, id: TagId) -> Option<&Tag> {
         self.tags.get(&id)
     }
 
-    /// Returns a tag by name (case-insensitive)
+    /
     pub fn get_tag_by_name(&self, name: &str) -> Option<&Tag> {
         self.tags
             .values()
             .find(|t| t.name.eq_ignore_ascii_case(name))
     }
 
-    /// Returns the number of defined tags
+    /
     pub fn tag_count(&self) -> usize {
         self.tags.len()
     }
 
-    /// Returns the number of files with tags
+    /
     pub fn tagged_file_count(&self) -> usize {
         self.file_tags.len()
     }
 
-    /// Checks if a file has any tags
+    /
     pub fn has_tags(&self, path: &Path) -> bool {
         self.file_tags
             .get(path)
@@ -260,7 +258,7 @@ impl TagManager {
             .unwrap_or(false)
     }
 
-    /// Checks if a file has a specific tag
+    /
     pub fn has_tag(&self, path: &Path, tag_id: TagId) -> bool {
         self.file_tags
             .get(path)
@@ -268,7 +266,7 @@ impl TagManager {
             .unwrap_or(false)
     }
 
-    /// Renames a tag
+    /
     pub fn rename_tag(&mut self, id: TagId, new_name: String) -> TagResult<()> {
         if self
             .tags
@@ -286,7 +284,7 @@ impl TagManager {
         }
     }
 
-    /// Changes a tag's color
+    /
     pub fn set_tag_color(&mut self, id: TagId, color: TagColor) -> TagResult<()> {
         if let Some(tag) = self.tags.get_mut(&id) {
             tag.color = color;
@@ -296,12 +294,12 @@ impl TagManager {
         }
     }
 
-    /// Clears all tags from a file
+    /
     pub fn clear_file_tags(&mut self, path: &Path) {
         self.file_tags.remove(path);
     }
 
-    /// Updates file path when a file is renamed/moved
+    /
     pub fn update_file_path(&mut self, old_path: &Path, new_path: &Path) {
         if let Some(tags) = self.file_tags.remove(old_path) {
             self.file_tags.insert(new_path.to_path_buf(), tags);
@@ -309,7 +307,7 @@ impl TagManager {
     }
 }
 
-/// Persistence format for tags
+/
 #[derive(Debug, Serialize, Deserialize)]
 struct TagsConfig {
     version: u32,
@@ -332,7 +330,7 @@ struct FileTagEntry {
 }
 
 impl TagManager {
-    /// Returns the config directory path for tags
+    /
     fn config_path() -> PathBuf {
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -340,7 +338,7 @@ impl TagManager {
             .join("tags.json")
     }
 
-    /// Saves tags to the config file
+    /
     pub fn save(&self) -> TagResult<()> {
         let config_dir = Self::config_path().parent().unwrap().to_path_buf();
         std::fs::create_dir_all(&config_dir)?;
@@ -374,7 +372,7 @@ impl TagManager {
         Ok(())
     }
 
-    /// Loads tags from the config file
+    /
     pub fn load() -> TagResult<Self> {
         let config_path = Self::config_path();
 
@@ -397,7 +395,6 @@ impl TagManager {
             manager.tags.insert(tag.id, tag);
         }
 
-        // Restore file tags
         for entry in config.file_tags {
             let path = PathBuf::from(entry.path);
             let tag_ids: HashSet<TagId> = entry.tag_ids.into_iter().map(TagId::new).collect();
@@ -409,7 +406,7 @@ impl TagManager {
         Ok(manager)
     }
 
-    /// Creates an empty TagManager without default tags (for testing)
+    /
     pub fn empty() -> Self {
         Self {
             tags: HashMap::new(),
@@ -419,7 +416,7 @@ impl TagManager {
     }
 }
 
-/// Extended attribute storage for file tags (Unix only)
+/
 #[cfg(unix)]
 pub mod xattr_storage {
     use super::*;
@@ -494,7 +491,7 @@ pub mod xattr_storage {
     }
 }
 
-/// Stub xattr_storage for Windows (xattr not supported)
+/
 #[cfg(not(unix))]
 pub mod xattr_storage {
     use super::*;
@@ -517,30 +514,26 @@ pub mod xattr_storage {
 }
 
 impl TagManager {
-    /// Applies a tag to a file and optionally stores it in xattr
-    ///
-    /// This method first updates the in-memory state, then attempts to
-    /// write to xattr. If xattr fails, the in-memory state is still valid.
+    /
+    /
+    /
+    /
     pub fn apply_tag_with_xattr(&mut self, path: &Path, tag_id: TagId) -> TagResult<()> {
-        // First apply to in-memory state
         self.apply_tag(path, tag_id)?;
 
-        // Try to write to xattr (best effort)
         let tag_ids: Vec<u64> = self
             .file_tags
             .get(path)
             .map(|ids| ids.iter().map(|id| id.0).collect())
             .unwrap_or_default();
 
-        // Ignore xattr errors - fall back to database storage
         let _ = xattr_storage::write_tags(path, &tag_ids);
 
         Ok(())
     }
 
-    /// Removes a tag from a file and updates xattr
+    /
     pub fn remove_tag_with_xattr(&mut self, path: &Path, tag_id: TagId) -> TagResult<()> {
-        // First remove from in-memory state
         self.remove_tag(path, tag_id)?;
 
         let tag_ids: Vec<u64> = self
@@ -554,10 +547,10 @@ impl TagManager {
         Ok(())
     }
 
-    /// Syncs tags from xattr to in-memory state for a file
-    ///
-    /// This is useful when loading a directory to pick up tags
-    /// that were set by other applications or previous sessions.
+    /
+    /
+    /
+    /
     pub fn sync_from_xattr(&mut self, path: &Path) -> TagResult<()> {
         match xattr_storage::read_tags(path) {
             Ok(tag_ids) => {
@@ -579,14 +572,13 @@ impl TagManager {
                 Ok(())
             }
             Err(TagError::XattrNotSupported) => {
-                // xattr not supported, just use database
                 Ok(())
             }
             Err(e) => Err(e),
         }
     }
 
-    /// Syncs tags from in-memory state to xattr for a file
+    /
     pub fn sync_to_xattr(&self, path: &Path) -> TagResult<()> {
         let tag_ids: Vec<u64> = self
             .file_tags
@@ -597,7 +589,7 @@ impl TagManager {
         xattr_storage::write_tags(path, &tag_ids)
     }
 
-    /// Checks if xattr storage is supported for the given path
+    /
     pub fn xattr_supported(path: &Path) -> bool {
         xattr_storage::is_supported(path)
     }

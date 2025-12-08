@@ -5,45 +5,45 @@ use std::time::SystemTime;
 #[cfg(target_os = "macos")]
 use std::process::Command;
 
-/// Metadata for a trash entry including original location and deletion time
+/
 #[derive(Debug, Clone)]
 pub struct TrashEntry {
-    /// The name of the file/folder
+    /
     pub name: String,
-    /// The original path before deletion
+    /
     pub original_path: PathBuf,
-    /// When the item was deleted
+    /
     pub deletion_date: SystemTime,
-    /// Size in bytes
+    /
     pub size: u64,
-    /// Whether this is a directory
+    /
     pub is_dir: bool,
-    /// The internal ID used by the trash system for restoration
+    /
     pub trash_id: TrashId,
 }
 
-/// Platform-specific identifier for trash items
+/
 #[derive(Debug, Clone)]
 pub enum TrashId {
-    /// Path to the item in trash (macOS/Linux)
+    /
     Path(PathBuf),
-    /// Windows Recycle Bin item identifier
+    /
     #[cfg(target_os = "windows")]
     Windows(String),
 }
 
-/// Error types for trash operations
+/
 #[derive(Debug, Clone)]
 pub enum TrashError {
-    /// Item not found in trash
+    /
     NotFound(String),
-    /// Original location no longer exists
+    /
     OriginalLocationMissing(PathBuf),
-    /// Permission denied
+    /
     PermissionDenied(String),
-    /// IO error
+    /
     IoError(String),
-    /// Platform-specific error
+    /
     PlatformError(String),
 }
 
@@ -63,16 +63,16 @@ impl std::fmt::Display for TrashError {
 
 impl std::error::Error for TrashError {}
 
-/// Manages trash/recycle bin operations across platforms
+/
 pub struct TrashManager {
-    /// Cached list of trash entries
+    /
     entries: Vec<TrashEntry>,
-    /// Total size of all items in trash
+    /
     total_size: u64,
 }
 
 impl TrashManager {
-    /// Create a new TrashManager
+    /
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
@@ -80,47 +80,47 @@ impl TrashManager {
         }
     }
 
-    /// Refresh the list of trash entries from the system
+    /
     pub fn refresh(&mut self) {
         self.entries = list_trash_entries();
         self.total_size = self.entries.iter().map(|e| e.size).sum();
     }
 
-    /// Get all trash entries
+    /
     pub fn entries(&self) -> &[TrashEntry] {
         &self.entries
     }
 
-    /// Get the total size of all items in trash
+    /
     pub fn total_size(&self) -> u64 {
         self.total_size
     }
 
-    /// Get the number of items in trash
+    /
     pub fn item_count(&self) -> usize {
         self.entries.len()
     }
 
-    /// Check if trash is considered "large" (over 1GB)
+    /
     pub fn is_large(&self) -> bool {
         self.total_size > 1024 * 1024 * 1024
     }
 
-    /// Restore an item from trash to its original location
+    /
     pub fn restore(&mut self, entry: &TrashEntry) -> Result<PathBuf, TrashError> {
         let result = restore_from_trash(entry)?;
         self.refresh();
         Ok(result)
     }
 
-    /// Permanently delete a single item from trash
+    /
     pub fn delete_permanently(&mut self, entry: &TrashEntry) -> Result<(), TrashError> {
         delete_from_trash(entry)?;
         self.refresh();
         Ok(())
     }
 
-    /// Empty the entire trash
+    /
     pub fn empty(&mut self) -> Result<(), TrashError> {
         empty_trash_internal()?;
         self.entries.clear();
@@ -128,7 +128,7 @@ impl TrashManager {
         Ok(())
     }
 
-    /// Move a file to trash
+    /
     pub fn move_to_trash(&mut self, path: &PathBuf) -> Result<(), TrashError> {
         trash::delete(path).map_err(|e| TrashError::IoError(e.to_string()))?;
         self.refresh();
@@ -142,7 +142,7 @@ impl Default for TrashManager {
     }
 }
 
-/// List all entries in the system trash with metadata
+/
 pub fn list_trash_entries() -> Vec<TrashEntry> {
     #[cfg(target_os = "macos")]
     {
@@ -196,8 +196,6 @@ fn list_trash_entries_macos() -> Vec<TrashEntry> {
                 .and_then(|m| m.modified().ok())
                 .unwrap_or(SystemTime::now());
             
-            // On macOS, the original path is stored in .DS_Store or we use the trash path
-            // For simplicity, we'll use the name as the original path indicator
             let original_path = dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("/"))
                 .join(&name);
@@ -305,7 +303,7 @@ fn list_trash_entries_windows() -> Vec<TrashEntry> {
     entries
 }
 
-/// Calculate the total size of a directory recursively
+/
 pub fn calculate_dir_size(path: &PathBuf) -> u64 {
     let mut size = 0u64;
     if let Ok(entries) = std::fs::read_dir(path) {
@@ -321,18 +319,15 @@ pub fn calculate_dir_size(path: &PathBuf) -> u64 {
     size
 }
 
-/// Restore an item from trash to its original location
+/
 pub fn restore_from_trash(entry: &TrashEntry) -> Result<PathBuf, TrashError> {
-    // Check if original location's parent exists
     if let Some(parent) = entry.original_path.parent() {
         if !parent.exists() {
-            // Create the parent directory
             std::fs::create_dir_all(parent)
                 .map_err(|e| TrashError::IoError(format!("Failed to create directory: {}", e)))?;
         }
     }
     
-    // Check if something already exists at the original path
     if entry.original_path.exists() {
         return Err(TrashError::IoError(format!(
             "File already exists at: {}",
@@ -347,8 +342,6 @@ pub fn restore_from_trash(entry: &TrashEntry) -> Result<PathBuf, TrashError> {
         }
         #[cfg(target_os = "windows")]
         TrashId::Windows(_id) => {
-            // On Windows, use the trash crate's restore functionality
-            // The trash crate doesn't have a direct restore, so we need to handle it manually
             if let TrashId::Path(trash_path) = &entry.trash_id {
                 std::fs::rename(trash_path, &entry.original_path)
                     .map_err(|e| TrashError::IoError(format!("Failed to restore: {}", e)))?;
@@ -363,7 +356,7 @@ pub fn restore_from_trash(entry: &TrashEntry) -> Result<PathBuf, TrashError> {
     Ok(entry.original_path.clone())
 }
 
-/// Permanently delete an item from trash
+/
 fn delete_from_trash(entry: &TrashEntry) -> Result<(), TrashError> {
     match &entry.trash_id {
         TrashId::Path(trash_path) => {
@@ -377,7 +370,6 @@ fn delete_from_trash(entry: &TrashEntry) -> Result<(), TrashError> {
         }
         #[cfg(target_os = "windows")]
         TrashId::Windows(id) => {
-            // On Windows, the ID is the path in the recycle bin
             let path = PathBuf::from(id);
             if entry.is_dir {
                 std::fs::remove_dir_all(&path)
@@ -391,7 +383,7 @@ fn delete_from_trash(entry: &TrashEntry) -> Result<(), TrashError> {
     Ok(())
 }
 
-/// Internal function to empty the trash
+/
 fn empty_trash_internal() -> Result<(), TrashError> {
     #[cfg(target_os = "macos")]
     {
@@ -450,7 +442,6 @@ fn empty_trash_internal() -> Result<(), TrashError> {
 
     #[cfg(target_os = "windows")]
     {
-        // On Windows, we iterate through all items and delete them
         if let Ok(items) = trash::os_limited::list() {
             for item in items {
                 if item.id.is_dir() {
@@ -471,7 +462,7 @@ fn empty_trash_internal() -> Result<(), TrashError> {
     }
 }
 
-/// Get the list of items in the system trash (legacy function for compatibility)
+/
 pub fn list_trash_items() -> Vec<FileEntry> {
     #[cfg(target_os = "macos")]
     {
@@ -702,7 +693,7 @@ fn create_entry_from_path(path: &PathBuf) -> Option<FileEntry> {
     })
 }
 
-/// Get the trash path for the current platform
+/
 pub fn get_trash_path() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
@@ -730,13 +721,13 @@ pub fn get_trash_path() -> PathBuf {
     }
 }
 
-/// Check if a path is the trash folder
+/
 pub fn is_trash_path(path: &PathBuf) -> bool {
     let trash_path = get_trash_path();
     path == &trash_path
 }
 
-/// Empty the system trash
+/
 pub fn empty_trash() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {

@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use crate::models::theme_colors;
 
-/// Content types that can be previewed
+/
 #[derive(Debug, Clone, PartialEq)]
 pub enum PreviewContent {
     Text {
@@ -38,7 +38,7 @@ pub enum PreviewContent {
     None,
 }
 
-/// File metadata for preview display
+/
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileMetadata {
     pub name: String,
@@ -101,7 +101,7 @@ impl FileMetadata {
     }
 }
 
-/// Format file permissions (Unix-style)
+/
 fn format_permissions(metadata: &fs::Metadata) -> String {
     #[cfg(unix)]
     {
@@ -130,7 +130,7 @@ fn format_permission_triple(bits: u32) -> String {
     format!("{}{}{}", r, w, x)
 }
 
-/// Preview model holding current preview state
+/
 #[derive(Debug, Clone)]
 pub struct Preview {
     content: PreviewContent,
@@ -221,7 +221,6 @@ impl Preview {
             return;
         }
 
-        // Default to hex dump for binary files
         self.load_hex_dump(path);
     }
 
@@ -231,7 +230,6 @@ impl Preview {
                 let line_count = content.lines().count();
                 let language = extension.and_then(|ext| detect_language(&ext));
 
-                // Limit content size for preview
                 let preview_content = if content.len() > 50000 {
                     format!(
                         "{}...\n\n[Content truncated - file too large]",
@@ -248,7 +246,6 @@ impl Preview {
                 };
             }
             Err(_) => {
-                // If we can't read as text, try hex dump
                 self.load_hex_dump(path);
             }
         }
@@ -273,7 +270,6 @@ impl Preview {
 
         match fs::read(path) {
             Ok(data) => {
-                // Read first 256 bytes for hex dump
                 let bytes: Vec<u8> = data.into_iter().take(256).collect();
                 self.content = PreviewContent::HexDump { bytes, total_size };
             }
@@ -286,7 +282,7 @@ impl Preview {
     }
 }
 
-/// Calculate directory statistics
+/
 pub fn calculate_directory_stats(path: &Path) -> std::io::Result<(usize, u64, usize, usize)> {
     let mut item_count = 0;
     let mut total_size = 0u64;
@@ -309,7 +305,7 @@ pub fn calculate_directory_stats(path: &Path) -> std::io::Result<(usize, u64, us
     Ok((item_count, total_size, subdir_count, file_count))
 }
 
-/// Check if extension indicates an image file
+/
 fn is_image_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -317,7 +313,7 @@ fn is_image_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/// Check if extension indicates a text file
+/
 fn is_text_extension(ext: Option<&str>) -> bool {
     matches!(
         ext,
@@ -408,7 +404,7 @@ fn is_text_extension(ext: Option<&str>) -> bool {
     )
 }
 
-/// Check if file is likely text by reading first bytes
+/
 fn is_likely_text_file(path: &Path) -> bool {
     if let Ok(data) = fs::read(path) {
         let sample: Vec<u8> = data.into_iter().take(512).collect();
@@ -423,7 +419,7 @@ fn is_likely_text_file(path: &Path) -> bool {
     }
 }
 
-/// Detect programming language from extension
+/
 fn detect_language(ext: &str) -> Option<String> {
     let lang = match ext {
         "rs" => "Rust",
@@ -477,14 +473,13 @@ fn detect_language(ext: &str) -> Option<String> {
     Some(lang.to_string())
 }
 
-/// Get image dimensions (basic implementation)
+/
 fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
-    // Try to read image dimensions using the image crate if available
     let _ = path;
     None
 }
 
-/// Format file size for display
+/
 pub fn format_size(size: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -501,14 +496,13 @@ pub fn format_size(size: u64) -> String {
     }
 }
 
-/// Format date for display
+/
 pub fn format_date(time: SystemTime) -> String {
     use std::time::UNIX_EPOCH;
 
     let duration = time.duration_since(UNIX_EPOCH).unwrap_or_default();
     let secs = duration.as_secs();
 
-    // Simple date formatting
     let days_since_epoch = secs / 86400;
     let years = 1970 + (days_since_epoch / 365);
     let remaining_days = days_since_epoch % 365;
@@ -518,7 +512,7 @@ pub fn format_date(time: SystemTime) -> String {
     format!("{:04}-{:02}-{:02}", years, month.min(12), day.min(31))
 }
 
-/// Format hex dump for display
+/
 pub fn format_hex_dump(bytes: &[u8]) -> Vec<(String, String, String)> {
     let mut lines = Vec::new();
 
@@ -531,7 +525,6 @@ pub fn format_hex_dump(bytes: &[u8]) -> Vec<(String, String, String)> {
             .collect::<Vec<_>>()
             .join(" ");
 
-        // Pad hex to 48 chars (16 bytes * 3 chars each - 1 for last space)
         let hex_padded = format!("{:<47}", hex);
 
         let ascii: String = chunk
@@ -551,7 +544,7 @@ pub fn format_hex_dump(bytes: &[u8]) -> Vec<(String, String, String)> {
     lines
 }
 
-/// Preview view component
+/
 pub struct PreviewView {
     preview: Preview,
     focus_handle: FocusHandle,
@@ -604,7 +597,6 @@ impl Render for PreviewView {
             .bg(bg_dark)
             .flex()
             .flex_col()
-            // Header toolbar - matches main toolbar height (52px)
             .child(
                 div()
                     .h(px(52.0))
@@ -637,7 +629,6 @@ impl Render for PreviewView {
                         ),
                     ),
             )
-            // Metadata header
             .child(self.render_metadata_header(
                 bg_header,
                 border_color,
@@ -646,7 +637,6 @@ impl Render for PreviewView {
                 accent,
             ))
             .child(self.render_content(bg_dark, text_light, text_gray, accent))
-            // Bottom info bar
             .child(self.render_info_bar(bg_dark, border_color, text_gray))
     }
 }
@@ -908,7 +898,6 @@ impl PreviewView {
                 div()
                     .flex()
                     .child(
-                        // Line numbers column
                         div()
                             .flex()
                             .flex_col()

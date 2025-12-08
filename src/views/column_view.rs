@@ -9,7 +9,6 @@ use gpui::{
 use super::file_list::{get_file_icon, get_file_icon_color};
 use crate::models::{Column, ColumnView, FileEntry};
 
-// Define actions for keyboard navigation
 actions!(
     column_view,
     [
@@ -21,7 +20,7 @@ actions!(
     ]
 );
 
-/// Actions for the column view (public structs for external use)
+/
 pub struct NavigateToPath(pub PathBuf);
 pub struct SelectColumnEntry {
     pub column: usize,
@@ -32,7 +31,7 @@ pub struct NavigateDown;
 pub struct NavigateLeft;
 pub struct NavigateRight;
 
-/// Component wrapper for ColumnView with GPUI integration
+/
 pub struct ColumnViewComponent {
     column_view: ColumnView,
     focus_handle: FocusHandle,
@@ -83,7 +82,7 @@ impl ColumnViewComponent {
         self.context_menu_entry = None;
     }
 
-    /// Sets entries for a specific column
+    /
     pub fn set_column_entries(
         &mut self,
         column_index: usize,
@@ -94,7 +93,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /// Handles selection of an entry in a column
+    /
     pub fn select_entry(
         &mut self,
         column_index: usize,
@@ -105,7 +104,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /// Opens the selected entry (navigates into directory)
+    /
     pub fn open_selected(&mut self, cx: &mut Context<Self>) {
         if let Some(entry) = self.column_view.selected_entry() {
             if entry.is_dir {
@@ -115,7 +114,7 @@ impl ColumnViewComponent {
         }
     }
 
-    /// Handles keyboard navigation
+    /
     pub fn handle_key_up(&mut self, cx: &mut Context<Self>) {
         self.column_view.navigate_up();
         cx.notify();
@@ -135,18 +134,17 @@ impl ColumnViewComponent {
         if self.column_view.navigate_right() {
             cx.notify();
         } else {
-            // If can't navigate right, try to open the selected directory
             self.open_selected(cx);
         }
     }
 
-    /// Sets the root path and resets the view
+    /
     pub fn set_root(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         self.column_view.set_root(path);
         cx.notify();
     }
 
-    /// Register key bindings for column view navigation
+    /
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("up", ColumnNavigateUp, Some("ColumnView")),
@@ -157,7 +155,7 @@ impl ColumnViewComponent {
         ]);
     }
 
-    /// Handle up arrow key - move selection up in current column
+    /
     fn handle_navigate_up(
         &mut self,
         _: &ColumnNavigateUp,
@@ -168,7 +166,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /// Handle down arrow key - move selection down in current column
+    /
     fn handle_navigate_down(
         &mut self,
         _: &ColumnNavigateDown,
@@ -179,7 +177,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /// Handle left arrow key - move to parent column
+    /
     fn handle_navigate_left(
         &mut self,
         _: &ColumnNavigateLeft,
@@ -190,7 +188,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /// Handle right arrow key - move into selected directory
+    /
     fn handle_navigate_right(
         &mut self,
         _: &ColumnNavigateRight,
@@ -198,7 +196,6 @@ impl ColumnViewComponent {
         cx: &mut Context<Self>,
     ) {
         if !self.column_view.navigate_right() {
-            // If can't navigate right (no child column), try to open the selected directory
             if let Some(entry) = self.column_view.selected_entry() {
                 if entry.is_dir {
                     self.pending_navigation = Some(entry.path.clone());
@@ -208,7 +205,7 @@ impl ColumnViewComponent {
         cx.notify();
     }
 
-    /// Handle enter key - open selected item
+    /
     fn handle_open_selected(
         &mut self,
         _: &ColumnOpenSelected,
@@ -284,7 +281,6 @@ impl Render for ColumnViewComponent {
                     .text_color(text_gray)
                     .child(format!("{} columns", columns.len())),
             )
-            // Columns container with horizontal scroll
             .child(
                 div()
                     .flex_1()
@@ -583,7 +579,6 @@ fn render_column(
                                     .truncate()
                                     .child(name),
                             )
-                            // Directory indicator
                             .when(is_dir, |this| {
                                 this.child(
                                     svg()

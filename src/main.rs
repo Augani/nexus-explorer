@@ -54,21 +54,17 @@ fn main() {
 
         let mut window_manager = WindowManager::new();
 
-        // Spawn Tokio runtime on a dedicated thread for I/O operations
         let _tokio_runtime = spawn_tokio_runtime();
 
-        // Initialize app registry in background for "Open With" functionality
         open_with::init_app_registry();
 
         let _icon_cache = preload_default_icons();
 
         cx.on_window_closed(|cx| {
-            // Save window state before potentially quitting
             if cx.has_global::<WindowManager>() {
                 let _ = cx.global::<WindowManager>().save_state();
             }
 
-            // Quit when all windows are closed
             if cx.windows().is_empty() {
                 cx.quit();
             }
@@ -117,15 +113,13 @@ fn main() {
     });
 }
 
-/// Determines the base path for assets based on the runtime environment.
-/// In development (cargo run), uses CARGO_MANIFEST_DIR.
-/// In release builds, resolves relative to the executable location.
+/
+/
+/
 fn get_assets_base_path() -> PathBuf {
-    // For macOS app bundles, assets are in Contents/Resources
     #[cfg(target_os = "macos")]
     {
         if let Ok(exe_path) = std::env::current_exe() {
-            // Check if we're in an app bundle: .app/Contents/MacOS/executable
             if let Some(macos_dir) = exe_path.parent() {
                 if macos_dir.ends_with("MacOS") {
                     if let Some(contents_dir) = macos_dir.parent() {
@@ -139,10 +133,8 @@ fn get_assets_base_path() -> PathBuf {
         }
     }
 
-    // For Windows/Linux or development, check relative to executable
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
-            // Check if assets folder exists next to executable
             let assets_dir = exe_dir.join("assets");
             if assets_dir.exists() {
                 return exe_dir.to_path_buf();
@@ -150,18 +142,17 @@ fn get_assets_base_path() -> PathBuf {
         }
     }
 
-    // Fallback to current directory (development mode)
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
-/// Spawns the Tokio runtime on a dedicated thread.
-/// Returns an Arc to the runtime for shared access.
+/
+/
 fn spawn_tokio_runtime() -> Arc<Runtime> {
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
     Arc::new(runtime)
 }
 
-/// Pre-loads default icons into an IconCache.
+/
 fn preload_default_icons() -> IconCache {
     let mut cache = IconCache::new();
 

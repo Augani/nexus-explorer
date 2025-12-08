@@ -4,7 +4,7 @@ use gpui::{
 };
 use std::path::PathBuf;
 
-/// Actions for the conflict resolution dialog
+/
 #[derive(Clone, PartialEq)]
 pub enum ConflictDialogAction {
     Skip,
@@ -14,7 +14,7 @@ pub enum ConflictDialogAction {
     ApplyToAll(bool),
 }
 
-/// Information about a file conflict
+/
 #[derive(Clone, Debug)]
 pub struct ConflictInfo {
     pub source: PathBuf,
@@ -55,7 +55,7 @@ impl ConflictInfo {
     }
 }
 
-/// State for the conflict resolution dialog
+/
 pub struct ConflictDialog {
     conflict: ConflictInfo,
     apply_to_all: bool,
@@ -152,7 +152,6 @@ impl Render for ConflictDialog {
             .p_4()
             .gap_4()
             .child(
-                // Header
                 div()
                     .flex()
                     .items_center()
@@ -166,7 +165,6 @@ impl Render for ConflictDialog {
                     ),
             )
             .child(
-                // Message
                 div()
                     .text_sm()
                     .text_color(rgb(0xcccccc))
@@ -176,12 +174,10 @@ impl Render for ConflictDialog {
                     )),
             )
             .child(
-                // File comparison
                 div()
                     .flex()
                     .gap_4()
                     .child(
-                        // Source file info
                         div()
                             .flex_1()
                             .flex()
@@ -211,7 +207,6 @@ impl Render for ConflictDialog {
                             ),
                     )
                     .child(
-                        // Destination file info
                         div()
                             .flex_1()
                             .flex()
@@ -242,7 +237,6 @@ impl Render for ConflictDialog {
                     ),
             )
             .child(
-                // Apply to all checkbox
                 div()
                     .id("apply-to-all-checkbox")
                     .flex()
@@ -287,7 +281,6 @@ impl Render for ConflictDialog {
                     ),
             )
             .child(
-                // Buttons
                 div()
                     .flex()
                     .justify_end()

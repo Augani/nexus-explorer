@@ -6,10 +6,10 @@ use std::time::{Duration, Instant};
 
 use crate::models::{theme_colors, Theme, ThemeColors, ThemeId};
 
-/// Callback type for theme selection
+/
 pub type OnThemeSelect = Box<dyn Fn(ThemeId) + 'static>;
 
-/// Animation state for theme transitions
+/
 #[derive(Clone, Debug)]
 struct TransitionState {
     from_theme: Option<ThemeId>,
@@ -43,7 +43,7 @@ impl TransitionState {
     }
 }
 
-/// Theme picker view for selecting RPG themes with animated previews
+/
 pub struct ThemePickerView {
     focus_handle: FocusHandle,
     selected_theme: ThemeId,
@@ -53,7 +53,7 @@ pub struct ThemePickerView {
     hovered_theme: Option<ThemeId>,
 }
 
-/// Alias for backwards compatibility
+/
 pub type ThemePicker = ThemePickerView;
 
 impl ThemePickerView {
@@ -68,7 +68,7 @@ impl ThemePickerView {
         }
     }
 
-    /// Set the callback for when a theme is selected
+    /
     pub fn on_theme_select<F>(mut self, callback: F) -> Self
     where
         F: Fn(ThemeId) + 'static,
@@ -77,7 +77,7 @@ impl ThemePickerView {
         self
     }
 
-    /// Set the initial selected theme
+    /
     pub fn with_selected_theme(mut self, theme_id: ThemeId) -> Self {
         self.selected_theme = theme_id;
         self
@@ -116,7 +116,7 @@ impl ThemePickerView {
         }
     }
 
-    /// Set hovered theme for preview effect
+    /
     fn set_hovered_theme(&mut self, theme_id: Option<ThemeId>, cx: &mut Context<Self>) {
         if self.hovered_theme != theme_id {
             self.hovered_theme = theme_id;
@@ -125,7 +125,7 @@ impl ThemePickerView {
     }
 }
 
-/// Render a mini preview of the file explorer UI with theme colors
+/
 fn render_mini_preview(theme: &Theme) -> impl IntoElement {
     let colors = &theme.colors;
 
@@ -139,7 +139,6 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
                 .flex()
                 .h_full()
                 .child(
-                    // Sidebar preview
                     div()
                         .w(px(50.0))
                         .h_full()
@@ -228,7 +227,6 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
                         ),
                 )
                 .child(
-                    // Main content area
                     div()
                         .flex_1()
                         .flex()
@@ -360,7 +358,7 @@ fn render_mini_preview(theme: &Theme) -> impl IntoElement {
         )
 }
 
-/// Render color swatches showing the theme's key colors
+/
 fn render_color_swatches(theme: &Theme) -> impl IntoElement {
     let colors = &theme.colors;
 
@@ -414,7 +412,7 @@ fn render_color_swatches(theme: &Theme) -> impl IntoElement {
         )
 }
 
-/// Render a theme card with live preview
+/
 fn render_theme_card(
     theme: &Theme,
     is_selected: bool,
@@ -423,7 +421,7 @@ fn render_theme_card(
     render_theme_card_animated(theme, is_selected, false, current_colors, false, 1.0)
 }
 
-/// Render a theme card with live preview and animation support
+/
 fn render_theme_card_animated(
     theme: &Theme,
     is_selected: bool,
@@ -449,13 +447,10 @@ fn render_theme_card_animated(
         .overflow_hidden()
         .cursor_pointer()
         .bg(card_bg)
-        // Apply scale animation on hover
         .when(is_hovered && !is_selected, |s| s.shadow_lg())
-        // Selected state with accent border and glow effect
         .when(is_selected, |s| {
             s.border_2().border_color(colors.accent_primary).shadow_lg()
         })
-        // Transitioning animation - pulse effect
         .when(is_transitioning, |s| {
             s.opacity(0.9 + 0.1 * transition_progress)
         })
@@ -559,9 +554,7 @@ impl Render for ThemePickerView {
 
         let is_transitioning = transition_progress < 1.0;
 
-        // Calculate crossfade opacity for smooth transition
         let crossfade_opacity = if is_transitioning {
-            // Ease-out cubic for smooth deceleration
             let t = transition_progress;
             1.0 - (1.0 - t).powi(3)
         } else {
@@ -589,7 +582,6 @@ impl Render for ThemePickerView {
                     .border_1()
                     .border_color(current_theme.border_default)
                     .overflow_hidden()
-                    // Apply crossfade animation to the entire dialog
                     .when(is_transitioning, |s| {
                         s.opacity(0.95 + 0.05 * crossfade_opacity)
                     })
@@ -647,7 +639,6 @@ impl Render for ThemePickerView {
                                             .child("✕")
                                     )
                             )
-                            // Theme cards grid
                             .child(
                                 div()
                                     .id("theme-cards-container")
@@ -674,7 +665,6 @@ impl Render for ThemePickerView {
                                             .child(render_theme_card_animated(theme, is_selected, false, &current_theme, is_transitioning && is_selected, crossfade_opacity))
                                     }))
                             )
-                            // Footer with status
                             .child(
                                 div()
                                     .px_6()

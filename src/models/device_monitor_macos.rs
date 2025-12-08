@@ -11,10 +11,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-// Note: core_foundation imports are available for future DiskArbitration integration
-// Currently using diskutil command-line tool for device enumeration
 
-/// Information about a macOS disk obtained from DiskArbitration
+/
 #[derive(Debug, Clone)]
 pub struct DiskInfo {
     pub bsd_name: String,
@@ -53,13 +51,12 @@ impl Default for DiskInfo {
 }
 
 impl DiskInfo {
-    /// Determine the device type based on disk properties
+    /
     pub fn device_type(&self) -> DeviceType {
         if self.is_network {
             return DeviceType::NetworkDrive;
         }
 
-        // Check for disk images
         if let Some(ref fs) = self.filesystem_type {
             if fs.contains("hfs") || fs.contains("apfs") {
                 if let Some(ref path) = self.volume_path {
@@ -71,7 +68,6 @@ impl DiskInfo {
             }
         }
 
-        // Check bus type for USB drives
         if let Some(ref bus) = self.bus_name {
             let bus_lower = bus.to_lowercase();
             if bus_lower.contains("usb") {
@@ -79,7 +75,6 @@ impl DiskInfo {
             }
         }
 
-        // Check for optical drives
         if let Some(ref media) = self.media_name {
             let media_lower = media.to_lowercase();
             if media_lower.contains("cd") || media_lower.contains("dvd") || media_lower.contains("bd") {
@@ -99,7 +94,7 @@ impl DiskInfo {
     }
 }
 
-/// macOS disk monitor using DiskArbitration framework
+/
 #[cfg(target_os = "macos")]
 pub struct MacOSDiskMonitor {
     is_monitoring: Arc<AtomicBool>,
@@ -117,29 +112,25 @@ impl MacOSDiskMonitor {
         }
     }
 
-    /// Enumerate all mounted volumes using /Volumes directory and diskutil
+    /
     pub fn enumerate_volumes(&self) -> Vec<DiskInfo> {
         let mut disks = Vec::new();
 
-        // Get root volume info
         if let Some(root_info) = self.get_volume_info(&PathBuf::from("/")) {
             disks.push(root_info);
         }
 
-        // Scan /Volumes for mounted volumes
         let volumes_path = PathBuf::from("/Volumes");
         if let Ok(entries) = std::fs::read_dir(&volumes_path) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 
-                // Skip symlinks to root
                 if let Ok(target) = std::fs::read_link(&path) {
                     if target == PathBuf::from("/") {
                         continue;
                     }
                 }
 
-                // Skip "Macintosh HD" symlink
                 if path.file_name().map(|n| n == "Macintosh HD").unwrap_or(false) {
                     if std::fs::symlink_metadata(&path).map(|m| m.file_type().is_symlink()).unwrap_or(false) {
                         continue;
@@ -155,7 +146,7 @@ impl MacOSDiskMonitor {
         disks
     }
 
-    /// Get detailed volume information using diskutil
+    /
     fn get_volume_info(&self, path: &PathBuf) -> Option<DiskInfo> {
         let path_str = path.to_str()?;
         
@@ -165,7 +156,6 @@ impl MacOSDiskMonitor {
             .ok()?;
 
         if !output.status.success() {
-            // Fall back to basic info for paths that diskutil doesn't recognize
             return self.get_basic_volume_info(path);
         }
 
@@ -173,7 +163,7 @@ impl MacOSDiskMonitor {
         Some(self.parse_diskutil_output(&info_str, path))
     }
 
-    /// Parse diskutil info output into DiskInfo
+    /
     fn parse_diskutil_output(&self, output: &str, path: &PathBuf) -> DiskInfo {
         let mut info = DiskInfo::default();
         info.volume_path = Some(path.clone());
@@ -205,7 +195,6 @@ impl MacOSDiskMonitor {
             }
         }
 
-        // Set volume name from path if not found
         if info.volume_name.is_none() {
             info.volume_name = path.file_name()
                 .and_then(|n| n.to_str())
@@ -215,7 +204,7 @@ impl MacOSDiskMonitor {
         info
     }
 
-    /// Get basic volume info when diskutil fails
+    /
     fn get_basic_volume_info(&self, path: &PathBuf) -> Option<DiskInfo> {
         if !path.exists() {
             return None;
@@ -227,7 +216,6 @@ impl MacOSDiskMonitor {
             .and_then(|n| n.to_str())
             .map(|s| s.to_string());
 
-        // Check if it's a network mount
         if let Ok(output) = std::process::Command::new("mount").output() {
             let mount_info = String::from_utf8_lossy(&output.stdout);
             let path_str = path.to_string_lossy();
@@ -242,12 +230,10 @@ impl MacOSDiskMonitor {
             }
         }
 
-        // Get space info
         if let Ok((total, _free)) = get_disk_space(path) {
             info.media_size = total;
         }
 
-        // Determine if removable based on path
         if path.starts_with("/Volumes") {
             info.is_removable = true;
             info.is_ejectable = true;
@@ -257,18 +243,16 @@ impl MacOSDiskMonitor {
         Some(info)
     }
 
-    /// Start monitoring for disk events
+    /
     pub fn start_monitoring(&self, sender: flume::Sender<DeviceEvent>) -> Result<(), String> {
         if self.is_monitoring.load(Ordering::SeqCst) {
             return Ok(());
         }
 
-        // Store the sender
         if let Ok(mut guard) = self.event_sender.lock() {
             *guard = Some(sender.clone());
         }
 
-        // Initialize known disks
         let disks = self.enumerate_volumes();
         if let Ok(mut known) = self.known_disks.lock() {
             for disk in disks {
@@ -280,7 +264,6 @@ impl MacOSDiskMonitor {
 
         self.is_monitoring.store(true, Ordering::SeqCst);
 
-        // Start a background thread to poll for changes
         let is_monitoring = self.is_monitoring.clone();
         let event_sender = self.event_sender.clone();
         let known_disks = self.known_disks.clone();
@@ -292,23 +275,21 @@ impl MacOSDiskMonitor {
         Ok(())
     }
 
-    /// Background monitoring loop that polls for disk changes
+    /
     fn monitor_loop(
         is_monitoring: Arc<AtomicBool>,
         event_sender: Arc<Mutex<Option<flume::Sender<DeviceEvent>>>>,
         known_disks: Arc<Mutex<HashMap<String, DiskInfo>>>,
     ) {
-        let mut next_id = 1000u64; // Start IDs high to avoid conflicts
+        let mut next_id = 1000u64;
 
         while is_monitoring.load(Ordering::SeqCst) {
-            // Sleep between polls
             std::thread::sleep(std::time::Duration::from_secs(2));
 
             if !is_monitoring.load(Ordering::SeqCst) {
                 break;
             }
 
-            // Get current volumes
             let volumes_path = PathBuf::from("/Volumes");
             let mut current_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -316,7 +297,6 @@ impl MacOSDiskMonitor {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     
-                    // Skip symlinks
                     if std::fs::symlink_metadata(&path)
                         .map(|m| m.file_type().is_symlink())
                         .unwrap_or(false) 
@@ -328,7 +308,6 @@ impl MacOSDiskMonitor {
                 }
             }
 
-            // Check for new volumes
             let known_paths: Vec<String> = {
                 if let Ok(known) = known_disks.lock() {
                     known.keys().cloned().collect()
@@ -337,24 +316,20 @@ impl MacOSDiskMonitor {
                 }
             };
 
-            // Detect new volumes
             for path_str in &current_paths {
                 if !known_paths.contains(path_str) && !path_str.contains("Macintosh HD") {
                     let path = PathBuf::from(path_str);
                     
-                    // Get volume info
                     let info = Self::get_volume_info_static(&path);
                     
                     if let Some(disk_info) = info {
                         let device = Self::disk_info_to_device(&disk_info, DeviceId::new(next_id));
                         next_id += 1;
 
-                        // Add to known disks
                         if let Ok(mut known) = known_disks.lock() {
                             known.insert(path_str.clone(), disk_info);
                         }
 
-                        // Send connected event
                         if let Ok(guard) = event_sender.lock() {
                             if let Some(ref sender) = *guard {
                                 let _ = sender.send(DeviceEvent::Connected(device));
@@ -364,7 +339,6 @@ impl MacOSDiskMonitor {
                 }
             }
 
-            // Detect removed volumes
             let removed: Vec<String> = known_paths
                 .iter()
                 .filter(|p| !current_paths.contains(*p) && !p.as_str().eq("/"))
@@ -374,8 +348,6 @@ impl MacOSDiskMonitor {
             for path_str in removed {
                 if let Ok(mut known) = known_disks.lock() {
                     if let Some(_disk_info) = known.remove(&path_str) {
-                        // Send disconnected event
-                        // Note: We use a hash of the path as the ID since we don't track IDs
                         let id = DeviceId::new(hash_path(&path_str));
                         
                         if let Ok(guard) = event_sender.lock() {
@@ -389,7 +361,7 @@ impl MacOSDiskMonitor {
         }
     }
 
-    /// Static version of get_volume_info for use in monitor thread
+    /
     fn get_volume_info_static(path: &PathBuf) -> Option<DiskInfo> {
         let path_str = path.to_str()?;
         
@@ -484,7 +456,7 @@ impl MacOSDiskMonitor {
         Some(info)
     }
 
-    /// Convert DiskInfo to Device
+    /
     fn disk_info_to_device(info: &DiskInfo, id: DeviceId) -> Device {
         let name = info.volume_name.clone()
             .unwrap_or_else(|| "Unknown Volume".to_string());
@@ -507,7 +479,7 @@ impl MacOSDiskMonitor {
         device
     }
 
-    /// Stop monitoring for disk events
+    /
     pub fn stop_monitoring(&self) {
         self.is_monitoring.store(false, Ordering::SeqCst);
         if let Ok(mut guard) = self.event_sender.lock() {
@@ -515,7 +487,7 @@ impl MacOSDiskMonitor {
         }
     }
 
-    /// Check if monitoring is active
+    /
     pub fn is_monitoring(&self) -> bool {
         self.is_monitoring.load(Ordering::SeqCst)
     }
@@ -528,9 +500,8 @@ impl Default for MacOSDiskMonitor {
     }
 }
 
-/// Parse a size string like "500.1 GB (500107862016 Bytes)" into bytes
+/
 fn parse_size_string(s: &str) -> u64 {
-    // Try to extract bytes from parentheses first
     if let Some(start) = s.find('(') {
         if let Some(end) = s.find(" Bytes") {
             let bytes_str = &s[start + 1..end];
@@ -540,7 +511,6 @@ fn parse_size_string(s: &str) -> u64 {
         }
     }
 
-    // Fall back to parsing the human-readable size
     let parts: Vec<&str> = s.split_whitespace().collect();
     if parts.len() >= 2 {
         if let Ok(value) = parts[0].parse::<f64>() {
@@ -559,7 +529,7 @@ fn parse_size_string(s: &str) -> u64 {
     0
 }
 
-/// Hash a path string to create a stable device ID
+/
 fn hash_path(path: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -570,7 +540,7 @@ fn hash_path(path: &str) -> u64 {
 }
 
 impl DeviceMonitor {
-    /// Enumerate devices on macOS by scanning /Volumes
+    /
     #[cfg(target_os = "macos")]
     pub fn enumerate_macos_devices(&mut self) {
         let monitor = MacOSDiskMonitor::new();
@@ -599,7 +569,7 @@ impl DeviceMonitor {
         }
     }
 
-    /// Eject a device on macOS
+    /
     #[cfg(target_os = "macos")]
     pub fn eject(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         let device = self
@@ -629,7 +599,7 @@ impl DeviceMonitor {
         }
     }
 
-    /// Unmount a device on macOS
+    /
     #[cfg(target_os = "macos")]
     pub fn unmount(&mut self, id: DeviceId) -> super::device_monitor::DeviceResult<()> {
         let device = self
@@ -654,7 +624,7 @@ impl DeviceMonitor {
     }
 }
 
-/// Check if a volume is read-only
+/
 #[cfg(target_os = "macos")]
 fn is_volume_read_only(path: &PathBuf) -> bool {
     use std::os::unix::fs::MetadataExt;
@@ -666,17 +636,15 @@ fn is_volume_read_only(path: &PathBuf) -> bool {
     false
 }
 
-/// Detect if a disk image is mounted at the given path
+/
 #[cfg(target_os = "macos")]
 pub fn is_disk_image(path: &PathBuf) -> bool {
     let path_str = path.to_string_lossy().to_lowercase();
     
-    // Check path for common disk image indicators
     if path_str.contains(".dmg") || path_str.contains("disk image") {
         return true;
     }
 
-    // Check mount info for disk image mounts
     if let Ok(output) = std::process::Command::new("hdiutil")
         .args(["info", "-plist"])
         .output()
@@ -690,7 +658,7 @@ pub fn is_disk_image(path: &PathBuf) -> bool {
     false
 }
 
-/// Get list of mounted disk images
+/
 #[cfg(target_os = "macos")]
 pub fn get_mounted_disk_images() -> Vec<PathBuf> {
     let mut images = Vec::new();
@@ -706,7 +674,6 @@ pub fn get_mounted_disk_images() -> Vec<PathBuf> {
             let line = line.trim();
             
             if line.starts_with("/dev/disk") {
-                // New disk entry
                 current_mount = None;
             } else if line.starts_with("/Volumes/") || line.starts_with("/private/") {
                 current_mount = Some(PathBuf::from(line));

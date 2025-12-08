@@ -1,7 +1,7 @@
 use crate::models::{AuthMethod, NetworkConnectionConfig, NetworkProtocol};
 use gpui::*;
 
-/// Actions for the network connection dialog
+/
 #[derive(Clone, PartialEq)]
 pub enum NetworkDialogAction {
     Connect,
@@ -16,7 +16,7 @@ pub enum NetworkDialogAction {
     UseAnonymous(bool),
 }
 
-/// State for the network connection dialog
+/
 pub struct NetworkConnectionDialog {
     protocol: NetworkProtocol,
     host: String,
@@ -66,7 +66,7 @@ impl NetworkConnectionDialog {
         self
     }
 
-    /// Build the connection configuration from current state
+    /
     pub fn build_config(&self) -> Option<NetworkConnectionConfig> {
         if self.host.is_empty() {
             return None;
@@ -98,7 +98,7 @@ impl NetworkConnectionDialog {
         Some(config)
     }
 
-    /// Validate the current input
+    /
     pub fn validate(&self) -> Result<(), String> {
         if self.host.is_empty() {
             return Err("Server address is required".to_string());
@@ -117,7 +117,7 @@ impl NetworkConnectionDialog {
         Ok(())
     }
 
-    /// Handle connect action
+    /
     pub fn handle_connect(&mut self) {
         if let Err(msg) = self.validate() {
             self.error_message = Some(msg);
@@ -134,111 +134,110 @@ impl NetworkConnectionDialog {
         }
     }
 
-    /// Handle cancel action
+    /
     pub fn handle_cancel(&self) {
         if let Some(callback) = &self.on_cancel {
             callback();
         }
     }
 
-    /// Set protocol
+    /
     pub fn set_protocol(&mut self, protocol: NetworkProtocol) {
         self.protocol = protocol;
         if self.port.is_empty() {
-            // Keep empty to use default
         }
     }
 
-    /// Set host
+    /
     pub fn set_host(&mut self, host: String) {
         self.host = host;
         self.error_message = None;
     }
 
-    /// Set port
+    /
     pub fn set_port(&mut self, port: String) {
         self.port = port;
         self.error_message = None;
     }
 
-    /// Set path
+    /
     pub fn set_path(&mut self, path: String) {
         self.path = path;
     }
 
-    /// Set username
+    /
     pub fn set_username(&mut self, username: String) {
         self.username = username;
         self.error_message = None;
     }
 
-    /// Set password
+    /
     pub fn set_password(&mut self, password: String) {
         self.password = password;
     }
 
-    /// Set label
+    /
     pub fn set_label(&mut self, label: String) {
         self.label = label;
     }
 
-    /// Set anonymous auth
+    /
     pub fn set_use_anonymous(&mut self, anonymous: bool) {
         self.use_anonymous = anonymous;
         self.error_message = None;
     }
 
-    /// Get current protocol
+    /
     pub fn protocol(&self) -> NetworkProtocol {
         self.protocol
     }
 
-    /// Get current host
+    /
     pub fn host(&self) -> &str {
         &self.host
     }
 
-    /// Get current port string
+    /
     pub fn port_str(&self) -> &str {
         &self.port
     }
 
-    /// Get current path
+    /
     pub fn path(&self) -> &str {
         &self.path
     }
 
-    /// Get current username
+    /
     pub fn username(&self) -> &str {
         &self.username
     }
 
-    /// Get current label
+    /
     pub fn label(&self) -> &str {
         &self.label
     }
 
-    /// Check if using anonymous auth
+    /
     pub fn is_anonymous(&self) -> bool {
         self.use_anonymous
     }
 
-    /// Get error message if any
+    /
     pub fn error_message(&self) -> Option<&str> {
         self.error_message.as_deref()
     }
 
-    /// Check if currently connecting
+    /
     pub fn is_connecting(&self) -> bool {
         self.is_connecting
     }
 
-    /// Get port placeholder based on protocol
+    /
     pub fn port_placeholder(&self) -> String {
         format!("{}", self.protocol.default_port())
     }
 
-    /// Get available protocols
+    /
     pub fn available_protocols() -> &'static [NetworkProtocol] {
         &[
             NetworkProtocol::Smb,

@@ -86,7 +86,6 @@ impl ToastManager {
 
         self.toasts.push(toast);
 
-        // Schedule auto-dismiss
         cx.spawn(async move |this, cx| {
             Timer::after(Duration::from_millis(duration)).await;
             let _ = this.update(cx, |this, cx| {

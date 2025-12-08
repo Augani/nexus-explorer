@@ -28,7 +28,7 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_WRITE_DATA,
 };
 
-/// Windows access mask constants
+/
 #[cfg(target_os = "windows")]
 mod access_masks {
     pub const GENERIC_READ: u32 = 0x80000000;
@@ -51,7 +51,7 @@ mod access_masks {
     pub const FILE_WRITE_ATTRIBUTES: u32 = 0x0100;
 }
 
-/// Read Windows ACL for a file path
+/
 #[cfg(target_os = "windows")]
 pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
     use std::ffi::OsStr;
@@ -65,7 +65,6 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
 
     let mut acl = WindowsAcl::new();
 
-    // First, get the required buffer size
     let mut needed_size: u32 = 0;
     let security_info =
         OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION;
@@ -81,11 +80,9 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
     }
 
     if needed_size == 0 {
-        // File might not exist or we don't have access
         let metadata = std::fs::metadata(path)?;
         let readonly = metadata.permissions().readonly();
 
-        // Return basic ACL based on read-only status
         let permissions = if readonly {
             vec![
                 WindowsPermissionType::Read,
@@ -104,7 +101,6 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
         return Ok(acl);
     }
 
-    // Allocate buffer and get security descriptor
     let mut buffer: Vec<u8> = vec![0; needed_size as usize];
     let mut actual_size: u32 = 0;
 
@@ -119,7 +115,6 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
     };
 
     if success == 0 {
-        // Fall back to basic permissions
         let metadata = std::fs::metadata(path)?;
         let readonly = metadata.permissions().readonly();
 
@@ -143,7 +138,6 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
 
     let sd_ptr = buffer.as_ptr() as *const SECURITY_DESCRIPTOR;
 
-    // Get owner
     let mut owner_sid: PSID = std::ptr::null_mut();
     let mut owner_defaulted: i32 = 0;
 
@@ -157,7 +151,6 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
         }
     }
 
-    // Get group
     let mut group_sid: PSID = std::ptr::null_mut();
     let mut group_defaulted: i32 = 0;
 
@@ -171,7 +164,6 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
         }
     }
 
-    // Get DACL
     let mut dacl_present: i32 = 0;
     let mut dacl_ptr: *mut WIN_ACL = std::ptr::null_mut();
     let mut dacl_defaulted: i32 = 0;
@@ -190,7 +182,6 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
         }
     }
 
-    // If no entries were parsed, add a default entry
     if acl.entries.is_empty() {
         let metadata = std::fs::metadata(path)?;
         let readonly = metadata.permissions().readonly();
@@ -214,7 +205,7 @@ pub fn read_windows_acl(path: &Path) -> Result<WindowsAcl, PermissionError> {
     Ok(acl)
 }
 
-/// Convert a SID to an account name
+/
 #[cfg(target_os = "windows")]
 fn sid_to_name(sid: PSID) -> Option<String> {
     let mut name_size: u32 = 256;
@@ -249,14 +240,13 @@ fn sid_to_name(sid: PSID) -> Option<String> {
     }
 }
 
-/// Parse DACL entries
+/
 #[cfg(target_os = "windows")]
 fn parse_dacl(dacl: *mut WIN_ACL, acl: &mut WindowsAcl) {
     unsafe {
         let dacl_ref = &*dacl;
         let ace_count = dacl_ref.AceCount as usize;
 
-        // ACEs start right after the ACL header
         let mut ace_ptr = (dacl as *const u8).add(std::mem::size_of::<WIN_ACL>());
 
         for _ in 0..ace_count {
@@ -266,7 +256,6 @@ fn parse_dacl(dacl: *mut WIN_ACL, acl: &mut WindowsAcl) {
 
             match ace_type {
                 0 => {
-                    // ACCESS_ALLOWED_ACE_TYPE
                     let ace = ace_ptr as *const ACCESS_ALLOWED_ACE;
                     let mask = (*ace).Mask;
                     let sid = &(*ace).SidStart as *const u32 as PSID;
@@ -279,13 +268,12 @@ fn parse_dacl(dacl: *mut WIN_ACL, acl: &mut WindowsAcl) {
                                 principal_sid: None,
                                 entry_type: AclEntryType::Allow,
                                 permissions,
-                                inherited: ((*ace_header).ace_flags & 0x10) != 0, // INHERITED_ACE
+                                inherited: ((*ace_header).ace_flags & 0x10) != 0,
                             });
                         }
                     }
                 }
                 1 => {
-                    // ACCESS_DENIED_ACE_TYPE
                     let ace = ace_ptr as *const ACCESS_DENIED_ACE;
                     let mask = (*ace).Mask;
                     let sid = &(*ace).SidStart as *const u32 as PSID;
@@ -304,7 +292,6 @@ fn parse_dacl(dacl: *mut WIN_ACL, acl: &mut WindowsAcl) {
                     }
                 }
                 _ => {
-                    // Skip other ACE types
                 }
             }
 
@@ -313,7 +300,7 @@ fn parse_dacl(dacl: *mut WIN_ACL, acl: &mut WindowsAcl) {
     }
 }
 
-/// ACE header structure
+/
 #[cfg(target_os = "windows")]
 #[repr(C)]
 struct AceHeader {
@@ -322,30 +309,26 @@ struct AceHeader {
     ace_size: u16,
 }
 
-/// Convert Windows access mask to permission types
+/
 #[cfg(target_os = "windows")]
 fn mask_to_permissions(mask: u32) -> Vec<WindowsPermissionType> {
     use access_masks::*;
 
     let mut permissions = Vec::new();
 
-    // Check for full control first
     if (mask & GENERIC_ALL) != 0 || mask == 0x1F01FF {
         permissions.push(WindowsPermissionType::FullControl);
         return permissions;
     }
 
-    // Check for modify
     if (mask & (FILE_WRITE_DATA | FILE_APPEND_DATA | DELETE)) == (FILE_WRITE_DATA | FILE_APPEND_DATA | DELETE) {
         permissions.push(WindowsPermissionType::Modify);
     } else {
-        // Check individual permissions
         if (mask & FILE_WRITE_DATA) != 0 || (mask & GENERIC_WRITE) != 0 {
             permissions.push(WindowsPermissionType::Write);
         }
     }
 
-    // Check for read and execute
     if (mask & (FILE_READ_DATA | FILE_EXECUTE)) == (FILE_READ_DATA | FILE_EXECUTE)
         || (mask & GENERIC_EXECUTE) != 0
     {
@@ -354,7 +337,6 @@ fn mask_to_permissions(mask: u32) -> Vec<WindowsPermissionType> {
         permissions.push(WindowsPermissionType::Read);
     }
 
-    // If we couldn't determine specific permissions, mark as special
     if permissions.is_empty() && mask != 0 {
         permissions.push(WindowsPermissionType::Special);
     }
@@ -362,7 +344,7 @@ fn mask_to_permissions(mask: u32) -> Vec<WindowsPermissionType> {
     permissions
 }
 
-/// Stub for non-Windows platforms
+/
 #[cfg(not(target_os = "windows"))]
 pub fn read_windows_acl(_path: &std::path::Path) -> Result<super::permissions::WindowsAcl, super::permissions::PermissionError> {
     Err(super::permissions::PermissionError::PlatformNotSupported(

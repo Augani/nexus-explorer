@@ -20,7 +20,6 @@ fn test_tab_title_from_root() {
     let path = PathBuf::from("/");
     let tab = Tab::new(TabId::new(0), path.clone());
 
-    // Root path should use the path string as title
     assert_eq!(tab.title, "/");
 }
 
@@ -74,7 +73,6 @@ fn test_tab_state_close_tab() {
 
     assert_eq!(state.tab_count(), 2);
 
-    // Close the second tab
     assert!(state.close_tab(id2));
     assert_eq!(state.tab_count(), 1);
     assert_eq!(state.active_tab().id, id1);
@@ -85,11 +83,9 @@ fn test_tab_state_close_last_tab_opens_home() {
     let mut state = TabState::new(PathBuf::from("/tmp"));
     let id = state.active_tab_id();
 
-    // Closing the last tab should open home directory instead
     assert!(state.close_tab(id));
     assert_eq!(state.tab_count(), 1);
 
-    // The tab should now point to home directory
     let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
     assert_eq!(state.active_tab().path, home);
 }
@@ -105,7 +101,6 @@ fn test_tab_state_switch_to() {
     assert!(state.switch_to(id1));
     assert_eq!(state.active_tab().id, id1);
 
-    // Switch to non-existent tab should fail
     assert!(!state.switch_to(TabId::new(999)));
 }
 
@@ -121,7 +116,6 @@ fn test_tab_state_switch_to_index() {
     assert!(state.switch_to_index(2));
     assert_eq!(state.active_index(), 2);
 
-    // Invalid index should fail
     assert!(!state.switch_to_index(10));
 }
 
@@ -139,11 +133,9 @@ fn test_tab_state_next_prev_tab() {
     state.next_tab();
     assert_eq!(state.active_index(), 2);
 
-    // Should wrap around
     state.next_tab();
     assert_eq!(state.active_index(), 0);
 
-    // Previous should also wrap
     state.prev_tab();
     assert_eq!(state.active_index(), 2);
 }
@@ -179,7 +171,6 @@ fn test_tab_state_get_tab() {
     assert!(tab.is_some());
     assert_eq!(tab.unwrap().path, PathBuf::from("/tmp"));
 
-    // Non-existent tab
     assert!(state.get_tab(TabId::new(999)).is_none());
 }
 
@@ -196,11 +187,11 @@ fn arb_path() -> impl Strategy<Value = PathBuf> {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
-    /// **Feature: ui-enhancements, Property 28: Tab Open Increases Count**
-    /// **Validates: Requirements 9.2**
-    ///
-    /// *For any* TabState and valid path, opening a new tab SHALL increase
-    /// the tab count by exactly one.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_tab_open_increases_count(
         initial_path in arb_path(),
@@ -220,11 +211,11 @@ proptest! {
         }
     }
 
-    /// **Feature: ui-enhancements, Property 29: Tab Close Decreases Count**
-    /// **Validates: Requirements 9.4**
-    ///
-    /// *For any* TabState with more than one tab, closing a tab SHALL decrease
-    /// the tab count by exactly one.
+    /
+    /
+    /
+    /
+    /
     #[test]
     fn prop_tab_close_decreases_count(
         initial_path in arb_path(),
@@ -232,13 +223,11 @@ proptest! {
     ) {
         let mut state = TabState::new(initial_path);
 
-        // Open additional tabs
         let mut ids: Vec<TabId> = vec![state.active_tab_id()];
         for path in extra_paths {
             ids.push(state.open_tab(path));
         }
 
-        // Close tabs (except the last one, which has special behavior)
         while state.tab_count() > 1 {
             let count_before = state.tab_count();
             let id_to_close = state.tabs()[0].id;
@@ -254,10 +243,10 @@ proptest! {
         }
     }
 
-    /// **Feature: ui-enhancements, Property 30: Tab Title Matches Directory**
-    /// **Validates: Requirements 9.5**
-    ///
-    /// *For any* tab, the title SHALL match the directory name of the tab's path.
+    /
+    /
+    /
+    /
     #[test]
     fn prop_tab_title_matches_directory(
         path in arb_path(),
@@ -276,9 +265,9 @@ proptest! {
         );
     }
 
-    /// Property: Active tab is always valid
-    /// *For any* sequence of tab operations, the active tab index SHALL always
-    /// point to a valid tab.
+    /
+    /
+    /
     #[test]
     fn prop_active_tab_always_valid(
         initial_path in arb_path(),
@@ -304,14 +293,12 @@ proptest! {
                 TabOp::SwitchTo(idx) => { state.switch_to_index(idx); }
             }
 
-            // Active index should always be valid
             prop_assert!(
                 state.active_index() < state.tab_count(),
                 "Active index {} should be < tab count {}",
                 state.active_index(), state.tab_count()
             );
 
-            // Should always have at least one tab
             prop_assert!(
                 state.tab_count() >= 1,
                 "Should always have at least one tab"
@@ -319,8 +306,8 @@ proptest! {
         }
     }
 
-    /// Property: Tab IDs are unique
-    /// *For any* TabState, all tab IDs SHALL be unique.
+    /
+    /
     #[test]
     fn prop_tab_ids_unique(
         initial_path in arb_path(),

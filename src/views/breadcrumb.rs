@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, toolbar as toolbar_spacing};
 
-/// Represents a single segment in the breadcrumb path
+/
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathSegment {
     pub name: String,
@@ -25,8 +25,8 @@ impl PathSegment {
     }
 }
 
-/// Breadcrumb component for path navigation
-/// Renders clickable path segments with truncation support
+/
+/
 pub struct Breadcrumb {
     segments: Vec<PathSegment>,
     max_visible: usize,
@@ -34,7 +34,7 @@ pub struct Breadcrumb {
 }
 
 impl Breadcrumb {
-    /// Create a new Breadcrumb from a path
+    /
     pub fn from_path(path: &Path) -> Self {
         let segments = Self::parse_path(path);
         Self {
@@ -44,7 +44,7 @@ impl Breadcrumb {
         }
     }
 
-    /// Parse a path into segments
+    /
     fn parse_path(path: &Path) -> Vec<PathSegment> {
         let mut segments = Vec::new();
         let mut current = Some(path);
@@ -82,22 +82,21 @@ impl Breadcrumb {
         segments
     }
 
-    /// Get all segments
+    /
     pub fn segments(&self) -> &[PathSegment] {
         &self.segments
     }
 
-    /// Get the number of segments
+    /
     pub fn segment_count(&self) -> usize {
         self.segments.len()
     }
 
-    /// Get visible segments (respecting max_visible)
+    /
     pub fn visible_segments(&self) -> Vec<&PathSegment> {
         if self.segments.len() <= self.max_visible {
             self.segments.iter().collect()
         } else {
-            // Show first segment, ellipsis, then last (max_visible - 2) segments
             let mut visible = Vec::new();
             visible.push(&self.segments[0]);
 
@@ -109,7 +108,7 @@ impl Breadcrumb {
         }
     }
 
-    /// Get hidden segments (for ellipsis dropdown)
+    /
     pub fn hidden_segments(&self) -> Vec<&PathSegment> {
         if self.segments.len() <= self.max_visible {
             Vec::new()
@@ -119,43 +118,43 @@ impl Breadcrumb {
         }
     }
 
-    /// Check if truncation is needed
+    /
     pub fn needs_truncation(&self) -> bool {
         self.segments.len() > self.max_visible
     }
 
-    /// Get path for a segment by index
+    /
     pub fn path_for_segment(&self, index: usize) -> Option<&Path> {
         self.segments.get(index).map(|s| s.path.as_path())
     }
 
-    /// Set maximum visible segments
+    /
     pub fn set_max_visible(&mut self, max: usize) {
         self.max_visible = max.max(2);
     }
 
-    /// Toggle ellipsis menu visibility
+    /
     pub fn toggle_ellipsis_menu(&mut self) {
         self.show_ellipsis_menu = !self.show_ellipsis_menu;
     }
 
-    /// Check if ellipsis menu is shown
+    /
     pub fn is_ellipsis_menu_shown(&self) -> bool {
         self.show_ellipsis_menu
     }
 
-    /// Reconstruct full path from segments up to given index
+    /
     pub fn path_to_index(&self, index: usize) -> Option<PathBuf> {
         self.segments.get(index).map(|s| s.path.clone())
     }
 
-    /// Get the full current path
+    /
     pub fn current_path(&self) -> Option<&Path> {
         self.segments.last().map(|s| s.path.as_path())
     }
 }
 
-/// View wrapper for Breadcrumb with GPUI rendering
+/
 pub struct BreadcrumbView {
     breadcrumb: Breadcrumb,
     focus_handle: FocusHandle,
@@ -220,7 +219,6 @@ impl BreadcrumbView {
         cx: &mut Context<Self>,
     ) {
         if let Some(path_str) = path.to_str() {
-            // Copy to clipboard - using cx to write to clipboard
             cx.write_to_clipboard(gpui::ClipboardItem::new_string(path_str.to_string()));
         }
         self.context_menu_path = None;
@@ -250,10 +248,8 @@ impl Render for BreadcrumbView {
         let hidden_segments = self.breadcrumb.hidden_segments();
         let show_ellipsis_menu = self.breadcrumb.show_ellipsis_menu;
 
-        // Breadcrumb segment padding from toolbar spacing
         let segment_padding = px(toolbar_spacing::BREADCRUMB_PADDING);
 
-        // RPG-styled breadcrumb with themed colors and decorative separators
         div()
             .id("breadcrumb")
             .flex()
@@ -269,7 +265,6 @@ impl Render for BreadcrumbView {
                 div()
                     .flex()
                     .items_center()
-                    // Themed separator with accent color
                     .when(!is_first, |s| {
                         s.child(
                             svg()
@@ -310,7 +305,6 @@ impl Render for BreadcrumbView {
                                         .text_color(accent_secondary)
                                         .mx_1(),
                                 )
-                                // Dropdown menu with RPG styling
                                 .when(show_ellipsis_menu, |s| {
                                     s.child(
                                         div()
@@ -347,7 +341,6 @@ impl Render for BreadcrumbView {
                                 })
                         )
                     })
-                    // Segment with RPG hover effect
                     .child(
                         div()
                             .id(SharedString::from(format!("segment-{}", i)))
@@ -372,7 +365,6 @@ impl Render for BreadcrumbView {
                             .child(segment.name.clone())
                     )
             }))
-            // Context menu with RPG styling
             .when(self.context_menu_path.is_some(), |s| {
                 let menu_path = self.context_menu_path.clone().unwrap();
                 s.child(

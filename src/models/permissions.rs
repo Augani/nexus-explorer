@@ -26,7 +26,7 @@ pub enum PermissionError {
     WindowsAclError(String),
 }
 
-/// Unix permission bits for a single entity (owner, group, or others)
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct PermissionBits {
     pub read: bool,
@@ -57,7 +57,7 @@ impl PermissionBits {
 }
 
 
-/// Special Unix permission bits (setuid, setgid, sticky)
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SpecialBits {
     pub setuid: bool,
@@ -87,7 +87,7 @@ impl SpecialBits {
     }
 }
 
-/// Complete Unix permissions structure
+/
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct UnixPermissions {
     pub owner: PermissionBits,
@@ -101,7 +101,7 @@ pub struct UnixPermissions {
 }
 
 impl UnixPermissions {
-    /// Create permissions from a Unix mode value (0-0o7777)
+    /
     pub fn from_mode(mode: u32) -> Result<Self, PermissionError> {
         if mode > 0o7777 {
             return Err(PermissionError::InvalidMode(mode));
@@ -119,7 +119,7 @@ impl UnixPermissions {
         })
     }
 
-    /// Convert permissions back to Unix mode value
+    /
     pub fn to_mode(&self) -> u32 {
         let owner = (self.owner.to_mode() as u32) << 6;
         let group = (self.group.to_mode() as u32) << 3;
@@ -128,7 +128,7 @@ impl UnixPermissions {
         special | owner | group | others
     }
 
-    /// Format permissions as symbolic string (e.g., "rwxr-xr-x")
+    /
     pub fn to_symbolic(&self) -> String {
         let format_bits = |bits: &PermissionBits, special: Option<char>, is_exec: bool| -> String {
             let r = if bits.read { 'r' } else { '-' };
@@ -154,14 +154,14 @@ impl UnixPermissions {
         )
     }
 
-    /// Format permissions as octal string (e.g., "0755")
+    /
     pub fn to_octal_string(&self) -> String {
         format!("{:04o}", self.to_mode())
     }
 }
 
 
-/// Windows ACL permission types
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowsPermissionType {
     FullControl,
@@ -187,14 +187,14 @@ impl WindowsPermissionType {
     }
 }
 
-/// Windows ACL entry type
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AclEntryType {
     Allow,
     Deny,
 }
 
-/// A single Windows ACL entry
+/
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WindowsAclEntry {
     pub principal_name: String,
@@ -220,7 +220,7 @@ impl WindowsAclEntry {
     }
 }
 
-/// Complete Windows ACL structure
+/
 #[derive(Debug, Clone, Default)]
 pub struct WindowsAcl {
     pub owner: Option<String>,
@@ -240,7 +240,7 @@ impl WindowsAcl {
         self.entries.push(entry);
     }
 
-    /// Get effective permissions for a principal
+    /
     pub fn get_effective_permissions(&self, principal: &str) -> Vec<WindowsPermissionType> {
         let mut allowed: Vec<WindowsPermissionType> = Vec::new();
         let mut denied: Vec<WindowsPermissionType> = Vec::new();
@@ -254,14 +254,13 @@ impl WindowsAcl {
             }
         }
 
-        // Deny takes precedence over allow
         allowed.retain(|p| !denied.contains(p));
         allowed
     }
 }
 
 
-/// Platform-agnostic file permissions
+/
 #[derive(Debug, Clone)]
 pub enum FilePermissions {
     Unix(UnixPermissions),
@@ -269,7 +268,7 @@ pub enum FilePermissions {
 }
 
 impl FilePermissions {
-    /// Check if the file is readable
+    /
     pub fn is_readable(&self) -> bool {
         match self {
             Self::Unix(perms) => perms.owner.read || perms.group.read || perms.others.read,
@@ -283,7 +282,7 @@ impl FilePermissions {
         }
     }
 
-    /// Check if the file is writable
+    /
     pub fn is_writable(&self) -> bool {
         match self {
             Self::Unix(perms) => perms.owner.write || perms.group.write || perms.others.write,
@@ -298,7 +297,7 @@ impl FilePermissions {
         }
     }
 
-    /// Check if the file is executable
+    /
     pub fn is_executable(&self) -> bool {
         match self {
             Self::Unix(perms) => perms.owner.execute || perms.group.execute || perms.others.execute,
@@ -313,11 +312,11 @@ impl FilePermissions {
     }
 }
 
-/// Permissions manager for reading and writing file permissions
+/
 pub struct PermissionsManager;
 
 impl PermissionsManager {
-    /// Read permissions for a file
+    /
     pub fn read_permissions(path: &Path) -> Result<FilePermissions, PermissionError> {
         #[cfg(unix)]
         {
@@ -335,14 +334,13 @@ impl PermissionsManager {
         }
     }
 
-    /// Write permissions for a file
+    /
     pub fn write_permissions(path: &Path, permissions: &FilePermissions) -> Result<(), PermissionError> {
         match permissions {
             #[cfg(unix)]
             FilePermissions::Unix(perms) => Self::write_unix_permissions(path, perms),
             #[cfg(windows)]
             FilePermissions::Windows(_acl) => {
-                // Windows ACL writing is complex and requires elevation
                 Err(PermissionError::ElevationRequired(
                     "Modifying Windows ACLs requires administrator privileges".to_string(),
                 ))
@@ -366,7 +364,6 @@ impl PermissionsManager {
         perms.owner_id = Some(metadata.uid());
         perms.group_id = Some(metadata.gid());
 
-        // Try to get owner/group names (best effort)
         #[cfg(target_os = "linux")]
         {
             perms.owner_name = get_user_name(metadata.uid());
@@ -393,18 +390,16 @@ impl PermissionsManager {
 
     #[cfg(windows)]
     fn read_windows_permissions(path: &Path) -> Result<FilePermissions, PermissionError> {
-        // Use the Windows-specific ACL reading implementation
         let acl = super::permissions_windows::read_windows_acl(path)?;
         Ok(FilePermissions::Windows(acl))
     }
 
-    /// Check if elevation is required to modify permissions
+    /
     pub fn requires_elevation(path: &Path) -> bool {
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
             if let Ok(metadata) = std::fs::metadata(path) {
-                // Check if current user owns the file
                 unsafe {
                     let uid = libc::getuid();
                     metadata.uid() != uid
@@ -415,7 +410,6 @@ impl PermissionsManager {
         }
         #[cfg(windows)]
         {
-            // On Windows, most permission changes require elevation
             let _ = path;
             true
         }
@@ -452,7 +446,7 @@ fn get_group_name(gid: u32) -> Option<String> {
 }
 
 impl PermissionsManager {
-    /// Apply permissions recursively to a directory and its contents
+    /
     #[cfg(unix)]
     pub fn apply_recursive(
         path: &Path,
@@ -476,7 +470,6 @@ impl PermissionsManager {
                             failed_paths.push(entry_path.clone());
                         }
                     }
-                    // Recurse into subdirectory
                     let sub_failed = Self::apply_recursive(&entry_path, permissions, include_directories)?;
                     failed_paths.extend(sub_failed);
                 } else {
@@ -490,7 +483,7 @@ impl PermissionsManager {
         Ok(failed_paths)
     }
 
-    /// Change ownership of a file (requires root on Unix)
+    /
     #[cfg(unix)]
     pub fn change_ownership(path: &Path, uid: Option<u32>, gid: Option<u32>) -> Result<(), PermissionError> {
         use std::os::unix::ffi::OsStrExt;
@@ -517,7 +510,7 @@ impl PermissionsManager {
         }
     }
 
-    /// Get the file type character for ls-style output
+    /
     pub fn get_file_type_char(path: &Path) -> char {
         let metadata = match std::fs::symlink_metadata(path) {
             Ok(m) => m,
@@ -554,7 +547,7 @@ impl PermissionsManager {
         }
     }
 
-    /// Format permissions in ls -l style (e.g., "-rwxr-xr-x")
+    /
     #[cfg(unix)]
     pub fn format_ls_style(path: &Path) -> Result<String, PermissionError> {
         let perms = Self::read_permissions(path)?;
@@ -570,7 +563,7 @@ impl PermissionsManager {
 }
 
 impl UnixPermissions {
-    /// Create permissions with common presets
+    /
     pub fn preset_file_default() -> Self {
         Self::from_mode(0o644).unwrap()
     }
@@ -591,12 +584,12 @@ impl UnixPermissions {
         Self::from_mode(0o700).unwrap()
     }
 
-    /// Check if any special bits are set
+    /
     pub fn has_special_bits(&self) -> bool {
         self.special.setuid || self.special.setgid || self.special.sticky
     }
 
-    /// Get a human-readable description of special bits
+    /
     pub fn describe_special_bits(&self) -> Vec<&'static str> {
         let mut descriptions = Vec::new();
         if self.special.setuid {

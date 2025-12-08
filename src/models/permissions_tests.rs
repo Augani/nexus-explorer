@@ -1,22 +1,19 @@
 use super::permissions::*;
 use proptest::prelude::*;
 
-/// **Feature: advanced-device-management, Property 9: Unix Permission Parsing Round-Trip**
-/// **Validates: Requirements 6.2**
-/// 
-/// For any valid Unix permission mode (0-0o7777), parsing then formatting SHALL produce the same mode value.
+/
+/
+/
+/
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
     #[test]
     fn test_unix_permission_round_trip(mode in 0u32..=0o7777u32) {
-        // Parse the mode into UnixPermissions
         let perms = UnixPermissions::from_mode(mode).expect("Valid mode should parse");
         
-        // Convert back to mode
         let round_tripped_mode = perms.to_mode();
         
-        // The round-tripped mode should equal the original
         prop_assert_eq!(mode, round_tripped_mode, 
             "Mode {:04o} round-tripped to {:04o}", mode, round_tripped_mode);
     }
@@ -50,7 +47,6 @@ mod unit_tests {
 
     #[test]
     fn test_common_permission_modes() {
-        // Test common permission modes
         let test_cases = [
             (0o644, "rw-r--r--"),
             (0o755, "rwxr-xr-x"),
@@ -69,16 +65,13 @@ mod unit_tests {
 
     #[test]
     fn test_special_bits_symbolic() {
-        // setuid
         let perms = UnixPermissions::from_mode(0o4755).unwrap();
         assert!(perms.to_symbolic().starts_with("rwS") || perms.to_symbolic().starts_with("rws"));
         
-        // setgid
         let perms = UnixPermissions::from_mode(0o2755).unwrap();
         let symbolic = perms.to_symbolic();
         assert!(symbolic.contains('S') || symbolic.contains('s'));
         
-        // sticky
         let perms = UnixPermissions::from_mode(0o1755).unwrap();
         let symbolic = perms.to_symbolic();
         assert!(symbolic.ends_with('T') || symbolic.ends_with('t'));
@@ -86,7 +79,6 @@ mod unit_tests {
 
     #[test]
     fn test_invalid_mode_rejected() {
-        // Mode above 0o7777 should be rejected
         assert!(UnixPermissions::from_mode(0o10000).is_err());
         assert!(UnixPermissions::from_mode(0o77777).is_err());
     }
@@ -142,7 +134,6 @@ mod unit_tests {
 
         let effective = acl.get_effective_permissions("User1");
         
-        // Write should be denied, only Read should remain
         assert!(effective.contains(&WindowsPermissionType::Read));
         assert!(!effective.contains(&WindowsPermissionType::Write));
     }

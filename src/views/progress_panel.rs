@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, FileOperation, OperationId, OperationStatus, OperationType};
 
-/// Create a color with modified alpha
+/
 fn with_alpha(color: Rgba, alpha: f32) -> Rgba {
     Rgba {
         r: color.r,
@@ -17,7 +17,7 @@ fn with_alpha(color: Rgba, alpha: f32) -> Rgba {
     }
 }
 
-/// Format duration for display
+/
 fn format_duration(duration: Duration) -> String {
     let secs = duration.as_secs();
     if secs < 60 {
@@ -29,7 +29,7 @@ fn format_duration(duration: Duration) -> String {
     }
 }
 
-/// Format bytes per second for display
+/
 fn format_speed(bytes_per_sec: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -46,7 +46,7 @@ fn format_speed(bytes_per_sec: u64) -> String {
     }
 }
 
-/// Format file size for display
+/
 fn format_size(size: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -66,7 +66,7 @@ fn format_size(size: u64) -> String {
     }
 }
 
-/// Actions that can be triggered from the progress panel
+/
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProgressPanelAction {
     Cancel(OperationId),
@@ -76,7 +76,7 @@ pub enum ProgressPanelAction {
     DismissAll,
 }
 
-/// Progress panel view showing file operation progress
+/
 pub struct ProgressPanelView {
     operations: Vec<FileOperation>,
     focus_handle: FocusHandle,
@@ -94,28 +94,28 @@ impl ProgressPanelView {
         }
     }
 
-    /// Update operations from the manager
+    /
     pub fn update_operations(&mut self, operations: Vec<FileOperation>, cx: &mut Context<Self>) {
         self.operations = operations;
         cx.notify();
     }
 
-    /// Take any pending action
+    /
     pub fn take_pending_action(&mut self) -> Option<ProgressPanelAction> {
         self.pending_action.take()
     }
 
-    /// Check if there are any operations to display
+    /
     pub fn has_operations(&self) -> bool {
         !self.operations.is_empty()
     }
 
-    /// Check if there are any active operations
+    /
     pub fn has_active_operations(&self) -> bool {
         self.operations.iter().any(|op| op.status.is_active())
     }
 
-    /// Toggle expanded state
+    /
     pub fn toggle_expanded(&mut self, cx: &mut Context<Self>) {
         self.is_expanded = !self.is_expanded;
         cx.notify();
@@ -159,7 +159,6 @@ impl ProgressPanelView {
             .flex()
             .flex_col()
             .gap_2()
-            // Header row: operation type and status
             .child(
                 div()
                     .flex()
@@ -186,7 +185,6 @@ impl ProgressPanelView {
                                         accent
                                     }),
                             )
-                            // Operation type text
                             .child(
                                 div()
                                     .text_sm()
@@ -198,7 +196,6 @@ impl ProgressPanelView {
                                 "{}/{} files",
                                 progress.completed_files, progress.total_files
                             )))
-                            // Skipped count (if any)
                             .when(skipped_count > 0, |el| {
                                 el.child(
                                     div()
@@ -208,7 +205,6 @@ impl ProgressPanelView {
                                 )
                             }),
                     )
-                    // Status indicator and actions
                     .child(
                         div()
                             .flex()
@@ -235,7 +231,6 @@ impl ProgressPanelView {
                                         OperationStatus::Cancelled => "Cancelled".to_string(),
                                     }),
                             )
-                            // Cancel button (for active operations)
                             .when(is_active, |el| {
                                 el.child(
                                     div()
@@ -258,7 +253,6 @@ impl ProgressPanelView {
                                         .child("Cancel"),
                                 )
                             })
-                            // Dismiss button (for completed/failed/cancelled operations)
                             .when(!is_active, |el| {
                                 el.child(
                                     div()
@@ -283,7 +277,6 @@ impl ProgressPanelView {
                             }),
                     ),
             )
-            // Progress bar (for active operations)
             .when(is_active, |el| {
                 el.child(
                     div()
@@ -301,7 +294,6 @@ impl ProgressPanelView {
                         ),
                 )
             })
-            // Current file and speed info (for running operations)
             .when(matches!(status, OperationStatus::Running), |el| {
                 el.child(
                     div()
@@ -333,7 +325,6 @@ impl ProgressPanelView {
                         ),
                 )
             })
-            // Bytes transferred info
             .when(progress.total_bytes > 0 && is_active, |el| {
                 el.child(div().text_xs().text_color(text_muted).child(format!(
                     "{} / {}",
@@ -341,7 +332,6 @@ impl ProgressPanelView {
                     format_size(progress.total_bytes)
                 )))
             })
-            // Error message (for failed operations)
             .when(is_failed, |el| {
                 let msg = if let OperationStatus::Failed(ref m) = status {
                     m.clone()
@@ -359,7 +349,6 @@ impl ProgressPanelView {
                         .child(msg),
                 )
             })
-            // Error with retry/skip options (when operation is paused for error)
             .when(has_error, |el| {
                 let is_recoverable = op
                     .current_error
@@ -387,7 +376,6 @@ impl ProgressPanelView {
                         .flex()
                         .flex_col()
                         .gap_2()
-                        // Error icon and message
                         .child(
                             div()
                                 .flex()
@@ -408,7 +396,6 @@ impl ProgressPanelView {
                                 .items_center()
                                 .gap_2()
                                 .justify_end()
-                                // Skip button - always available
                                 .child(
                                     div()
                                         .id(SharedString::from(format!("skip-{}", op_id.0)))
@@ -431,7 +418,6 @@ impl ProgressPanelView {
                                         )
                                         .child("Skip"),
                                 )
-                                // Retry button - only for recoverable errors
                                 .when(is_recoverable, |el| {
                                     el.child(
                                         div()
@@ -506,7 +492,6 @@ impl Render for ProgressPanelView {
         let active_count = operations.iter().filter(|o| o.status.is_active()).count();
         let completed_count = operations.iter().filter(|o| o.status.is_finished()).count();
 
-        // Don't render if no operations
         if !has_operations {
             return div().into_any_element();
         }
@@ -599,7 +584,6 @@ impl Render for ProgressPanelView {
                         )
                     }),
             )
-            // Operations list (when expanded)
             .when(is_expanded, |el| {
                 el.child(
                     div()

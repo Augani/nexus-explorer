@@ -8,7 +8,7 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use thiserror::Error;
 
-/// Supported archive formats
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArchiveFormat {
     Zip,
@@ -58,7 +58,7 @@ impl ArchiveFormat {
     }
 }
 
-/// Archive creation options
+/
 #[derive(Debug, Clone)]
 pub struct CompressOptions {
     pub format: ArchiveFormat,
@@ -76,7 +76,7 @@ impl Default for CompressOptions {
     }
 }
 
-/// Overwrite mode for extraction
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OverwriteMode {
     Skip,
@@ -84,7 +84,7 @@ pub enum OverwriteMode {
     ReplaceIfNewer,
 }
 
-/// Archive extraction options
+/
 #[derive(Debug, Clone)]
 pub struct ExtractOptions {
     pub destination: PathBuf,
@@ -92,7 +92,7 @@ pub struct ExtractOptions {
     pub overwrite: OverwriteMode,
 }
 
-/// Entry in an archive
+/
 #[derive(Debug, Clone)]
 pub struct ArchiveEntry {
     pub path: String,
@@ -103,7 +103,7 @@ pub struct ArchiveEntry {
     pub is_encrypted: bool,
 }
 
-/// Progress information for archive operations
+/
 #[derive(Debug, Clone)]
 pub struct ArchiveProgress {
     pub current_file: String,
@@ -138,7 +138,7 @@ impl ArchiveProgress {
     }
 }
 
-/// Errors that can occur during archive operations
+/
 #[derive(Debug, Error)]
 pub enum ArchiveError {
     #[error("Invalid archive: {0}")]
@@ -166,7 +166,7 @@ pub enum ArchiveError {
     ZipError(#[from] zip::result::ZipError),
 }
 
-/// Manages archive operations (compress/extract)
+/
 pub struct ArchiveManager {
     supported_formats: Vec<ArchiveFormat>,
 }
@@ -197,7 +197,7 @@ impl ArchiveManager {
     }
 
 
-    /// List contents of an archive without extracting
+    /
     pub fn list_contents(&self, archive_path: &Path) -> Result<Vec<ArchiveEntry>, ArchiveError> {
         let format = ArchiveFormat::from_extension(archive_path)
             .ok_or_else(|| ArchiveError::UnsupportedFormat(
@@ -261,7 +261,7 @@ impl ArchiveManager {
                 path: entry.path()?.to_string_lossy().to_string(),
                 is_dir: header.entry_type().is_dir(),
                 size: header.size()?,
-                compressed_size: header.size()?, // TAR doesn't store compressed size per file
+                compressed_size: header.size()?,
                 modified: header.mtime().ok().map(|secs| {
                     use std::time::{Duration, UNIX_EPOCH};
                     UNIX_EPOCH + Duration::from_secs(secs)
@@ -282,21 +282,21 @@ impl ArchiveManager {
                 is_dir: entry.is_directory(),
                 size: entry.size(),
                 compressed_size: entry.compressed_size,
-                modified: None, // 7z-rust doesn't expose modification time easily
+                modified: None,
                 is_encrypted: entry.has_stream() && entry.compressed_size > 0,
             });
-            Ok(false) // Don't actually extract
+            Ok(false)
         }).map_err(|e| ArchiveError::InvalidArchive(e.to_string()))?;
         
         Ok(entries)
     }
 
-    /// Get total uncompressed size of archive contents
+    /
     pub fn get_total_uncompressed_size(&self, entries: &[ArchiveEntry]) -> u64 {
         entries.iter().filter(|e| !e.is_dir).map(|e| e.size).sum()
     }
 
-    /// Compress files into an archive
+    /
     pub fn compress<F>(
         &self,
         paths: &[PathBuf],
@@ -483,7 +483,6 @@ impl ArchiveManager {
         let mut progress = ArchiveProgress::new(files.len(), total_bytes);
         progress_callback(progress.clone());
         
-        // Create a temporary directory structure for 7z compression
         let temp_dir = std::env::temp_dir().join(format!("nexus_7z_{}", std::process::id()));
         fs::create_dir_all(&temp_dir)?;
         
@@ -505,11 +504,9 @@ impl ArchiveManager {
             progress_callback(progress.clone());
         }
         
-        // Compress the temp directory
         sevenz_rust::compress_to_path(&temp_dir, output)
             .map_err(|e| ArchiveError::CompressionFailed(e.to_string()))?;
         
-        // Clean up temp directory
         let _ = fs::remove_dir_all(&temp_dir);
         
         progress.update("Complete", files.len(), total_bytes);
@@ -520,7 +517,7 @@ impl ArchiveManager {
     }
 
 
-    /// Extract an archive to a destination
+    /
     pub fn extract<F>(
         &self,
         archive_path: &Path,
@@ -536,7 +533,6 @@ impl ArchiveManager {
                     .unwrap_or_else(|| "unknown".to_string())
             ))?;
 
-        // Create destination directory if it doesn't exist
         fs::create_dir_all(&options.destination)?;
 
         match format {
@@ -578,11 +574,8 @@ impl ArchiveManager {
             progress.update(&file_name, i, bytes_extracted);
             progress_callback(progress.clone());
             
-            // Check for password-protected files
             if file.encrypted() {
                 if options.password.is_some() {
-                    // Note: zip crate handles password internally when opening
-                    // For now, we'll skip encrypted files if no password support
                     return Err(ArchiveError::PasswordRequired);
                 } else {
                     return Err(ArchiveError::PasswordRequired);
@@ -591,7 +584,6 @@ impl ArchiveManager {
             
             let out_path = options.destination.join(&file_name);
             
-            // Handle overwrite mode
             if out_path.exists() {
                 match options.overwrite {
                     OverwriteMode::Skip => {
@@ -649,7 +641,6 @@ impl ArchiveManager {
     where
         F: Fn(ArchiveProgress),
     {
-        // First pass: count entries and total size
         let file = File::open(archive_path)?;
         let reader = BufReader::new(file);
         let decoder = GzDecoder::new(reader);
@@ -668,7 +659,6 @@ impl ArchiveManager {
         let total_files = entries_info.len();
         let total_bytes: u64 = entries_info.iter().map(|(_, s, _)| *s).sum();
         
-        // Second pass: extract
         let file = File::open(archive_path)?;
         let reader = BufReader::new(file);
         let decoder = GzDecoder::new(reader);
@@ -687,7 +677,6 @@ impl ArchiveManager {
             
             let out_path = options.destination.join(&path);
             
-            // Handle overwrite mode
             if out_path.exists() {
                 match options.overwrite {
                     OverwriteMode::Skip => {
@@ -734,7 +723,6 @@ impl ArchiveManager {
     where
         F: Fn(ArchiveProgress),
     {
-        // First, list contents to get total size
         let entries = self.list_7z_contents(archive_path)?;
         let total_files = entries.len();
         let total_bytes: u64 = entries.iter().map(|e| e.size).sum();
@@ -755,7 +743,6 @@ impl ArchiveManager {
                 
                 let out_path = dest.join(entry.name());
                 
-                // Handle overwrite mode
                 if out_path.exists() {
                     match options.overwrite {
                         OverwriteMode::Skip => {
@@ -791,7 +778,7 @@ impl ArchiveManager {
         Ok(())
     }
 
-    /// Extract a single file from an archive
+    /
     pub fn extract_file(
         &self,
         archive_path: &Path,

@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::models::{theme_colors, BookmarkManager};
 
-/// Go to Folder dialog for direct path entry
+/
 pub struct GoToFolderView {
     input_value: String,
     focus_handle: FocusHandle,
@@ -31,7 +31,7 @@ impl GoToFolderView {
         }
     }
 
-    /// Show the dialog
+    /
     pub fn show(&mut self, cx: &mut Context<Self>) {
         self.is_visible = true;
         self.input_value.clear();
@@ -39,7 +39,7 @@ impl GoToFolderView {
         cx.notify();
     }
 
-    /// Hide the dialog
+    /
     pub fn hide(&mut self, cx: &mut Context<Self>) {
         self.is_visible = false;
         self.input_value.clear();
@@ -47,7 +47,7 @@ impl GoToFolderView {
         cx.notify();
     }
 
-    /// Toggle dialog visibility
+    /
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         if self.is_visible {
             self.hide(cx);
@@ -56,12 +56,12 @@ impl GoToFolderView {
         }
     }
 
-    /// Check if dialog is visible
+    /
     pub fn is_visible(&self) -> bool {
         self.is_visible
     }
 
-    /// Update recent locations from BookmarkManager
+    /
     pub fn update_recent(&mut self, manager: &BookmarkManager) {
         self.recent_locations = manager.recent().iter().cloned().collect();
         self.bookmarks = manager
@@ -71,24 +71,24 @@ impl GoToFolderView {
             .collect();
     }
 
-    /// Take the pending navigation path
+    /
     pub fn take_pending_navigation(&mut self) -> Option<PathBuf> {
         self.pending_navigation.take()
     }
 
-    /// Set the input value (for keyboard input handling)
+    /
     pub fn set_input(&mut self, text: String, cx: &mut Context<Self>) {
         self.input_value = text;
         self.error_message = None;
         cx.notify();
     }
 
-    /// Get current input value
+    /
     pub fn input_value(&self) -> &str {
         &self.input_value
     }
 
-    /// Handle navigation attempt
+    /
     pub fn navigate(&mut self, cx: &mut Context<Self>) {
         let path = self.expand_path(&self.input_value);
 
@@ -104,7 +104,7 @@ impl GoToFolderView {
         }
     }
 
-    /// Navigate to a specific path
+    /
     fn navigate_to(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         if path.exists() && path.is_dir() {
             self.pending_navigation = Some(path);
@@ -112,7 +112,7 @@ impl GoToFolderView {
         }
     }
 
-    /// Expand ~ to home directory
+    /
     fn expand_path(&self, input: &str) -> PathBuf {
         if input.starts_with('~') {
             if let Some(home) = dirs::home_dir() {
@@ -122,12 +122,11 @@ impl GoToFolderView {
         PathBuf::from(input)
     }
 
-    /// Get filtered suggestions based on input
+    /
     fn get_suggestions(&self) -> Vec<(String, PathBuf)> {
         let input_lower = self.input_value.to_lowercase();
         let mut suggestions = Vec::new();
 
-        // Add matching bookmarks
         for (name, path) in &self.bookmarks {
             if name.to_lowercase().contains(&input_lower)
                 || path.to_string_lossy().to_lowercase().contains(&input_lower)
@@ -136,7 +135,6 @@ impl GoToFolderView {
             }
         }
 
-        // Add matching recent locations
         for path in &self.recent_locations {
             let path_str = path.to_string_lossy();
             if path_str.to_lowercase().contains(&input_lower) {
@@ -148,7 +146,6 @@ impl GoToFolderView {
             }
         }
 
-        // Limit suggestions
         suggestions.truncate(10);
         suggestions
     }
@@ -172,7 +169,6 @@ impl Render for GoToFolderView {
         let suggestions = self.get_suggestions();
         let recent_locations = self.recent_locations.clone();
 
-        // Overlay background
         div()
             .id("go-to-folder-overlay")
             .absolute()
@@ -188,7 +184,6 @@ impl Render for GoToFolderView {
                 }),
             )
             .child(
-                // Dialog container
                 div()
                     .id("go-to-folder-dialog")
                     .w(px(500.0))
@@ -202,7 +197,6 @@ impl Render for GoToFolderView {
                     .flex_col()
                     .overflow_hidden()
                     .on_mouse_down(MouseButton::Left, |_event, _window, _cx| {
-                        // Prevent click from closing dialog
                     })
                     .child(
                         div()
@@ -290,7 +284,6 @@ impl Render for GoToFolderView {
                                 )
                             }),
                     )
-                    // Suggestions / Recent locations
                     .child(
                         div()
                             .flex_1()
@@ -416,7 +409,6 @@ impl Render for GoToFolderView {
                                 },
                             ),
                     )
-                    // Footer with keyboard hints
                     .child(
                         div()
                             .px_4()
@@ -440,7 +432,7 @@ impl Render for GoToFolderView {
 mod tests {
     use super::*;
 
-    /// Helper function to test path expansion without needing a full view
+    /
     fn expand_path_helper(input: &str) -> PathBuf {
         if input.starts_with('~') {
             if let Some(home) = dirs::home_dir() {
@@ -452,7 +444,6 @@ mod tests {
 
     #[test]
     fn test_expand_path_tilde() {
-        // Test tilde expansion
         if let Some(home) = dirs::home_dir() {
             let expanded = expand_path_helper("~/Documents");
             assert_eq!(expanded, home.join("Documents"));
@@ -461,7 +452,6 @@ mod tests {
             assert_eq!(expanded, home);
         }
 
-        // Test non-tilde path
         let expanded = expand_path_helper("/usr/local");
         assert_eq!(expanded, PathBuf::from("/usr/local"));
     }

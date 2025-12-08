@@ -37,7 +37,7 @@ actions!(
     ]
 );
 
-/// Recursively copy a directory (standalone function for background thread)
+/
 fn copy_dir_recursive_async(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(src)? {
@@ -53,7 +53,7 @@ fn copy_dir_recursive_async(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()>
     Ok(())
 }
 
-/// Dialog state for creating new files/folders
+/
 #[derive(Clone)]
 pub enum DialogState {
     None,
@@ -62,7 +62,7 @@ pub enum DialogState {
     Rename { path: PathBuf, name: String },
 }
 
-/// Clipboard operation type
+/
 #[derive(Clone, Debug, PartialEq)]
 pub enum ClipboardOperation {
     Copy(PathBuf),
@@ -115,12 +115,12 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    /// Returns the current directory path for this workspace
+    /
     pub fn current_path(&self) -> &PathBuf {
         &self.current_path
     }
 
-    /// Opens a new window with the specified path
+    /
     pub fn open_new_window(path: PathBuf, cx: &mut App) {
         if cx.has_global::<WindowManager>() {
             cx.update_global::<WindowManager, _>(|manager, cx| {
@@ -129,12 +129,12 @@ impl Workspace {
         }
     }
 
-    /// Opens a new window with the current directory
+    /
     pub fn open_new_window_here(&self, cx: &mut App) {
         Self::open_new_window(self.current_path.clone(), cx);
     }
 
-    /// Get or create terminal for the active tab
+    /
     fn get_or_create_terminal(&mut self, cx: &mut Context<Self>) -> Entity<TerminalView> {
         let tab_id = self.tab_bar.read(cx).tab_state().active_tab_id();
         if let Some(terminal) = self.terminals.get(&tab_id) {
@@ -147,13 +147,13 @@ impl Workspace {
         }
     }
 
-    /// Get terminal for the active tab if it exists
+    /
     fn active_terminal(&self, cx: &Context<Self>) -> Option<Entity<TerminalView>> {
         let tab_id = self.tab_bar.read(cx).tab_state().active_tab_id();
         self.terminals.get(&tab_id).cloned()
     }
 
-    /// Create terminal for a new tab
+    /
     fn create_terminal_for_tab(
         &mut self,
         tab_id: crate::models::TabId,
@@ -164,14 +164,14 @@ impl Workspace {
         self.terminals.insert(tab_id, terminal);
     }
 
-    /// Remove terminal when tab is closed
+    /
     fn remove_terminal_for_tab(&mut self, tab_id: crate::models::TabId) {
         self.terminals.remove(&tab_id);
     }
 }
 
 impl Workspace {
-    /// Register global keyboard shortcuts for the workspace
+    /
     pub fn register_key_bindings(cx: &mut App) {
         cx.bind_keys([
             KeyBinding::new("cmd-t", NewTab, Some("Workspace")),
@@ -186,7 +186,6 @@ impl Workspace {
     }
 
     pub fn build(initial_path: PathBuf, cx: &mut App) -> Entity<Self> {
-        // Register key bindings for all views
         SearchInputView::register_key_bindings(cx);
         FileListView::register_key_bindings(cx);
         Self::register_key_bindings(cx);
@@ -210,13 +209,11 @@ impl Workspace {
             let _ = op.traversal_handle.join();
             file_system.finalize_load(request_id, start.elapsed());
 
-            // Initialize share manager early to update initial entries
             let mut share_manager = ShareManager::new();
             let _ = share_manager.refresh_shares();
 
             let mut cached_entries = file_system.entries().to_vec();
             
-            // Update share status on initial directory entries
             for entry in cached_entries.iter_mut() {
                 if entry.is_dir {
                     entry.is_shared = share_manager.is_shared(&entry.path);
@@ -280,7 +277,6 @@ impl Workspace {
 
             let smart_folder_dialog = cx.new(|cx| SmartFolderDialog::new(cx));
 
-            // Observe file list for navigation requests and selection changes
             let sidebar_for_file_list = sidebar.clone();
             let status_bar_for_file_list = status_bar.clone();
             cx.observe(
@@ -318,7 +314,6 @@ impl Workspace {
             )
             .detach();
 
-            // Observe grid view for navigation requests and selection changes
             let sidebar_for_grid = sidebar.clone();
             let status_bar_for_grid = status_bar.clone();
             cx.observe(
@@ -350,7 +345,6 @@ impl Workspace {
             )
             .detach();
 
-            // Observe search input for query changes
             cx.observe(
                 &search_input,
                 |workspace: &mut Workspace, search_input, cx| {
@@ -360,7 +354,6 @@ impl Workspace {
             )
             .detach();
 
-            // Observe sidebar for tool actions
             cx.observe(&sidebar, |workspace: &mut Workspace, sidebar, cx| {
                 let action = sidebar.update(cx, |view, _| view.take_pending_action());
                 if let Some(action) = action {
@@ -372,7 +365,6 @@ impl Workspace {
                     workspace.navigate_to(path, cx);
                 }
 
-                // Handle device eject requests
                 let eject_device = sidebar.update(cx, |view, _| view.take_pending_eject_device());
                 if let Some(device_id) = eject_device {
                     workspace.handle_device_eject(device_id, cx);
@@ -390,7 +382,6 @@ impl Workspace {
             })
             .detach();
 
-            // Observe smart folder dialog for actions
             cx.observe(
                 &smart_folder_dialog,
                 |workspace: &mut Workspace, dialog, cx| {
@@ -402,7 +393,6 @@ impl Workspace {
             )
             .detach();
 
-            // Observe status bar for actions
             cx.observe(&status_bar, |workspace: &mut Workspace, status_bar, cx| {
                 let action = status_bar.update(cx, |view, _| view.take_pending_action());
                 if let Some(action) = action {
@@ -414,7 +404,6 @@ impl Workspace {
             })
             .detach();
 
-            // Observe theme picker for theme changes
             cx.observe(
                 &theme_picker,
                 |workspace: &mut Workspace, theme_picker, cx| {
@@ -428,7 +417,6 @@ impl Workspace {
 
             let tab_bar = cx.new(|cx| crate::views::TabBarView::new(initial_path.clone(), cx));
 
-            // Observe tab bar for tab changes
             cx.observe(&tab_bar, |workspace: &mut Workspace, tab_bar, cx| {
                 if let Some(tab_id) = tab_bar.update(cx, |view, _| view.take_pending_navigation()) {
                     if let Some(tab) = workspace.tab_bar.read(cx).tab_state().get_tab(tab_id) {
@@ -655,7 +643,6 @@ impl Workspace {
     }
 
     fn handle_device_eject(&mut self, device_id: DeviceId, cx: &mut Context<Self>) {
-        // Get device info before ejecting
         let device_info = self.sidebar.read(cx).devices().iter()
             .find(|d| d.id == device_id)
             .map(|d| (d.name.clone(), d.path.clone()));
@@ -667,12 +654,10 @@ impl Workspace {
             return;
         };
 
-        // Show ejecting notification
         self.toast_manager.update(cx, |toast, cx| {
             toast.show_info(format!("Ejecting {}...", device_name), cx);
         });
 
-        // Create platform adapter and attempt eject
         #[cfg(target_os = "windows")]
         let adapter: Box<dyn PlatformAdapter> = Box::new(crate::models::WindowsAdapter::new());
         #[cfg(target_os = "macos")]
@@ -682,13 +667,11 @@ impl Workspace {
 
         match adapter.eject_device(device_id) {
             Ok(()) => {
-                // If we're currently viewing the ejected device, navigate away
                 if self.current_path.starts_with(&device_path) {
                     let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
                     self.navigate_to(home, cx);
                 }
 
-                // Refresh devices list
                 self.sidebar.update(cx, |view, cx| {
                     view.refresh_devices(cx);
                 });
@@ -728,7 +711,6 @@ impl Workspace {
                 }
             }
             ContextMenuAction::OpenWith(_path) => {
-                // This is now handled by the submenu - kept for backwards compatibility
             }
             ContextMenuAction::OpenWithApp {
                 file_path,
@@ -923,7 +905,6 @@ impl Workspace {
                 .detach();
             }
             ContextMenuAction::Share(path) => {
-                // Open the share dialog for network sharing
                 if path.is_dir() {
                     let share_info = self.share_manager.get_share(&path).cloned();
                     let is_shared = share_info.is_some();
@@ -938,7 +919,6 @@ impl Workspace {
                         });
                     }
                 } else {
-                    // For files, show platform-specific share options
                     #[cfg(target_os = "macos")]
                     {
                         let _ = std::process::Command::new("open")
@@ -953,7 +933,6 @@ impl Workspace {
                 {
                     match crate::models::share_via_airdrop(&[path.clone()]) {
                         Ok(()) => {
-                            // Don't show toast - Finder's share menu is visible
                         }
                         Err(e) => {
                             self.toast_manager.update(cx, |toast, cx| {
@@ -994,7 +973,6 @@ impl Workspace {
             }
             ContextMenuAction::ShareViaNetwork(path) => {
                 if path.is_dir() {
-                    // Show network share dialog for directories
                     let share_info = self.share_manager.get_share(&path).cloned();
                     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Share");
                     
@@ -1003,7 +981,6 @@ impl Workspace {
                             toast.show_info(format!("'{}' is already shared as '{}'", name, info.share_name), cx);
                         });
                     } else {
-                        // Create a new share
                         let config = crate::models::ShareConfig::new(name.to_string(), path.clone());
                         match self.share_manager.create_share(config) {
                             Ok(info) => {
@@ -1172,13 +1149,11 @@ impl Workspace {
                 .detach();
             }
             ContextMenuAction::ExtractToFolder(path) => {
-                // Extract to a folder with the same name as the archive (without extension)
                 let parent = path.parent().unwrap_or(&self.current_path);
                 let stem = path
                     .file_stem()
                     .and_then(|n| n.to_str())
                     .unwrap_or("extracted");
-                // Handle double extensions like .tar.gz
                 let stem = if stem.ends_with(".tar") {
                     &stem[..stem.len() - 4]
                 } else {
@@ -1386,11 +1361,9 @@ impl Workspace {
                     toast.show_info(format!("Symlink target: {}", target_str), cx);
                 });
 
-                // If the target exists and is a directory, offer to navigate there
                 if target.exists() && target.is_dir() {
                     self.navigate_to(target, cx);
                 } else if target.exists() {
-                    // For files, navigate to the parent directory
                     if let Some(parent) = target.parent() {
                         self.navigate_to(parent.to_path_buf(), cx);
                     }
@@ -1555,44 +1528,35 @@ impl Workspace {
 
         let dest_path = self.current_path.join(&file_name);
 
-        // Don't paste into the same location
         if source_path.parent() == Some(&self.current_path) && !is_move {
             return;
         }
 
-        // Check for conflict
         if dest_path.exists() {
-            // Check if we have an "apply to all" resolution
             if let Some(resolution) = self.conflict_apply_to_all {
                 self.handle_conflict_resolution(source_path, dest_path, is_move, resolution, cx);
             } else {
-                // Show conflict dialog
                 self.show_conflict_dialog(source_path, dest_path, is_move, cx);
             }
             return;
         }
 
-        // No conflict, proceed with paste
         self.clipboard = None;
 
-        // Clear clipboard UI immediately
         self.sidebar.update(cx, |view, _| {
             view.set_has_clipboard(false);
         });
 
-        // Show "in progress" toast
         let action = if is_move { "Moving" } else { "Copying" };
         self.toast_manager.update(cx, |toast, cx| {
             toast.show_info(format!("{}: {}...", action, file_name), cx);
         });
 
-        // Run file operation in background
         let source = source_path.clone();
         let dest = dest_path.clone();
         let name = file_name.clone();
 
         cx.spawn(async move |this, cx| {
-            // Perform the copy/move in background
             let result = std::thread::spawn(move || {
                 if source.is_dir() {
                     copy_dir_recursive_async(&source, &dest)
@@ -1612,7 +1576,6 @@ impl Workspace {
                 match result {
                     Ok(()) => {
                         if is_move {
-                            // Delete source after successful copy
                             let _ = if source_path.is_dir() {
                                 fs::remove_dir_all(&source_path)
                             } else {
@@ -1632,7 +1595,6 @@ impl Workspace {
                         workspace.toast_manager.update(cx, |toast, cx| {
                             toast.show_error(format!("Failed: {}", e), cx);
                         });
-                        // Restore clipboard on failure
                         if is_move {
                             workspace.clipboard =
                                 Some(ClipboardOperation::Cut(source_path.clone()));
@@ -1652,7 +1614,6 @@ impl Workspace {
 
     fn load_destination_entries(&mut self, cx: &mut Context<Self>) {
         let path = self.dest_path.clone();
-        // Always show all files in destination pane for copy/move operations
         let show_hidden = true;
 
         cx.spawn(async move |this, cx| {
@@ -1753,19 +1714,15 @@ impl Workspace {
 
         let dest_path = self.dest_path.join(&file_name);
 
-        // Check for conflict
         if dest_path.exists() {
-            // Check if we have an "apply to all" resolution
             if let Some(resolution) = self.conflict_apply_to_all {
                 self.handle_conflict_resolution(source_path, dest_path, is_move, resolution, cx);
             } else {
-                // Show conflict dialog
                 self.show_conflict_dialog(source_path, dest_path, is_move, cx);
             }
             return;
         }
 
-        // No conflict, proceed with paste
         self.execute_paste(source_path, dest_path, is_move, cx);
     }
 
@@ -1783,11 +1740,9 @@ impl Workspace {
             ConflictDialog::new(conflict_info, remaining)
         });
 
-        // Store the conflict context for when the user makes a choice
         self.pending_conflicts.push((source, destination));
         self.conflict_dialog = Some(dialog);
 
-        // Store whether this is a move operation
         if is_move {
             self.clipboard = Some(ClipboardOperation::Cut(
                 self.pending_conflicts.last().map(|(s, _)| s.clone()).unwrap_or_default()
@@ -1817,7 +1772,6 @@ impl Workspace {
                 self.finish_paste_operation(cx);
             }
             ConflictResolution::Replace => {
-                // Remove existing file/folder first
                 if destination.is_dir() {
                     let _ = fs::remove_dir_all(&destination);
                 } else {
@@ -1863,10 +1817,8 @@ impl Workspace {
     }
 
     fn execute_paste(&mut self, source: PathBuf, destination: PathBuf, is_move: bool, cx: &mut Context<Self>) {
-        // Clear clipboard
         self.clipboard = None;
 
-        // Exit copy/move mode
         self.copy_move_mode = false;
 
         let file_name = source
@@ -1875,7 +1827,6 @@ impl Workspace {
             .unwrap_or("unknown")
             .to_string();
 
-        // Show "in progress" toast
         let action = if is_move { "Moving" } else { "Copying" };
         self.toast_manager.update(cx, |toast, cx| {
             toast.show_info(format!("{}: {}...", action, file_name), cx);
@@ -1985,7 +1936,6 @@ impl Workspace {
             self.conflict_apply_to_all = Some(resolution);
         }
 
-        // Get the pending conflict
         if let Some((source, destination)) = self.pending_conflicts.pop() {
             let is_move = matches!(self.clipboard, Some(ClipboardOperation::Cut(_)));
             self.conflict_dialog = None;
@@ -2087,23 +2037,19 @@ impl Workspace {
 
     fn handle_search_query_change(&mut self, query: &str, cx: &mut Context<Self>) {
         if query.is_empty() {
-            // Clear search - restore full file list
             self.file_list.update(cx, |view, _| {
                 view.inner_mut().clear_search_filter();
             });
         } else {
-            // Apply search filter
             let matches = self.search_engine.update(cx, |engine, _| {
                 engine.set_pattern(query);
                 let snapshot = engine.snapshot();
                 snapshot.matches
             });
 
-            // Convert matches to the format FileList expects
             let file_matches: Vec<(usize, Vec<usize>, u32)> = matches
                 .iter()
                 .filter_map(|m| {
-                    // Find the index in cached_entries that matches this path
                     self.cached_entries
                         .iter()
                         .position(|e| e.path == m.path)
@@ -2118,7 +2064,7 @@ impl Workspace {
         cx.notify();
     }
 
-    /// Load a directory without updating navigation history (used for tab switching)
+    /
     fn load_directory(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         let start = Instant::now();
         let show_hidden = self.show_hidden_files;
@@ -2140,7 +2086,6 @@ impl Workspace {
 
         let mut entries = self.file_system.read(cx).entries().to_vec();
         
-        // Update share status on directory entries
         self.update_share_status_on_entries(&mut entries);
         
         self.cached_entries = entries.clone();
@@ -2201,7 +2146,6 @@ impl Workspace {
 
         let mut entries = self.file_system.read(cx).entries().to_vec();
         
-        // Update share status on directory entries
         self.update_share_status_on_entries(&mut entries);
         
         self.cached_entries = entries.clone();
@@ -2218,7 +2162,6 @@ impl Workspace {
             view.inner_mut().set_entries(entries.clone());
         });
 
-        // Re-inject paths into search engine for new directory
         self.search_engine.update(cx, |engine, _| {
             engine.clear();
             for entry in &entries {
@@ -2282,7 +2225,6 @@ impl Workspace {
 
                 let mut entries = self.file_system.read(cx).entries().to_vec();
                 
-                // Update share status on directory entries
                 self.update_share_status_on_entries(&mut entries);
                 
                 self.cached_entries = entries.clone();
@@ -2299,7 +2241,6 @@ impl Workspace {
                     view.inner_mut().set_entries(entries.clone());
                 });
 
-                // Re-inject paths into search engine
                 self.search_engine.update(cx, |engine, _| {
                     engine.clear();
                     for entry in &entries {
@@ -2338,7 +2279,7 @@ impl Workspace {
         }
     }
 
-    /// Update the is_shared status on file entries based on the ShareManager
+    /
     fn update_share_status_on_entries(&mut self, entries: &mut Vec<crate::models::FileEntry>) {
         for entry in entries.iter_mut() {
             if entry.is_dir {
@@ -2437,19 +2378,16 @@ impl Workspace {
     }
 
     pub fn toggle_view_mode(&mut self, cx: &mut Context<Self>) {
-        // Preserve selection when switching views
         let selected_index = match self.view_mode {
             ViewMode::List | ViewMode::Details => self.file_list.read(cx).inner().selected_index(),
             ViewMode::Grid => self.grid_view.read(cx).inner().selected_index(),
         };
 
-        // Toggle view mode
         self.view_mode = match self.view_mode {
             ViewMode::List | ViewMode::Details => ViewMode::Grid,
             ViewMode::Grid => ViewMode::List,
         };
 
-        // Apply selection to new view
         match self.view_mode {
             ViewMode::List | ViewMode::Details => {
                 self.file_list.update(cx, |view, _| {
@@ -2487,7 +2425,7 @@ impl Workspace {
         }
     }
 
-    /// Get the currently selected file entry
+    /
     fn get_selected_entry(&self, cx: &mut Context<Self>) -> Option<crate::models::FileEntry> {
         match self.view_mode {
             ViewMode::List | ViewMode::Details => {
@@ -2503,13 +2441,12 @@ impl Workspace {
         }
     }
 
-    /// Update preview panel based on current selection
+    /
     fn update_preview_for_selection(&mut self, cx: &mut Context<Self>) {
         let selected_entry = self.get_selected_entry(cx);
 
         match selected_entry {
             Some(entry) if !entry.is_dir => {
-                // Show preview for files
                 if self.preview.is_none() {
                     self.preview = Some(cx.new(|cx| PreviewView::new(cx)));
                 }
@@ -2521,7 +2458,6 @@ impl Workspace {
                 cx.notify();
             }
             _ => {
-                // Hide preview for directories or no selection
                 if self.preview.is_some() {
                     self.preview = None;
                     cx.notify();
@@ -2573,7 +2509,7 @@ impl Workspace {
         }
     }
 
-    /// Handle Cmd+` - Toggle Terminal
+    /
     fn handle_toggle_terminal(
         &mut self,
         _: &ToggleTerminal,
@@ -2583,7 +2519,7 @@ impl Workspace {
         self.toggle_terminal(cx);
     }
 
-    /// Handle Cmd+F - Focus Search
+    /
     fn handle_focus_search(
         &mut self,
         _: &FocusSearch,
@@ -3292,7 +3228,6 @@ impl Workspace {
                     .bg(bg_darker)
                     .flex()
                     .flex_col()
-                    // Toolbar matching main pane
                     .child(
                         div()
                             .h(px(crate::models::toolbar::HEIGHT))
@@ -3341,10 +3276,8 @@ impl Workspace {
                                             .bg(theme.border_subtle)
                                             .mx(px(crate::models::toolbar::BUTTON_GAP)),
                                     )
-                                    // Breadcrumb navigation
                                     .child(self.render_dest_breadcrumbs(cx)),
                             )
-                            // Right side - action buttons
                             .child(
                                 div()
                                     .flex()
@@ -3392,7 +3325,6 @@ impl Workspace {
                                     ),
                             ),
                     )
-                    // File list with scroll
                     .child(
                         div()
                             .id("dest-file-list")
@@ -3665,7 +3597,6 @@ impl Workspace {
         let theme = theme_colors();
         let overlay_bg = gpui::rgba(0x00000099);
 
-        // Get conflict info from pending conflicts
         let (source, destination) = self.pending_conflicts.last()
             .cloned()
             .unwrap_or_else(|| (PathBuf::new(), PathBuf::new()));
@@ -3708,7 +3639,6 @@ impl Workspace {
                     .flex()
                     .flex_col()
                     .on_mouse_down(MouseButton::Left, |_, _, _| {})
-                    // Header
                     .child(
                         div()
                             .flex()
@@ -3728,7 +3658,6 @@ impl Workspace {
                                     .child("File Conflict"),
                             ),
                     )
-                    // Message
                     .child(
                         div()
                             .text_sm()
@@ -3738,13 +3667,11 @@ impl Workspace {
                                 file_name, dest_folder
                             )),
                     )
-                    // File comparison
                     .child(
                         div()
                             .flex()
                             .gap_4()
                             .child(
-                                // Source file info
                                 div()
                                     .flex_1()
                                     .flex()
@@ -3774,7 +3701,6 @@ impl Workspace {
                                     ),
                             )
                             .child(
-                                // Destination file info
                                 div()
                                     .flex_1()
                                     .flex()
@@ -3804,7 +3730,6 @@ impl Workspace {
                                     ),
                             ),
                     )
-                    // Apply to all checkbox (only show if there are remaining conflicts)
                     .when(remaining > 0, |this| {
                         this.child(
                             div()
@@ -3836,7 +3761,6 @@ impl Workspace {
                                 ),
                         )
                     })
-                    // Buttons
                     .child(
                         div()
                             .flex()

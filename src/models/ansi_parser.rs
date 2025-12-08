@@ -1,9 +1,8 @@
 use crate::models::terminal::CellStyle;
 use gpui::Rgba;
 
-/// Standard ANSI color palette (16 colors)
+/
 pub const ANSI_COLORS: [Rgba; 16] = [
-    // Normal colors (0-7)
     Rgba {
         r: 0.0,
         g: 0.0,
@@ -52,7 +51,6 @@ pub const ANSI_COLORS: [Rgba; 16] = [
         b: 0.8,
         a: 1.0,
     },
-    // Bright colors (8-15)
     Rgba {
         r: 0.4,
         g: 0.4,
@@ -103,14 +101,14 @@ pub const ANSI_COLORS: [Rgba; 16] = [
     },
 ];
 
-/// Default foreground color
+/
 pub const DEFAULT_FG: Rgba = Rgba {
     r: 0.96,
     g: 0.91,
     b: 0.86,
     a: 1.0,
 };
-/// Default background color (transparent)
+/
 pub const DEFAULT_BG: Rgba = Rgba {
     r: 0.0,
     g: 0.0,
@@ -118,7 +116,7 @@ pub const DEFAULT_BG: Rgba = Rgba {
     a: 0.0,
 };
 
-/// Parser state machine states
+/
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ParserState {
     Ground,
@@ -130,7 +128,7 @@ enum ParserState {
     OscString,
 }
 
-/// Parsed segment from ANSI input
+/
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParsedSegment {
     Text(String, CellStyle),
@@ -153,7 +151,7 @@ pub enum ParsedSegment {
     ScrollDown(usize),
 }
 
-/// Clear mode for screen/line clearing
+/
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClearMode {
     ToEnd,
@@ -174,7 +172,7 @@ impl ClearMode {
     }
 }
 
-/// ANSI escape sequence parser
+/
 pub struct AnsiParser {
     state: ParserState,
     params: Vec<u16>,
@@ -234,7 +232,7 @@ impl AnsiParser {
         };
     }
 
-    /// Parse input bytes and return parsed segments
+    /
     pub fn parse(&mut self, input: &[u8]) -> Vec<ParsedSegment> {
         let mut segments = Vec::new();
         let mut text_buffer = String::new();
@@ -262,7 +260,6 @@ impl AnsiParser {
             }
         }
 
-        // Flush remaining text
         if !text_buffer.is_empty() {
             segments.push(ParsedSegment::Text(
                 std::mem::take(&mut text_buffer),
@@ -281,11 +278,9 @@ impl AnsiParser {
     ) {
         if self.utf8_remaining > 0 {
             if (byte & 0xC0) == 0x80 {
-                // Valid continuation byte
                 self.utf8_buffer.push(byte);
                 self.utf8_remaining -= 1;
                 if self.utf8_remaining == 0 {
-                    // Complete UTF-8 sequence
                     if let Ok(s) = std::str::from_utf8(&self.utf8_buffer) {
                         text_buffer.push_str(s);
                     }
@@ -300,7 +295,6 @@ impl AnsiParser {
 
         match byte {
             0x1B => {
-                // ESC - start escape sequence
                 if !text_buffer.is_empty() {
                     segments.push(ParsedSegment::Text(
                         std::mem::take(text_buffer),
@@ -355,32 +349,26 @@ impl AnsiParser {
                 segments.push(ParsedSegment::CarriageReturn);
             }
             0x00..=0x1F => {
-                // Other control characters - ignore
             }
             0x20..=0x7F => {
-                // ASCII printable character
                 text_buffer.push(byte as char);
             }
             0xC0..=0xDF => {
-                // Start of 2-byte UTF-8 sequence
                 self.utf8_buffer.clear();
                 self.utf8_buffer.push(byte);
                 self.utf8_remaining = 1;
             }
             0xE0..=0xEF => {
-                // Start of 3-byte UTF-8 sequence
                 self.utf8_buffer.clear();
                 self.utf8_buffer.push(byte);
                 self.utf8_remaining = 2;
             }
             0xF0..=0xF7 => {
-                // Start of 4-byte UTF-8 sequence
                 self.utf8_buffer.clear();
                 self.utf8_buffer.push(byte);
                 self.utf8_remaining = 3;
             }
             _ => {
-                // Invalid byte - ignore
             }
         }
     }
@@ -410,12 +398,10 @@ impl AnsiParser {
                 self.state = ParserState::Ground;
             }
             b'D' => {
-                // Index (scroll up)
                 segments.push(ParsedSegment::ScrollUp(1));
                 self.state = ParserState::Ground;
             }
             b'M' => {
-                // Reverse index (scroll down)
                 segments.push(ParsedSegment::ScrollDown(1));
                 self.state = ParserState::Ground;
             }
@@ -424,7 +410,6 @@ impl AnsiParser {
                 self.state = ParserState::Ground;
             }
             _ => {
-                // Unknown escape sequence - output as text
                 text_buffer.push('\x1B');
                 if let Some(c) = char::from_u32(byte as u32) {
                     text_buffer.push(c);
@@ -442,15 +427,12 @@ impl AnsiParser {
     ) {
         match byte {
             b'?' => {
-                // DEC private mode - switch to private mode parsing
                 self.state = ParserState::CsiPrivate;
             }
             b'>' | b'=' | b'!' => {
-                // Other CSI modifiers - switch to private mode (ignore these sequences)
                 self.state = ParserState::CsiPrivate;
             }
             b'0'..=b'9' => {
-                // Parameter digit
                 self.state = ParserState::CsiParam;
                 let digit = (byte - b'0') as u16;
                 if let Some(last) = self.params.last_mut() {
@@ -460,7 +442,6 @@ impl AnsiParser {
                 }
             }
             b';' => {
-                // Parameter separator
                 self.state = ParserState::CsiParam;
                 if self.params.is_empty() {
                     self.params.push(0);
@@ -468,17 +449,14 @@ impl AnsiParser {
                 self.params.push(0);
             }
             b' '..=b'/' => {
-                // Intermediate byte
                 self.intermediate.push(byte);
                 self.state = ParserState::CsiIntermediate;
             }
             b'@'..=b'~' => {
-                // Final byte - execute CSI sequence
                 self.execute_csi(byte, segments);
                 self.state = ParserState::Ground;
             }
             _ => {
-                // Invalid - abort silently (don't output garbage)
                 self.state = ParserState::Ground;
             }
         }
@@ -492,14 +470,11 @@ impl AnsiParser {
     ) {
         match byte {
             b'0'..=b'9' | b';' => {
-                // Continue consuming parameters
             }
             b'@'..=b'~' => {
-                // Final byte - sequence complete, ignore it
                 self.state = ParserState::Ground;
             }
             _ => {
-                // Invalid - abort
                 self.state = ParserState::Ground;
             }
         }
@@ -529,28 +504,22 @@ impl AnsiParser {
     fn handle_osc(&mut self, byte: u8, segments: &mut Vec<ParsedSegment>) {
         match byte {
             0x07 | 0x9C => {
-                // BEL or ST - end of OSC
                 self.execute_osc(segments);
                 self.state = ParserState::Ground;
             }
             0x1B => {
-                // Might be ST (\x1B\\)
-                // For simplicity, treat as end
                 self.execute_osc(segments);
                 self.state = ParserState::Ground;
             }
             0x20..=0x7E => {
-                // Printable ASCII
                 self.osc_string.push(byte as char);
             }
             _ => {
-                // For non-ASCII in OSC, just skip (titles should be ASCII anyway)
             }
         }
     }
 
     fn execute_osc(&mut self, segments: &mut Vec<ParsedSegment>) {
-        // Parse OSC command
         if let Some(idx) = self.osc_string.find(';') {
             let cmd = &self.osc_string[..idx];
             let arg = &self.osc_string[idx + 1..];
@@ -576,34 +545,27 @@ impl AnsiParser {
 
         match final_byte {
             b'A' => {
-                // CUU - Cursor Up
                 segments.push(ParsedSegment::CursorUp(param_or(&self.params, 0, 1)));
             }
             b'B' => {
-                // CUD - Cursor Down
                 segments.push(ParsedSegment::CursorDown(param_or(&self.params, 0, 1)));
             }
             b'C' => {
-                // CUF - Cursor Forward
                 segments.push(ParsedSegment::CursorForward(param_or(&self.params, 0, 1)));
             }
             b'D' => {
-                // CUB - Cursor Backward
                 segments.push(ParsedSegment::CursorBackward(param_or(&self.params, 0, 1)));
             }
             b'H' | b'f' => {
-                // CUP - Cursor Position
                 let row = param_or(&self.params, 0, 1).saturating_sub(1);
                 let col = param_or(&self.params, 1, 1).saturating_sub(1);
                 segments.push(ParsedSegment::CursorPosition(row, col));
             }
             b'J' => {
-                // ED - Erase Display
                 let mode = ClearMode::from_param(param_or(&self.params, 0, 0));
                 segments.push(ParsedSegment::ClearScreen(mode));
             }
             b'K' => {
-                // EL - Erase Line
                 let mode = ClearMode::from_param(param_or(&self.params, 0, 0));
                 segments.push(ParsedSegment::ClearLine(mode));
             }
@@ -611,23 +573,18 @@ impl AnsiParser {
                 segments.push(ParsedSegment::ScrollUp(param_or(&self.params, 0, 1)));
             }
             b'T' => {
-                // SD - Scroll Down
                 segments.push(ParsedSegment::ScrollDown(param_or(&self.params, 0, 1)));
             }
             b'm' => {
-                // SGR - Select Graphic Rendition
                 self.execute_sgr();
             }
             b's' => {
-                // SCP - Save Cursor Position
                 segments.push(ParsedSegment::CursorSave);
             }
             b'u' => {
-                // RCP - Restore Cursor Position
                 segments.push(ParsedSegment::CursorRestore);
             }
             _ => {
-                // Unknown CSI sequence - ignore
             }
         }
     }
@@ -663,39 +620,31 @@ impl AnsiParser {
                 27 => self.current_style.inverse = false,
                 29 => self.current_style.strikethrough = false,
                 30..=37 => {
-                    // Standard foreground colors
                     self.current_style.foreground = ANSI_COLORS[code - 30];
                 }
                 38 => {
-                    // Extended foreground color
                     if let Some(color) = self.parse_extended_color(&mut i) {
                         self.current_style.foreground = color;
                     }
                 }
                 39 => {
-                    // Default foreground
                     self.current_style.foreground = self.default_fg;
                 }
                 40..=47 => {
-                    // Standard background colors
                     self.current_style.background = ANSI_COLORS[code - 40];
                 }
                 48 => {
-                    // Extended background color
                     if let Some(color) = self.parse_extended_color(&mut i) {
                         self.current_style.background = color;
                     }
                 }
                 49 => {
-                    // Default background
                     self.current_style.background = self.default_bg;
                 }
                 90..=97 => {
-                    // Bright foreground colors
                     self.current_style.foreground = ANSI_COLORS[code - 90 + 8];
                 }
                 100..=107 => {
-                    // Bright background colors
                     self.current_style.background = ANSI_COLORS[code - 100 + 8];
                 }
                 _ => {}
@@ -712,7 +661,6 @@ impl AnsiParser {
         let mode = self.params[*i + 1];
         match mode {
             2 => {
-                // RGB color: 38;2;r;g;b
                 if *i + 4 >= self.params.len() {
                     return None;
                 }
@@ -723,7 +671,6 @@ impl AnsiParser {
                 Some(Rgba { r, g, b, a: 1.0 })
             }
             5 => {
-                // 256-color palette: 38;5;n
                 if *i + 2 >= self.params.len() {
                     return None;
                 }
@@ -736,12 +683,11 @@ impl AnsiParser {
     }
 }
 
-/// Convert 256-color palette index to Rgba
+/
 pub fn color_from_256(n: usize) -> Rgba {
     match n {
         0..=15 => ANSI_COLORS[n],
         16..=231 => {
-            // 6x6x6 color cube
             let n = n - 16;
             let r = (n / 36) % 6;
             let g = (n / 6) % 6;
@@ -890,7 +836,6 @@ mod tests {
     fn test_sgr_256_color() {
         let mut parser = AnsiParser::new();
         parser.parse(b"\x1B[38;5;196m");
-        // Color 196 is in the 6x6x6 cube
         let expected = color_from_256(196);
         assert_eq!(parser.current_style().foreground, expected);
     }

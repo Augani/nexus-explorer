@@ -5,7 +5,7 @@ use md5::Md5;
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
-/// Supported hash algorithms
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
     Md5,
@@ -15,7 +15,7 @@ pub enum HashAlgorithm {
 }
 
 impl HashAlgorithm {
-    /// Get the display name for the algorithm
+    /
     pub fn display_name(&self) -> &'static str {
         match self {
             HashAlgorithm::Md5 => "MD5",
@@ -25,7 +25,7 @@ impl HashAlgorithm {
         }
     }
 
-    /// Get the expected hash length in hex characters
+    /
     pub fn hash_length(&self) -> usize {
         match self {
             HashAlgorithm::Md5 => 32,
@@ -35,7 +35,7 @@ impl HashAlgorithm {
         }
     }
 
-    /// Get all available algorithms
+    /
     pub fn all() -> &'static [HashAlgorithm] {
         &[
             HashAlgorithm::Md5,
@@ -46,7 +46,7 @@ impl HashAlgorithm {
     }
 }
 
-/// Progress information for hash calculation
+/
 #[derive(Debug, Clone)]
 pub struct HashProgress {
     pub bytes_processed: u64,
@@ -69,7 +69,7 @@ impl HashProgress {
     }
 }
 
-/// Result of a hash calculation
+/
 #[derive(Debug, Clone)]
 pub struct HashResult {
     pub algorithm: HashAlgorithm,
@@ -82,7 +82,7 @@ impl HashResult {
     }
 }
 
-/// Hash comparison result
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashComparisonResult {
     Match,
@@ -100,7 +100,7 @@ impl HashComparisonResult {
     }
 }
 
-/// Calculate hash of data using the specified algorithm
+/
 pub fn calculate_hash_bytes(data: &[u8], algorithm: HashAlgorithm) -> String {
     match algorithm {
         HashAlgorithm::Md5 => {
@@ -126,7 +126,7 @@ pub fn calculate_hash_bytes(data: &[u8], algorithm: HashAlgorithm) -> String {
     }
 }
 
-/// Calculate hash of a file synchronously
+/
 pub fn calculate_file_hash(path: &Path, algorithm: HashAlgorithm) -> io::Result<String> {
     let mut file = std::fs::File::open(path)?;
     let mut buffer = vec![0u8; 8192];
@@ -179,17 +179,15 @@ pub fn calculate_file_hash(path: &Path, algorithm: HashAlgorithm) -> io::Result<
     }
 }
 
-/// Compare two hash strings (case-insensitive)
+/
 pub fn compare_hashes(hash1: &str, hash2: &str) -> HashComparisonResult {
     let h1 = hash1.trim();
     let h2 = hash2.trim();
     
-    // Check if both are valid hex strings
     if !is_valid_hex(h1) || !is_valid_hex(h2) {
         return HashComparisonResult::InvalidFormat;
     }
     
-    // Case-insensitive comparison
     if h1.eq_ignore_ascii_case(h2) {
         HashComparisonResult::Match
     } else {
@@ -197,12 +195,12 @@ pub fn compare_hashes(hash1: &str, hash2: &str) -> HashComparisonResult {
     }
 }
 
-/// Check if a string is a valid hexadecimal hash
+/
 pub fn is_valid_hex(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_ascii_hexdigit())
 }
 
-/// Detect the hash algorithm from a hash string based on its length
+/
 pub fn detect_algorithm(hash: &str) -> Option<HashAlgorithm> {
     let trimmed = hash.trim();
     if !is_valid_hex(trimmed) {
@@ -219,7 +217,7 @@ pub fn detect_algorithm(hash: &str) -> Option<HashAlgorithm> {
 }
 
 
-/// Async hash calculation with progress reporting
+/
 pub struct AsyncHashCalculator {
     chunk_size: usize,
     cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -234,7 +232,7 @@ impl Default for AsyncHashCalculator {
 impl AsyncHashCalculator {
     pub fn new() -> Self {
         Self {
-            chunk_size: 64 * 1024, // 64KB chunks for progress reporting
+            chunk_size: 64 * 1024,
             cancelled: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
@@ -244,17 +242,17 @@ impl AsyncHashCalculator {
         self
     }
 
-    /// Get a handle to cancel the operation
+    /
     pub fn cancel_handle(&self) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
         self.cancelled.clone()
     }
 
-    /// Cancel the ongoing operation
+    /
     pub fn cancel(&self) {
         self.cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
-    /// Calculate hash asynchronously with progress callback
+    /
     pub async fn calculate_with_progress<F>(
         &self,
         path: &Path,
@@ -268,10 +266,8 @@ impl AsyncHashCalculator {
         let chunk_size = self.chunk_size;
         let cancelled = self.cancelled.clone();
 
-        // Reset cancelled flag
         cancelled.store(false, std::sync::atomic::Ordering::SeqCst);
 
-        // Run in blocking task
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&path)?;
             let metadata = file.metadata()?;
@@ -365,7 +361,7 @@ impl AsyncHashCalculator {
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
     }
 
-    /// Calculate multiple hashes for a file
+    /
     pub async fn calculate_all_hashes<F>(
         &self,
         path: &Path,
@@ -389,7 +385,7 @@ impl AsyncHashCalculator {
     }
 }
 
-/// Calculate hash synchronously with progress callback (for smaller files or when async is not needed)
+/
 pub fn calculate_file_hash_with_progress<F>(
     path: &Path,
     algorithm: HashAlgorithm,
@@ -402,7 +398,7 @@ where
     let metadata = file.metadata()?;
     let total_bytes = metadata.len();
     let mut reader = std::io::BufReader::new(file);
-    let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
+    let mut buffer = vec![0u8; 64 * 1024];
     let mut bytes_processed: u64 = 0;
 
     match algorithm {

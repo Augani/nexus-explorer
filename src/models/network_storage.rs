@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-/// Unique identifier for a network location
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NetworkLocationId(pub u64);
 
@@ -13,7 +13,7 @@ impl NetworkLocationId {
     }
 }
 
-/// Protocol type for network connections
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetworkProtocol {
     Smb,
@@ -65,7 +65,7 @@ impl NetworkProtocol {
     }
 }
 
-/// Authentication method for network connections
+/
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthMethod {
     Anonymous,
@@ -79,7 +79,7 @@ impl Default for AuthMethod {
     }
 }
 
-/// Connection configuration for a network location
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConnectionConfig {
     pub protocol: NetworkProtocol,
@@ -122,12 +122,12 @@ impl NetworkConnectionConfig {
         self
     }
 
-    /// Get the effective port (custom or default for protocol)
+    /
     pub fn effective_port(&self) -> u16 {
         self.port.unwrap_or_else(|| self.protocol.default_port())
     }
 
-    /// Build a URL string for this connection
+    /
     pub fn to_url(&self) -> String {
         let port_str = self.port.map(|p| format!(":{}", p)).unwrap_or_default();
 
@@ -140,13 +140,13 @@ impl NetworkConnectionConfig {
         )
     }
 
-    /// Get display name (label or host)
+    /
     pub fn display_name(&self) -> &str {
         self.label.as_deref().unwrap_or(&self.host)
     }
 }
 
-/// Connection state for a network location
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionState {
     Disconnected,
@@ -161,7 +161,7 @@ impl Default for ConnectionState {
     }
 }
 
-/// Represents a network location (saved or active connection)
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkLocation {
     pub id: NetworkLocationId,
@@ -201,7 +201,7 @@ impl NetworkLocation {
     }
 }
 
-/// Errors that can occur during network operations
+/
 #[derive(Debug, Error)]
 pub enum NetworkError {
     #[error("Connection failed: {0}")]
@@ -234,7 +234,7 @@ pub enum NetworkError {
 
 pub type NetworkResult<T> = std::result::Result<T, NetworkError>;
 
-/// Manager for network locations and connections
+/
 pub struct NetworkStorageManager {
     locations: Vec<NetworkLocation>,
     recent_servers: Vec<NetworkConnectionConfig>,
@@ -264,27 +264,27 @@ impl NetworkStorageManager {
         id
     }
 
-    /// Get all saved network locations
+    /
     pub fn locations(&self) -> &[NetworkLocation] {
         &self.locations
     }
 
-    /// Get recent server connections
+    /
     pub fn recent_servers(&self) -> &[NetworkConnectionConfig] {
         &self.recent_servers
     }
 
-    /// Find a location by ID
+    /
     pub fn get_location(&self, id: NetworkLocationId) -> Option<&NetworkLocation> {
         self.locations.iter().find(|l| l.id == id)
     }
 
-    /// Find a location by ID (mutable)
+    /
     pub fn get_location_mut(&mut self, id: NetworkLocationId) -> Option<&mut NetworkLocation> {
         self.locations.iter_mut().find(|l| l.id == id)
     }
 
-    /// Add a new network location
+    /
     pub fn add_location(&mut self, config: NetworkConnectionConfig) -> NetworkLocationId {
         let id = self.next_location_id();
         let location = NetworkLocation::new(id, config);
@@ -292,7 +292,7 @@ impl NetworkStorageManager {
         id
     }
 
-    /// Remove a network location
+    /
     pub fn remove_location(&mut self, id: NetworkLocationId) -> Option<NetworkLocation> {
         if let Some(pos) = self.locations.iter().position(|l| l.id == id) {
             Some(self.locations.remove(pos))
@@ -301,7 +301,7 @@ impl NetworkStorageManager {
         }
     }
 
-    /// Update a network location's configuration
+    /
     pub fn update_location(
         &mut self,
         id: NetworkLocationId,
@@ -315,24 +315,22 @@ impl NetworkStorageManager {
         }
     }
 
-    /// Add a server to recent connections
+    /
     pub fn add_to_recent(&mut self, config: NetworkConnectionConfig) {
-        // Remove if already exists (to move to front)
         self.recent_servers
             .retain(|c| c.to_url() != config.to_url());
 
         self.recent_servers.insert(0, config);
 
-        // Trim to max size
         self.recent_servers.truncate(self.max_recent);
     }
 
-    /// Clear recent servers
+    /
     pub fn clear_recent(&mut self) {
         self.recent_servers.clear();
     }
 
-    /// Connect to a network location (placeholder - actual implementation depends on platform)
+    /
     pub fn connect(&mut self, id: NetworkLocationId) -> NetworkResult<()> {
         let config = {
             let location = self
@@ -342,12 +340,9 @@ impl NetworkStorageManager {
             location.config.clone()
         };
 
-        // Add to recent servers
         self.add_to_recent(config);
 
         if let Some(location) = self.get_location_mut(id) {
-            // Actual connection would be implemented here
-            // For now, we just mark as connected (placeholder)
             location.state = ConnectionState::Connected;
             location.latency_ms = Some(50);
         }
@@ -355,7 +350,7 @@ impl NetworkStorageManager {
         Ok(())
     }
 
-    /// Disconnect from a network location
+    /
     pub fn disconnect(&mut self, id: NetworkLocationId) -> NetworkResult<()> {
         if let Some(location) = self.get_location_mut(id) {
             location.state = ConnectionState::Disconnected;
@@ -367,12 +362,12 @@ impl NetworkStorageManager {
         }
     }
 
-    /// Get all connected locations
+    /
     pub fn connected_locations(&self) -> Vec<&NetworkLocation> {
         self.locations.iter().filter(|l| l.is_connected()).collect()
     }
 
-    /// Save locations to config file
+    /
     pub fn save(&self) -> std::io::Result<()> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -399,7 +394,7 @@ impl NetworkStorageManager {
         std::fs::write(config_path, json)
     }
 
-    /// Load locations from config file
+    /
     pub fn load() -> Self {
         let config_path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -431,7 +426,7 @@ impl NetworkStorageManager {
     }
 }
 
-/// Cloud storage provider type
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CloudProvider {
     ICloud,
@@ -468,7 +463,7 @@ impl CloudProvider {
         }
     }
 
-    /// Get the typical local sync folder path for this provider
+    /
     #[cfg(target_os = "macos")]
     pub fn default_path(&self) -> Option<PathBuf> {
         let home = dirs::home_dir()?;
@@ -513,7 +508,7 @@ impl CloudProvider {
         }
     }
 
-    /// Get all known cloud providers
+    /
     pub fn all() -> &'static [CloudProvider] {
         &[
             CloudProvider::ICloud,
@@ -527,7 +522,7 @@ impl CloudProvider {
     }
 }
 
-/// Sync status for cloud storage files
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SyncStatus {
     Synced,
@@ -562,7 +557,7 @@ impl SyncStatus {
     }
 }
 
-/// Represents a detected cloud storage location
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudLocation {
     pub provider: CloudProvider,
@@ -590,7 +585,7 @@ impl CloudLocation {
     }
 }
 
-/// Manager for cloud storage detection and status
+/
 #[derive(Clone)]
 pub struct CloudStorageManager {
     locations: Vec<CloudLocation>,
@@ -609,12 +604,12 @@ impl CloudStorageManager {
         }
     }
 
-    /// Get all detected cloud storage locations
+    /
     pub fn locations(&self) -> &[CloudLocation] {
         &self.locations
     }
 
-    /// Detect installed cloud storage providers
+    /
     pub fn detect_providers(&mut self) {
         self.locations.clear();
 
@@ -627,19 +622,18 @@ impl CloudStorageManager {
         }
     }
 
-    /// Get cloud location for a provider
+    /
     pub fn get_location(&self, provider: CloudProvider) -> Option<&CloudLocation> {
         self.locations.iter().find(|l| l.provider == provider)
     }
 
-    /// Check if a path is within a cloud storage location
+    /
     pub fn is_cloud_path(&self, path: &PathBuf) -> Option<&CloudLocation> {
         self.locations.iter().find(|l| path.starts_with(&l.path))
     }
 
-    /// Get sync status for a file (placeholder - actual implementation depends on provider APIs)
+    /
     pub fn get_sync_status(&self, _path: &PathBuf) -> Option<SyncStatus> {
-        // This would need to query provider-specific APIs
         None
     }
 }
@@ -704,7 +698,6 @@ mod tests {
         assert_eq!(manager.recent_servers()[0].host, "server2");
         assert_eq!(manager.recent_servers()[1].host, "server1");
 
-        // Adding same server should move it to front
         manager.add_to_recent(config1);
         assert_eq!(manager.recent_servers().len(), 2);
         assert_eq!(manager.recent_servers()[0].host, "server1");
@@ -712,7 +705,6 @@ mod tests {
 
     #[test]
     fn test_cloud_provider_paths() {
-        // Just test that the method doesn't panic
         for provider in CloudProvider::all() {
             let _ = provider.default_path();
         }
@@ -726,7 +718,7 @@ mod tests {
     }
 }
 
-/// Represents a remote file entry from a network location
+/
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RemoteFileEntry {
     pub name: String,
@@ -771,7 +763,7 @@ impl RemoteFileEntry {
     }
 }
 
-/// State for a remote directory listing operation
+/
 #[derive(Debug, Clone)]
 pub enum RemoteListingState {
     Idle,
@@ -786,7 +778,7 @@ impl Default for RemoteListingState {
     }
 }
 
-/// Represents an ongoing network file operation
+/
 #[derive(Debug, Clone)]
 pub struct NetworkFileOperation {
     pub id: u64,
@@ -860,7 +852,7 @@ impl Default for NetworkOperationState {
     }
 }
 
-/// Manager for network file operations
+/
 pub struct NetworkFileOperationsManager {
     operations: Vec<NetworkFileOperation>,
     next_operation_id: u64,
@@ -888,12 +880,12 @@ impl NetworkFileOperationsManager {
         id
     }
 
-    /// Get all operations
+    /
     pub fn operations(&self) -> &[NetworkFileOperation] {
         &self.operations
     }
 
-    /// Get active operations
+    /
     pub fn active_operations(&self) -> Vec<&NetworkFileOperation> {
         self.operations
             .iter()
@@ -906,7 +898,7 @@ impl NetworkFileOperationsManager {
             .collect()
     }
 
-    /// Check if there are any active operations
+    /
     pub fn has_active_operations(&self) -> bool {
         self.operations.iter().any(|op| {
             matches!(
@@ -916,7 +908,7 @@ impl NetworkFileOperationsManager {
         })
     }
 
-    /// Start a download operation
+    /
     pub fn start_download(
         &mut self,
         location_id: NetworkLocationId,
@@ -937,7 +929,7 @@ impl NetworkFileOperationsManager {
         id
     }
 
-    /// Start an upload operation
+    /
     pub fn start_upload(
         &mut self,
         location_id: NetworkLocationId,
@@ -958,7 +950,7 @@ impl NetworkFileOperationsManager {
         id
     }
 
-    /// Update operation progress
+    /
     pub fn update_progress(&mut self, operation_id: u64, progress: NetworkOperationProgress) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.progress = progress;
@@ -968,28 +960,28 @@ impl NetworkFileOperationsManager {
         }
     }
 
-    /// Mark operation as completed
+    /
     pub fn complete_operation(&mut self, operation_id: u64) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.state = NetworkOperationState::Completed;
         }
     }
 
-    /// Mark operation as failed
+    /
     pub fn fail_operation(&mut self, operation_id: u64) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.state = NetworkOperationState::Failed;
         }
     }
 
-    /// Cancel an operation
+    /
     pub fn cancel_operation(&mut self, operation_id: u64) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == operation_id) {
             op.state = NetworkOperationState::Cancelled;
         }
     }
 
-    /// Remove completed/failed/cancelled operations
+    /
     pub fn clear_finished(&mut self) {
         self.operations.retain(|op| {
             matches!(
@@ -999,7 +991,7 @@ impl NetworkFileOperationsManager {
         });
     }
 
-    /// Get cached listing for a path
+    /
     pub fn get_listing(
         &self,
         location_id: NetworkLocationId,
@@ -1008,7 +1000,7 @@ impl NetworkFileOperationsManager {
         self.listings_cache.get(&(location_id, path.to_string()))
     }
 
-    /// Set listing state for a path
+    /
     pub fn set_listing(
         &mut self,
         location_id: NetworkLocationId,
@@ -1018,18 +1010,18 @@ impl NetworkFileOperationsManager {
         self.listings_cache.insert((location_id, path), state);
     }
 
-    /// Clear listing cache for a location
+    /
     pub fn clear_listing_cache(&mut self, location_id: NetworkLocationId) {
         self.listings_cache
             .retain(|(loc_id, _), _| *loc_id != location_id);
     }
 
-    /// Clear all listing caches
+    /
     pub fn clear_all_caches(&mut self) {
         self.listings_cache.clear();
     }
 
-    /// Check if a path is currently loading
+    /
     pub fn is_loading(&self, location_id: NetworkLocationId, path: &str) -> bool {
         matches!(
             self.get_listing(location_id, path),
@@ -1038,7 +1030,7 @@ impl NetworkFileOperationsManager {
     }
 }
 
-/// Helper to format network latency for display
+/
 pub fn format_latency(latency_ms: u32) -> String {
     if latency_ms < 1000 {
         format!("{}ms", latency_ms)
@@ -1047,7 +1039,7 @@ pub fn format_latency(latency_ms: u32) -> String {
     }
 }
 
-/// Helper to format transfer speed for display
+/
 pub fn format_transfer_speed(bytes_per_sec: u64) -> String {
     if bytes_per_sec < 1024 {
         format!("{} B/s", bytes_per_sec)
@@ -1174,9 +1166,9 @@ mod network_operations_tests {
     }
 }
 
-/// Extended cloud storage detection with platform-specific paths
+/
 impl CloudStorageManager {
-    /// Detect all cloud storage providers with detailed information
+    /
     pub fn detect_all_providers(&mut self) {
         self.locations.clear();
 
@@ -1204,7 +1196,6 @@ impl CloudStorageManager {
             let dropbox_path = home.join("Dropbox");
             if dropbox_path.exists() {
                 let mut location = CloudLocation::new(CloudProvider::Dropbox, dropbox_path);
-                // Try to read account info from .dropbox/info.json
                 if let Ok(info) = fs::read_to_string(home.join(".dropbox/info.json")) {
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&info) {
                         if let Some(personal) = json.get("personal") {
@@ -1274,7 +1265,6 @@ impl CloudStorageManager {
     #[cfg(target_os = "windows")]
     fn detect_windows_providers(&mut self) {
         if let Some(home) = dirs::home_dir() {
-            // iCloud Drive (Windows)
             let icloud_path = home.join("iCloudDrive");
             if icloud_path.exists() {
                 self.locations
@@ -1331,7 +1321,6 @@ impl CloudStorageManager {
                     .push(CloudLocation::new(CloudProvider::Dropbox, dropbox_path));
             }
 
-            // Google Drive (via various clients)
             let gdrive_paths = [home.join("Google Drive"), home.join("google-drive")];
             for path in gdrive_paths {
                 if path.exists() {
@@ -1341,7 +1330,6 @@ impl CloudStorageManager {
                 }
             }
 
-            // OneDrive (via rclone or onedrive client)
             let onedrive_path = home.join("OneDrive");
             if onedrive_path.exists() {
                 self.locations
@@ -1362,7 +1350,7 @@ impl CloudStorageManager {
         }
     }
 
-    /// Get sync status for a file based on provider-specific indicators
+    /
     pub fn get_file_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
         let cloud_location = self.is_cloud_path(path)?;
 
@@ -1376,14 +1364,11 @@ impl CloudStorageManager {
     }
 
     fn get_dropbox_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
-        // Dropbox uses extended attributes on macOS/Linux
-        // On Windows, it uses overlay icons
 
         #[cfg(unix)]
         {
             use std::process::Command;
 
-            // Try to use dropbox CLI if available
             if let Ok(output) = Command::new("dropbox")
                 .args(["filestatus", path.to_str()?])
                 .output()
@@ -1399,7 +1384,6 @@ impl CloudStorageManager {
             }
         }
 
-        // Default: assume synced if file exists
         if path.exists() {
             Some(SyncStatus::Synced)
         } else {
@@ -1408,7 +1392,6 @@ impl CloudStorageManager {
     }
 
     fn get_icloud_sync_status(&self, path: &PathBuf) -> Option<SyncStatus> {
-        // iCloud uses .icloud placeholder files for cloud-only items
         let file_name = path.file_name()?.to_str()?;
 
         if file_name.starts_with('.') && file_name.ends_with(".icloud") {
@@ -1431,36 +1414,32 @@ impl CloudStorageManager {
     }
 
     fn get_onedrive_sync_status(&self, _path: &PathBuf) -> Option<SyncStatus> {
-        // OneDrive sync status requires Windows API or reading from database
-        // Simplified implementation
         Some(SyncStatus::Synced)
     }
 
     fn get_gdrive_sync_status(&self, _path: &PathBuf) -> Option<SyncStatus> {
-        // Google Drive sync status varies by client
-        // Simplified implementation
         Some(SyncStatus::Synced)
     }
 
-    /// Refresh availability status for all locations
+    /
     pub fn refresh_availability(&mut self) {
         for location in &mut self.locations {
             location.is_available = location.path.exists();
         }
     }
 
-    /// Get available (existing) cloud locations
+    /
     pub fn available_locations(&self) -> Vec<&CloudLocation> {
         self.locations.iter().filter(|l| l.is_available).collect()
     }
 
-    /// Check if any cloud storage is configured
+    /
     pub fn has_cloud_storage(&self) -> bool {
         !self.locations.is_empty()
     }
 }
 
-/// Combined network and cloud storage state for sidebar display
+/
 #[derive(Debug, Clone)]
 pub struct NetworkSidebarState {
     pub network_locations: Vec<NetworkLocationSummary>,
@@ -1547,7 +1526,6 @@ mod cloud_storage_tests {
     fn test_cloud_storage_manager_detect() {
         let mut manager = CloudStorageManager::new();
         manager.detect_all_providers();
-        // Just verify it doesn't panic - actual detection depends on system state
     }
 
     #[test]
@@ -1579,8 +1557,6 @@ mod cloud_storage_tests {
     fn test_icloud_placeholder_detection() {
         let manager = CloudStorageManager::new();
 
-        // Test that .icloud files are detected as cloud-only
-        // This is a unit test for the logic, not actual file system
         let path = PathBuf::from(
             "/Users/test/Library/Mobile Documents/com~apple~CloudDocs/.test.txt.icloud",
         );

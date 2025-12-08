@@ -36,14 +36,14 @@ impl SidebarItem {
     }
 }
 
-/// Data transferred during drag operations
+/
 #[derive(Clone)]
 pub struct DraggedFolder {
     pub path: PathBuf,
     pub name: String,
 }
 
-/// View for rendering dragged folder
+/
 pub struct DraggedFolderView {
     pub name: String,
 }
@@ -62,7 +62,7 @@ impl Render for DraggedFolderView {
     }
 }
 
-/// Actions that can be triggered from the Tools section
+/
 #[derive(Clone, Debug, PartialEq)]
 pub enum ToolAction {
     NewFile,
@@ -102,7 +102,6 @@ impl Sidebar {
     pub fn new() -> Self {
         let favorites = Favorites::load().unwrap_or_else(|_| {
             let mut favs = Favorites::new();
-            // Add default favorites
             let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
             let _ = favs.add(home.clone());
             let _ = favs.add(home.join("Desktop"));
@@ -115,7 +114,6 @@ impl Sidebar {
 
         let network_manager = NetworkStorageManager::load();
 
-        // Detect cloud storage providers
         let mut cloud_manager = CloudStorageManager::new();
         cloud_manager.detect_all_providers();
 
@@ -472,22 +470,22 @@ impl SidebarView {
         }
     }
 
-    /// Set whether there's content in the clipboard for paste
+    /
     pub fn set_has_clipboard(&mut self, has_clipboard: bool) {
         self.has_clipboard = has_clipboard;
     }
 
-    /// Check if there's content in the clipboard
+    /
     pub fn has_clipboard(&self) -> bool {
         self.has_clipboard
     }
 
-    /// Add a path to favorites
+    /
     pub fn add_favorite(&mut self, path: PathBuf) -> Result<(), crate::models::FavoritesError> {
         self.sidebar.add_favorite(path)
     }
 
-    /// Add a bookmark for the current directory
+    /
     pub fn add_bookmark_for_current(&mut self, cx: &mut Context<Self>) {
         if let Some(path) = self.sidebar.current_directory.clone() {
             let _ = self.sidebar.add_bookmark(path);
@@ -495,7 +493,7 @@ impl SidebarView {
         }
     }
 
-    /// Handle bookmark click for navigation
+    /
     fn handle_bookmark_click(
         &mut self,
         path: PathBuf,
@@ -507,51 +505,51 @@ impl SidebarView {
         cx.notify();
     }
 
-    /// Handle bookmark removal
+    /
     fn handle_bookmark_remove(&mut self, id: BookmarkId, cx: &mut Context<Self>) {
         let _ = self.sidebar.remove_bookmark(id);
         cx.notify();
     }
 
-    /// Toggle bookmarks section
+    /
     fn toggle_bookmarks_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_bookmarks_expanded();
         cx.notify();
     }
 
-    /// Take the pending navigation path (if any)
+    /
     pub fn take_pending_navigation(&mut self) -> Option<PathBuf> {
         self.pending_navigation.take()
     }
 
-    /// Take the pending tool action (if any)
+    /
     pub fn take_pending_action(&mut self) -> Option<ToolAction> {
         self.pending_action.take()
     }
 
-    /// Set the current directory for tools context
+    /
     pub fn set_current_directory(&mut self, path: PathBuf) {
         self.sidebar.set_current_directory(path);
     }
 
-    /// Set the number of selected files (for enabling batch operations)
+    /
     pub fn set_selected_file_count(&mut self, count: usize) {
         self.selected_file_count = count;
     }
 
-    /// Get whether hidden files should be shown
+    /
     pub fn show_hidden_files(&self) -> bool {
         self.sidebar.show_hidden_files()
     }
 
-    /// Toggle hidden files visibility
+    /
     pub fn toggle_hidden_files(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_hidden_files();
         self.pending_action = Some(ToolAction::ToggleHiddenFiles);
         cx.notify();
     }
 
-    /// Toggle default browser setting
+    /
     pub fn toggle_default_browser(&mut self, cx: &mut Context<Self>) {
         let is_default = crate::models::is_default_file_browser();
         if is_default {
@@ -563,30 +561,28 @@ impl SidebarView {
         cx.notify();
     }
 
-    /// Toggle network section
+    /
     fn toggle_network_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_network_expanded();
         cx.notify();
     }
 
-    /// Handle cloud location click for navigation
+    /
     fn handle_cloud_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
         self.sidebar.selected_path = Some(path.clone());
         self.pending_navigation = Some(path);
         cx.notify();
     }
 
-    /// Handle network location click
+    /
     fn handle_network_click(
         &mut self,
         id: NetworkLocationId,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        // Connect to the network location if not connected
         let _ = self.sidebar.network_manager_mut().connect(id);
 
-        // If connected and has mount point, navigate to it
         let mount_point = self
             .sidebar
             .network_manager()
@@ -600,62 +596,62 @@ impl SidebarView {
         cx.notify();
     }
 
-    /// Show the network connection dialog
+    /
     pub fn show_network_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_network_dialog = true;
         cx.notify();
     }
 
-    /// Hide the network connection dialog
+    /
     pub fn hide_network_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_network_dialog = false;
         cx.notify();
     }
 
-    /// Check if network dialog is visible
+    /
     pub fn is_network_dialog_visible(&self) -> bool {
         self.show_network_dialog
     }
 
-    /// Toggle smart folders section
+    /
     fn toggle_smart_folders_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_smart_folders_expanded();
         cx.notify();
     }
 
-    /// Show the smart folder dialog for creating a new smart folder
+    /
     pub fn show_smart_folder_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_smart_folder_dialog = true;
         self.editing_smart_folder = None;
         cx.notify();
     }
 
-    /// Show the smart folder dialog for editing an existing smart folder
+    /
     pub fn edit_smart_folder(&mut self, id: SmartFolderId, cx: &mut Context<Self>) {
         self.show_smart_folder_dialog = true;
         self.editing_smart_folder = Some(id);
         cx.notify();
     }
 
-    /// Hide the smart folder dialog
+    /
     pub fn hide_smart_folder_dialog(&mut self, cx: &mut Context<Self>) {
         self.show_smart_folder_dialog = false;
         self.editing_smart_folder = None;
         cx.notify();
     }
 
-    /// Check if smart folder dialog is visible
+    /
     pub fn is_smart_folder_dialog_visible(&self) -> bool {
         self.show_smart_folder_dialog
     }
 
-    /// Get the smart folder being edited (if any)
+    /
     pub fn editing_smart_folder(&self) -> Option<&SmartFolder> {
         self.editing_smart_folder
             .and_then(|id| self.sidebar.smart_folders.get(id))
     }
 
-    /// Handle smart folder click for executing the query
+    /
     fn handle_smart_folder_click(
         &mut self,
         id: SmartFolderId,
@@ -666,18 +662,18 @@ impl SidebarView {
         cx.notify();
     }
 
-    /// Take the pending smart folder click (if any)
+    /
     pub fn take_pending_smart_folder_click(&mut self) -> Option<SmartFolderId> {
         self.pending_smart_folder_click.take()
     }
 
-    /// Handle smart folder removal
+    /
     fn handle_smart_folder_remove(&mut self, id: SmartFolderId, cx: &mut Context<Self>) {
         let _ = self.sidebar.delete_smart_folder(id);
         cx.notify();
     }
 
-    /// Create a new smart folder
+    /
     pub fn create_smart_folder(
         &mut self,
         name: String,
@@ -689,7 +685,7 @@ impl SidebarView {
         result
     }
 
-    /// Update an existing smart folder
+    /
     pub fn update_smart_folder(
         &mut self,
         id: SmartFolderId,
@@ -701,58 +697,58 @@ impl SidebarView {
         result
     }
 
-    /// Get all smart folders
+    /
     pub fn smart_folders(&self) -> &[SmartFolder] {
         self.sidebar.smart_folders.folders()
     }
 
-    /// Refresh cloud storage providers
+    /
     pub fn refresh_cloud_providers(&mut self, cx: &mut Context<Self>) {
         self.sidebar.refresh_cloud_providers();
         cx.notify();
     }
 
-    /// Get network sidebar state for display
+    /
     pub fn network_state(&self) -> NetworkSidebarState {
         self.sidebar.get_network_sidebar_state()
     }
 
-    /// Toggle devices section
+    /
     fn toggle_devices_section(&mut self, cx: &mut Context<Self>) {
         self.sidebar.toggle_devices_expanded();
         cx.notify();
     }
 
-    /// Handle device click for navigation
+    /
     fn handle_device_click(&mut self, path: PathBuf, _window: &mut Window, cx: &mut Context<Self>) {
         self.sidebar.selected_path = Some(path.clone());
         self.pending_navigation = Some(path);
         cx.notify();
     }
 
-    /// Refresh devices list
+    /
     pub fn refresh_devices(&mut self, cx: &mut Context<Self>) {
         self.sidebar.refresh_devices();
         cx.notify();
     }
 
-    /// Get all devices
+    /
     pub fn devices(&self) -> &[Device] {
         self.sidebar.devices()
     }
 
-    /// Get WSL distributions
+    /
     pub fn wsl_distributions(&self) -> &[WslDistribution] {
         self.sidebar.wsl_distributions()
     }
 
-    /// Request ejection of a removable device
+    /
     fn handle_device_eject(&mut self, device_id: DeviceId, cx: &mut Context<Self>) {
         self.pending_eject_device = Some(device_id);
         cx.notify();
     }
 
-    /// Take the pending eject device request (if any)
+    /
     pub fn take_pending_eject_device(&mut self) -> Option<DeviceId> {
         self.pending_eject_device.take()
     }
@@ -765,7 +761,6 @@ impl SidebarView {
     ) {
         match &action {
             ToolAction::CopyPath => {
-                // Copy current directory path to clipboard
                 if let Some(path) = self.sidebar.current_directory() {
                     let path_str = path.to_string_lossy().to_string();
                     cx.write_to_clipboard(gpui::ClipboardItem::new_string(path_str));
@@ -815,7 +810,6 @@ impl SidebarView {
     }
 
     fn handle_drop(&mut self, path: PathBuf, cx: &mut Context<Self>) {
-        // Only add directories as favorites
         if path.is_dir() {
             let _ = self.sidebar.add_favorite(path);
         }
@@ -846,7 +840,6 @@ impl SidebarView {
             }
         }
 
-        // Default folder icon
         match index % 4 {
             0 => "folder",
             1 => "folder-open",
@@ -864,7 +857,6 @@ impl Focusable for SidebarView {
 
 impl Render for SidebarView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // Use theme colors for RPG styling
         let theme = theme_colors();
         let bg_dark = theme.bg_secondary;
         let text_gray = theme.text_secondary;
@@ -894,7 +886,6 @@ impl Render for SidebarView {
         let has_selection = self.selected_file_count > 0;
         let has_clipboard = self.has_clipboard;
 
-        // Use typography spacing constants
         let section_gap = px(sidebar_spacing::SECTION_GAP);
         let item_padding_x = px(sidebar_spacing::ITEM_PADDING_X);
         let icon_size = px(sidebar_spacing::ICON_SIZE);
@@ -932,7 +923,6 @@ impl Render for SidebarView {
                         warning_color,
                         cx,
                     ))
-                    // Network & Cloud Section
                     .child(self.render_network_section(
                         label_color,
                         text_gray,
@@ -942,7 +932,6 @@ impl Render for SidebarView {
                         icon_blue,
                         cx,
                     ))
-                    // Smart Folders Section
                     .child(self.render_smart_folders_section(
                         label_color,
                         text_gray,
@@ -952,7 +941,6 @@ impl Render for SidebarView {
                         icon_blue,
                         cx,
                     ))
-                    // Bookmarks Section (above Favorites per Requirements 20.2)
                     .child(self.render_bookmarks_section(
                         label_color,
                         text_gray,
@@ -963,7 +951,6 @@ impl Render for SidebarView {
                         warning_color,
                         cx,
                     ))
-                    // Favorites Section
                     .child(self.render_favorites_section(
                         label_color,
                         text_gray,
@@ -1388,7 +1375,6 @@ impl SidebarView {
                         .flex_col()
                         .gap_0p5()
                         .p_1()
-                        // Cloud Storage Locations
                         .children(
                             network_state
                                 .cloud_locations
@@ -1458,7 +1444,6 @@ impl SidebarView {
                                 })
                                 .collect::<Vec<_>>(),
                         )
-                        // Network Locations
                         .children(
                             network_state
                                 .network_locations
@@ -1528,7 +1513,6 @@ impl SidebarView {
                                 })
                                 .collect::<Vec<_>>(),
                         )
-                        // Connect to Server button
                         .child(
                             div()
                                 .id("connect-server-btn")
@@ -1556,7 +1540,6 @@ impl SidebarView {
                                 )
                                 .child("Connect to Server..."),
                         )
-                        // Empty state when no locations
                         .when(
                             network_state.cloud_locations.is_empty()
                                 && network_state.network_locations.is_empty(),
@@ -1792,7 +1775,6 @@ impl SidebarView {
                                 cx,
                             )
                         }))
-                        // Render WSL distributions (Windows only)
                         .when(!wsl_distros.is_empty(), |s| {
                             s.child(div().h(px(1.0)).bg(gpui::rgb(0x21262d)).my_2())
                                 .child(
@@ -1862,7 +1844,6 @@ impl SidebarView {
                                                         .overflow_hidden()
                                                         .child(display_name),
                                                 )
-                                                // Running status indicator
                                                 .child(
                                                     div()
                                                         .flex()
@@ -1891,7 +1872,6 @@ impl SidebarView {
                                         .collect::<Vec<_>>(),
                                 )
                         })
-                        // Empty state when no devices
                         .when(devices.is_empty() && wsl_distros.is_empty(), |s| {
                             s.child(
                                 div()
@@ -2480,7 +2460,7 @@ impl SidebarView {
             )
     }
 
-    /// Refresh the trash manager to update item count
+    /
     pub fn refresh_trash(&mut self, cx: &mut Context<Self>) {
         self.sidebar.refresh_trash();
         cx.notify();

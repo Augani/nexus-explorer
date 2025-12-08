@@ -58,8 +58,6 @@ fn test_visible_range_calculation() {
     list.set_scroll_offset(0.0);
 
     let range = list.calculate_visible_range();
-    // start = 0 - buffer(2) = 0 (clamped)
-    // end = 0 + 10 + buffer(2) = 12
     assert_eq!(range.start, 0);
     assert_eq!(range.end, 12);
 }
@@ -72,8 +70,6 @@ fn test_visible_range_with_scroll() {
     list.set_scroll_offset(240.0);
 
     let range = list.calculate_visible_range();
-    // start_raw = 240/24 = 10, start = 10 - 2 = 8
-    // end = 10 + 10 + 2 = 22
     assert_eq!(range.start, 8);
     assert_eq!(range.end, 22);
 }
@@ -86,20 +82,17 @@ fn test_visible_range_clamped_to_total() {
     list.set_scroll_offset(240.0);
 
     let range = list.calculate_visible_range();
-    // end should be clamped to 15
     assert!(range.end <= 15);
 }
 
 #[test]
 fn test_render_item() {
     let mut list = FileList::new();
-    // Note: With directories_first sorting, folder will come before test.txt
     list.set_entries(vec![
         create_test_entry("test.txt", false, 1024),
         create_test_entry("folder", true, 0),
     ]);
 
-    // After sorting: folder (dir) comes first, then test.txt (file)
     let rendered_dir = list.render_item(0).unwrap();
     assert_eq!(rendered_dir.name, "folder");
     assert!(rendered_dir.is_dir);
@@ -172,7 +165,6 @@ fn test_max_rendered_items() {
     let mut list = FileList::with_config(24.0, 5);
     list.set_viewport_height(240.0);
 
-    // max = ceil(240/24) + 2*5 = 10 + 10 = 20
     assert_eq!(list.max_rendered_items(), 20);
 }
 
@@ -184,18 +176,13 @@ fn test_render_visible_items() {
     list.set_scroll_offset(0.0);
 
     let visible = list.render_visible_items();
-    // start = 0, end = 0 + 3 + 1 = 4
     assert_eq!(visible.len(), 4);
     assert_eq!(visible[0].0, 0);
     assert_eq!(visible[3].0, 3);
 }
 
-// Property-based tests using proptest
 use proptest::prelude::*;
 
-// **Feature: file-explorer-core, Property 5: Virtualization Bounds**
-// *For any* file list with N total items, viewport height H, and row height R,
-// the number of rendered items SHALL be at most `ceil(H / R) + buffer_size`, regardless of N.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -215,8 +202,6 @@ proptest! {
         let range = list.calculate_visible_range();
         let rendered_count = range.len();
 
-        // Maximum rendered items should be bounded by viewport + buffer
-        // regardless of total items
         let visible_rows = (viewport_height / row_height).ceil() as usize;
         let max_allowed = visible_rows + (buffer_size * 2);
 
@@ -226,7 +211,6 @@ proptest! {
             rendered_count, max_allowed, visible_rows, buffer_size
         );
 
-        // Also verify we don't exceed total items
         prop_assert!(
             rendered_count <= total_items,
             "Rendered {} items but only {} total items exist",
@@ -235,10 +219,6 @@ proptest! {
     }
 }
 
-// **Feature: file-explorer-core, Property 7: Visible Range Calculation**
-// the calculated visible range `[start, end)` SHALL satisfy:
-// start = floor(S / R) - buffer (clamped to 0),
-// end = min(start_raw + ceil(H / R) + buffer, N).
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -261,7 +241,6 @@ proptest! {
 
         let range = list.calculate_visible_range();
 
-        // Verify start calculation
         let start_raw = (scroll_offset / row_height).floor() as usize;
         let expected_start = start_raw.saturating_sub(buffer_size);
         prop_assert_eq!(
@@ -270,14 +249,12 @@ proptest! {
             range.start, expected_start, scroll_offset, row_height, buffer_size
         );
 
-        // Verify end is clamped to total items
         prop_assert!(
             range.end <= total_items,
             "End {} exceeds total items {}",
             range.end, total_items
         );
 
-        // Verify range is valid (start <= end)
         prop_assert!(
             range.start <= range.end,
             "Invalid range: start {} > end {}",
@@ -286,9 +263,6 @@ proptest! {
     }
 }
 
-// **Feature: file-explorer-core, Property 6: Rendered Entry Completeness**
-// *For any* FileEntry, the rendered representation SHALL contain the file name,
-// formatted size, formatted modification date, and an icon reference.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -315,20 +289,17 @@ proptest! {
 
         let rendered = list.render_item(0).expect("Should render valid entry");
 
-        // Verify name is present and matches
         prop_assert_eq!(
             &rendered.name, &name,
             "Name mismatch: got '{}', expected '{}'",
             rendered.name, name
         );
 
-        // Verify formatted_size is non-empty
         prop_assert!(
             !rendered.formatted_size.is_empty(),
             "Formatted size should not be empty"
         );
 
-        // Verify directories show "--" for size
         if is_dir {
             prop_assert_eq!(
                 &rendered.formatted_size, "--",
@@ -337,13 +308,11 @@ proptest! {
             );
         }
 
-        // Verify formatted_date is non-empty and has valid format
         prop_assert!(
             !rendered.formatted_date.is_empty(),
             "Formatted date should not be empty"
         );
 
-        // Date should be in YYYY-MM-DD format or "Unknown"
         let is_valid_date = rendered.formatted_date == "Unknown"
             || (rendered.formatted_date.len() == 10
                 && rendered.formatted_date.chars().nth(4) == Some('-')
@@ -354,7 +323,6 @@ proptest! {
             rendered.formatted_date
         );
 
-        // Verify icon_key is appropriate for entry type
         match (is_dir, &rendered.icon_key) {
             (true, IconKey::Directory) => {},
             (false, IconKey::GenericFile) | (false, IconKey::Extension(_)) => {},
@@ -365,7 +333,6 @@ proptest! {
             ),
         }
 
-        // Verify is_dir flag matches
         prop_assert_eq!(
             rendered.is_dir, is_dir,
             "is_dir mismatch: got {}, expected {}",
@@ -383,14 +350,9 @@ fn test_search_result_highlighting_integration() {
         create_test_entry("readme.md", false, 512),
     ]);
 
-    // Simulate search results with match positions
-    // "doc" matches positions 0,1,2 in "document.txt"
-    // "dat" matches positions 0,1,2 in "data.csv"
-    // "read" matches positions 0,1,2,3 in "readme.md"
     let highlight_positions = vec![vec![0, 1, 2], vec![0, 1, 2], vec![0, 1, 2, 3]];
     list.set_highlight_positions(Some(highlight_positions));
 
-    // Verify first entry highlighting
     let rendered = list.render_item(0).unwrap();
     assert_eq!(rendered.highlight_positions, vec![0, 1, 2]);
     assert!(rendered.is_highlighted(0));
@@ -398,7 +360,6 @@ fn test_search_result_highlighting_integration() {
     assert!(rendered.is_highlighted(2));
     assert!(!rendered.is_highlighted(3));
 
-    // Verify third entry highlighting
     let rendered = list.render_item(2).unwrap();
     assert_eq!(rendered.highlight_positions, vec![0, 1, 2, 3]);
 
@@ -419,7 +380,6 @@ fn test_search_result_highlighting_cleared() {
     let rendered = list.render_item(0).unwrap();
     assert_eq!(rendered.highlight_positions, vec![0, 1]);
 
-    // Clear highlights
     list.set_highlight_positions(None);
     let rendered = list.render_item(0).unwrap();
     assert!(rendered.highlight_positions.is_empty());
@@ -436,9 +396,6 @@ fn test_search_result_highlighting_empty_positions() {
     assert!(!rendered.is_highlighted(0));
 }
 
-// **Feature: ui-enhancements, Property 1: Search Filter Correctness**
-// *For any* file list with entries and a search query, when filtering is applied,
-// and the filtered count SHALL be less than or equal to the original count.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -447,7 +404,6 @@ proptest! {
         entry_count in 1usize..100,
         query_len in 1usize..5,
     ) {
-        // Generate random file entries
         let entries: Vec<FileEntry> = (0..entry_count)
             .map(|i| {
                 let name = format!("file_{:04}.txt", i);
@@ -458,7 +414,6 @@ proptest! {
         let mut list = FileList::new();
         list.set_entries(entries.clone());
 
-        // Generate a query from the first few characters of a random entry name
         let query: String = if !entries.is_empty() {
             let sample_name = &entries[0].name;
             sample_name.chars().take(query_len.min(sample_name.len())).collect()
@@ -466,7 +421,6 @@ proptest! {
             "file".to_string()
         };
 
-        // Simulate search results - find entries that contain the query
         let matches: Vec<(usize, Vec<usize>, u32)> = entries
             .iter()
             .enumerate()
@@ -474,7 +428,6 @@ proptest! {
                 let name_lower = entry.name.to_lowercase();
                 let query_lower = query.to_lowercase();
                 if name_lower.contains(&query_lower) {
-                    // Find match positions
                     let positions: Vec<usize> = name_lower
                         .match_indices(&query_lower)
                         .flat_map(|(start, matched)| start..start + matched.len())
@@ -489,21 +442,18 @@ proptest! {
         let match_count = matches.len();
         list.apply_search_filter(&query, matches);
 
-        // Property 1: Filtered count <= original count
         prop_assert!(
             list.item_count() <= entry_count,
             "Filtered count {} exceeds original count {}",
             list.item_count(), entry_count
         );
 
-        // Property 2: Filtered count matches expected matches
         prop_assert_eq!(
             list.item_count(), match_count,
             "Filtered count {} doesn't match expected matches {}",
             list.item_count(), match_count
         );
 
-        // Property 3: All filtered entries contain the query (case-insensitive)
         for i in 0..list.item_count() {
             if let Some(entry) = list.get_display_entry(i) {
                 let name_lower = entry.name.to_lowercase();
@@ -516,7 +466,6 @@ proptest! {
             }
         }
 
-        // Property 4: Search query is stored correctly
         prop_assert_eq!(
             list.search_query(), &query,
             "Search query mismatch: got '{}', expected '{}'",
@@ -535,9 +484,6 @@ fn test_apply_search_filter() {
         create_test_entry("config.json", false, 256),
     ]);
 
-    // After sorting by name (ascending), order is:
-    // 0: config.json, 1: data.csv, 2: document.txt, 3: readme.md
-    // Apply filter matching entries at sorted indices
     let matches = vec![(2, vec![0, 1, 2], 100), (1, vec![0, 1, 2], 90)];
     list.apply_search_filter("d", matches);
 
@@ -545,7 +491,6 @@ fn test_apply_search_filter() {
     assert!(list.is_filtered());
     assert_eq!(list.search_query(), "d");
 
-    // Verify filtered entries (order depends on match order in the vec)
     let names: Vec<_> = (0..list.item_count())
         .filter_map(|i| list.get_display_entry(i).map(|e| e.name.clone()))
         .collect();
@@ -578,15 +523,11 @@ fn test_empty_query_clears_filter() {
         create_test_entry("data.csv", false, 2048),
     ]);
 
-    // Apply filter with empty query should clear
     list.apply_search_filter("", vec![]);
     assert_eq!(list.item_count(), 2);
     assert!(!list.is_filtered());
 }
 
-// **Feature: ui-enhancements, Property 2: Search Highlight Positions Validity**
-// *For any* filtered entry with match positions, all highlight positions SHALL be
-// valid indices within the entry name (0 <= position < name.len()).
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -595,23 +536,19 @@ proptest! {
         name_len in 1usize..50,
         num_positions in 0usize..20,
     ) {
-        // Generate a random name
         let name: String = (0..name_len).map(|i| ((i % 26) as u8 + b'a') as char).collect();
         let entry = create_test_entry(&name, false, 1024);
 
         let mut list = FileList::new();
         list.set_entries(vec![entry]);
 
-        // Generate valid match positions (all within bounds)
         let positions: Vec<usize> = (0..num_positions.min(name_len))
             .map(|i| i % name_len)
             .collect();
 
-        // Apply filter with these positions
         let matches = vec![(0, positions.clone(), 100)];
         list.apply_search_filter("test", matches);
 
-        // Verify all positions are valid
         if let Some(filtered_entry) = list.get_filtered_entry(0) {
             for &pos in &filtered_entry.match_positions {
                 prop_assert!(
@@ -636,14 +573,12 @@ fn test_highlight_positions_within_bounds() {
     let mut list = FileList::new();
     list.set_entries(vec![create_test_entry("test.txt", false, 100)]);
 
-    // Apply filter with valid positions
     let matches = vec![(0, vec![0, 1, 2, 3], 100)];
     list.apply_search_filter("test", matches);
 
     let positions = list.get_match_positions(0).unwrap();
     assert_eq!(positions, &[0, 1, 2, 3]);
 
-    // All positions should be within the name length (8 chars)
     for &pos in positions {
         assert!(pos < 8, "Position {} out of bounds", pos);
     }
@@ -654,7 +589,6 @@ fn test_highlight_positions_empty_for_no_match() {
     let mut list = FileList::new();
     list.set_entries(vec![create_test_entry("test.txt", false, 100)]);
 
-    // Apply filter with empty positions
     let matches = vec![(0, vec![], 100)];
     list.apply_search_filter("xyz", matches);
 
@@ -662,8 +596,6 @@ fn test_highlight_positions_empty_for_no_match() {
     assert!(positions.is_empty());
 }
 
-// *For any* file list with N entries, when the search query is empty or cleared,
-// the FileList SHALL display all N original entries.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -672,7 +604,6 @@ proptest! {
         entry_count in 1usize..200,
         initial_query_len in 1usize..10,
     ) {
-        // Generate random file entries (all files, no dirs to avoid sorting complexity)
         let entries: Vec<FileEntry> = (0..entry_count)
             .map(|i| {
                 let name = format!("file_{:04}.txt", i);
@@ -690,8 +621,6 @@ proptest! {
             list.item_count(), original_count
         );
 
-        // Generate a query and apply a filter (simulating some matches)
-        // Use indices from the sorted list, not original entries
         let query: String = (0..initial_query_len).map(|_| 'f').collect();
         let sorted_entries = list.entries();
         let matches: Vec<(usize, Vec<usize>, u32)> = sorted_entries
@@ -703,41 +632,34 @@ proptest! {
 
         list.apply_search_filter(&query, matches);
 
-        // Now clear the search with empty query
         list.apply_search_filter("", vec![]);
 
-        // Property: After clearing, all original entries should be visible
         prop_assert_eq!(
             list.item_count(), original_count,
             "After clearing search, count {} doesn't match original {}",
             list.item_count(), original_count
         );
 
-        // Property: Filter should be cleared
         prop_assert!(
             !list.is_filtered(),
             "List should not be filtered after clearing search"
         );
 
-        // Property: Search query should be empty
         prop_assert!(
             list.search_query().is_empty(),
             "Search query should be empty after clearing, got '{}'",
             list.search_query()
         );
 
-        // Property: All original entries should be accessible (by count, not by specific order)
         prop_assert_eq!(
             list.item_count(), original_count,
             "Entry count should match original after clearing search"
         );
 
-        // Collect all entry names from the list
         let list_names: std::collections::HashSet<_> = (0..list.item_count())
             .filter_map(|i| list.get_display_entry(i).map(|e| e.name.clone()))
             .collect();
 
-        // Verify all original entries are present (order may differ due to sorting)
         for entry in &entries {
             prop_assert!(
                 list_names.contains(&entry.name),
@@ -762,24 +684,18 @@ fn test_clear_search_filter_restores_all() {
 
     assert_eq!(list.item_count(), 5);
 
-    // After sorting by name, order is: alpha, beta, delta, epsilon, gamma
-    // Apply filter that matches only some entries (using sorted indices)
     let matches = vec![(0, vec![0, 1], 100), (2, vec![0, 1], 90)];
     list.apply_search_filter("a", matches);
 
-    // Verify filtered count
     assert_eq!(list.item_count(), 2);
     assert!(list.is_filtered());
 
-    // Clear filter using clear_search_filter
     list.clear_search_filter();
 
-    // Verify all entries are restored
     assert_eq!(list.item_count(), 5);
     assert!(!list.is_filtered());
     assert!(list.search_query().is_empty());
 
-    // Verify all original entries are present (order may differ due to sorting)
     let list_names: std::collections::HashSet<_> = (0..list.item_count())
         .filter_map(|i| list.get_display_entry(i).map(|e| e.name.clone()))
         .collect();
@@ -807,18 +723,12 @@ fn test_escape_clears_search_restores_entries() {
     list.apply_search_filter("doc", matches);
     assert_eq!(list.item_count(), 1);
 
-    // Simulate escape key by applying empty search
     list.apply_search_filter("", vec![]);
 
-    // All entries should be restored
     assert_eq!(list.item_count(), 3);
     assert!(!list.is_filtered());
 }
 
-// **Feature: ui-enhancements, Property 33: Keyboard Selection Movement**
-// *For any* file list with N items and current selection index S, pressing Up arrow
-// SHALL move selection to max(0, S-1), and pressing Down arrow SHALL move selection
-// to min(N-1, S+1). If no selection exists, both actions SHALL select index 0.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -829,7 +739,6 @@ proptest! {
         move_up_count in 0usize..20,
         move_down_count in 0usize..20,
     ) {
-        // Generate file entries
         let entries: Vec<FileEntry> = (0..entry_count)
             .map(|i| create_test_entry(&format!("file_{:04}.txt", i), false, i as u64 * 100))
             .collect();
@@ -840,19 +749,15 @@ proptest! {
         let clamped_initial = initial_selection.map(|s| s.min(entry_count.saturating_sub(1)));
         list.set_selected_index(clamped_initial);
 
-        // Track expected selection
         let mut expected_selection = clamped_initial.unwrap_or(0);
 
-        // Simulate move up actions
         for _ in 0..move_up_count {
-            // Before move, if no selection, it should become 0
             if list.selected_index().is_none() {
                 expected_selection = 0;
             } else {
                 expected_selection = expected_selection.saturating_sub(1);
             }
 
-            // Simulate the move_selection_up logic
             let item_count = list.item_count();
             if item_count > 0 {
                 let new_index = match list.selected_index() {
@@ -864,7 +769,6 @@ proptest! {
             }
         }
 
-        // Verify selection after up movements
         if entry_count > 0 && move_up_count > 0 {
             prop_assert!(
                 list.selected_index().is_some(),
@@ -877,7 +781,6 @@ proptest! {
             );
         }
 
-        // Simulate move down actions
         for _ in 0..move_down_count {
             let max_index = entry_count.saturating_sub(1);
             if list.selected_index().is_none() {
@@ -886,7 +789,6 @@ proptest! {
                 expected_selection = (expected_selection + 1).min(max_index);
             }
 
-            // Simulate the move_selection_down logic
             let item_count = list.item_count();
             if item_count > 0 {
                 let max_idx = item_count.saturating_sub(1);
@@ -899,7 +801,6 @@ proptest! {
             }
         }
 
-        // Verify selection after down movements
         if entry_count > 0 && move_down_count > 0 {
             prop_assert!(
                 list.selected_index().is_some(),
@@ -912,7 +813,6 @@ proptest! {
             );
         }
 
-        // Property: Selection should always be within bounds
         if let Some(selection) = list.selected_index() {
             prop_assert!(
                 selection < entry_count,
@@ -921,8 +821,6 @@ proptest! {
             );
         }
 
-        // Property: Selection at boundary should not exceed bounds
-        // Move up from 0 should stay at 0
         list.set_selected_index(Some(0));
         let item_count = list.item_count();
         if item_count > 0 {
@@ -938,7 +836,6 @@ proptest! {
             "Moving up from 0 should stay at 0"
         );
 
-        // Move down from max should stay at max
         let max_index = entry_count.saturating_sub(1);
         list.set_selected_index(Some(max_index));
         if item_count > 0 {
@@ -964,7 +861,6 @@ fn test_move_selection_up_from_middle() {
     list.set_entries(create_test_entries(10));
     list.set_selected_index(Some(5));
 
-    // Simulate move up
     let new_index = match list.selected_index() {
         Some(current) if current > 0 => current - 1,
         Some(_) => 0,
@@ -981,7 +877,6 @@ fn test_move_selection_up_from_top() {
     list.set_entries(create_test_entries(10));
     list.set_selected_index(Some(0));
 
-    // Simulate move up - should stay at 0
     let new_index = match list.selected_index() {
         Some(current) if current > 0 => current - 1,
         Some(_) => 0,
@@ -998,7 +893,6 @@ fn test_move_selection_down_from_middle() {
     list.set_entries(create_test_entries(10));
     list.set_selected_index(Some(5));
 
-    // Simulate move down
     let max_index = list.item_count().saturating_sub(1);
     let new_index = match list.selected_index() {
         Some(current) if current < max_index => current + 1,
@@ -1016,7 +910,6 @@ fn test_move_selection_down_from_bottom() {
     list.set_entries(create_test_entries(10));
     list.set_selected_index(Some(9));
 
-    // Simulate move down - should stay at 9
     let max_index = list.item_count().saturating_sub(1);
     let new_index = match list.selected_index() {
         Some(current) if current < max_index => current + 1,
@@ -1034,7 +927,6 @@ fn test_move_selection_with_no_initial_selection() {
     list.set_entries(create_test_entries(10));
     assert!(list.selected_index().is_none());
 
-    // Simulate move down with no selection - should select first item
     let new_index = match list.selected_index() {
         Some(current) => current,
         None => 0,
@@ -1049,7 +941,6 @@ fn test_move_selection_empty_list() {
     let mut list = FileList::new();
     assert_eq!(list.item_count(), 0);
 
-    // Move operations should not crash on empty list
     if list.item_count() > 0 {
         list.set_selected_index(Some(0));
     }
@@ -1057,9 +948,6 @@ fn test_move_selection_empty_list() {
     assert!(list.selected_index().is_none());
 }
 
-// **Feature: ui-enhancements, Property 34: Parent Navigation**
-// *For any* path P with a parent directory, navigating to parent SHALL result in
-// the parent path of P. For root paths, parent navigation SHALL have no effect.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -1070,7 +958,6 @@ proptest! {
     ) {
         use std::path::Path;
 
-        // Generate a path with the given depth
         let segments: Vec<String> = (0..depth)
             .map(|i| {
                 let name: String = (0..segment_len.min(10))
@@ -1085,9 +972,7 @@ proptest! {
             path.push(segment);
         }
 
-        // Property 1: Parent of a non-root path should be the path without the last segment
         if let Some(parent) = path.parent() {
-            // The parent should have one fewer component
             let path_components: Vec<_> = path.components().collect();
             let parent_components: Vec<_> = parent.components().collect();
 
@@ -1097,7 +982,6 @@ proptest! {
                 path_components.len(), parent_components.len()
             );
 
-            // The parent should be a prefix of the original path
             prop_assert!(
                 path.starts_with(parent),
                 "Path {:?} should start with parent {:?}",
@@ -1105,7 +989,6 @@ proptest! {
             );
         }
 
-        // Property 2: Navigating up from root should stay at root
         let root = PathBuf::from("/");
         let root_parent = root.parent();
         prop_assert!(
@@ -1114,7 +997,6 @@ proptest! {
             root_parent
         );
 
-        // Property 3: Multiple parent navigations should eventually reach root
         let mut current = path.clone();
         let mut iterations = 0;
         let max_iterations = depth + 5;
@@ -1133,8 +1015,6 @@ proptest! {
             );
         }
 
-        // Property 4: The number of parent navigations should equal the depth
-        // (accounting for the root component)
         prop_assert!(
             iterations <= depth,
             "Iterations {} should be <= depth {} for path {:?}",
@@ -1171,7 +1051,6 @@ fn test_parent_navigation_preserves_prefix() {
     let path = PathBuf::from("/a/b/c/d/e");
     let mut current = path.clone();
 
-    // Each parent should be a prefix of the original
     while let Some(parent) = current.parent() {
         if parent == Path::new("") || parent == Path::new("/") {
             break;

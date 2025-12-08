@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use flume::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 
-/// Represents an undoable file operation with all information needed to reverse it
+/
 #[derive(Debug, Clone)]
 pub struct UndoableOperation {
     pub id: OperationId,
@@ -14,33 +14,33 @@ pub struct UndoableOperation {
     pub timestamp: Instant,
 }
 
-/// Types of operations that can be undone
+/
 #[derive(Debug, Clone)]
 pub enum UndoableOperationType {
-    /// Copy operation: stores the paths of copied files (to delete on undo)
+    /
     Copy {
-        /// The destination paths where files were copied to
+        /
         copied_paths: Vec<PathBuf>,
     },
-    /// Move operation: stores original and new paths (to move back on undo)
+    /
     Move {
-        /// Original paths before the move
+        /
         original_paths: Vec<PathBuf>,
-        /// New paths after the move
+        /
         new_paths: Vec<PathBuf>,
     },
-    /// Rename operation: stores original and new name
+    /
     Rename {
-        /// Original path before rename
+        /
         original_path: PathBuf,
-        /// New path after rename
+        /
         new_path: PathBuf,
     },
-    /// Delete operation: stores paths that were moved to trash
+    /
     Delete {
-        /// Original paths of deleted files
+        /
         original_paths: Vec<PathBuf>,
-        /// Paths in trash where files were moved
+        /
         trash_paths: Vec<PathBuf>,
     },
 }
@@ -95,7 +95,7 @@ impl UndoableOperation {
         }
     }
 
-    /// Get a description of the operation for UI display
+    /
     pub fn description(&self) -> String {
         match &self.op_type {
             UndoableOperationType::Copy { copied_paths } => {
@@ -157,20 +157,20 @@ impl UndoableOperation {
     }
 }
 
-/// Error type for undo/redo operations
+/
 #[derive(Debug, Clone)]
 pub enum UndoError {
-    /// No operations to undo
+    /
     NothingToUndo,
-    /// No operations to redo
+    /
     NothingToRedo,
-    /// File system error during undo/redo
+    /
     FileSystemError(String),
-    /// The operation cannot be undone (e.g., files no longer exist)
+    /
     OperationNotReversible(String),
 }
 
-/// Unique identifier for file operations
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct OperationId(pub u64);
 
@@ -180,7 +180,7 @@ impl OperationId {
     }
 }
 
-/// Type of file operation
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OperationType {
     Copy,
@@ -198,7 +198,7 @@ impl std::fmt::Display for OperationType {
     }
 }
 
-/// Progress information for a file operation
+/
 #[derive(Debug, Clone, Default)]
 pub struct OperationProgress {
     pub total_bytes: u64,
@@ -246,7 +246,7 @@ impl OperationProgress {
     }
 }
 
-/// Status of a file operation
+/
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationStatus {
     Pending,
@@ -273,7 +273,7 @@ impl OperationStatus {
     }
 }
 
-/// Error action when an operation encounters an error
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorAction {
     Skip,
@@ -281,7 +281,7 @@ pub enum ErrorAction {
     Cancel,
 }
 
-/// Error information for a file operation
+/
 #[derive(Debug, Clone)]
 pub struct OperationError {
     pub file_path: PathBuf,
@@ -290,7 +290,7 @@ pub struct OperationError {
     pub error_kind: OperationErrorKind,
 }
 
-/// Categorized error types for better user feedback
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationErrorKind {
     PermissionDenied,
@@ -357,7 +357,7 @@ impl OperationError {
         }
     }
 
-    /// Get a user-friendly description of the error
+    /
     pub fn user_message(&self) -> String {
         match self.error_kind {
             OperationErrorKind::PermissionDenied => {
@@ -389,7 +389,7 @@ impl OperationError {
     }
 }
 
-/// A single file operation with its state and progress
+/
 #[derive(Debug, Clone)]
 pub struct FileOperation {
     pub id: OperationId,
@@ -476,7 +476,7 @@ impl FileOperation {
     }
 }
 
-/// Progress update message sent from worker threads
+/
 #[derive(Debug, Clone)]
 pub enum ProgressUpdate {
     Started {
@@ -493,12 +493,12 @@ pub enum ProgressUpdate {
     FileCompleted {
         id: OperationId,
     },
-    /// Error occurred - operation is paused waiting for user response
+    /
     Error {
         id: OperationId,
         error: OperationError,
     },
-    /// File was skipped due to error
+    /
     FileSkipped {
         id: OperationId,
         file: String,
@@ -511,27 +511,27 @@ pub enum ProgressUpdate {
     },
 }
 
-/// Channel for sending error responses from UI to executor
+/
 pub type ErrorResponseSender = Sender<ErrorResponse>;
 pub type ErrorResponseReceiver = Receiver<ErrorResponse>;
 
-/// Response to an error from the UI
+/
 #[derive(Debug, Clone)]
 pub struct ErrorResponse {
     pub id: OperationId,
     pub action: ErrorAction,
 }
 
-/// State for tracking error handling in operations
+/
 #[derive(Debug, Clone)]
 pub struct ErrorHandlingState {
-    /// Whether the operation is currently paused waiting for error response
+    /
     pub is_paused_for_error: bool,
-    /// The pending error action response
+    /
     pub pending_response: Option<ErrorAction>,
-    /// Count of skipped files
+    /
     pub skipped_count: usize,
-    /// List of skipped file paths
+    /
     pub skipped_files: Vec<PathBuf>,
 }
 
@@ -575,7 +575,7 @@ impl ErrorHandlingState {
     }
 }
 
-/// Cancellation token for operations
+/
 #[derive(Debug, Clone)]
 pub struct CancellationToken {
     cancelled: Arc<AtomicBool>,
@@ -603,10 +603,10 @@ impl Default for CancellationToken {
     }
 }
 
-/// Maximum number of operations to keep in undo history
+/
 const MAX_UNDO_HISTORY: usize = 50;
 
-/// Manages file operations with progress tracking and undo/redo support
+/
 pub struct FileOperationsManager {
     operations: Vec<FileOperation>,
     cancellation_tokens: std::collections::HashMap<OperationId, CancellationToken>,
@@ -615,9 +615,9 @@ pub struct FileOperationsManager {
     next_id: AtomicU64,
     progress_sender: Sender<ProgressUpdate>,
     progress_receiver: Receiver<ProgressUpdate>,
-    /// Stack of operations that can be undone (most recent at the end)
+    /
     undo_stack: Vec<UndoableOperation>,
-    /// Stack of operations that can be redone (most recent at the end)
+    /
     redo_stack: Vec<UndoableOperation>,
 }
 
@@ -648,84 +648,76 @@ impl FileOperationsManager {
         &self.progress_receiver
     }
 
-    /// Push an undoable operation onto the undo stack
-    /// This clears the redo stack since a new operation invalidates redo history
+    /
+    /
     pub fn push_undoable(&mut self, operation: UndoableOperation) {
-        // Clear redo stack when a new operation is performed
         self.redo_stack.clear();
 
-        // Add to undo stack
         self.undo_stack.push(operation);
 
-        // Trim undo stack if it exceeds max size
         while self.undo_stack.len() > MAX_UNDO_HISTORY {
             self.undo_stack.remove(0);
         }
     }
 
-    /// Check if there are operations that can be undone
+    /
     pub fn can_undo(&self) -> bool {
         !self.undo_stack.is_empty()
     }
 
-    /// Check if there are operations that can be redone
+    /
     pub fn can_redo(&self) -> bool {
         !self.redo_stack.is_empty()
     }
 
-    /// Get the description of the next operation to undo
+    /
     pub fn undo_description(&self) -> Option<String> {
         self.undo_stack.last().map(|op| op.description())
     }
 
-    /// Get the description of the next operation to redo
+    /
     pub fn redo_description(&self) -> Option<String> {
         self.redo_stack.last().map(|op| op.description())
     }
 
-    /// Get the undo stack (for testing/inspection)
+    /
     pub fn undo_stack(&self) -> &[UndoableOperation] {
         &self.undo_stack
     }
 
-    /// Get the redo stack (for testing/inspection)
+    /
     pub fn redo_stack(&self) -> &[UndoableOperation] {
         &self.redo_stack
     }
 
-    /// Undo the last operation
-    /// Returns the operation that was undone, or an error
+    /
+    /
     pub fn undo(&mut self) -> Result<UndoableOperation, UndoError> {
         let operation = self.undo_stack.pop().ok_or(UndoError::NothingToUndo)?;
 
-        // Execute the undo
         self.execute_undo(&operation)?;
 
-        // Push to redo stack
         self.redo_stack.push(operation.clone());
 
         Ok(operation)
     }
 
-    /// Redo the last undone operation
-    /// Returns the operation that was redone, or an error
+    /
+    /
     pub fn redo(&mut self) -> Result<UndoableOperation, UndoError> {
         let operation = self.redo_stack.pop().ok_or(UndoError::NothingToRedo)?;
 
-        // Execute the redo
         self.execute_redo(&operation)?;
 
-        // Push back to undo stack
         self.undo_stack.push(operation.clone());
 
         Ok(operation)
     }
 
-    /// Execute the undo for a specific operation
+    /
     fn execute_undo(&self, operation: &UndoableOperation) -> Result<(), UndoError> {
         match &operation.op_type {
             UndoableOperationType::Copy { copied_paths } => {
-                // Undo copy: delete the copied files
                 for path in copied_paths {
                     if path.exists() {
                         if path.is_dir() {
@@ -753,10 +745,8 @@ impl FileOperationsManager {
                 original_paths,
                 new_paths,
             } => {
-                // Undo move: move files back to original locations
                 for (new_path, original_path) in new_paths.iter().zip(original_paths.iter()) {
                     if new_path.exists() {
-                        // Ensure parent directory exists
                         if let Some(parent) = original_path.parent() {
                             std::fs::create_dir_all(parent).map_err(|e| {
                                 UndoError::FileSystemError(format!(
@@ -788,7 +778,6 @@ impl FileOperationsManager {
                 original_path,
                 new_path,
             } => {
-                // Undo rename: rename back to original name
                 if new_path.exists() {
                     std::fs::rename(new_path, original_path).map_err(|e| {
                         UndoError::FileSystemError(format!(
@@ -810,10 +799,8 @@ impl FileOperationsManager {
                 original_paths,
                 trash_paths,
             } => {
-                // Undo delete: restore files from trash
                 for (trash_path, original_path) in trash_paths.iter().zip(original_paths.iter()) {
                     if trash_path.exists() {
-                        // Ensure parent directory exists
                         if let Some(parent) = original_path.parent() {
                             std::fs::create_dir_all(parent).map_err(|e| {
                                 UndoError::FileSystemError(format!(
@@ -843,11 +830,10 @@ impl FileOperationsManager {
         }
     }
 
-    /// Execute the redo for a specific operation
+    /
     fn execute_redo(&self, operation: &UndoableOperation) -> Result<(), UndoError> {
         match &operation.op_type {
             UndoableOperationType::Copy { copied_paths: _ } => {
-                // Redo copy: we can't easily redo a copy without the original source paths
                 Err(UndoError::OperationNotReversible(
                     "Copy operations cannot be redone after undo".to_string(),
                 ))
@@ -856,10 +842,8 @@ impl FileOperationsManager {
                 original_paths,
                 new_paths,
             } => {
-                // Redo move: move files from original back to new locations
                 for (original_path, new_path) in original_paths.iter().zip(new_paths.iter()) {
                     if original_path.exists() {
-                        // Ensure parent directory exists
                         if let Some(parent) = new_path.parent() {
                             std::fs::create_dir_all(parent).map_err(|e| {
                                 UndoError::FileSystemError(format!(
@@ -891,7 +875,6 @@ impl FileOperationsManager {
                 original_path,
                 new_path,
             } => {
-                // Redo rename: rename from original to new name again
                 if original_path.exists() {
                     std::fs::rename(original_path, new_path).map_err(|e| {
                         UndoError::FileSystemError(format!(
@@ -913,10 +896,8 @@ impl FileOperationsManager {
                 original_paths,
                 trash_paths,
             } => {
-                // Redo delete: move files back to trash
                 for (original_path, trash_path) in original_paths.iter().zip(trash_paths.iter()) {
                     if original_path.exists() {
-                        // Ensure trash directory exists
                         if let Some(parent) = trash_path.parent() {
                             std::fs::create_dir_all(parent).map_err(|e| {
                                 UndoError::FileSystemError(format!(
@@ -946,13 +927,13 @@ impl FileOperationsManager {
         }
     }
 
-    /// Clear all undo/redo history (called on application restart)
+    /
     pub fn clear_history(&mut self) {
         self.undo_stack.clear();
         self.redo_stack.clear();
     }
 
-    /// Queue a copy operation
+    /
     pub fn copy(&mut self, sources: Vec<PathBuf>, dest: PathBuf) -> OperationId {
         let id = self.next_operation_id();
         let operation = FileOperation::new(id, OperationType::Copy, sources, Some(dest));
@@ -964,7 +945,7 @@ impl FileOperationsManager {
         id
     }
 
-    /// Queue a move operation
+    /
     pub fn move_files(&mut self, sources: Vec<PathBuf>, dest: PathBuf) -> OperationId {
         let id = self.next_operation_id();
         let operation = FileOperation::new(id, OperationType::Move, sources, Some(dest));
@@ -976,7 +957,7 @@ impl FileOperationsManager {
         id
     }
 
-    /// Queue a delete operation
+    /
     pub fn delete(&mut self, sources: Vec<PathBuf>) -> OperationId {
         let id = self.next_operation_id();
         let operation = FileOperation::new(id, OperationType::Delete, sources, None);
@@ -988,21 +969,21 @@ impl FileOperationsManager {
         id
     }
 
-    /// Get the error response receiver for an operation (for executor to wait on)
+    /
     pub fn get_error_response_receiver(&self, id: OperationId) -> Option<ErrorResponseReceiver> {
         self.error_response_channels
             .get(&id)
             .map(|(_, rx)| rx.clone())
     }
 
-    /// Send an error response to a waiting operation
+    /
     pub fn send_error_response(&self, id: OperationId, action: ErrorAction) {
         if let Some((tx, _)) = self.error_response_channels.get(&id) {
             let _ = tx.send(ErrorResponse { id, action });
         }
     }
 
-    /// Cancel an operation
+    /
     pub fn cancel(&mut self, id: OperationId) {
         if let Some(token) = self.cancellation_tokens.get(&id) {
             token.cancel();
@@ -1012,22 +993,20 @@ impl FileOperationsManager {
         }
     }
 
-    /// Clear the current error for an operation (used after Skip)
+    /
     pub fn clear_error(&mut self, id: OperationId) {
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == id) {
             op.current_error = None;
         }
     }
 
-    /// Handle error response from UI - this resumes the paused operation
+    /
     pub fn handle_error_response(&mut self, id: OperationId, action: ErrorAction) {
-        // Send response through channel to unblock the executor
         self.send_error_response(id, action);
 
         if let Some(op) = self.operations.iter_mut().find(|o| o.id == id) {
             match action {
                 ErrorAction::Skip => {
-                    // Record the skipped file
                     if let Some(ref error) = op.current_error {
                         op.error_state.add_skipped(error.file_path.clone());
                     }
@@ -1037,7 +1016,6 @@ impl FileOperationsManager {
                     op.resume_from_error(action);
                 }
                 ErrorAction::Cancel => {
-                    // Cancel the entire operation
                     if let Some(token) = self.cancellation_tokens.get(&id) {
                         token.cancel();
                     }
@@ -1047,7 +1025,7 @@ impl FileOperationsManager {
         }
     }
 
-    /// Check if an operation is paused waiting for error response
+    /
     pub fn is_paused_for_error(&self, id: OperationId) -> bool {
         self.operations
             .iter()
@@ -1056,7 +1034,7 @@ impl FileOperationsManager {
             .unwrap_or(false)
     }
 
-    /// Get the pending error response for an operation (if any)
+    /
     pub fn get_error_response(&mut self, id: OperationId) -> Option<ErrorAction> {
         self.operations
             .iter_mut()
@@ -1064,17 +1042,17 @@ impl FileOperationsManager {
             .and_then(|o| o.error_state.take_response())
     }
 
-    /// Get cancellation token for an operation
+    /
     pub fn get_cancellation_token(&self, id: OperationId) -> Option<CancellationToken> {
         self.cancellation_tokens.get(&id).cloned()
     }
 
-    /// Get all operations
+    /
     pub fn operations(&self) -> &[FileOperation] {
         &self.operations
     }
 
-    /// Get active (non-finished) operations
+    /
     pub fn active_operations(&self) -> Vec<&FileOperation> {
         self.operations
             .iter()
@@ -1082,17 +1060,17 @@ impl FileOperationsManager {
             .collect()
     }
 
-    /// Get a specific operation by ID
+    /
     pub fn get_operation(&self, id: OperationId) -> Option<&FileOperation> {
         self.operations.iter().find(|o| o.id == id)
     }
 
-    /// Get a mutable reference to a specific operation
+    /
     pub fn get_operation_mut(&mut self, id: OperationId) -> Option<&mut FileOperation> {
         self.operations.iter_mut().find(|o| o.id == id)
     }
 
-    /// Remove completed operations older than the specified duration
+    /
     pub fn cleanup_completed(&mut self, max_age: Duration) {
         self.operations.retain(|op| {
             if let Some(completed_at) = op.completed_at {
@@ -1102,7 +1080,6 @@ impl FileOperationsManager {
             }
         });
 
-        // Clean up cancellation tokens and error response channels for removed operations
         let active_ids: std::collections::HashSet<_> =
             self.operations.iter().map(|o| o.id).collect();
         self.cancellation_tokens
@@ -1111,7 +1088,7 @@ impl FileOperationsManager {
             .retain(|id, _| active_ids.contains(id));
     }
 
-    /// Process pending progress updates
+    /
     pub fn process_updates(&mut self) {
         while let Ok(update) = self.progress_receiver.try_recv() {
             self.apply_update(update);
@@ -1167,12 +1144,12 @@ impl FileOperationsManager {
         }
     }
 
-    /// Check if there are any active operations
+    /
     pub fn has_active_operations(&self) -> bool {
         self.operations.iter().any(|o| o.status.is_active())
     }
 
-    /// Get the count of active operations
+    /
     pub fn active_count(&self) -> usize {
         self.operations
             .iter()
@@ -1187,32 +1164,32 @@ impl Default for FileOperationsManager {
     }
 }
 
-/// Executor for file operations - runs in background thread
+/
 pub struct FileOperationExecutor;
 
-/// Result of a file operation that may need error handling
+/
 #[derive(Debug)]
 pub enum FileOpResult {
     Success,
     Skipped,
     Cancelled,
-    /// Error occurred, waiting for user response
+    /
     WaitingForResponse,
 }
 
-/// Configuration for error handling behavior
+/
 #[derive(Debug, Clone)]
 pub struct ErrorHandlingConfig {
-    /// Whether to wait for user response on errors (interactive mode)
+    /
     pub interactive: bool,
-    /// Default action when not in interactive mode
+    /
     pub default_action: ErrorAction,
-    /// Receiver for error responses (only used in interactive mode)
+    /
     pub response_receiver: Option<ErrorResponseReceiver>,
 }
 
 impl FileOperationExecutor {
-    /// Calculate total size of files to be operated on
+    /
     pub fn calculate_total_size(sources: &[PathBuf]) -> std::io::Result<(usize, u64)> {
         let mut total_files = 0usize;
         let mut total_bytes = 0u64;
@@ -1247,7 +1224,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /// Execute a copy operation with error handling
+    /
     pub fn execute_copy(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1258,7 +1235,7 @@ impl FileOperationExecutor {
         Self::execute_copy_interactive(sources, dest, progress_tx, cancel_token, id, None)
     }
 
-    /// Execute a copy operation with interactive error handling
+    /
     pub fn execute_copy_interactive(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1303,18 +1280,14 @@ impl FileOperationExecutor {
                     return Ok(());
                 }
                 Ok(FileOpResult::Skipped) => {
-                    // File was skipped, continue with next
                     continue;
                 }
                 Ok(FileOpResult::Success) => {
-                    // Continue to next file
                 }
                 Ok(FileOpResult::WaitingForResponse) => {
-                    // Should not happen at this level
                     continue;
                 }
                 Err(e) => {
-                    // Unrecoverable error - fail the operation
                     return Err(e);
                 }
             }
@@ -1324,7 +1297,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /// Execute a move operation with error handling
+    /
     pub fn execute_move(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1335,7 +1308,7 @@ impl FileOperationExecutor {
         Self::execute_move_interactive(sources, dest, progress_tx, cancel_token, id, None)
     }
 
-    /// Execute a move operation with interactive error handling
+    /
     pub fn execute_move_interactive(
         sources: Vec<PathBuf>,
         dest: PathBuf,
@@ -1387,7 +1360,6 @@ impl FileOperationExecutor {
                 })
                 .ok();
 
-            // Try rename first (fast path for same filesystem)
             match std::fs::rename(source, &dest_path) {
                 Ok(()) => {
                     progress_tx.send(ProgressUpdate::FileCompleted { id }).ok();
@@ -1397,7 +1369,6 @@ impl FileOperationExecutor {
                         || rename_err.kind() == std::io::ErrorKind::CrossesDevices
                         || rename_err.to_string().contains("cross-device")
                     {
-                        // Fall back to copy + delete for cross-filesystem moves
                         let result = if source.is_dir() {
                             match Self::copy_dir_recursive_interactive(
                                 source,
@@ -1457,7 +1428,6 @@ impl FileOperationExecutor {
                             }
                         }
                     } else {
-                        // Other rename error - report it
                         let error = OperationError::from_io_error(source.clone(), &rename_err);
                         let action = handle_error(error, &progress_tx, &error_response_rx);
                         match action {
@@ -1483,7 +1453,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /// Execute a delete operation with error handling
+    /
     pub fn execute_delete(
         sources: Vec<PathBuf>,
         progress_tx: Sender<ProgressUpdate>,
@@ -1493,7 +1463,7 @@ impl FileOperationExecutor {
         Self::execute_delete_interactive(sources, progress_tx, cancel_token, id, None)
     }
 
-    /// Execute a delete operation with interactive error handling
+    /
     pub fn execute_delete_interactive(
         sources: Vec<PathBuf>,
         progress_tx: Sender<ProgressUpdate>,
@@ -1566,7 +1536,6 @@ impl FileOperationExecutor {
                                 .ok();
                         }
                         ErrorAction::Retry => {
-                            // Retry the delete
                             let retry_result = if source.is_dir() {
                                 std::fs::remove_dir_all(source)
                             } else {
@@ -1599,7 +1568,7 @@ impl FileOperationExecutor {
         Ok(())
     }
 
-    /// Copy a single file with progress tracking and error handling
+    /
     fn copy_file_with_error_handling(
         source: &PathBuf,
         dest: &PathBuf,
@@ -1610,7 +1579,7 @@ impl FileOperationExecutor {
         Self::copy_file_interactive(source, dest, progress_tx, cancel_token, id, &None)
     }
 
-    /// Copy a single file with interactive error handling
+    /
     fn copy_file_interactive(
         source: &PathBuf,
         dest: &PathBuf,
@@ -1646,18 +1615,15 @@ impl FileOperationExecutor {
                 .ok();
 
             if let Some(rx) = error_response_rx {
-                // Wait for user response with timeout
                 match rx.recv_timeout(std::time::Duration::from_secs(300)) {
                     Ok(response) => response.action,
                     Err(_) => ErrorAction::Skip,
                 }
             } else {
-                // Non-interactive mode - auto-skip
                 ErrorAction::Skip
             }
         };
 
-        // Open source file
         let mut src_file = match std::fs::File::open(source) {
             Ok(f) => f,
             Err(e) => {
@@ -1674,7 +1640,6 @@ impl FileOperationExecutor {
                         return Ok(FileOpResult::Skipped);
                     }
                     ErrorAction::Retry => {
-                        // Recursive retry
                         return Self::copy_file_interactive(
                             source,
                             dest,
@@ -1727,7 +1692,6 @@ impl FileOperationExecutor {
 
         loop {
             if cancel_token.is_cancelled() {
-                // Clean up partial file on cancellation
                 drop(dst_file);
                 let _ = std::fs::remove_file(dest);
                 return Ok(FileOpResult::Cancelled);
@@ -1737,7 +1701,6 @@ impl FileOperationExecutor {
                 Ok(0) => break,
                 Ok(n) => n,
                 Err(e) => {
-                    // Read error - clean up and report
                     drop(dst_file);
                     let _ = std::fs::remove_file(dest);
                     let error = OperationError::from_io_error(source.clone(), &e);
@@ -1770,7 +1733,6 @@ impl FileOperationExecutor {
             };
 
             if let Err(e) = dst_file.write_all(&buffer[..bytes_read]) {
-                // Write error - clean up and report
                 drop(dst_file);
                 let _ = std::fs::remove_file(dest);
                 let error = OperationError::from_io_error(dest.clone(), &e);
@@ -1813,7 +1775,7 @@ impl FileOperationExecutor {
         Ok(FileOpResult::Success)
     }
 
-    /// Copy a directory recursively with error handling
+    /
     fn copy_dir_recursive_with_error_handling(
         source: &PathBuf,
         dest: &PathBuf,
@@ -1824,7 +1786,7 @@ impl FileOperationExecutor {
         Self::copy_dir_recursive_interactive(source, dest, progress_tx, cancel_token, id, &None)
     }
 
-    /// Copy a directory recursively with interactive error handling
+    /
     fn copy_dir_recursive_interactive(
         source: &PathBuf,
         dest: &PathBuf,
@@ -1957,13 +1919,11 @@ impl FileOperationExecutor {
             if matches!(result, FileOpResult::Cancelled) {
                 return Ok(FileOpResult::Cancelled);
             }
-            // Continue on skip or success
         }
 
         Ok(FileOpResult::Success)
     }
 
-    // Legacy methods for backward compatibility
     fn copy_file_with_progress(
         source: &PathBuf,
         dest: &PathBuf,
@@ -2092,7 +2052,6 @@ mod tests {
         assert_eq!(format!("{}", OperationType::Delete), "Deleting");
     }
 
-    // Undo/Redo tests
 
     #[test]
     fn test_undoable_operation_description_copy() {
@@ -2174,7 +2133,6 @@ mod tests {
     fn test_undo_clears_redo_stack() {
         let mut manager = FileOperationsManager::new();
 
-        // Push an operation
         let op1 = UndoableOperation::new_rename(
             OperationId::new(1),
             PathBuf::from("/path/old.txt"),
@@ -2182,7 +2140,6 @@ mod tests {
         );
         manager.push_undoable(op1);
 
-        // Manually add to redo stack (simulating an undo)
         let op2 = UndoableOperation::new_rename(
             OperationId::new(2),
             PathBuf::from("/path/a.txt"),
@@ -2192,7 +2149,6 @@ mod tests {
 
         assert!(manager.can_redo());
 
-        // Push a new operation - should clear redo stack
         let op3 = UndoableOperation::new_rename(
             OperationId::new(3),
             PathBuf::from("/path/x.txt"),
@@ -2223,7 +2179,6 @@ mod tests {
     fn test_clear_history() {
         let mut manager = FileOperationsManager::new();
 
-        // Add some operations
         let op1 = UndoableOperation::new_rename(
             OperationId::new(1),
             PathBuf::from("/path/old.txt"),
@@ -2251,7 +2206,6 @@ mod tests {
     fn test_undo_stack_max_size() {
         let mut manager = FileOperationsManager::new();
 
-        // Push more than MAX_UNDO_HISTORY operations
         for i in 0..(MAX_UNDO_HISTORY + 10) {
             let op = UndoableOperation::new_rename(
                 OperationId::new(i as u64),
@@ -2261,11 +2215,9 @@ mod tests {
             manager.push_undoable(op);
         }
 
-        // Stack should be trimmed to MAX_UNDO_HISTORY
         assert_eq!(manager.undo_stack().len(), MAX_UNDO_HISTORY);
     }
 
-    // Error handling tests
 
     #[test]
     fn test_operation_error_from_io_permission_denied() {
@@ -2401,7 +2353,6 @@ mod tests {
 
         op.resume_from_error(ErrorAction::Cancel);
 
-        // Cancel doesn't change status to Running
         assert!(!op.is_paused_for_error());
     }
 
@@ -2410,7 +2361,6 @@ mod tests {
         let mut manager = FileOperationsManager::new();
         let id = manager.copy(vec![PathBuf::from("/a")], PathBuf::from("/b"));
 
-        // Simulate an error
         if let Some(op) = manager.get_operation_mut(id) {
             op.start();
             let error =
@@ -2430,7 +2380,6 @@ mod tests {
         let mut manager = FileOperationsManager::new();
         let id = manager.copy(vec![PathBuf::from("/a")], PathBuf::from("/b"));
 
-        // Simulate an error
         if let Some(op) = manager.get_operation_mut(id) {
             op.start();
             let error =
@@ -2470,18 +2419,18 @@ mod property_tests {
     use super::*;
     use proptest::prelude::*;
 
-    /// Strategy to generate valid file names (no path separators or null bytes)
+    /
     fn valid_filename() -> impl Strategy<Value = String> {
         "[a-zA-Z0-9_-]{1,20}\\.[a-z]{1,4}"
     }
 
-    /// Strategy to generate a valid path
+    /
     fn valid_path() -> impl Strategy<Value = PathBuf> {
         (valid_filename(), valid_filename())
             .prop_map(|(dir, file)| PathBuf::from(format!("/tmp/{}/{}", dir, file)))
     }
 
-    /// Strategy to generate an UndoableOperation
+    /
     fn undoable_operation() -> impl Strategy<Value = UndoableOperation> {
         prop_oneof![
             prop::collection::vec(valid_path(), 1..5)
@@ -2498,11 +2447,9 @@ mod property_tests {
                         new.into_iter().take(len).collect(),
                     )
                 }),
-            // Rename operation
             (valid_path(), valid_path()).prop_map(|(orig, new)| {
                 UndoableOperation::new_rename(OperationId::new(1), orig, new)
             }),
-            // Delete operation
             (
                 prop::collection::vec(valid_path(), 1..5),
                 prop::collection::vec(valid_path(), 1..5)
@@ -2519,36 +2466,33 @@ mod property_tests {
     }
 
     proptest! {
-        /// Property 38: Undo Operation Reversal
-        /// For any undoable operation pushed to the undo stack, calling undo() should:
-        /// 1. Remove the operation from the undo stack
-        /// 2. Add the operation to the redo stack
-        /// 3. The redo stack should contain the same operation
-        ///
-        /// **Feature: ui-enhancements, Property 38: Undo Operation Reversal**
-        /// **Validates: Requirements 18.1, 18.2**
+        /
+        /
+        /
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_undo_moves_operation_to_redo_stack(op in undoable_operation()) {
             let mut manager = FileOperationsManager::new();
 
             let original_description = op.description();
 
-            // Push the operation
             manager.push_undoable(op);
 
-            // Verify it's on the undo stack
             prop_assert!(manager.can_undo());
             prop_assert!(!manager.can_redo());
             prop_assert_eq!(manager.undo_stack().len(), 1);
             prop_assert_eq!(manager.redo_stack().len(), 0);
 
-            // The undo will fail because files don't exist, but we can test the stack behavior
             let undo_desc_before = manager.undo_description();
             prop_assert!(undo_desc_before.is_some());
             prop_assert_eq!(undo_desc_before.unwrap(), original_description);
         }
 
-        /// Property: Pushing a new operation clears the redo stack
+        /
         #[test]
         fn prop_push_clears_redo_stack(
             op1 in undoable_operation(),
@@ -2556,10 +2500,8 @@ mod property_tests {
         ) {
             let mut manager = FileOperationsManager::new();
 
-            // Push first operation
             manager.push_undoable(op1);
 
-            // Manually add to redo stack (simulating an undo)
             manager.redo_stack.push(UndoableOperation::new_rename(
                 OperationId::new(999),
                 PathBuf::from("/dummy/old.txt"),
@@ -2568,14 +2510,13 @@ mod property_tests {
 
             prop_assert!(manager.can_redo());
 
-            // Push second operation - should clear redo stack
             manager.push_undoable(op2);
 
             prop_assert!(!manager.can_redo());
             prop_assert_eq!(manager.redo_stack().len(), 0);
         }
 
-        /// Property: Undo stack respects maximum size
+        /
         #[test]
         fn prop_undo_stack_respects_max_size(count in 1usize..100) {
             let mut manager = FileOperationsManager::new();
@@ -2589,12 +2530,11 @@ mod property_tests {
                 manager.push_undoable(op);
             }
 
-            // Stack should never exceed MAX_UNDO_HISTORY
             prop_assert!(manager.undo_stack().len() <= MAX_UNDO_HISTORY);
             prop_assert_eq!(manager.undo_stack().len(), count.min(MAX_UNDO_HISTORY));
         }
 
-        /// Property: Clear history empties both stacks
+        /
         #[test]
         fn prop_clear_history_empties_stacks(ops in prop::collection::vec(undoable_operation(), 1..10)) {
             let mut manager = FileOperationsManager::new();
@@ -2603,7 +2543,6 @@ mod property_tests {
                 manager.push_undoable(op);
             }
 
-            // Add some to redo stack
             manager.redo_stack.push(UndoableOperation::new_rename(
                 OperationId::new(999),
                 PathBuf::from("/dummy/old.txt"),

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::{FileEntry, FileSystemError, Result};
 
-/// Sort order for directory traversal results
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum SortOrder {
     #[default]
@@ -15,7 +15,7 @@ pub enum SortOrder {
     Descending,
 }
 
-/// Sort key for directory traversal
+/
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum SortKey {
     #[default]
@@ -24,7 +24,7 @@ pub enum SortKey {
     Date,
 }
 
-/// Configuration for directory traversal
+/
 #[derive(Debug, Clone)]
 pub struct TraversalConfig {
     pub sort_key: SortKey,
@@ -44,10 +44,10 @@ impl Default for TraversalConfig {
     }
 }
 
-/// Traverses a directory using jwalk and streams results through a flume channel.
-///
-/// This function is designed to be called via `spawn_blocking` on a Tokio thread pool
-/// to avoid blocking the UI thread.
+/
+/
+/
+/
 pub fn traverse_directory(
     path: &Path,
     config: &TraversalConfig,
@@ -70,26 +70,22 @@ pub fn traverse_directory(
     for entry_result in walk_dir {
         match entry_result {
             Ok(entry) => {
-                // Skip the root directory itself
                 if entry.depth() == 0 {
                     continue;
                 }
 
                 if let Some(file_entry) = dir_entry_to_file_entry(&entry) {
-                    // Filter hidden files if configured
                     if !config.include_hidden && is_hidden(&file_entry.name) {
                         continue;
                     }
 
                     if sender.send(file_entry).is_err() {
-                        // Receiver dropped, stop traversal
                         break;
                     }
                     count += 1;
                 }
             }
             Err(e) => {
-                // Log error but continue traversal
                 eprintln!("Traversal error: {}", e);
             }
         }
@@ -98,7 +94,7 @@ pub fn traverse_directory(
     Ok(count)
 }
 
-/// Builds a jwalk WalkDir with the specified configuration.
+/
 fn build_walk_dir(path: &Path, config: &TraversalConfig) -> WalkDirGeneric<((), ())> {
     let mut walk_dir = WalkDir::new(path)
         .parallelism(jwalk::Parallelism::RayonNewPool(num_cpus()))
@@ -108,25 +104,23 @@ fn build_walk_dir(path: &Path, config: &TraversalConfig) -> WalkDirGeneric<((), 
         walk_dir = walk_dir.max_depth(depth);
     }
 
-    // Configure sorting based on sort key
     walk_dir = walk_dir.sort(true);
 
     walk_dir
 }
 
-/// Returns the number of CPUs available for parallel traversal.
+/
 fn num_cpus() -> usize {
     std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(4)
 }
 
-/// Converts a jwalk DirEntry to our FileEntry type, detecting symlinks.
+/
 fn dir_entry_to_file_entry(entry: &jwalk::DirEntry<((), ())>) -> Option<FileEntry> {
     let path = entry.path();
     let name = entry.file_name().to_string_lossy().to_string();
 
-    // Use symlink_metadata to detect symlinks without following them
     let symlink_metadata = std::fs::symlink_metadata(&path).ok()?;
     let is_symlink = symlink_metadata.file_type().is_symlink();
 
@@ -135,7 +129,6 @@ fn dir_entry_to_file_entry(entry: &jwalk::DirEntry<((), ())>) -> Option<FileEntr
         let target_exists = std::fs::metadata(&path).is_ok();
         let is_broken = !target_exists;
 
-        // For symlinks, get metadata of target if it exists
         let (is_dir, size, modified) = if target_exists {
             let target_meta = std::fs::metadata(&path).ok()?;
             (
@@ -165,17 +158,16 @@ fn dir_entry_to_file_entry(entry: &jwalk::DirEntry<((), ())>) -> Option<FileEntr
     }
 }
 
-/// Checks if a file name indicates a hidden file.
+/
 fn is_hidden(name: &str) -> bool {
     name.starts_with('.')
 }
 
-/// Sorts a vector of FileEntry according to the specified configuration.
+/
 pub fn sort_entries(entries: &mut [FileEntry], sort_key: SortKey, sort_order: SortOrder) {
     match (sort_key, sort_order) {
         (SortKey::Name, SortOrder::Ascending) => {
             entries.sort_by(|a, b| {
-                // Directories first, then by name (case-insensitive)
                 match (a.is_dir, b.is_dir) {
                     (true, false) => std::cmp::Ordering::Less,
                     (false, true) => std::cmp::Ordering::Greater,
@@ -221,11 +213,11 @@ pub fn sort_entries(entries: &mut [FileEntry], sort_key: SortKey, sort_order: So
     }
 }
 
-/// Traverses a directory and returns sorted results.
-///
-/// This function collects all entries, sorts them according to the config,
-/// and then streams them through the channel. This ensures results are
-/// delivered in sorted order.
+/
+/
+/
+/
+/
 pub fn traverse_directory_sorted(
     path: &Path,
     config: &TraversalConfig,
@@ -265,7 +257,6 @@ pub fn traverse_directory_sorted(
         }
     }
 
-    // Sort entries according to configuration
     sort_entries(&mut entries, config.sort_key, config.sort_order);
 
     let count = entries.len();
@@ -278,8 +269,8 @@ pub fn traverse_directory_sorted(
     Ok(count)
 }
 
-/// Spawns a directory traversal task on a blocking thread pool.
-/// Returns a receiver for streaming FileEntry results.
+/
+/
 pub fn spawn_traversal(
     path: PathBuf,
     config: TraversalConfig,
@@ -294,8 +285,8 @@ pub fn spawn_traversal(
     (receiver, handle)
 }
 
-/// Spawns a sorted directory traversal task on a blocking thread pool.
-/// Results are collected, sorted, and then streamed.
+/
+/
 pub fn spawn_sorted_traversal(
     path: PathBuf,
     config: TraversalConfig,
@@ -341,7 +332,6 @@ mod tests {
         assert!(result.is_ok());
 
         let entries: Vec<_> = receiver.iter().collect();
-        // Should have 4 entries: 3 files + 1 subdir (hidden file excluded by default)
         assert_eq!(entries.len(), 4);
     }
 
@@ -358,7 +348,6 @@ mod tests {
         assert!(result.is_ok());
 
         let entries: Vec<_> = receiver.iter().collect();
-        // Should have 5 entries: 3 files + 1 subdir + 1 hidden file
         assert_eq!(entries.len(), 5);
     }
 
@@ -399,7 +388,6 @@ mod tests {
 
         sort_entries(&mut entries, SortKey::Name, SortOrder::Ascending);
 
-        // Directory should be first, then alphabetical
         assert_eq!(entries[0].name, "beta");
         assert_eq!(entries[1].name, "alpha.txt");
         assert_eq!(entries[2].name, "zebra.txt");
@@ -433,7 +421,6 @@ mod tests {
 
         sort_entries(&mut entries, SortKey::Size, SortOrder::Ascending);
 
-        // Directory first, then by size ascending
         assert_eq!(entries[0].name, "dir");
         assert_eq!(entries[1].name, "small.txt");
         assert_eq!(entries[2].name, "large.txt");
@@ -453,14 +440,11 @@ mod tests {
         assert!(result.is_ok());
 
         let entries: Vec<_> = receiver.iter().collect();
-        // Should have 4 entries: 1 subdir + 3 files (hidden excluded)
         assert_eq!(entries.len(), 4);
 
-        // Directory should be first
         assert!(entries[0].is_dir);
         assert_eq!(entries[0].name, "subdir");
 
-        // Files should be sorted alphabetically
         assert_eq!(entries[1].name, "file_a.txt");
         assert_eq!(entries[2].name, "file_b.txt");
         assert_eq!(entries[3].name, "file_c.txt");
@@ -481,16 +465,14 @@ mod tests {
 
         let entries: Vec<_> = receiver.iter().collect();
 
-        // Directory should still be first (directories always first)
         assert!(entries[0].is_dir);
 
-        // Files should be sorted in reverse alphabetical order
         assert_eq!(entries[1].name, "file_c.txt");
         assert_eq!(entries[2].name, "file_b.txt");
         assert_eq!(entries[3].name, "file_a.txt");
     }
 
-    /// Helper to check if entries are sorted correctly
+    /
     fn is_sorted(entries: &[FileEntry], sort_key: SortKey, sort_order: SortOrder) -> bool {
         if entries.len() <= 1 {
             return true;
@@ -537,12 +519,12 @@ mod tests {
     }
 
     proptest! {
-        /// **Feature: file-explorer-core, Property 8: Traversal Results Sorted**
-        /// **Validates: Requirements 3.2**
-        ///
-        /// For any directory traversal result, the delivered entries SHALL be sorted
-        /// by the configured sort key (name, size, or date) in the configured order
-        /// (ascending or descending).
+        /
+        /
+        /
+        /
+        /
+        /
         #[test]
         fn prop_traversal_results_sorted(
             file_count in 0usize..20,
@@ -587,7 +569,6 @@ mod tests {
 
             let entries: Vec<_> = receiver.iter().collect();
 
-            // Verify entries are sorted correctly
             prop_assert!(
                 is_sorted(&entries, sort_key, sort_order),
                 "Entries not sorted correctly for {:?} {:?}",

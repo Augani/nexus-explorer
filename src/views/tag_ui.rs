@@ -3,7 +3,7 @@ use gpui::{div, prelude::*, px, Hsla, IntoElement, ParentElement, SharedString, 
 use crate::models::{Tag, TagColor, TagId, TagManager};
 use std::path::Path;
 
-/// Renders a single tag color dot
+/
 pub fn render_tag_dot(color: TagColor) -> impl IntoElement {
     let (r, g, b, _) = color.to_rgba();
     let hsla = Hsla::from(gpui::Rgba {
@@ -16,11 +16,10 @@ pub fn render_tag_dot(color: TagColor) -> impl IntoElement {
     div().size(px(8.0)).rounded_full().bg(hsla).flex_shrink_0()
 }
 
-/// Renders multiple tag dots for a file
+/
 pub fn render_tag_dots(tags: &[&Tag]) -> impl IntoElement {
     let mut container = div().flex().items_center().gap(px(2.0)).flex_shrink_0();
 
-    // Show up to 3 dots, then show a count
     let max_visible = 3;
     let visible_tags = tags.iter().take(max_visible);
 
@@ -41,14 +40,13 @@ pub fn render_tag_dots(tags: &[&Tag]) -> impl IntoElement {
     container
 }
 
-/// Renders tag dots for a file path using the TagManager
+/
 pub fn render_file_tag_dots(tags: Vec<&Tag>) -> impl IntoElement {
     if tags.is_empty() {
         div().w(px(0.0)).flex().items_center()
     } else {
         let mut container = div().flex().items_center().gap(px(2.0)).flex_shrink_0();
 
-        // Show up to 3 dots, then show a count
         let max_visible = 3;
         let visible_tags = tags.iter().take(max_visible);
 
@@ -70,7 +68,7 @@ pub fn render_file_tag_dots(tags: Vec<&Tag>) -> impl IntoElement {
     }
 }
 
-/// Renders a tag filter item for the sidebar
+/
 pub fn render_tag_filter_item(tag: &Tag, is_selected: bool, file_count: usize) -> impl IntoElement {
     let theme_bg_hover = gpui::rgb(0x161b22);
     let theme_bg_selected = gpui::rgb(0x1f3a5f);
@@ -104,7 +102,7 @@ pub fn render_tag_filter_item(tag: &Tag, is_selected: bool, file_count: usize) -
         )
 }
 
-/// Renders the tag context menu for applying/removing tags
+/
 pub fn render_tag_context_menu(tag_manager: &TagManager, file_path: &Path) -> impl IntoElement {
     let theme_bg = gpui::rgb(0x161b22);
     let theme_border = gpui::rgb(0x30363d);
@@ -162,9 +160,9 @@ pub fn render_tag_context_menu(tag_manager: &TagManager, file_path: &Path) -> im
     menu
 }
 
-/// Parses a search query for tag filters
-/// Returns (remaining_query, tag_filters)
-/// Supports syntax like "tag:red" or "tag:work"
+/
+/
+/
 pub fn parse_tag_query(query: &str) -> (String, Vec<String>) {
     let mut remaining_parts = Vec::new();
     let mut tag_filters = Vec::new();

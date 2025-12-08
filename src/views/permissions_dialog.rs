@@ -6,7 +6,7 @@ use gpui::prelude::FluentBuilder;
 use gpui::*;
 use std::path::PathBuf;
 
-/// Actions for the permissions dialog
+/
 #[derive(Clone, PartialEq)]
 pub enum PermissionsDialogAction {
     Close,
@@ -26,7 +26,7 @@ pub enum PermissionsDialogAction {
     StickyChanged(bool),
 }
 
-/// State for the permissions dialog
+/
 pub struct PermissionsDialog {
     path: PathBuf,
     original_permissions: Option<FilePermissions>,
@@ -101,12 +101,12 @@ impl PermissionsDialog {
         self.is_applying
     }
 
-    /// Get the current permissions (modified or original)
+    /
     pub fn current_permissions(&self) -> Option<&FilePermissions> {
         self.modified_permissions.as_ref()
     }
 
-    /// Check if permissions have been modified
+    /
     pub fn has_changes(&self) -> bool {
         match (&self.original_permissions, &self.modified_permissions) {
             (Some(FilePermissions::Unix(orig)), Some(FilePermissions::Unix(modified))) => {
@@ -116,7 +116,7 @@ impl PermissionsDialog {
         }
     }
 
-    /// Apply the current permissions
+    /
     pub fn apply(&mut self) -> Result<(), PermissionError> {
         if let Some(perms) = &self.modified_permissions {
             self.is_applying = true;
@@ -147,7 +147,7 @@ impl PermissionsDialog {
         }
     }
 
-    /// Apply permissions recursively (for directories)
+    /
     #[cfg(unix)]
     pub fn apply_recursive(&mut self) -> Result<Vec<PathBuf>, PermissionError> {
         if !self.is_directory {
@@ -188,14 +188,14 @@ impl PermissionsDialog {
         }
     }
 
-    /// Close the dialog
+    /
     pub fn close(&self) {
         if let Some(callback) = &self.on_close {
             callback();
         }
     }
 
-    /// Update Unix permission bit
+    /
     fn update_unix_bit<F>(&mut self, updater: F)
     where
         F: FnOnce(&mut UnixPermissions),
@@ -205,7 +205,7 @@ impl PermissionsDialog {
         }
     }
 
-    /// Handle permission change actions
+    /
     pub fn handle_action(&mut self, action: PermissionsDialogAction) {
         match action {
             PermissionsDialogAction::Close => self.close(),
@@ -257,7 +257,7 @@ impl PermissionsDialog {
         }
     }
 
-    /// Get Unix permissions if available
+    /
     pub fn unix_permissions(&self) -> Option<&UnixPermissions> {
         match &self.modified_permissions {
             Some(FilePermissions::Unix(perms)) => Some(perms),
@@ -265,7 +265,7 @@ impl PermissionsDialog {
         }
     }
 
-    /// Get Windows ACL if available
+    /
     pub fn windows_acl(&self) -> Option<&WindowsAcl> {
         match &self.modified_permissions {
             Some(FilePermissions::Windows(acl)) => Some(acl),
@@ -273,30 +273,30 @@ impl PermissionsDialog {
         }
     }
 
-    /// Get the octal mode string for Unix permissions
+    /
     pub fn octal_mode(&self) -> Option<String> {
         self.unix_permissions().map(|p| p.to_octal_string())
     }
 
-    /// Get the symbolic mode string for Unix permissions
+    /
     pub fn symbolic_mode(&self) -> Option<String> {
         self.unix_permissions().map(|p| p.to_symbolic())
     }
 }
 
 
-/// Render helper functions for the permissions dialog
+/
 impl PermissionsDialog {
-    /// Render a permission checkbox
+    /
     fn render_permission_checkbox(
         label: &str,
         checked: bool,
         on_change: impl Fn(bool) -> PermissionsDialogAction + 'static,
     ) -> impl IntoElement {
         let checkbox_bg = if checked {
-            rgb(0x3B82F6) // Blue when checked
+            rgb(0x3B82F6)
         } else {
-            rgb(0x374151) // Gray when unchecked
+            rgb(0x374151)
         };
 
         div()
@@ -332,14 +332,13 @@ impl PermissionsDialog {
             )
     }
 
-    /// Render Unix permissions section
+    /
     fn render_unix_permissions(&self, perms: &UnixPermissions) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
             .gap_4()
             .p_4()
-            // Owner section
             .child(
                 div()
                     .flex()
@@ -380,7 +379,6 @@ impl PermissionsDialog {
                             )),
                     ),
             )
-            // Group section
             .child(
                 div()
                     .flex()
@@ -421,7 +419,6 @@ impl PermissionsDialog {
                             )),
                     ),
             )
-            // Others section
             .child(
                 div()
                     .flex()
@@ -455,7 +452,6 @@ impl PermissionsDialog {
                             )),
                     ),
             )
-            // Special bits section
             .when(perms.has_special_bits() || true, |el| {
                 el.child(
                     div()
@@ -495,7 +491,6 @@ impl PermissionsDialog {
                         ),
                 )
             })
-            // Mode display
             .child(
                 div()
                     .flex()
@@ -543,14 +538,13 @@ impl PermissionsDialog {
             )
     }
 
-    /// Render Windows ACL section
+    /
     fn render_windows_acl(&self, acl: &WindowsAcl) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
             .gap_3()
             .p_4()
-            // Owner info
             .when_some(acl.owner.as_ref(), |el, owner| {
                 el.child(
                     div()
@@ -570,7 +564,6 @@ impl PermissionsDialog {
                         ),
                 )
             })
-            // ACL entries
             .child(
                 div()
                     .flex()
@@ -586,8 +579,8 @@ impl PermissionsDialog {
                     )
                     .children(acl.entries.iter().map(|entry| {
                         let entry_type_color = match entry.entry_type {
-                            AclEntryType::Allow => rgb(0x10B981), // Green
-                            AclEntryType::Deny => rgb(0xEF4444),  // Red
+                            AclEntryType::Allow => rgb(0x10B981),
+                            AclEntryType::Deny => rgb(0xEF4444),
                         };
                         let entry_type_text = match entry.entry_type {
                             AclEntryType::Allow => "Allow",
@@ -649,7 +642,7 @@ impl PermissionsDialog {
     }
 }
 
-/// View implementation for PermissionsDialog
+/
 pub struct PermissionsDialogView {
     dialog: PermissionsDialog,
     focus_handle: FocusHandle,
@@ -698,7 +691,6 @@ impl Render for PermissionsDialogView {
             .border_1()
             .border_color(rgb(0x374151))
             .shadow_lg()
-            // Header
             .child(
                 div()
                     .flex()
@@ -727,7 +719,6 @@ impl Render for PermissionsDialogView {
                             ),
                     ),
             )
-            // Content
             .child(
                 div()
                     .flex_1()
@@ -748,7 +739,6 @@ impl Render for PermissionsDialogView {
                         )
                     }),
             )
-            // Error/Success messages
             .when_some(self.dialog.error_message(), |el, msg| {
                 el.child(
                     div()
@@ -771,7 +761,6 @@ impl Render for PermissionsDialogView {
                         .child(msg.clone()),
                 )
             })
-            // Elevation warning
             .when(self.dialog.requires_elevation(), |el| {
                 el.child(
                     div()
@@ -783,7 +772,6 @@ impl Render for PermissionsDialogView {
                         .child("⚠ Modifying permissions may require administrator privileges"),
                 )
             })
-            // Footer with buttons
             .child(
                 div()
                     .flex()

@@ -6,17 +6,17 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 use tempfile::TempDir;
 
-/// Strategy to generate valid file names
+/
 fn file_name_strategy() -> impl Strategy<Value = String> {
     "[a-zA-Z0-9_-]{1,20}\\.[a-z]{1,4}".prop_map(|s| s)
 }
 
-/// Strategy to generate valid directory names
+/
 fn dir_name_strategy() -> impl Strategy<Value = String> {
     "[a-zA-Z0-9_-]{1,20}".prop_map(|s| s)
 }
 
-/// Helper to create a test file with specific content
+/
 fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBuf {
     let path = dir.join(name);
     if let Some(parent) = path.parent() {
@@ -27,15 +27,13 @@ fn create_test_file(dir: &std::path::Path, name: &str, content: &[u8]) -> PathBu
     path
 }
 
-/// Helper to create a test directory
+/
 fn create_test_dir(parent: &std::path::Path, name: &str) -> PathBuf {
     let path = parent.join(name);
     fs::create_dir_all(&path).unwrap();
     path
 }
 
-// **Feature: advanced-device-management, Property 14: Trash Entry Metadata**
-// **Validates: Requirements 10.2**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     
@@ -44,7 +42,6 @@ proptest! {
         name in file_name_strategy(),
         size in 0u64..10000,
     ) {
-        // Create a TrashEntry with the generated values
         let original_path = PathBuf::from("/home/user/documents").join(&name);
         let deletion_date = SystemTime::now();
         
@@ -57,28 +54,22 @@ proptest! {
             trash_id: TrashId::Path(PathBuf::from("/trash").join(&name)),
         };
         
-        // Property: For any file in the trash, the trash entry SHALL contain 
-        // the original path and deletion timestamp, both of which are non-empty/non-zero
         
-        // Original path must be non-empty
         prop_assert!(
             !entry.original_path.as_os_str().is_empty(),
             "Original path should not be empty"
         );
         
-        // Name must be non-empty
         prop_assert!(
             !entry.name.is_empty(),
             "Name should not be empty"
         );
         
-        // Deletion date should be valid (not UNIX_EPOCH which would indicate unset)
         prop_assert!(
             entry.deletion_date != std::time::UNIX_EPOCH,
             "Deletion date should not be UNIX_EPOCH"
         );
         
-        // Original path should contain the file name
         prop_assert!(
             entry.original_path.file_name().is_some(),
             "Original path should have a file name component"
@@ -90,7 +81,6 @@ proptest! {
         name in dir_name_strategy(),
         file_count in 1usize..5,
     ) {
-        // Create a TrashEntry for a directory
         let original_path = PathBuf::from("/home/user/documents").join(&name);
         let deletion_date = SystemTime::now();
         
@@ -98,12 +88,11 @@ proptest! {
             name: name.clone(),
             original_path: original_path.clone(),
             deletion_date,
-            size: file_count as u64 * 1000, // Simulated size
+            size: file_count as u64 * 1000,
             is_dir: true,
             trash_id: TrashId::Path(PathBuf::from("/trash").join(&name)),
         };
         
-        // Property: Directory entries should also have valid metadata
         prop_assert!(
             !entry.original_path.as_os_str().is_empty(),
             "Directory original path should not be empty"
@@ -171,12 +160,8 @@ fn test_trash_entry_directory() {
 fn test_trash_manager_is_large() {
     let manager = TrashManager::new();
     
-    // Not large initially (empty trash)
     assert!(!manager.is_large());
     
-    // Note: We can't easily test the "large" case without actually having
-    // large files in the system trash, which would be a side effect.
-    // The is_large() function checks if total_size > 1GB
 }
 
 #[test]
@@ -201,10 +186,8 @@ fn test_trash_error_display() {
 fn test_get_trash_path() {
     let path = get_trash_path();
     
-    // Path should not be empty
     assert!(!path.as_os_str().is_empty());
     
-    // Path should be absolute or start with expected prefix
     #[cfg(target_os = "macos")]
     {
         assert!(path.to_string_lossy().contains(".Trash"));
@@ -235,13 +218,11 @@ fn test_calculate_dir_size() {
     let temp_dir = TempDir::new().unwrap();
     let test_dir = create_test_dir(temp_dir.path(), "test_folder");
     
-    // Create some files
     create_test_file(&test_dir, "file1.txt", b"Hello");
     create_test_file(&test_dir, "file2.txt", b"World!");
     
     let size = calculate_dir_size(&test_dir);
     
-    // Size should be at least the sum of file contents
     assert!(size >= 11, "Directory size should be at least 11 bytes, got {}", size);
 }
 
@@ -256,7 +237,6 @@ fn test_calculate_dir_size_nested() {
     
     let size = calculate_dir_size(&test_dir);
     
-    // Should include both files
     assert!(size >= 27, "Directory size should include nested files, got {}", size);
 }
 
@@ -294,8 +274,6 @@ fn test_trash_id_windows_variant() {
 }
 
 
-// **Feature: advanced-device-management, Property 15: Trash Restore Location**
-// **Validates: Requirements 10.5**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
     
@@ -310,17 +288,14 @@ proptest! {
         fs::create_dir_all(&original_dir).unwrap();
         fs::create_dir_all(&trash_dir).unwrap();
         
-        // Create the original path
         let original_path = original_dir.join(&file_name);
         
-        // Create a file in the "trash" directory (simulating a trashed file)
         let content: Vec<u8> = vec![b'x'; content_size];
         let trash_path = trash_dir.join(&file_name);
         let mut file = File::create(&trash_path).unwrap();
         file.write_all(&content).unwrap();
         drop(file);
         
-        // Create a TrashEntry
         let entry = TrashEntry {
             name: file_name.clone(),
             original_path: original_path.clone(),
@@ -330,11 +305,8 @@ proptest! {
             trash_id: TrashId::Path(trash_path.clone()),
         };
         
-        // Restore the file
         let result = restore_from_trash(&entry);
         
-        // Property: For any trash restore operation where the original location exists,
-        // the file SHALL be restored to exactly the original path
         prop_assert!(
             result.is_ok(),
             "Restore should succeed, got error: {:?}",
@@ -343,26 +315,22 @@ proptest! {
         
         let restored_path = result.unwrap();
         
-        // Property: Restored path should equal the original path
         prop_assert_eq!(
             &restored_path,
             &original_path,
             "Restored path should equal original path"
         );
         
-        // Property: File should exist at the original path
         prop_assert!(
             restored_path.exists(),
             "File should exist at original path after restore"
         );
         
-        // Property: File should no longer exist in trash
         prop_assert!(
             !trash_path.exists(),
             "File should no longer exist in trash after restore"
         );
         
-        // Property: Content should be preserved
         let restored_content = fs::read(&restored_path).unwrap();
         prop_assert_eq!(
             restored_content.len(),
@@ -381,24 +349,20 @@ proptest! {
         let trash_dir = temp_dir.path().join("trash");
         fs::create_dir_all(&trash_dir).unwrap();
         
-        // Create original path with a parent directory that doesn't exist
         let missing_parent = temp_dir.path().join("missing_parent").join(&dir_name);
         let original_path = missing_parent.join(&file_name);
         
-        // Verify parent doesn't exist
         prop_assert!(
             !missing_parent.exists(),
             "Parent directory should not exist initially"
         );
         
-        // Create a file in the "trash" directory
         let content: Vec<u8> = vec![b'y'; content_size];
         let trash_path = trash_dir.join(&file_name);
         let mut file = File::create(&trash_path).unwrap();
         file.write_all(&content).unwrap();
         drop(file);
         
-        // Create a TrashEntry with missing parent
         let entry = TrashEntry {
             name: file_name.clone(),
             original_path: original_path.clone(),
@@ -408,23 +372,19 @@ proptest! {
             trash_id: TrashId::Path(trash_path.clone()),
         };
         
-        // Restore the file
         let result = restore_from_trash(&entry);
         
-        // Property: Restore should succeed even when parent directory is missing
         prop_assert!(
             result.is_ok(),
             "Restore should succeed even with missing parent, got error: {:?}",
             result.err()
         );
         
-        // Property: Parent directory should be created
         prop_assert!(
             missing_parent.exists(),
             "Missing parent directory should be created"
         );
         
-        // Property: File should exist at original path
         prop_assert!(
             original_path.exists(),
             "File should exist at original path"
@@ -440,7 +400,6 @@ fn test_restore_from_trash_basic() {
     fs::create_dir_all(&original_dir).unwrap();
     fs::create_dir_all(&trash_dir).unwrap();
     
-    // Create a file in trash
     let trash_path = trash_dir.join("test.txt");
     fs::write(&trash_path, b"Test content").unwrap();
     
@@ -470,11 +429,9 @@ fn test_restore_from_trash_creates_parent_directory() {
     let trash_dir = temp_dir.path().join("trash");
     fs::create_dir_all(&trash_dir).unwrap();
     
-    // Create a file in trash
     let trash_path = trash_dir.join("test.txt");
     fs::write(&trash_path, b"Content").unwrap();
     
-    // Original path with non-existent parent
     let original_path = temp_dir.path().join("new_dir").join("subdir").join("test.txt");
     
     let entry = TrashEntry {
@@ -501,11 +458,9 @@ fn test_restore_from_trash_fails_if_exists() {
     fs::create_dir_all(&original_dir).unwrap();
     fs::create_dir_all(&trash_dir).unwrap();
     
-    // Create file in trash
     let trash_path = trash_dir.join("test.txt");
     fs::write(&trash_path, b"Trash content").unwrap();
     
-    // Create file at original location (conflict)
     let original_path = original_dir.join("test.txt");
     fs::write(&original_path, b"Existing content").unwrap();
     
@@ -528,9 +483,7 @@ fn test_restore_from_trash_fails_if_exists() {
         _ => panic!("Expected IoError with 'already exists' message"),
     }
     
-    // Original file should be unchanged
     assert_eq!(fs::read_to_string(&original_path).unwrap(), "Existing content");
-    // Trash file should still exist
     assert!(trash_path.exists());
 }
 
@@ -542,7 +495,6 @@ fn test_restore_directory_from_trash() {
     fs::create_dir_all(&original_dir).unwrap();
     fs::create_dir_all(&trash_dir).unwrap();
     
-    // Create a directory in trash with files
     let trash_folder = trash_dir.join("my_folder");
     fs::create_dir_all(&trash_folder).unwrap();
     fs::write(trash_folder.join("file1.txt"), b"File 1").unwrap();

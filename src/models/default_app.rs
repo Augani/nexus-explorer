@@ -1,14 +1,13 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-/// Check if this app is set as the default file browser
-/// Note: This is a simplified check - full detection requires more complex APIs
+/
+/
 pub fn is_default_file_browser() -> bool {
-    // For now, we store this preference locally
     get_default_preference()
 }
 
-/// Set this app as the default file browser
+/
 pub fn set_as_default_file_browser() -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
@@ -21,7 +20,6 @@ pub fn set_as_default_file_browser() -> Result<String, String> {
 
         let _ = Command::new("osascript").args(["-e", script]).output();
 
-        // Save preference
         save_default_preference(true);
 
         Ok("Instructions shown. Follow the steps to set as default.".to_string())
@@ -73,7 +71,7 @@ MimeType=inode/directory;
     }
 }
 
-/// Remove this app as the default file browser preference
+/
 pub fn restore_default_file_browser() -> Result<String, String> {
     save_default_preference(false);
 

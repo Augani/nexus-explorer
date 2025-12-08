@@ -1,12 +1,12 @@
 use gpui::Rgba;
 use std::path::PathBuf;
 
-/// Default terminal dimensions
+/
 pub const DEFAULT_COLS: usize = 80;
 pub const DEFAULT_ROWS: usize = 24;
 pub const DEFAULT_SCROLLBACK: usize = 10000;
 
-/// Style for a terminal cell
+/
 #[derive(Clone, Debug, PartialEq)]
 pub struct CellStyle {
     pub foreground: Rgba,
@@ -71,7 +71,7 @@ impl CellStyle {
     }
 }
 
-/// A single cell in the terminal grid
+/
 #[derive(Clone, Debug)]
 pub struct TerminalCell {
     pub char: char,
@@ -100,7 +100,7 @@ impl TerminalCell {
     }
 }
 
-/// A line of terminal cells
+/
 #[derive(Clone, Debug)]
 pub struct TerminalLine {
     pub cells: Vec<TerminalCell>,
@@ -166,20 +166,20 @@ impl TerminalLine {
         }
     }
 
-    /// Get the text content of this line (trimmed)
+    /
     pub fn text(&self) -> String {
         let mut s: String = self.cells.iter().map(|c| c.char).collect();
         s.truncate(s.trim_end().len());
         s
     }
 
-    /// Resize the line to a new column count
+    /
     pub fn resize(&mut self, cols: usize) {
         self.cells.resize_with(cols, TerminalCell::default);
     }
 }
 
-/// Cursor position in the terminal
+/
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorPosition {
     pub row: usize,
@@ -196,32 +196,32 @@ impl CursorPosition {
     }
 }
 
-/// Terminal state holding all lines, cursor, and configuration
+/
 #[derive(Clone, Debug)]
 pub struct TerminalState {
-    /// All lines including scrollback buffer
+    /
     lines: Vec<TerminalLine>,
-    /// Current cursor position (relative to viewport, not scrollback)
+    /
     cursor: CursorPosition,
-    /// Number of columns
+    /
     cols: usize,
-    /// Number of visible rows
+    /
     rows: usize,
-    /// Scroll offset from bottom (0 = at bottom)
+    /
     scroll_offset: usize,
-    /// Maximum scrollback lines
+    /
     max_scrollback: usize,
-    /// Working directory for the terminal
+    /
     working_directory: PathBuf,
-    /// Whether the terminal process is running
+    /
     is_running: bool,
-    /// Current style for new characters
+    /
     current_style: CellStyle,
-    /// Whether cursor is visible
+    /
     cursor_visible: bool,
-    /// Saved cursor position (for save/restore)
+    /
     saved_cursor: Option<CursorPosition>,
-    /// Title set by escape sequences
+    /
     title: Option<String>,
 }
 
@@ -331,17 +331,17 @@ impl TerminalState {
         self.current_style = CellStyle::default();
     }
 
-    /// Get a line by absolute index (including scrollback)
+    /
     pub fn line(&self, index: usize) -> Option<&TerminalLine> {
         self.lines.get(index)
     }
 
-    /// Get a mutable line by absolute index
+    /
     pub fn line_mut(&mut self, index: usize) -> Option<&mut TerminalLine> {
         self.lines.get_mut(index)
     }
 
-    /// Get visible lines based on current scroll offset
+    /
     pub fn visible_lines(&self) -> impl Iterator<Item = &TerminalLine> {
         let total = self.lines.len();
         let start = total.saturating_sub(self.rows + self.scroll_offset);
@@ -349,23 +349,22 @@ impl TerminalState {
         self.lines[start..end].iter()
     }
 
-    /// Get the absolute line index for a viewport row
+    /
     fn viewport_to_absolute(&self, row: usize) -> usize {
         let total = self.lines.len();
         total.saturating_sub(self.rows) + row
     }
 
-    /// Get the line at the current cursor position
+    /
     fn current_line_mut(&mut self) -> &mut TerminalLine {
         let idx = self.viewport_to_absolute(self.cursor.row);
-        // Ensure we have enough lines
         while self.lines.len() <= idx {
             self.lines.push(TerminalLine::new(self.cols));
         }
         &mut self.lines[idx]
     }
 
-    /// Write a character at the current cursor position
+    /
     pub fn write_char(&mut self, c: char) {
         if self.cursor.col >= self.cols {
             self.newline();
@@ -378,7 +377,7 @@ impl TerminalState {
         self.cursor.col += 1;
     }
 
-    /// Write a string at the current cursor position
+    /
     pub fn write_str(&mut self, s: &str) {
         for c in s.chars() {
             match c {
@@ -393,7 +392,7 @@ impl TerminalState {
         }
     }
 
-    /// Move to a new line
+    /
     pub fn newline(&mut self) {
         self.cursor.col = 0;
         if self.cursor.row + 1 >= self.rows {
@@ -403,92 +402,89 @@ impl TerminalState {
         }
     }
 
-    /// Carriage return - move cursor to beginning of line
+    /
     pub fn carriage_return(&mut self) {
         self.cursor.col = 0;
     }
 
-    /// Tab - move to next tab stop (every 8 columns)
+    /
     pub fn tab(&mut self) {
         let next_tab = ((self.cursor.col / 8) + 1) * 8;
         self.cursor.col = next_tab.min(self.cols - 1);
     }
 
-    /// Backspace - move cursor back one position
+    /
     pub fn backspace(&mut self) {
         if self.cursor.col > 0 {
             self.cursor.col -= 1;
         }
     }
 
-    /// Scroll the terminal up by one line
+    /
     pub fn scroll_up(&mut self) {
-        // Add a new line at the bottom
         self.lines.push(TerminalLine::new(self.cols));
 
-        // Trim scrollback if needed
         while self.lines.len() > self.rows + self.max_scrollback {
             self.lines.remove(0);
         }
     }
 
-    /// Scroll the terminal down by one line (reverse scroll)
+    /
     pub fn scroll_down(&mut self) {
         let insert_idx = self.lines.len().saturating_sub(self.rows);
         self.lines.insert(insert_idx, TerminalLine::new(self.cols));
 
-        // Trim scrollback if needed
         while self.lines.len() > self.rows + self.max_scrollback {
             self.lines.remove(0);
         }
     }
 
-    /// Move cursor to absolute position
+    /
     pub fn move_cursor_to(&mut self, row: usize, col: usize) {
         self.cursor.row = row.min(self.rows.saturating_sub(1));
         self.cursor.col = col.min(self.cols.saturating_sub(1));
     }
 
-    /// Move cursor relative to current position
+    /
     pub fn move_cursor_by(&mut self, row_delta: i32, col_delta: i32) {
         let new_row = (self.cursor.row as i32 + row_delta).max(0) as usize;
         let new_col = (self.cursor.col as i32 + col_delta).max(0) as usize;
         self.move_cursor_to(new_row, new_col);
     }
 
-    /// Move cursor up
+    /
     pub fn cursor_up(&mut self, n: usize) {
         self.cursor.row = self.cursor.row.saturating_sub(n);
     }
 
-    /// Move cursor down
+    /
     pub fn cursor_down(&mut self, n: usize) {
         self.cursor.row = (self.cursor.row + n).min(self.rows.saturating_sub(1));
     }
 
-    /// Move cursor forward (right)
+    /
     pub fn cursor_forward(&mut self, n: usize) {
         self.cursor.col = (self.cursor.col + n).min(self.cols.saturating_sub(1));
     }
 
-    /// Move cursor backward (left)
+    /
     pub fn cursor_backward(&mut self, n: usize) {
         self.cursor.col = self.cursor.col.saturating_sub(n);
     }
 
-    /// Save cursor position
+    /
     pub fn save_cursor(&mut self) {
         self.saved_cursor = Some(self.cursor);
     }
 
-    /// Restore cursor position
+    /
     pub fn restore_cursor(&mut self) {
         if let Some(pos) = self.saved_cursor {
             self.cursor = pos;
         }
     }
 
-    /// Clear the entire screen
+    /
     pub fn clear_screen(&mut self) {
         for line in &mut self.lines {
             line.clear();
@@ -496,37 +492,33 @@ impl TerminalState {
         self.cursor = CursorPosition::origin();
     }
 
-    /// Clear from cursor to end of screen
+    /
     pub fn clear_to_end_of_screen(&mut self) {
-        // Clear current line from cursor
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
             line.clear_from(self.cursor.col);
         }
 
-        // Clear all lines below
         for i in (idx + 1)..self.lines.len() {
             self.lines[i].clear();
         }
     }
 
-    /// Clear from beginning of screen to cursor
+    /
     pub fn clear_to_start_of_screen(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
 
-        // Clear all lines above
         let start = self.lines.len().saturating_sub(self.rows);
         for i in start..idx {
             self.lines[i].clear();
         }
 
-        // Clear current line to cursor
         if let Some(line) = self.lines.get_mut(idx) {
             line.clear_to(self.cursor.col + 1);
         }
     }
 
-    /// Clear the current line
+    /
     pub fn clear_line(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
@@ -534,7 +526,7 @@ impl TerminalState {
         }
     }
 
-    /// Clear from cursor to end of line
+    /
     pub fn clear_to_end_of_line(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
@@ -542,7 +534,7 @@ impl TerminalState {
         }
     }
 
-    /// Clear from beginning of line to cursor
+    /
     pub fn clear_to_start_of_line(&mut self) {
         let idx = self.viewport_to_absolute(self.cursor.row);
         if let Some(line) = self.lines.get_mut(idx) {
@@ -550,55 +542,52 @@ impl TerminalState {
         }
     }
 
-    /// Scroll viewport up (view older content)
+    /
     pub fn scroll_viewport_up(&mut self, lines: usize) {
         let max = self.max_scroll_offset();
         self.scroll_offset = (self.scroll_offset + lines).min(max);
     }
 
-    /// Scroll viewport down (view newer content)
+    /
     pub fn scroll_viewport_down(&mut self, lines: usize) {
         self.scroll_offset = self.scroll_offset.saturating_sub(lines);
     }
 
-    /// Scroll viewport to bottom
+    /
     pub fn scroll_to_bottom(&mut self) {
         self.scroll_offset = 0;
     }
 
-    /// Scroll viewport to top
+    /
     pub fn scroll_to_top(&mut self) {
         self.scroll_offset = self.max_scroll_offset();
     }
 
-    /// Check if viewport is at bottom
+    /
     pub fn is_at_bottom(&self) -> bool {
         self.scroll_offset == 0
     }
 
-    /// Resize the terminal
+    /
     pub fn resize(&mut self, cols: usize, rows: usize) {
         self.cols = cols;
         self.rows = rows;
 
-        // Resize all existing lines
         for line in &mut self.lines {
             line.resize(cols);
         }
 
-        // Ensure we have at least `rows` lines
         while self.lines.len() < rows {
             self.lines.push(TerminalLine::new(cols));
         }
 
-        // Clamp cursor position
         self.cursor.row = self.cursor.row.min(rows.saturating_sub(1));
         self.cursor.col = self.cursor.col.min(cols.saturating_sub(1));
 
         self.scroll_offset = self.scroll_offset.min(self.max_scroll_offset());
     }
 
-    /// Reset the terminal to initial state
+    /
     pub fn reset(&mut self) {
         self.lines.clear();
         for _ in 0..self.rows {
@@ -612,7 +601,7 @@ impl TerminalState {
         self.title = None;
     }
 
-    /// Get all content as a string (for debugging/testing)
+    /
     pub fn content_as_string(&self) -> String {
         self.lines
             .iter()
@@ -621,7 +610,7 @@ impl TerminalState {
             .join("\n")
     }
 
-    /// Get visible content as a string
+    /
     pub fn visible_content_as_string(&self) -> String {
         self.visible_lines()
             .map(|line| line.text())

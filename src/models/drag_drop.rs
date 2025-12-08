@@ -3,37 +3,37 @@ use std::path::PathBuf;
 use gpui::{prelude::*, px, Context, Window};
 use serde::{Deserialize, Serialize};
 
-/// Payload for drag-and-drop operations containing file paths
+/
 #[derive(Clone, Debug)]
 pub struct DragPayload {
     pub paths: Vec<PathBuf>,
 }
 
 impl DragPayload {
-    /// Creates a new drag payload with the given paths
+    /
     pub fn new(paths: Vec<PathBuf>) -> Self {
         Self { paths }
     }
 
-    /// Creates a drag payload for a single path
+    /
     pub fn single(path: PathBuf) -> Self {
         Self { paths: vec![path] }
     }
 }
 
-/// Data transferred during file drag operations
+/
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FileDragData {
-    /// Paths of files being dragged
+    /
     pub paths: Vec<PathBuf>,
-    /// Source window identifier (for cross-window operations)
+    /
     pub source_window_id: Option<u64>,
-    /// Current drag position
+    /
     pub position: (f32, f32),
 }
 
 impl FileDragData {
-    /// Creates a new FileDragData for a single file
+    /
     pub fn single(path: PathBuf) -> Self {
         Self {
             paths: vec![path],
@@ -42,7 +42,7 @@ impl FileDragData {
         }
     }
 
-    /// Creates a new FileDragData for multiple files
+    /
     pub fn multiple(paths: Vec<PathBuf>) -> Self {
         Self {
             paths,
@@ -51,39 +51,39 @@ impl FileDragData {
         }
     }
 
-    /// Sets the source window ID
+    /
     pub fn with_source_window(mut self, window_id: u64) -> Self {
         self.source_window_id = Some(window_id);
         self
     }
 
-    /// Sets the drag position
+    /
     pub fn with_position(mut self, x: f32, y: f32) -> Self {
         self.position = (x, y);
         self
     }
 
-    /// Returns the number of files being dragged
+    /
     pub fn file_count(&self) -> usize {
         self.paths.len()
     }
 
-    /// Returns whether this is a single file drag
+    /
     pub fn is_single(&self) -> bool {
         self.paths.len() == 1
     }
 
-    /// Returns the first path (for single file operations)
+    /
     pub fn first_path(&self) -> Option<&PathBuf> {
         self.paths.first()
     }
 
-    /// Returns whether all paths are directories
+    /
     pub fn all_directories(&self) -> bool {
         self.paths.iter().all(|p| p.is_dir())
     }
 
-    /// Returns whether any path is a directory
+    /
     pub fn has_directories(&self) -> bool {
         self.paths.iter().any(|p| p.is_dir())
     }
@@ -125,50 +125,50 @@ impl Render for FileDragData {
     }
 }
 
-/// Represents a drop target for file operations
+/
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DropTarget {
-    /// Drop on a directory in the file list
+    /
     Directory(usize),
-    /// Drop on the current directory (file list background)
+    /
     CurrentDirectory,
-    /// Drop on a favorite in the sidebar
+    /
     Favorites,
-    /// Drop on a specific favorite item
+    /
     FavoriteItem(usize),
 }
 
-/// Result of a drop operation
+/
 #[derive(Clone, Debug)]
 pub enum DropResult {
-    /// Files should be copied to the target
+    /
     Copy {
         sources: Vec<PathBuf>,
         target: PathBuf,
     },
-    /// Files should be moved to the target
+    /
     Move {
         sources: Vec<PathBuf>,
         target: PathBuf,
     },
-    /// A directory should be added to favorites
+    /
     AddToFavorites(PathBuf),
-    /// Operation was cancelled or invalid
+    /
     Cancelled,
 }
 
 impl DropResult {
-    /// Creates a copy operation
+    /
     pub fn copy(sources: Vec<PathBuf>, target: PathBuf) -> Self {
         Self::Copy { sources, target }
     }
 
-    /// Creates a move operation
+    /
     pub fn move_files(sources: Vec<PathBuf>, target: PathBuf) -> Self {
         Self::Move { sources, target }
     }
 
-    /// Creates an add to favorites operation
+    /
     pub fn add_favorite(path: PathBuf) -> Self {
         Self::AddToFavorites(path)
     }
