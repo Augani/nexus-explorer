@@ -23,6 +23,7 @@ mod tag_ui;
 mod terminal;
 mod theme_picker;
 mod toast;
+mod unlock_dialog;
 
 pub mod breadcrumb;
 
@@ -72,3 +73,4 @@ pub use format_dialog::{FormatDialog, FormatDialogAction};
 pub use permissions_dialog::{PermissionsDialog, PermissionsDialogAction, PermissionsDialogView};
 pub use share_dialog::{ShareDialog, ShareDialogAction};
 pub use symlink_dialog::{create_symbolic_link, SymlinkDialog, SymlinkDialogAction};
+pub use unlock_dialog::{UnlockDialog, UnlockDialogAction};

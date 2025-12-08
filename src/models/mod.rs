@@ -8,6 +8,7 @@ mod default_app;
 mod device_monitor;
 mod drag_drop;
 mod dual_pane;
+mod encrypted_volume;
 mod favorites;
 mod file_hash;
 mod file_operations;
@@ -59,6 +60,8 @@ mod device_monitor_tests;
 #[cfg(test)]
 mod dual_pane_tests;
 #[cfg(test)]
+mod encrypted_volume_tests;
+#[cfg(test)]
 mod file_hash_tests;
 #[cfg(test)]
 mod permissions_tests;
@@ -84,6 +87,7 @@ pub use default_app::*;
 pub use device_monitor::*;
 pub use drag_drop::*;
 pub use dual_pane::*;
+pub use encrypted_volume::*;
 pub use favorites::*;
 pub use file_hash::*;
 pub use file_operations::*;
