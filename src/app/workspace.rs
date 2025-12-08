@@ -18,7 +18,9 @@ use crate::views::{
     ContextMenuAction, FileList, FileListView, GridView, GridViewComponent, PreviewView,
     QuickLookView, SearchInputView, SidebarView, SmartFolderDialog, SmartFolderDialogAction,
     StatusBarAction, StatusBarView, TerminalView, ThemePickerView, ToastManager, ToolAction,
+    ConflictDialog, ConflictInfo,
 };
+use crate::models::ConflictResolution;
 use adabraka_ui::components::input::{Input, InputEvent, InputState};
 
 actions!(
@@ -105,6 +107,9 @@ pub struct Workspace {
     should_focus_dialog_input: bool,
     tabs_enabled: bool,
     show_smart_folder_dialog: bool,
+    conflict_dialog: Option<Entity<ConflictDialog>>,
+    pending_conflicts: Vec<(PathBuf, PathBuf)>,
+    conflict_apply_to_all: Option<ConflictResolution>,
 }
 
 impl Workspace {
@@ -470,6 +475,9 @@ impl Workspace {
                 should_focus_dialog_input: false,
                 tabs_enabled: true,
                 show_smart_folder_dialog: false,
+                conflict_dialog: None,
+                pending_conflicts: Vec::new(),
+                conflict_apply_to_all: None,
             }
         })
     }
@@ -1204,13 +1212,13 @@ impl Workspace {
     }
 
     fn paste_from_clipboard(&mut self, cx: &mut Context<Self>) {
-        let Some(clipboard_op) = self.clipboard.take() else {
+        let Some(clipboard_op) = self.clipboard.clone() else {
             return;
         };
 
-        let (source_path, is_move) = match clipboard_op {
-            ClipboardOperation::Copy(path) => (path, false),
-            ClipboardOperation::Cut(path) => (path, true),
+        let (source_path, is_move) = match &clipboard_op {
+            ClipboardOperation::Copy(path) => (path.clone(), false),
+            ClipboardOperation::Cut(path) => (path.clone(), true),
         };
 
         let file_name = source_path
@@ -1223,19 +1231,33 @@ impl Workspace {
 
         // Don't paste into the same location
         if source_path.parent() == Some(&self.current_path) && !is_move {
-            self.clipboard = Some(ClipboardOperation::Copy(source_path));
             return;
         }
+
+        // Check for conflict
+        if dest_path.exists() {
+            // Check if we have an "apply to all" resolution
+            if let Some(resolution) = self.conflict_apply_to_all {
+                self.handle_conflict_resolution(source_path, dest_path, is_move, resolution, cx);
+            } else {
+                // Show conflict dialog
+                self.show_conflict_dialog(source_path, dest_path, is_move, cx);
+            }
+            return;
+        }
+
+        // No conflict, proceed with paste
+        self.clipboard = None;
+
+        // Clear clipboard UI immediately
+        self.sidebar.update(cx, |view, _| {
+            view.set_has_clipboard(false);
+        });
 
         // Show "in progress" toast
         let action = if is_move { "Moving" } else { "Copying" };
         self.toast_manager.update(cx, |toast, cx| {
             toast.show_info(format!("{}: {}...", action, file_name), cx);
-        });
-
-        // Clear clipboard UI immediately
-        self.sidebar.update(cx, |view, _| {
-            view.set_has_clipboard(false);
         });
 
         // Run file operation in background
@@ -1384,13 +1406,13 @@ impl Workspace {
     }
 
     fn paste_to_destination(&mut self, cx: &mut Context<Self>) {
-        let Some(clipboard_op) = self.clipboard.take() else {
+        let Some(clipboard_op) = self.clipboard.clone() else {
             return;
         };
 
-        let (source_path, is_move) = match clipboard_op {
-            ClipboardOperation::Copy(path) => (path, false),
-            ClipboardOperation::Cut(path) => (path, true),
+        let (source_path, is_move) = match &clipboard_op {
+            ClipboardOperation::Copy(path) => (path.clone(), false),
+            ClipboardOperation::Cut(path) => (path.clone(), true),
         };
 
         let file_name = source_path
@@ -1401,8 +1423,127 @@ impl Workspace {
 
         let dest_path = self.dest_path.join(&file_name);
 
+        // Check for conflict
+        if dest_path.exists() {
+            // Check if we have an "apply to all" resolution
+            if let Some(resolution) = self.conflict_apply_to_all {
+                self.handle_conflict_resolution(source_path, dest_path, is_move, resolution, cx);
+            } else {
+                // Show conflict dialog
+                self.show_conflict_dialog(source_path, dest_path, is_move, cx);
+            }
+            return;
+        }
+
+        // No conflict, proceed with paste
+        self.execute_paste(source_path, dest_path, is_move, cx);
+    }
+
+    fn show_conflict_dialog(
+        &mut self,
+        source: PathBuf,
+        destination: PathBuf,
+        is_move: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let conflict_info = ConflictInfo::new(source.clone(), destination.clone());
+        let remaining = self.pending_conflicts.len();
+
+        let dialog = cx.new(|_cx| {
+            ConflictDialog::new(conflict_info, remaining)
+        });
+
+        // Store the conflict context for when the user makes a choice
+        self.pending_conflicts.push((source, destination));
+        self.conflict_dialog = Some(dialog);
+
+        // Store whether this is a move operation
+        if is_move {
+            self.clipboard = Some(ClipboardOperation::Cut(
+                self.pending_conflicts.last().map(|(s, _)| s.clone()).unwrap_or_default()
+            ));
+        } else {
+            self.clipboard = Some(ClipboardOperation::Copy(
+                self.pending_conflicts.last().map(|(s, _)| s.clone()).unwrap_or_default()
+            ));
+        }
+
+        cx.notify();
+    }
+
+    fn handle_conflict_resolution(
+        &mut self,
+        source: PathBuf,
+        destination: PathBuf,
+        is_move: bool,
+        resolution: ConflictResolution,
+        cx: &mut Context<Self>,
+    ) {
+        match resolution {
+            ConflictResolution::Skip => {
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info("Skipped file".to_string(), cx);
+                });
+                self.finish_paste_operation(cx);
+            }
+            ConflictResolution::Replace => {
+                // Remove existing file/folder first
+                if destination.is_dir() {
+                    let _ = fs::remove_dir_all(&destination);
+                } else {
+                    let _ = fs::remove_file(&destination);
+                }
+                self.execute_paste(source, destination, is_move, cx);
+            }
+            ConflictResolution::KeepBoth => {
+                let unique_dest = self.generate_unique_name(&destination);
+                self.execute_paste(source, unique_dest, is_move, cx);
+            }
+            ConflictResolution::ReplaceIfNewer => {
+                if self.is_source_newer(&source, &destination) {
+                    if destination.is_dir() {
+                        let _ = fs::remove_dir_all(&destination);
+                    } else {
+                        let _ = fs::remove_file(&destination);
+                    }
+                    self.execute_paste(source, destination, is_move, cx);
+                } else {
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_info("Skipped (destination is newer)".to_string(), cx);
+                    });
+                    self.finish_paste_operation(cx);
+                }
+            }
+            ConflictResolution::ReplaceIfLarger => {
+                if self.is_source_larger(&source, &destination) {
+                    if destination.is_dir() {
+                        let _ = fs::remove_dir_all(&destination);
+                    } else {
+                        let _ = fs::remove_file(&destination);
+                    }
+                    self.execute_paste(source, destination, is_move, cx);
+                } else {
+                    self.toast_manager.update(cx, |toast, cx| {
+                        toast.show_info("Skipped (destination is larger)".to_string(), cx);
+                    });
+                    self.finish_paste_operation(cx);
+                }
+            }
+        }
+    }
+
+    fn execute_paste(&mut self, source: PathBuf, destination: PathBuf, is_move: bool, cx: &mut Context<Self>) {
+        // Clear clipboard
+        self.clipboard = None;
+
         // Exit copy/move mode
         self.copy_move_mode = false;
+
+        let file_name = source
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
 
         // Show "in progress" toast
         let action = if is_move { "Moving" } else { "Copying" };
@@ -1412,16 +1553,16 @@ impl Workspace {
 
         cx.notify();
 
-        let source = source_path.clone();
-        let dest = dest_path.clone();
+        let source_clone = source.clone();
+        let dest_clone = destination.clone();
         let name = file_name.clone();
 
         cx.spawn(async move |this, cx| {
             let result = std::thread::spawn(move || {
-                if source.is_dir() {
-                    copy_dir_recursive_async(&source, &dest)
+                if source_clone.is_dir() {
+                    copy_dir_recursive_async(&source_clone, &dest_clone)
                 } else {
-                    fs::copy(&source, &dest).map(|_| ())
+                    fs::copy(&source_clone, &dest_clone).map(|_| ())
                 }
             })
             .join()
@@ -1435,10 +1576,10 @@ impl Workspace {
             let _ = this.update(cx, |workspace, cx| match result {
                 Ok(()) => {
                     if is_move {
-                        let _ = if source_path.is_dir() {
-                            fs::remove_dir_all(&source_path)
+                        let _ = if source.is_dir() {
+                            fs::remove_dir_all(&source)
                         } else {
-                            fs::remove_file(&source_path)
+                            fs::remove_file(&source)
                         };
                         workspace.toast_manager.update(cx, |toast, cx| {
                             toast.show_success(format!("Moved: {}", name), cx);
@@ -1449,15 +1590,84 @@ impl Workspace {
                         });
                     }
                     workspace.refresh_current_directory(cx);
+                    workspace.finish_paste_operation(cx);
                 }
                 Err(e) => {
                     workspace.toast_manager.update(cx, |toast, cx| {
                         toast.show_error(format!("Failed: {}", e), cx);
                     });
+                    workspace.finish_paste_operation(cx);
                 }
             });
         })
         .detach();
+    }
+
+    fn finish_paste_operation(&mut self, cx: &mut Context<Self>) {
+        self.conflict_dialog = None;
+        self.pending_conflicts.clear();
+        self.conflict_apply_to_all = None;
+        cx.notify();
+    }
+
+    fn generate_unique_name(&self, path: &PathBuf) -> PathBuf {
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+        let ext = path.extension().and_then(|e| e.to_str());
+        let parent = path.parent().unwrap_or(path);
+
+        let mut counter = 1;
+        loop {
+            let new_name = if let Some(ext) = ext {
+                format!("{} ({}).{}", stem, counter, ext)
+            } else {
+                format!("{} ({})", stem, counter)
+            };
+            let new_path = parent.join(&new_name);
+            if !new_path.exists() {
+                return new_path;
+            }
+            counter += 1;
+        }
+    }
+
+    fn is_source_newer(&self, source: &PathBuf, dest: &PathBuf) -> bool {
+        let source_time = source.metadata().and_then(|m| m.modified()).ok();
+        let dest_time = dest.metadata().and_then(|m| m.modified()).ok();
+        
+        match (source_time, dest_time) {
+            (Some(s), Some(d)) => s > d,
+            _ => true,
+        }
+    }
+
+    fn is_source_larger(&self, source: &PathBuf, dest: &PathBuf) -> bool {
+        let source_size = source.metadata().map(|m| m.len()).ok();
+        let dest_size = dest.metadata().map(|m| m.len()).ok();
+        
+        match (source_size, dest_size) {
+            (Some(s), Some(d)) => s > d,
+            _ => true,
+        }
+    }
+
+    pub fn resolve_conflict(&mut self, resolution: ConflictResolution, apply_to_all: bool, cx: &mut Context<Self>) {
+        if apply_to_all {
+            self.conflict_apply_to_all = Some(resolution);
+        }
+
+        // Get the pending conflict
+        if let Some((source, destination)) = self.pending_conflicts.pop() {
+            let is_move = matches!(self.clipboard, Some(ClipboardOperation::Cut(_)));
+            self.conflict_dialog = None;
+            self.handle_conflict_resolution(source, destination, is_move, resolution, cx);
+        }
+    }
+
+    pub fn cancel_conflict_dialog(&mut self, cx: &mut Context<Self>) {
+        self.conflict_dialog = None;
+        self.pending_conflicts.clear();
+        self.conflict_apply_to_all = None;
+        cx.notify();
     }
 
     fn cancel_copy_move_mode(&mut self, cx: &mut Context<Self>) {
@@ -2701,6 +2911,10 @@ impl Render for Workspace {
             .when(self.show_smart_folder_dialog, |this| {
                 this.child(self.smart_folder_dialog.clone())
             })
+            // Conflict dialog overlay
+            .when(self.conflict_dialog.is_some(), |this| {
+                this.child(self.render_conflict_dialog_overlay(cx))
+            })
             // Theme picker overlay
             .child(self.theme_picker.clone())
             // Quick Look overlay
@@ -3102,6 +3316,282 @@ impl Workspace {
                     ),
             )
     }
-}
 
-// Remove duplicate closing brace
+    fn render_conflict_dialog_overlay(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = theme_colors();
+        let overlay_bg = gpui::rgba(0x00000099);
+
+        // Get conflict info from pending conflicts
+        let (source, destination) = self.pending_conflicts.last()
+            .cloned()
+            .unwrap_or_else(|| (PathBuf::new(), PathBuf::new()));
+
+        let conflict_info = ConflictInfo::new(source.clone(), destination.clone());
+        let remaining = self.pending_conflicts.len().saturating_sub(1);
+        let file_name = conflict_info.source_name().to_string();
+        let dest_folder = conflict_info.dest_folder().to_string();
+        let source_size = crate::utils::format_size(conflict_info.source_size);
+        let dest_size = crate::utils::format_size(conflict_info.dest_size);
+        let source_modified = self.format_time(conflict_info.source_modified);
+        let dest_modified = self.format_time(conflict_info.dest_modified);
+
+        div()
+            .id("conflict-dialog-overlay")
+            .absolute()
+            .inset_0()
+            .bg(overlay_bg)
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.cancel_conflict_dialog(cx);
+                }),
+            )
+            .child(
+                div()
+                    .id("conflict-dialog-content")
+                    .occlude()
+                    .w(px(450.0))
+                    .bg(theme.bg_secondary)
+                    .rounded_lg()
+                    .border_1()
+                    .border_color(theme.border_default)
+                    .shadow_lg()
+                    .p_4()
+                    .gap_4()
+                    .flex()
+                    .flex_col()
+                    .on_mouse_down(MouseButton::Left, |_, _, _| {})
+                    // Header
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                svg()
+                                    .path("assets/icons/triangle-alert.svg")
+                                    .size(px(20.0))
+                                    .text_color(theme.warning),
+                            )
+                            .child(
+                                div()
+                                    .text_lg()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(theme.text_primary)
+                                    .child("File Conflict"),
+                            ),
+                    )
+                    // Message
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(theme.text_secondary)
+                            .child(format!(
+                                "\"{}\" already exists in \"{}\"",
+                                file_name, dest_folder
+                            )),
+                    )
+                    // File comparison
+                    .child(
+                        div()
+                            .flex()
+                            .gap_4()
+                            .child(
+                                // Source file info
+                                div()
+                                    .flex_1()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_1()
+                                    .p_3()
+                                    .bg(theme.bg_primary)
+                                    .rounded_md()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_muted)
+                                            .child("Source"),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_secondary)
+                                            .child(format!("Size: {}", source_size)),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_secondary)
+                                            .child(format!("Modified: {}", source_modified)),
+                                    ),
+                            )
+                            .child(
+                                // Destination file info
+                                div()
+                                    .flex_1()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_1()
+                                    .p_3()
+                                    .bg(theme.bg_primary)
+                                    .rounded_md()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_muted)
+                                            .child("Existing"),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_secondary)
+                                            .child(format!("Size: {}", dest_size)),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_secondary)
+                                            .child(format!("Modified: {}", dest_modified)),
+                                    ),
+                            ),
+                    )
+                    // Apply to all checkbox (only show if there are remaining conflicts)
+                    .when(remaining > 0, |this| {
+                        this.child(
+                            div()
+                                .id("apply-to-all-checkbox")
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .cursor_pointer()
+                                .child(
+                                    div()
+                                        .w(px(16.0))
+                                        .h(px(16.0))
+                                        .rounded_sm()
+                                        .border_1()
+                                        .border_color(theme.border_default)
+                                        .bg(theme.bg_primary)
+                                        .flex()
+                                        .items_center()
+                                        .justify_center(),
+                                )
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .text_color(theme.text_secondary)
+                                        .child(format!(
+                                            "Apply to all {} remaining conflicts",
+                                            remaining
+                                        )),
+                                ),
+                        )
+                    })
+                    // Buttons
+                    .child(
+                        div()
+                            .flex()
+                            .justify_end()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .id("skip-button")
+                                    .px_4()
+                                    .py_2()
+                                    .bg(theme.bg_tertiary)
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .hover(|s| s.bg(theme.bg_hover))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, cx| {
+                                        this.resolve_conflict(ConflictResolution::Skip, false, cx);
+                                    }))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_primary)
+                                            .child("Skip"),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .id("keep-both-button")
+                                    .px_4()
+                                    .py_2()
+                                    .bg(theme.bg_tertiary)
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .hover(|s| s.bg(theme.bg_hover))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, cx| {
+                                        this.resolve_conflict(ConflictResolution::KeepBoth, false, cx);
+                                    }))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_primary)
+                                            .child("Keep Both"),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .id("replace-button")
+                                    .px_4()
+                                    .py_2()
+                                    .bg(theme.accent_primary)
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .hover(|s| s.bg(theme.accent_secondary))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, cx| {
+                                        this.resolve_conflict(ConflictResolution::Replace, false, cx);
+                                    }))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_inverse)
+                                            .child("Replace"),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .id("cancel-button")
+                                    .px_4()
+                                    .py_2()
+                                    .bg(theme.error)
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .hover(|s| s.opacity(0.9))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, cx| {
+                                        this.cancel_conflict_dialog(cx);
+                                    }))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(theme.text_inverse)
+                                            .child("Cancel"),
+                                    ),
+                            ),
+                    ),
+            )
+    }
+
+    fn format_time(&self, time: Option<std::time::SystemTime>) -> String {
+        match time {
+            Some(t) => {
+                if let Ok(duration) = t.duration_since(std::time::UNIX_EPOCH) {
+                    let secs = duration.as_secs() as i64;
+                    let datetime = chrono::DateTime::from_timestamp(secs, 0);
+                    datetime
+                        .map(|dt| dt.format("%Y-%m-%d %H:%M").to_string())
+                        .unwrap_or_else(|| "Unknown".to_string())
+                } else {
+                    "Unknown".to_string()
+                }
+            }
+            None => "Unknown".to_string(),
+        }
+    }
+}

@@ -106,7 +106,7 @@ impl ConflictDialog {
     }
 
     fn format_size(&self, bytes: u64) -> String {
-        crate::utils::format::format_size(bytes)
+        crate::utils::format_size(bytes)
     }
 
     fn format_time(&self, time: Option<std::time::SystemTime>) -> String {
@@ -242,11 +242,12 @@ impl Render for ConflictDialog {
             .child(
                 // Apply to all checkbox
                 div()
+                    .id("apply-to-all-checkbox")
                     .flex()
                     .items_center()
                     .gap_2()
                     .cursor_pointer()
-                    .on_click(cx.listener(|this, _, _window, _cx| {
+                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, _cx| {
                         this.apply_to_all = !this.apply_to_all;
                     }))
                     .child(
@@ -264,13 +265,13 @@ impl Render for ConflictDialog {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .when(apply_to_all, |el| {
-                                el.child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(rgb(0xffffff))
-                                        .child("✓"),
-                                )
+                            .child(if apply_to_all {
+                                div()
+                                    .text_xs()
+                                    .text_color(rgb(0xffffff))
+                                    .child("✓")
+                            } else {
+                                div()
                             }),
                     )
                     .child(
@@ -291,13 +292,14 @@ impl Render for ConflictDialog {
                     .gap_2()
                     .child(
                         div()
+                            .id("skip-button")
                             .px_4()
                             .py_2()
                             .bg(rgb(0x3c3c3c))
                             .rounded_md()
                             .cursor_pointer()
                             .hover(|s| s.bg(rgb(0x4c4c4c)))
-                            .on_click(cx.listener(|this, _, _window, _cx| {
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, _cx| {
                                 this.resolve(ConflictResolution::Skip);
                             }))
                             .child(
@@ -309,13 +311,14 @@ impl Render for ConflictDialog {
                     )
                     .child(
                         div()
+                            .id("keep-both-button")
                             .px_4()
                             .py_2()
                             .bg(rgb(0x3c3c3c))
                             .rounded_md()
                             .cursor_pointer()
                             .hover(|s| s.bg(rgb(0x4c4c4c)))
-                            .on_click(cx.listener(|this, _, _window, _cx| {
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, _cx| {
                                 this.resolve(ConflictResolution::KeepBoth);
                             }))
                             .child(
@@ -327,13 +330,14 @@ impl Render for ConflictDialog {
                     )
                     .child(
                         div()
+                            .id("replace-button")
                             .px_4()
                             .py_2()
                             .bg(rgb(0x0078d4))
                             .rounded_md()
                             .cursor_pointer()
                             .hover(|s| s.bg(rgb(0x1084d8)))
-                            .on_click(cx.listener(|this, _, _window, _cx| {
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, _cx| {
                                 this.resolve(ConflictResolution::Replace);
                             }))
                             .child(
@@ -345,13 +349,14 @@ impl Render for ConflictDialog {
                     )
                     .child(
                         div()
+                            .id("cancel-button")
                             .px_4()
                             .py_2()
                             .bg(rgb(0x5a1d1d))
                             .rounded_md()
                             .cursor_pointer()
                             .hover(|s| s.bg(rgb(0x6a2d2d)))
-                            .on_click(cx.listener(|this, _, _window, _cx| {
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _window, _cx| {
                                 this.cancel();
                             }))
                             .child(

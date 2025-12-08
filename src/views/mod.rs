@@ -1,4 +1,5 @@
 mod column_view;
+mod conflict_dialog;
 mod dual_pane;
 mod file_list;
 mod format_dialog;
@@ -60,5 +61,6 @@ pub use tag_ui::{
 pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};
 pub use toast::{Toast, ToastManager, ToastVariant};
+pub use conflict_dialog::{ConflictDialog, ConflictDialogAction, ConflictInfo};
 pub use format_dialog::{FormatDialog, FormatDialogAction};
 pub use permissions_dialog::{PermissionsDialog, PermissionsDialogAction, PermissionsDialogView};
