@@ -313,6 +313,7 @@ jobs:
             libssl-dev \
             libvulkan-dev \
             librsvg2-bin \
+            libudev-dev \
             pkg-config
 
       - name: Install Rust toolchain
