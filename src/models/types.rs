@@ -81,6 +81,9 @@ pub struct FileEntry {
     /// Whether the symlink target is broken (doesn't exist)
     #[serde(default)]
     pub is_broken_symlink: bool,
+    /// Whether this folder is shared on the network
+    #[serde(default)]
+    pub is_shared: bool,
 }
 
 /// Linux file permissions for WSL integration
@@ -254,6 +257,7 @@ impl FileEntry {
             is_symlink: false,
             symlink_target: None,
             is_broken_symlink: false,
+            is_shared: false,
         }
     }
 
@@ -298,6 +302,17 @@ impl FileEntry {
         self.sync_status = status;
     }
 
+    /// Set whether this folder is shared on the network
+    pub fn set_shared(&mut self, shared: bool) {
+        self.is_shared = shared;
+    }
+
+    /// Create a FileEntry with shared status
+    pub fn with_shared(mut self, shared: bool) -> Self {
+        self.is_shared = shared;
+        self
+    }
+
     /// Create a FileEntry from a path, detecting symlinks automatically
     pub fn from_path(path: &std::path::Path) -> Option<Self> {
         let symlink_metadata = std::fs::symlink_metadata(path).ok()?;
@@ -336,6 +351,11 @@ impl FileEntry {
             let modified = symlink_metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
             Some(Self::new(name, path.to_path_buf(), is_dir, size, modified))
         }
+    }
+
+    /// Get the icon name for the share indicator overlay
+    pub fn share_icon_name() -> &'static str {
+        "share-2"
     }
 }
 

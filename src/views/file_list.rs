@@ -531,6 +531,7 @@ impl Render for FileListView {
                                         let sync_status = entry.sync_status;
                                         let is_symlink = entry.is_symlink;
                                         let is_broken_symlink = entry.is_broken_symlink;
+                                        let is_shared = entry.is_shared;
                                         let entry_path = entry.path.clone();
                                         let entity = entity.clone();
                                         let entity_for_ctx = entity.clone();
@@ -637,6 +638,23 @@ impl Render for FileListView {
                                                                                                 .path(SharedString::from(format!("assets/icons/{}.svg", overlay_icon)))
                                                                                                 .size(px(10.0))
                                                                                                 .text_color(overlay_color)
+                                                                                        )
+                                                                                )
+                                                                            })
+                                                                            // Share overlay icon (top-right corner for shared folders)
+                                                                            .when(is_shared && is_dir, |s| {
+                                                                                s.child(
+                                                                                    div()
+                                                                                        .absolute()
+                                                                                        .top_0()
+                                                                                        .right_0()
+                                                                                        .bg(gpui::rgb(0x0d1117))
+                                                                                        .rounded_sm()
+                                                                                        .child(
+                                                                                            svg()
+                                                                                                .path("assets/icons/share-2.svg")
+                                                                                                .size(px(10.0))
+                                                                                                .text_color(gpui::rgb(0x3fb950)) // Green for shared
                                                                                         )
                                                                                 )
                                                                             }),

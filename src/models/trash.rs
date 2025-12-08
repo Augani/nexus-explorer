@@ -583,6 +583,7 @@ fn list_trash_linux() -> Vec<FileEntry> {
                 is_symlink: false,
                 symlink_target: None,
                 is_broken_symlink: false,
+                is_shared: false,
             });
         }
     }
@@ -645,6 +646,7 @@ fn list_trash_windows() -> Vec<FileEntry> {
                 is_symlink: false,
                 symlink_target: None,
                 is_broken_symlink: false,
+                is_shared: false,
             });
         }
     }
@@ -696,6 +698,7 @@ fn create_entry_from_path(path: &PathBuf) -> Option<FileEntry> {
         is_symlink: false,
         symlink_target: None,
         is_broken_symlink: false,
+        is_shared: false,
     })
 }
 

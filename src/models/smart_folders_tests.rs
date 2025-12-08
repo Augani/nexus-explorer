@@ -31,6 +31,7 @@ fn create_test_entry(name: &str, is_dir: bool, size: u64) -> FileEntry {
         is_symlink: false,
         symlink_target: None,
         is_broken_symlink: false,
+        is_shared: false,
     }
 }
 
@@ -51,6 +52,7 @@ fn create_entry_with_extension(name: &str, ext: &str, size: u64) -> FileEntry {
         is_symlink: false,
         symlink_target: None,
         is_broken_symlink: false,
+        is_shared: false,
     }
 }
 

@@ -250,6 +250,7 @@ impl Render for GridViewComponent {
                             entries.iter().enumerate().map(|(ix, entry)| {
                                 let is_selected = selected_index == Some(ix);
                                 let is_dir = entry.is_dir;
+                                let is_shared = entry.is_shared;
                                 let name = entry.name.clone();
                                 let icon_name = get_file_icon(&name, is_dir);
                                 let icon_color = if is_dir {
@@ -307,13 +308,35 @@ impl Render for GridViewComponent {
                                         }
                                     })
                                     .child(
-                                        svg()
-                                            .path(SharedString::from(format!(
-                                                "assets/icons/{}.svg",
-                                                icon_name
-                                            )))
-                                            .size(px(config.icon_size))
-                                            .text_color(icon_color),
+                                        // Icon container with share overlay
+                                        div()
+                                            .relative()
+                                            .child(
+                                                svg()
+                                                    .path(SharedString::from(format!(
+                                                        "assets/icons/{}.svg",
+                                                        icon_name
+                                                    )))
+                                                    .size(px(config.icon_size))
+                                                    .text_color(icon_color),
+                                            )
+                                            // Share overlay icon (top-right corner for shared folders)
+                                            .when(is_shared && is_dir, |s| {
+                                                s.child(
+                                                    div()
+                                                        .absolute()
+                                                        .top_0()
+                                                        .right_0()
+                                                        .bg(gpui::rgb(0x0d1117))
+                                                        .rounded_sm()
+                                                        .child(
+                                                            svg()
+                                                                .path("assets/icons/share-2.svg")
+                                                                .size(px(12.0))
+                                                                .text_color(gpui::rgb(0x3fb950))
+                                                        )
+                                                )
+                                            }),
                                     )
                                     .child(
                                         div()

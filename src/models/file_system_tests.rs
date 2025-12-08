@@ -40,6 +40,7 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
             is_symlink: false,
             symlink_target: None,
             is_broken_symlink: false,
+            is_shared: false,
         })
 }
 

@@ -12,7 +12,7 @@ use gpui::{
 use crate::io::{SortKey, SortOrder};
 use crate::models::{
     current_theme, theme_colors, DeviceId, FileSystem, GlobalSettings, GridConfig, IconCache,
-    PlatformAdapter, SearchEngine, ThemeId, ViewMode, WindowManager,
+    PlatformAdapter, SearchEngine, ShareManager, ThemeId, ViewMode, WindowManager,
 };
 use crate::views::{
     create_symbolic_link, ContextMenuAction, FileList, FileListView, GridView, GridViewComponent,
@@ -111,6 +111,7 @@ pub struct Workspace {
     pending_conflicts: Vec<(PathBuf, PathBuf)>,
     conflict_apply_to_all: Option<ConflictResolution>,
     symlink_dialog: Option<Entity<SymlinkDialog>>,
+    share_manager: ShareManager,
 }
 
 impl Workspace {
@@ -209,7 +210,19 @@ impl Workspace {
             let _ = op.traversal_handle.join();
             file_system.finalize_load(request_id, start.elapsed());
 
-            let cached_entries = file_system.entries().to_vec();
+            // Initialize share manager early to update initial entries
+            let mut share_manager = ShareManager::new();
+            let _ = share_manager.refresh_shares();
+
+            let mut cached_entries = file_system.entries().to_vec();
+            
+            // Update share status on initial directory entries
+            for entry in cached_entries.iter_mut() {
+                if entry.is_dir {
+                    entry.is_shared = share_manager.is_shared(&entry.path);
+                }
+            }
+            
             let mut file_list_inner = FileList::new();
             file_list_inner.set_entries(cached_entries.clone());
             file_list_inner.set_viewport_height(600.0);
@@ -480,6 +493,7 @@ impl Workspace {
                 pending_conflicts: Vec::new(),
                 conflict_apply_to_all: None,
                 symlink_dialog: None,
+                share_manager,
             }
         })
     }
@@ -1607,6 +1621,7 @@ impl Workspace {
                             is_symlink: false,
                             symlink_target: None,
                             is_broken_symlink: false,
+                            is_shared: false,
                         });
                     }
                 }
@@ -2036,7 +2051,11 @@ impl Workspace {
             fs.finalize_load(request_id, start.elapsed());
         });
 
-        let entries = self.file_system.read(cx).entries().to_vec();
+        let mut entries = self.file_system.read(cx).entries().to_vec();
+        
+        // Update share status on directory entries
+        self.update_share_status_on_entries(&mut entries);
+        
         self.cached_entries = entries.clone();
         self.current_path = path.clone();
 
@@ -2093,7 +2112,11 @@ impl Workspace {
             fs.update_sync_status(&cloud_manager);
         });
 
-        let entries = self.file_system.read(cx).entries().to_vec();
+        let mut entries = self.file_system.read(cx).entries().to_vec();
+        
+        // Update share status on directory entries
+        self.update_share_status_on_entries(&mut entries);
+        
         self.cached_entries = entries.clone();
 
         self.search_input.update(cx, |view, cx| {
@@ -2170,7 +2193,11 @@ impl Workspace {
                     fs.finalize_load(request_id, start.elapsed());
                 });
 
-                let entries = self.file_system.read(cx).entries().to_vec();
+                let mut entries = self.file_system.read(cx).entries().to_vec();
+                
+                // Update share status on directory entries
+                self.update_share_status_on_entries(&mut entries);
+                
                 self.cached_entries = entries.clone();
 
                 self.search_input.update(cx, |view, cx| {
@@ -2221,6 +2248,15 @@ impl Workspace {
     pub fn navigate_up(&mut self, cx: &mut Context<Self>) {
         if let Some(parent) = self.current_path.parent() {
             self.navigate_to(parent.to_path_buf(), cx);
+        }
+    }
+
+    /// Update the is_shared status on file entries based on the ShareManager
+    fn update_share_status_on_entries(&mut self, entries: &mut Vec<crate::models::FileEntry>) {
+        for entry in entries.iter_mut() {
+            if entry.is_dir {
+                entry.is_shared = self.share_manager.is_shared(&entry.path);
+            }
         }
     }
 

@@ -56,6 +56,7 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
                 is_symlink,
                 symlink_target,
                 is_broken_symlink,
+                is_shared: false,
             },
         )
 }
