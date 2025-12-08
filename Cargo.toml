@@ -42,10 +42,15 @@ chrono = "0.4"
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = ["Win32_Storage_FileSystem", "Win32_Foundation"] }
+windows-sys = { version = "0.52", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_Ioctl", "Win32_System_IO", "Win32_Security"] }
+wmi = "0.14"
 
 [target.'cfg(unix)'.dependencies]
 xattr = "1.3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

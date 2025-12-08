@@ -132,6 +132,56 @@ pub enum DeviceEvent {
     WslStopped(String),
 }
 
+/// Health status indicator for SMART data
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HealthStatus {
+    Good,
+    Warning,
+    Critical,
+    Unknown,
+}
+
+impl Default for HealthStatus {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+/// Individual SMART attribute
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SmartAttribute {
+    pub id: u8,
+    pub name: String,
+    pub value: u64,
+    pub worst: u64,
+    pub threshold: u64,
+    pub raw_value: String,
+}
+
+/// SMART health data for a storage device
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SmartData {
+    pub health_status: HealthStatus,
+    pub temperature_celsius: Option<u8>,
+    pub power_on_hours: Option<u64>,
+    pub reallocated_sectors: Option<u64>,
+    pub pending_sectors: Option<u64>,
+    pub attributes: Vec<SmartAttribute>,
+}
+
+impl Default for SmartData {
+    fn default() -> Self {
+        Self {
+            health_status: HealthStatus::Unknown,
+            temperature_celsius: None,
+            power_on_hours: None,
+            reallocated_sectors: None,
+            pending_sectors: None,
+            attributes: Vec::new(),
+        }
+    }
+}
+
 /// Errors that can occur during device operations
 #[derive(Debug, Error)]
 pub enum DeviceError {

@@ -220,6 +220,196 @@ fn test_device_read_only_flag() {
     assert!(device.is_read_only);
 }
 
+// macOS-specific tests
+#[cfg(target_os = "macos")]
+mod macos_tests {
+    use super::*;
+    use crate::models::device_monitor_macos::*;
+
+    #[test]
+    fn test_macos_disk_monitor_creation() {
+        let monitor = MacOSDiskMonitor::new();
+        assert!(!monitor.is_monitoring());
+    }
+
+    #[test]
+    fn test_macos_enumerate_volumes() {
+        let monitor = MacOSDiskMonitor::new();
+        let volumes = monitor.enumerate_volumes();
+        
+        // Should have at least the root volume
+        assert!(!volumes.is_empty(), "Should detect at least one volume");
+        
+        // Root volume should be present
+        let has_root = volumes.iter().any(|v| {
+            v.volume_path.as_ref().map(|p| p.as_path() == std::path::Path::new("/")).unwrap_or(false)
+        });
+        assert!(has_root, "Root volume should be detected");
+    }
+
+    #[test]
+    fn test_macos_volume_has_valid_metadata() {
+        let monitor = MacOSDiskMonitor::new();
+        let volumes = monitor.enumerate_volumes();
+        
+        for volume in &volumes {
+            // Each volume should have a name
+            assert!(volume.volume_name.is_some() || volume.volume_path.is_some(),
+                "Volume should have either a name or path");
+            
+            // Volume path should exist if set
+            if let Some(ref path) = volume.volume_path {
+                assert!(path.exists() || path.to_string_lossy().starts_with("/"),
+                    "Volume path should exist: {:?}", path);
+            }
+        }
+    }
+
+    #[test]
+    fn test_macos_root_volume_properties() {
+        let monitor = MacOSDiskMonitor::new();
+        let volumes = monitor.enumerate_volumes();
+        
+        let root = volumes.iter().find(|v| {
+            v.volume_path.as_ref().map(|p| p.as_path() == std::path::Path::new("/")).unwrap_or(false)
+        });
+        
+        assert!(root.is_some(), "Root volume should be found");
+        let root = root.unwrap();
+        
+        // Root should be internal and not removable
+        assert!(root.is_internal, "Root volume should be internal");
+        assert!(!root.is_removable, "Root volume should not be removable");
+        assert!(!root.is_ejectable, "Root volume should not be ejectable");
+    }
+
+    #[test]
+    fn test_macos_disk_info_device_type_internal() {
+        let info = DiskInfo {
+            is_internal: true,
+            is_removable: false,
+            is_ejectable: false,
+            is_network: false,
+            ..Default::default()
+        };
+        
+        assert_eq!(info.device_type(), DeviceType::InternalDrive);
+    }
+
+    #[test]
+    fn test_macos_disk_info_device_type_network() {
+        let info = DiskInfo {
+            is_network: true,
+            ..Default::default()
+        };
+        
+        assert_eq!(info.device_type(), DeviceType::NetworkDrive);
+    }
+
+    #[test]
+    fn test_macos_disk_info_device_type_usb() {
+        let info = DiskInfo {
+            bus_name: Some("USB".to_string()),
+            is_removable: true,
+            ..Default::default()
+        };
+        
+        assert_eq!(info.device_type(), DeviceType::UsbDrive);
+    }
+
+    #[test]
+    fn test_macos_disk_info_device_type_external() {
+        let info = DiskInfo {
+            is_removable: true,
+            is_ejectable: true,
+            is_internal: false,
+            ..Default::default()
+        };
+        
+        assert_eq!(info.device_type(), DeviceType::ExternalDrive);
+    }
+
+    #[test]
+    fn test_macos_disk_info_device_type_optical() {
+        let info = DiskInfo {
+            media_name: Some("DVD Drive".to_string()),
+            ..Default::default()
+        };
+        
+        assert_eq!(info.device_type(), DeviceType::OpticalDrive);
+    }
+
+    #[test]
+    fn test_macos_disk_info_default() {
+        let info = DiskInfo::default();
+        
+        assert!(info.bsd_name.is_empty());
+        assert!(info.volume_name.is_none());
+        assert!(info.volume_path.is_none());
+        assert_eq!(info.media_size, 0);
+        assert!(!info.is_removable);
+        assert!(!info.is_ejectable);
+        assert!(info.is_internal);
+        assert!(!info.is_network);
+    }
+
+    #[test]
+    fn test_macos_is_disk_image_false_for_regular_path() {
+        let path = PathBuf::from("/Volumes/TestDrive");
+        assert!(!is_disk_image(&path));
+    }
+
+    #[test]
+    fn test_macos_device_monitor_enumerate() {
+        let mut monitor = DeviceMonitor::new();
+        monitor.enumerate_macos_devices();
+        
+        // Should have at least one device (root)
+        assert!(!monitor.devices().is_empty(), "Should detect at least one device");
+        
+        // All devices should have valid paths
+        for device in monitor.devices() {
+            assert!(!device.name.is_empty(), "Device name should not be empty");
+            assert!(device.path.exists() || device.path.to_string_lossy().starts_with("/"),
+                "Device path should exist: {:?}", device.path);
+        }
+    }
+
+    #[test]
+    fn test_macos_volumes_path_exists() {
+        let volumes_path = PathBuf::from("/Volumes");
+        assert!(volumes_path.exists(), "/Volumes directory should exist on macOS");
+    }
+
+    #[test]
+    fn test_macos_platform_adapter_enumerate() {
+        use crate::models::platform_adapter::{get_platform_adapter, PlatformAdapter};
+        
+        let adapter = get_platform_adapter();
+        let devices = adapter.enumerate_devices();
+        
+        // Should have at least one device
+        assert!(!devices.is_empty(), "Should detect at least one device");
+        
+        // Root volume should be present
+        let has_root = devices.iter().any(|d| d.path == PathBuf::from("/"));
+        assert!(has_root, "Root volume should be detected");
+    }
+
+    #[test]
+    fn test_macos_platform_adapter_available_filesystems() {
+        use crate::models::platform_adapter::{get_platform_adapter, PlatformAdapter, FileSystemType};
+        
+        let adapter = get_platform_adapter();
+        let filesystems = adapter.available_filesystems();
+        
+        // Should include APFS and HFS+
+        assert!(filesystems.contains(&FileSystemType::Apfs), "APFS should be available");
+        assert!(filesystems.contains(&FileSystemType::HfsPlus), "HFS+ should be available");
+        assert!(filesystems.contains(&FileSystemType::ExFat), "exFAT should be available");
+    }
+}
+
 // Property-based tests using proptest
 #[cfg(test)]
 mod property_tests {

@@ -12,6 +12,7 @@ mod file_system;
 mod icon_cache;
 mod network_storage;
 pub mod open_with;
+mod platform_adapter;
 mod pty_service;
 mod search_engine;
 mod settings;
@@ -29,9 +30,13 @@ mod wsl;
 #[cfg(target_os = "linux")]
 mod device_monitor_linux;
 #[cfg(target_os = "macos")]
-mod device_monitor_macos;
+pub mod device_monitor_macos;
 #[cfg(target_os = "windows")]
 mod device_monitor_windows;
+#[cfg(target_os = "windows")]
+mod windows_wmi;
+#[cfg(target_os = "windows")]
+mod windows_device_notifications;
 
 #[cfg(test)]
 mod ansi_parser_tests;
@@ -47,6 +52,9 @@ mod smart_folders_tests;
 mod terminal_tests;
 #[cfg(test)]
 mod wsl_tests;
+#[cfg(test)]
+#[cfg(target_os = "windows")]
+mod windows_device_tests;
 
 pub use ansi_parser::*;
 pub use batch_rename::*;
@@ -62,6 +70,7 @@ pub use file_system::*;
 pub use icon_cache::*;
 pub use network_storage::*;
 pub use open_with::*;
+pub use platform_adapter::*;
 pub use pty_service::*;
 pub use search_engine::*;
 pub use settings::*;
