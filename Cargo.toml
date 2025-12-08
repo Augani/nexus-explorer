@@ -1,6 +1,6 @@
 [package]
 name = "nexus-explorer"
-version = "0.1.0"
+version = "0.2.0-beta"
 edition = "2021"
 description = "A blazing-fast, GPU-accelerated file explorer built with Rust and GPUI"
 license = "MIT"
