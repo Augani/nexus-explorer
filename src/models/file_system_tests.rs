@@ -37,6 +37,9 @@ fn arb_file_entry() -> impl Strategy<Value = FileEntry> {
             },
             linux_permissions: None,
             sync_status: CloudSyncStatus::None,
+            is_symlink: false,
+            symlink_target: None,
+            is_broken_symlink: false,
         })
 }
 

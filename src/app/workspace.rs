@@ -15,10 +15,10 @@ use crate::models::{
     PlatformAdapter, SearchEngine, ThemeId, ViewMode, WindowManager,
 };
 use crate::views::{
-    ContextMenuAction, FileList, FileListView, GridView, GridViewComponent, PreviewView,
-    QuickLookView, SearchInputView, SidebarView, SmartFolderDialog, SmartFolderDialogAction,
-    StatusBarAction, StatusBarView, TerminalView, ThemePickerView, ToastManager, ToolAction,
-    ConflictDialog, ConflictInfo,
+    create_symbolic_link, ContextMenuAction, FileList, FileListView, GridView, GridViewComponent,
+    PreviewView, QuickLookView, SearchInputView, SidebarView, SmartFolderDialog,
+    SmartFolderDialogAction, StatusBarAction, StatusBarView, SymlinkDialog, SymlinkDialogAction,
+    TerminalView, ThemePickerView, ToastManager, ToolAction, ConflictDialog, ConflictInfo,
 };
 use crate::models::ConflictResolution;
 use adabraka_ui::components::input::{Input, InputEvent, InputState};
@@ -110,6 +110,7 @@ pub struct Workspace {
     conflict_dialog: Option<Entity<ConflictDialog>>,
     pending_conflicts: Vec<(PathBuf, PathBuf)>,
     conflict_apply_to_all: Option<ConflictResolution>,
+    symlink_dialog: Option<Entity<SymlinkDialog>>,
 }
 
 impl Workspace {
@@ -478,6 +479,7 @@ impl Workspace {
                 conflict_dialog: None,
                 pending_conflicts: Vec::new(),
                 conflict_apply_to_all: None,
+                symlink_dialog: None,
             }
         })
     }
@@ -1128,6 +1130,12 @@ impl Workspace {
                 })
                 .detach();
             }
+            ContextMenuAction::CreateSymlink(target_path) => {
+                self.show_symlink_dialog(target_path, cx);
+            }
+            ContextMenuAction::ShowSymlinkTarget(path) => {
+                self.show_symlink_target(path, cx);
+            }
         }
     }
 
@@ -1204,6 +1212,89 @@ impl Workspace {
         self.dialog_state = DialogState::None;
         self.dialog_input = None;
         cx.notify();
+    }
+
+    fn show_symlink_dialog(&mut self, target_path: PathBuf, cx: &mut Context<Self>) {
+        let default_location = self.current_path.clone();
+        let symlink_dialog = cx.new(|cx| SymlinkDialog::new(target_path, default_location, cx));
+
+        cx.observe(&symlink_dialog, |workspace: &mut Workspace, dialog, cx| {
+            let action = dialog.update(cx, |view, _| view.take_pending_action());
+            if let Some(action) = action {
+                workspace.handle_symlink_dialog_action(action, cx);
+            }
+        })
+        .detach();
+
+        self.symlink_dialog = Some(symlink_dialog);
+        cx.notify();
+    }
+
+    fn handle_symlink_dialog_action(&mut self, action: SymlinkDialogAction, cx: &mut Context<Self>) {
+        match action {
+            SymlinkDialogAction::Create { target, link_path } => {
+                let link_name = link_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("link")
+                    .to_string();
+
+                match create_symbolic_link(&target, &link_path) {
+                    Ok(()) => {
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_success(format!("Created symlink: {}", link_name), cx);
+                        });
+                        self.refresh_current_directory(cx);
+                    }
+                    Err(e) => {
+                        let error_msg = if e.kind() == std::io::ErrorKind::PermissionDenied {
+                            #[cfg(windows)]
+                            {
+                                "Permission denied. Creating symlinks on Windows requires administrator privileges or Developer Mode enabled.".to_string()
+                            }
+                            #[cfg(not(windows))]
+                            {
+                                format!("Permission denied: {}", e)
+                            }
+                        } else {
+                            format!("Failed to create symlink: {}", e)
+                        };
+                        self.toast_manager.update(cx, |toast, cx| {
+                            toast.show_error(error_msg, cx);
+                        });
+                    }
+                }
+            }
+            SymlinkDialogAction::Cancel => {}
+        }
+        self.symlink_dialog = None;
+        cx.notify();
+    }
+
+    fn show_symlink_target(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        match std::fs::read_link(&path) {
+            Ok(target) => {
+                let target_str = target.to_string_lossy().to_string();
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info(format!("Symlink target: {}", target_str), cx);
+                });
+
+                // If the target exists and is a directory, offer to navigate there
+                if target.exists() && target.is_dir() {
+                    self.navigate_to(target, cx);
+                } else if target.exists() {
+                    // For files, navigate to the parent directory
+                    if let Some(parent) = target.parent() {
+                        self.navigate_to(parent.to_path_buf(), cx);
+                    }
+                }
+            }
+            Err(e) => {
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_error(format!("Failed to read symlink target: {}", e), cx);
+                });
+            }
+        }
     }
 
     fn refresh_current_directory(&mut self, cx: &mut Context<Self>) {
@@ -1379,6 +1470,9 @@ impl Workspace {
                             icon_key,
                             linux_permissions: None,
                             sync_status: crate::models::CloudSyncStatus::None,
+                            is_symlink: false,
+                            symlink_target: None,
+                            is_broken_symlink: false,
                         });
                     }
                 }
@@ -2442,6 +2536,9 @@ impl Render for Workspace {
             })
             .when(self.conflict_dialog.is_some(), |this| {
                 this.child(self.render_conflict_dialog_overlay(cx))
+            })
+            .when(self.symlink_dialog.is_some(), |this| {
+                this.child(self.render_symlink_dialog_overlay(cx))
             })
             .child(self.theme_picker.clone())
             .child(self.quick_look.clone())
@@ -3566,6 +3663,34 @@ impl Workspace {
                             ),
                     ),
             )
+    }
+
+    fn render_symlink_dialog_overlay(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let overlay_bg = gpui::rgba(0x00000099);
+
+        div()
+            .id("symlink-dialog-overlay")
+            .absolute()
+            .inset_0()
+            .bg(overlay_bg)
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, _window, cx| {
+                    view.symlink_dialog = None;
+                    cx.notify();
+                }),
+            )
+            .when_some(self.symlink_dialog.clone(), |this, dialog| {
+                this.child(
+                    div()
+                        .id("symlink-dialog-content")
+                        .occlude()
+                        .child(dialog),
+                )
+            })
     }
 
     fn format_time(&self, time: Option<std::time::SystemTime>) -> String {

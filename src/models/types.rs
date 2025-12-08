@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 use thiserror::Error;
 
@@ -72,6 +72,15 @@ pub struct FileEntry {
     /// Cloud sync status (for files in cloud storage locations)
     #[serde(default)]
     pub sync_status: CloudSyncStatus,
+    /// Whether this entry is a symbolic link
+    #[serde(default)]
+    pub is_symlink: bool,
+    /// Target path for symbolic links
+    #[serde(default)]
+    pub symlink_target: Option<PathBuf>,
+    /// Whether the symlink target is broken (doesn't exist)
+    #[serde(default)]
+    pub is_broken_symlink: bool,
 }
 
 /// Linux file permissions for WSL integration
@@ -242,7 +251,34 @@ impl FileEntry {
             icon_key,
             linux_permissions: None,
             sync_status: CloudSyncStatus::None,
+            is_symlink: false,
+            symlink_target: None,
+            is_broken_symlink: false,
         }
+    }
+
+    /// Create a FileEntry with symlink information
+    pub fn with_symlink_info(mut self, target: PathBuf, is_broken: bool) -> Self {
+        self.is_symlink = true;
+        self.symlink_target = Some(target);
+        self.is_broken_symlink = is_broken;
+        self.file_type = FileType::Symlink;
+        self
+    }
+
+    /// Check if this entry is a symbolic link
+    pub fn is_symlink(&self) -> bool {
+        self.is_symlink
+    }
+
+    /// Get the symlink target path if this is a symbolic link
+    pub fn symlink_target(&self) -> Option<&Path> {
+        self.symlink_target.as_deref()
+    }
+
+    /// Check if this is a broken symbolic link (target doesn't exist)
+    pub fn is_broken_symlink(&self) -> bool {
+        self.is_broken_symlink
     }
 
     /// Create a FileEntry with Linux permissions (for WSL paths)
@@ -260,6 +296,46 @@ impl FileEntry {
     /// Update the sync status
     pub fn set_sync_status(&mut self, status: CloudSyncStatus) {
         self.sync_status = status;
+    }
+
+    /// Create a FileEntry from a path, detecting symlinks automatically
+    pub fn from_path(path: &std::path::Path) -> Option<Self> {
+        let symlink_metadata = std::fs::symlink_metadata(path).ok()?;
+        let name = path.file_name()?.to_string_lossy().to_string();
+        let is_symlink = symlink_metadata.file_type().is_symlink();
+
+        if is_symlink {
+            let target = std::fs::read_link(path).ok();
+            let target_exists = std::fs::metadata(path).is_ok();
+            let is_broken = !target_exists;
+
+            // For symlinks, get metadata of target if it exists, otherwise use symlink metadata
+            let (is_dir, size, modified) = if target_exists {
+                let target_meta = std::fs::metadata(path).ok()?;
+                (
+                    target_meta.is_dir(),
+                    if target_meta.is_dir() { 0 } else { target_meta.len() },
+                    target_meta.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+                )
+            } else {
+                (false, 0, symlink_metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH))
+            };
+
+            let mut entry = Self::new(name, path.to_path_buf(), is_dir, size, modified);
+            if let Some(target_path) = target {
+                entry = entry.with_symlink_info(target_path, is_broken);
+            } else {
+                entry.is_symlink = true;
+                entry.is_broken_symlink = true;
+                entry.file_type = FileType::Symlink;
+            }
+            Some(entry)
+        } else {
+            let is_dir = symlink_metadata.is_dir();
+            let size = if is_dir { 0 } else { symlink_metadata.len() };
+            let modified = symlink_metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+            Some(Self::new(name, path.to_path_buf(), is_dir, size, modified))
+        }
     }
 }
 

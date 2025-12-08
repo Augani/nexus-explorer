@@ -48,6 +48,8 @@ pub enum ContextMenuAction {
     AddToFavorites(PathBuf),
     NewFolder,
     NewFile,
+    CreateSymlink(PathBuf),
+    ShowSymlinkTarget(PathBuf),
 }
 
 // Define actions for keyboard navigation
@@ -525,6 +527,8 @@ impl Render for FileListView {
                                             get_file_icon_color(&name)
                                         };
                                         let sync_status = entry.sync_status;
+                                        let is_symlink = entry.is_symlink;
+                                        let is_broken_symlink = entry.is_broken_symlink;
                                         let entry_path = entry.path.clone();
                                         let entity = entity.clone();
                                         let entity_for_ctx = entity.clone();
@@ -597,11 +601,43 @@ impl Render for FileListView {
                                                                     .items_center()
                                                                     .gap(px(ICON_GAP))
                                                                     .child(
-                                                                        svg()
-                                                                            .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
-                                                                            .size(px(ICON_SIZE))
-                                                                            .text_color(icon_color)
-                                                                            .flex_shrink_0(),
+                                                                        // Icon container with symlink overlay
+                                                                        div()
+                                                                            .relative()
+                                                                            .flex_shrink_0()
+                                                                            .child(
+                                                                                svg()
+                                                                                    .path(SharedString::from(format!("assets/icons/{}.svg", icon_name)))
+                                                                                    .size(px(ICON_SIZE))
+                                                                                    .text_color(icon_color),
+                                                                            )
+                                                                            // Symlink overlay icon (bottom-right corner)
+                                                                            .when(is_symlink, |s| {
+                                                                                let overlay_color = if is_broken_symlink {
+                                                                                    gpui::rgb(0xf85149) // Red for broken symlinks
+                                                                                } else {
+                                                                                    gpui::rgb(0x58a6ff) // Blue for valid symlinks
+                                                                                };
+                                                                                let overlay_icon = if is_broken_symlink {
+                                                                                    "link-2-off" // Broken link icon
+                                                                                } else {
+                                                                                    "link-2" // Link icon
+                                                                                };
+                                                                                s.child(
+                                                                                    div()
+                                                                                        .absolute()
+                                                                                        .bottom_0()
+                                                                                        .right_0()
+                                                                                        .bg(gpui::rgb(0x0d1117))
+                                                                                        .rounded_sm()
+                                                                                        .child(
+                                                                                            svg()
+                                                                                                .path(SharedString::from(format!("assets/icons/{}.svg", overlay_icon)))
+                                                                                                .size(px(10.0))
+                                                                                                .text_color(overlay_color)
+                                                                                        )
+                                                                                )
+                                                                            }),
                                                                     )
                                                                     .child(
                                                                         render_highlighted_name(
@@ -612,6 +648,21 @@ impl Render for FileListView {
                                                                             accent_primary,
                                                                         ),
                                                                     )
+                                                                    // Broken symlink warning indicator
+                                                                    .when(is_broken_symlink, |s| {
+                                                                        s.child(
+                                                                            div()
+                                                                                .ml_1()
+                                                                                .flex()
+                                                                                .items_center()
+                                                                                .child(
+                                                                                    svg()
+                                                                                        .path("assets/icons/triangle-alert.svg")
+                                                                                        .size(px(12.0))
+                                                                                        .text_color(gpui::rgb(0xf85149))
+                                                                                )
+                                                                        )
+                                                                    })
                                                                     // Cloud sync status indicator
                                                                     .when(sync_status.icon_name().is_some(), |s| {
                                                                         let icon = sync_status.icon_name().unwrap_or("check");
@@ -976,6 +1027,32 @@ impl Render for FileListView {
                                         }
                                     }
                                 }))
+                                .child(render_context_menu_item("link-2", "Create Symbolic Link", text_light, hover_bg, {
+                                    let entity = entity.clone();
+                                    let entry = selected_entry.clone();
+                                    move |_window, cx| {
+                                        if let Some(ref e) = entry {
+                                            entity.update(cx, |view, cx| {
+                                                view.pending_context_action = Some(ContextMenuAction::CreateSymlink(e.path.clone()));
+                                                view.close_context_menu();
+                                                cx.notify();
+                                            });
+                                        }
+                                    }
+                                }))
+                                .when_some(selected_entry.as_ref().filter(|e| e.is_symlink), |this, entry| {
+                                    let entity = entity.clone();
+                                    let entry_path = entry.path.clone();
+                                    this.child(render_context_menu_item("external-link", "Show Symlink Target", text_light, hover_bg, {
+                                        move |_window, cx| {
+                                            entity.update(cx, |view, cx| {
+                                                view.pending_context_action = Some(ContextMenuAction::ShowSymlinkTarget(entry_path.clone()));
+                                                view.close_context_menu();
+                                                cx.notify();
+                                            });
+                                        }
+                                    }))
+                                })
                                 .child(render_context_menu_divider(border_subtle))
                                 .child(render_context_menu_item("trash-2", "Move to Trash", gpui::rgb(0xf85149), hover_bg, {
                                     let entity = entity.clone();

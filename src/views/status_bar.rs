@@ -413,6 +413,9 @@ mod tests {
             },
             linux_permissions: None,
             sync_status: crate::models::CloudSyncStatus::None,
+            is_symlink: false,
+            symlink_target: None,
+            is_broken_symlink: false,
         }
     }
 

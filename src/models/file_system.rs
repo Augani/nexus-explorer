@@ -459,19 +459,7 @@ impl FileSystem {
     }
 
     fn create_entry_from_path(path: &Path) -> Option<FileEntry> {
-        let metadata = std::fs::metadata(path).ok()?;
-        let name = path.file_name()?.to_str()?.to_string();
-        let is_dir = metadata.is_dir();
-        let size = if is_dir { 0 } else { metadata.len() };
-        let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
-
-        Some(FileEntry::new(
-            name,
-            path.to_path_buf(),
-            is_dir,
-            size,
-            modified,
-        ))
+        FileEntry::from_path(path)
     }
 
     fn invalidate_cache_for_current(&mut self) {

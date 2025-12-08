@@ -121,17 +121,48 @@ fn num_cpus() -> usize {
         .unwrap_or(4)
 }
 
-/// Converts a jwalk DirEntry to our FileEntry type.
+/// Converts a jwalk DirEntry to our FileEntry type, detecting symlinks.
 fn dir_entry_to_file_entry(entry: &jwalk::DirEntry<((), ())>) -> Option<FileEntry> {
     let path = entry.path();
     let name = entry.file_name().to_string_lossy().to_string();
 
-    let metadata = entry.metadata().ok()?;
-    let is_dir = metadata.is_dir();
-    let size = if is_dir { 0 } else { metadata.len() };
-    let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+    // Use symlink_metadata to detect symlinks without following them
+    let symlink_metadata = std::fs::symlink_metadata(&path).ok()?;
+    let is_symlink = symlink_metadata.file_type().is_symlink();
 
-    Some(FileEntry::new(name, path, is_dir, size, modified))
+    if is_symlink {
+        let target = std::fs::read_link(&path).ok();
+        let target_exists = std::fs::metadata(&path).is_ok();
+        let is_broken = !target_exists;
+
+        // For symlinks, get metadata of target if it exists
+        let (is_dir, size, modified) = if target_exists {
+            let target_meta = std::fs::metadata(&path).ok()?;
+            (
+                target_meta.is_dir(),
+                if target_meta.is_dir() { 0 } else { target_meta.len() },
+                target_meta.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+            )
+        } else {
+            (false, 0, symlink_metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH))
+        };
+
+        let mut file_entry = FileEntry::new(name, path, is_dir, size, modified);
+        if let Some(target_path) = target {
+            file_entry = file_entry.with_symlink_info(target_path, is_broken);
+        } else {
+            file_entry.is_symlink = true;
+            file_entry.is_broken_symlink = true;
+            file_entry.file_type = crate::models::FileType::Symlink;
+        }
+        Some(file_entry)
+    } else {
+        let metadata = entry.metadata().ok()?;
+        let is_dir = metadata.is_dir();
+        let size = if is_dir { 0 } else { metadata.len() };
+        let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        Some(FileEntry::new(name, path, is_dir, size, modified))
+    }
 }
 
 /// Checks if a file name indicates a hidden file.

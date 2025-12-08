@@ -114,6 +114,9 @@ fn list_trash_linux() -> Vec<FileEntry> {
                 icon_key,
                 linux_permissions: None,
                 sync_status: CloudSyncStatus::None,
+                is_symlink: false,
+                symlink_target: None,
+                is_broken_symlink: false,
             });
         }
     }
@@ -173,6 +176,9 @@ fn list_trash_windows() -> Vec<FileEntry> {
                 icon_key,
                 linux_permissions: None,
                 sync_status: CloudSyncStatus::None,
+                is_symlink: false,
+                symlink_target: None,
+                is_broken_symlink: false,
             });
         }
     }
@@ -221,6 +227,9 @@ fn create_entry_from_path(path: &PathBuf) -> Option<FileEntry> {
         icon_key,
         linux_permissions: None,
         sync_status: CloudSyncStatus::None,
+        is_symlink: false,
+        symlink_target: None,
+        is_broken_symlink: false,
     })
 }
 

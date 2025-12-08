@@ -28,6 +28,9 @@ fn create_test_entry(name: &str, is_dir: bool, size: u64) -> FileEntry {
         icon_key,
         linux_permissions: None,
         sync_status: CloudSyncStatus::None,
+        is_symlink: false,
+        symlink_target: None,
+        is_broken_symlink: false,
     }
 }
 
@@ -45,6 +48,9 @@ fn create_entry_with_extension(name: &str, ext: &str, size: u64) -> FileEntry {
         icon_key,
         linux_permissions: None,
         sync_status: CloudSyncStatus::None,
+        is_symlink: false,
+        symlink_target: None,
+        is_broken_symlink: false,
     }
 }
 
