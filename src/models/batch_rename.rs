@@ -1,4 +1,5 @@
 use chrono::{DateTime, Local};
+use regex::Regex;
 use std::path::{Path, PathBuf};
 
 /// Preview of a single file rename operation
@@ -55,6 +56,8 @@ pub struct BatchRename {
     find_text: String,
     replace_text: String,
     use_find_replace: bool,
+    use_regex: bool,
+    case_insensitive: bool,
     preview: Vec<RenamePreview>,
     conflicts: Vec<usize>,
     counter_start: usize,
@@ -77,6 +80,8 @@ impl BatchRename {
             find_text: String::new(),
             replace_text: String::new(),
             use_find_replace: false,
+            use_regex: false,
+            case_insensitive: false,
             preview: Vec::new(),
             conflicts: Vec::new(),
             counter_start: 1,
@@ -110,6 +115,44 @@ impl BatchRename {
         self.replace_text = replace.to_string();
         self.use_find_replace = true;
         self.update_preview();
+    }
+
+    /// Set find/replace with options
+    pub fn set_find_replace_with_options(
+        &mut self,
+        find: &str,
+        replace: &str,
+        use_regex: bool,
+        case_insensitive: bool,
+    ) {
+        self.find_text = find.to_string();
+        self.replace_text = replace.to_string();
+        self.use_find_replace = true;
+        self.use_regex = use_regex;
+        self.case_insensitive = case_insensitive;
+        self.update_preview();
+    }
+
+    /// Enable or disable regex mode
+    pub fn set_use_regex(&mut self, use_regex: bool) {
+        self.use_regex = use_regex;
+        self.update_preview();
+    }
+
+    /// Check if regex mode is enabled
+    pub fn is_regex_mode(&self) -> bool {
+        self.use_regex
+    }
+
+    /// Enable or disable case-insensitive matching
+    pub fn set_case_insensitive(&mut self, case_insensitive: bool) {
+        self.case_insensitive = case_insensitive;
+        self.update_preview();
+    }
+
+    /// Check if case-insensitive mode is enabled
+    pub fn is_case_insensitive(&self) -> bool {
+        self.case_insensitive
     }
 
     /// Get find text
@@ -301,7 +344,37 @@ impl BatchRename {
         if self.find_text.is_empty() {
             return original.to_string();
         }
-        original.replace(&self.find_text, &self.replace_text)
+
+        if self.use_regex {
+            // Build regex pattern with optional case-insensitivity
+            let pattern = if self.case_insensitive {
+                format!("(?i){}", &self.find_text)
+            } else {
+                self.find_text.clone()
+            };
+
+            match Regex::new(&pattern) {
+                Ok(re) => re.replace_all(original, self.replace_text.as_str()).to_string(),
+                Err(_) => original.to_string(), // Invalid regex, return original
+            }
+        } else if self.case_insensitive {
+            // Case-insensitive literal replacement
+            let lower_original = original.to_lowercase();
+            let lower_find = self.find_text.to_lowercase();
+            let mut result = String::new();
+            let mut last_end = 0;
+
+            for (start, _) in lower_original.match_indices(&lower_find) {
+                result.push_str(&original[last_end..start]);
+                result.push_str(&self.replace_text);
+                last_end = start + self.find_text.len();
+            }
+            result.push_str(&original[last_end..]);
+            result
+        } else {
+            // Simple literal replacement
+            original.replace(&self.find_text, &self.replace_text)
+        }
     }
 
     /// Update the preview based on current pattern/find-replace settings

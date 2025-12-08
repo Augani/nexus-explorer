@@ -286,6 +286,57 @@ fn test_find_replace_case_sensitive() {
 }
 
 #[test]
+fn test_find_replace_case_insensitive() {
+    let files = vec![PathBuf::from("/test/OldFile.txt")];
+    let mut batch = BatchRename::new(files);
+    batch.set_find_replace_with_options("old", "new", false, true);
+
+    let preview = batch.preview();
+    // Should match because case-insensitive is enabled
+    assert_eq!(preview[0].new_name, "newFile.txt");
+}
+
+#[test]
+fn test_find_replace_regex() {
+    let files = vec![
+        PathBuf::from("/test/file001.txt"),
+        PathBuf::from("/test/file002.txt"),
+        PathBuf::from("/test/file123.txt"),
+    ];
+    let mut batch = BatchRename::new(files);
+    // Replace digits with underscore
+    batch.set_find_replace_with_options(r"\d+", "NUM", true, false);
+
+    let preview = batch.preview();
+    assert_eq!(preview[0].new_name, "fileNUM.txt");
+    assert_eq!(preview[1].new_name, "fileNUM.txt");
+    assert_eq!(preview[2].new_name, "fileNUM.txt");
+}
+
+#[test]
+fn test_find_replace_regex_case_insensitive() {
+    let files = vec![PathBuf::from("/test/MyDocument.txt")];
+    let mut batch = BatchRename::new(files);
+    // Case-insensitive regex
+    batch.set_find_replace_with_options("mydoc", "YourDoc", true, true);
+
+    let preview = batch.preview();
+    assert_eq!(preview[0].new_name, "YourDocument.txt");
+}
+
+#[test]
+fn test_find_replace_invalid_regex() {
+    let files = vec![PathBuf::from("/test/file.txt")];
+    let mut batch = BatchRename::new(files);
+    // Invalid regex pattern - should not crash, just return original
+    batch.set_find_replace_with_options("[invalid", "replacement", true, false);
+
+    let preview = batch.preview();
+    // Should return original name when regex is invalid
+    assert_eq!(preview[0].new_name, "file.txt");
+}
+
+#[test]
 fn test_pattern_preserves_extension_automatically() {
     let files = vec![PathBuf::from("/test/image.png")];
     let mut batch = BatchRename::new(files);
@@ -483,6 +534,66 @@ fn test_apply_blocked_by_conflict() {
             assert_eq!(indices.len(), 2);
         }
         _ => panic!("Expected Conflict error"),
+    }
+}
+
+/// **Feature: advanced-device-management, Property 19: Batch Rename Pattern Expansion**
+/// **Validates: Requirements 15.2**
+///
+/// *For any* batch rename pattern containing {n}, the expanded names SHALL contain
+/// sequential numbers starting from 1, with no duplicates.
+proptest! {
+    #[test]
+    fn prop_batch_rename_pattern_expansion_sequential_no_duplicates(
+        file_count in 2usize..50,
+    ) {
+        // Generate file paths
+        let files: Vec<PathBuf> = (0..file_count)
+            .map(|i| PathBuf::from(format!("/test/file_{}.txt", i)))
+            .collect();
+
+        let mut batch = BatchRename::new(files);
+        batch.set_pattern("renamed_{n}");
+
+        let preview = batch.preview();
+
+        // Property 1: Preview count matches file count
+        prop_assert_eq!(preview.len(), file_count);
+
+        // Extract numbers from the generated names
+        let mut numbers: Vec<usize> = Vec::new();
+        for p in preview.iter() {
+            let name_without_ext = p.new_name.strip_suffix(".txt").unwrap_or(&p.new_name);
+            let num_str = name_without_ext.strip_prefix("renamed_").unwrap_or("");
+            if let Ok(num) = num_str.parse::<usize>() {
+                numbers.push(num);
+            }
+        }
+
+        // Property 2: All numbers were successfully extracted
+        prop_assert_eq!(numbers.len(), file_count,
+            "Expected {} numbers, got {}", file_count, numbers.len());
+
+        // Property 3: Numbers start from 1 (default counter start)
+        prop_assert_eq!(numbers[0], 1,
+            "First number should be 1, got {}", numbers[0]);
+
+        // Property 4: Numbers are sequential (each is previous + 1)
+        for i in 1..numbers.len() {
+            prop_assert_eq!(numbers[i], numbers[i-1] + 1,
+                "Numbers should be sequential: {} should follow {}", numbers[i], numbers[i-1]);
+        }
+
+        // Property 5: No duplicates (all numbers are unique)
+        let mut sorted_numbers = numbers.clone();
+        sorted_numbers.sort();
+        sorted_numbers.dedup();
+        prop_assert_eq!(sorted_numbers.len(), file_count,
+            "All numbers should be unique, found duplicates");
+
+        // Property 6: No conflicts should exist with sequential counter pattern
+        prop_assert!(!batch.has_conflicts(),
+            "Sequential counter pattern should never produce conflicts");
     }
 }
 

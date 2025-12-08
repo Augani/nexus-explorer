@@ -3523,6 +3523,7 @@ dependencies = [
  "nucleo",
  "portable-pty",
  "proptest",
+ "regex",
  "serde",
  "serde_json",
  "sevenz-rust",

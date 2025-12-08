@@ -1,3 +1,4 @@
+mod batch_rename_dialog;
 mod checksum_dialog;
 mod column_view;
 mod conflict_dialog;
@@ -63,6 +64,7 @@ pub use tag_ui::{
 pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};
 pub use toast::{Toast, ToastManager, ToastVariant};
+pub use batch_rename_dialog::{BatchRenameDialog, BatchRenameDialogAction, RenameMode};
 pub use checksum_dialog::{ChecksumDialog, ChecksumDialogAction};
 pub use conflict_dialog::{ConflictDialog, ConflictDialogAction, ConflictInfo};
 pub use format_dialog::{FormatDialog, FormatDialogAction};
