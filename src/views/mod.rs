@@ -1,6 +1,7 @@
 mod column_view;
 mod dual_pane;
 mod file_list;
+mod format_dialog;
 mod go_to_folder;
 mod grid_view;
 mod network_dialog;
@@ -58,3 +59,4 @@ pub use tag_ui::{
 pub use terminal::TerminalView;
 pub use theme_picker::{ThemePicker, ThemePickerView};
 pub use toast::{Toast, ToastManager, ToastVariant};
+pub use format_dialog::{FormatDialog, FormatDialogAction};

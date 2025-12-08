@@ -2089,4 +2089,84 @@ mod property_tests {
         assert!(available.contains(&FileSystemType::Fat32) || available.contains(&FileSystemType::ExFat),
             "At least one cross-platform filesystem (FAT32 or exFAT) should be available");
     }
+
+    // **Feature: advanced-device-management, Property 5: Filesystem Compatibility Information**
+    // **Validates: Requirements 3.4**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+        
+        #[test]
+        fn prop_filesystem_compatibility_info(fs_type in arb_filesystem_type()) {
+            // Property: For any FileSystemType, the compatibility_info() function SHALL return
+            // a non-empty description indicating which platforms can read/write the filesystem
+            
+            let info = fs_type.compatibility_info();
+            
+            // Compatibility info must not be empty
+            prop_assert!(!info.is_empty(),
+                "Compatibility info for {:?} must not be empty", fs_type);
+            
+            // Compatibility info should contain meaningful content (at least 10 characters)
+            prop_assert!(info.len() >= 10,
+                "Compatibility info for {:?} should be descriptive (got: '{}')", fs_type, info);
+            
+            // Cross-platform filesystems should mention multiple platforms
+            match fs_type {
+                FileSystemType::Fat32 | FileSystemType::ExFat => {
+                    // These should mention Windows, macOS, and Linux
+                    prop_assert!(info.contains("Windows") || info.contains("windows"),
+                        "FAT32/exFAT compatibility info should mention Windows");
+                    prop_assert!(info.contains("macOS") || info.contains("Mac"),
+                        "FAT32/exFAT compatibility info should mention macOS");
+                    prop_assert!(info.contains("Linux") || info.contains("linux"),
+                        "FAT32/exFAT compatibility info should mention Linux");
+                }
+                FileSystemType::Ntfs => {
+                    // NTFS should mention Windows as native
+                    prop_assert!(info.contains("Windows") || info.contains("windows"),
+                        "NTFS compatibility info should mention Windows");
+                }
+                FileSystemType::Apfs | FileSystemType::HfsPlus => {
+                    // Apple filesystems should mention macOS
+                    prop_assert!(info.contains("macOS") || info.contains("Mac"),
+                        "APFS/HFS+ compatibility info should mention macOS");
+                }
+                FileSystemType::Ext4 | FileSystemType::Btrfs | FileSystemType::Xfs => {
+                    // Linux filesystems should mention Linux
+                    prop_assert!(info.contains("Linux") || info.contains("linux"),
+                        "ext4/Btrfs/XFS compatibility info should mention Linux");
+                }
+                FileSystemType::ReFS => {
+                    // ReFS should mention Windows
+                    prop_assert!(info.contains("Windows") || info.contains("windows"),
+                        "ReFS compatibility info should mention Windows");
+                }
+            }
+        }
+    }
+
+    // **Feature: advanced-device-management, Property 5: All Filesystems Have Compatibility Info**
+    // **Validates: Requirements 3.4**
+    #[test]
+    fn prop_all_filesystems_have_compatibility_info() {
+        let all_filesystems = [
+            FileSystemType::Fat32,
+            FileSystemType::ExFat,
+            FileSystemType::Ntfs,
+            FileSystemType::ReFS,
+            FileSystemType::Apfs,
+            FileSystemType::HfsPlus,
+            FileSystemType::Ext4,
+            FileSystemType::Btrfs,
+            FileSystemType::Xfs,
+        ];
+
+        for fs in all_filesystems {
+            let info = fs.compatibility_info();
+            assert!(!info.is_empty(), 
+                "Filesystem {:?} must have non-empty compatibility info", fs);
+            assert!(info.len() >= 10,
+                "Filesystem {:?} compatibility info should be descriptive", fs);
+        }
+    }
 }
