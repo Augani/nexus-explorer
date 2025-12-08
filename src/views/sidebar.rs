@@ -2006,10 +2006,18 @@ impl SidebarView {
         warning_color: gpui::Rgba,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
+        use crate::utils::{format_size, is_space_critical, is_space_very_low, usage_percentage};
+        
         let is_expanded = self.sidebar.is_devices_expanded();
         let devices = self.sidebar.devices().to_vec();
         let wsl_distros = self.sidebar.wsl_distributions().to_vec();
         let selected_path = self.sidebar.selected_path.clone();
+        
+        // Colors for usage bar
+        let bar_bg = gpui::rgb(0x21262d);
+        let bar_normal = gpui::rgb(0x238636); // Green
+        let bar_warning = gpui::rgb(0xd29922); // Yellow/Orange
+        let bar_critical = gpui::rgb(0xf85149); // Red
 
         div()
             .mb_4()
@@ -2063,17 +2071,49 @@ impl SidebarView {
                                     let is_wsl =
                                         matches!(device.device_type, DeviceType::WslDistribution);
 
-                                    // Format space info
-                                    let space_info = if device.total_space > 0 {
-                                        let used_gb = device.used_space() as f64 / 1_073_741_824.0;
-                                        let total_gb = device.total_space as f64 / 1_073_741_824.0;
-                                        Some(format!("{:.1} GB / {:.1} GB", used_gb, total_gb))
+                                    // Calculate space info
+                                    let has_space_info = device.total_space > 0;
+                                    let usage_pct = if has_space_info {
+                                        usage_percentage(device.total_space, device.free_space)
+                                    } else {
+                                        0.0
+                                    };
+                                    let is_critical = is_space_critical(device.total_space, device.free_space);
+                                    let is_very_low = is_space_very_low(device.total_space, device.free_space);
+                                    
+                                    // Format space text
+                                    let space_text = if has_space_info {
+                                        let free_str = format_size(device.free_space);
+                                        let total_str = format_size(device.total_space);
+                                        Some(format!("{} free of {}", free_str, total_str))
                                     } else {
                                         None
                                     };
+                                    
+                                    // Determine bar color based on usage
+                                    let bar_color = if is_very_low {
+                                        bar_critical
+                                    } else if is_critical {
+                                        bar_warning
+                                    } else {
+                                        bar_normal
+                                    };
 
+                                    // Build tooltip content
+                                    let tooltip_content = if has_space_info {
+                                        use crate::utils::format_space_tooltip;
+                                        format_space_tooltip(device.total_space, device.free_space)
+                                    } else {
+                                        device.path.to_string_lossy().to_string()
+                                    };
+                                    let tooltip_bg = gpui::rgb(0x1c2128);
+                                    let tooltip_border = gpui::rgb(0x30363d);
+                                    let group_id = SharedString::from(format!("device-group-{}", device.id.0));
+                                    
                                     div()
                                         .id(SharedString::from(format!("device-{}", device.id.0)))
+                                        .relative()
+                                        .group(group_id.clone())
                                         .flex()
                                         .flex_col()
                                         .px_2()
@@ -2102,6 +2142,37 @@ impl SidebarView {
                                                 }),
                                             )
                                         })
+                                        // Tooltip on hover
+                                        .child(
+                                            gpui::deferred(
+                                                gpui::anchored()
+                                                    .snap_to_window_with_margin(px(8.0))
+                                                    .anchor(gpui::Corner::TopRight)
+                                                    .child(
+                                                        div()
+                                                            .occlude()
+                                                            .px_2()
+                                                            .py_1p5()
+                                                            .bg(tooltip_bg)
+                                                            .border_1()
+                                                            .border_color(tooltip_border)
+                                                            .rounded_md()
+                                                            .shadow_md()
+                                                            .text_xs()
+                                                            .text_color(text_light)
+                                                            .max_w(px(200.0))
+                                                            .opacity(0.0)
+                                                            .invisible()
+                                                            .group_hover(group_id, |mut style| {
+                                                                style.opacity = Some(1.0);
+                                                                style.visibility = Some(gpui::Visibility::Visible);
+                                                                style
+                                                            })
+                                                            .child(tooltip_content),
+                                                    ),
+                                            )
+                                            .with_priority(1),
+                                        )
                                         .child(
                                             div()
                                                 .flex()
@@ -2132,8 +2203,21 @@ impl SidebarView {
                                                         })
                                                         .child(display_name),
                                                 )
+                                                // Warning icon for low space
+                                                .when(is_critical, |s| {
+                                                    s.child(
+                                                        svg()
+                                                            .path("assets/icons/triangle-alert.svg")
+                                                            .size(px(12.0))
+                                                            .text_color(if is_very_low {
+                                                                bar_critical
+                                                            } else {
+                                                                warning_color
+                                                            }),
+                                                    )
+                                                })
                                                 // Read-only lock icon
-                                                .when(is_read_only, |s| {
+                                                .when(is_read_only && !is_critical, |s| {
                                                     s.child(
                                                         svg()
                                                             .path("assets/icons/file-lock.svg")
@@ -2142,7 +2226,7 @@ impl SidebarView {
                                                     )
                                                 })
                                                 // Eject icon for removable devices (right-click to eject)
-                                                .when(is_removable && !is_wsl, |s| {
+                                                .when(is_removable && !is_wsl && !is_critical, |s| {
                                                     s.child(
                                                         svg()
                                                             .path("assets/icons/external-link.svg")
@@ -2152,15 +2236,43 @@ impl SidebarView {
                                                     )
                                                 }),
                                         )
-                                        // Space info on second line
-                                        .when(space_info.is_some(), |s| {
+                                        // Usage bar and space info
+                                        .when(has_space_info, |s| {
                                             s.child(
                                                 div()
                                                     .pl(px(26.0))
-                                                    .text_xs()
-                                                    .text_color(text_gray)
-                                                    .opacity(0.7)
-                                                    .child(space_info.unwrap_or_default()),
+                                                    .pr(px(4.0))
+                                                    .mt(px(4.0))
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap(px(2.0))
+                                                    // Usage bar
+                                                    .child(
+                                                        div()
+                                                            .w_full()
+                                                            .h(px(4.0))
+                                                            .rounded(px(2.0))
+                                                            .bg(bar_bg)
+                                                            .child(
+                                                                div()
+                                                                    .h_full()
+                                                                    .rounded(px(2.0))
+                                                                    .bg(bar_color)
+                                                                    .w(gpui::relative(usage_pct as f32 / 100.0)),
+                                                            ),
+                                                    )
+                                                    // Space text
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(if is_critical {
+                                                                bar_color
+                                                            } else {
+                                                                text_gray
+                                                            })
+                                                            .opacity(if is_critical { 1.0 } else { 0.7 })
+                                                            .child(space_text.unwrap_or_default()),
+                                                    ),
                                             )
                                         })
                                 })

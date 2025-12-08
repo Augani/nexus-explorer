@@ -1,6 +1,8 @@
 mod ansi_parser;
+mod archive_manager;
 mod batch_rename;
 mod bookmarks;
+mod clipboard;
 mod column_view;
 mod default_app;
 mod device_monitor;
@@ -12,6 +14,9 @@ mod file_system;
 mod icon_cache;
 mod network_storage;
 pub mod open_with;
+mod permissions;
+#[cfg(target_os = "windows")]
+mod permissions_windows;
 mod platform_adapter;
 mod pty_service;
 mod search_engine;
@@ -41,11 +46,17 @@ mod windows_device_notifications;
 #[cfg(test)]
 mod ansi_parser_tests;
 #[cfg(test)]
+mod archive_manager_tests;
+#[cfg(test)]
+mod clipboard_tests;
+#[cfg(test)]
 mod column_view_tests;
 #[cfg(test)]
 mod device_monitor_tests;
 #[cfg(test)]
 mod dual_pane_tests;
+#[cfg(test)]
+mod permissions_tests;
 #[cfg(test)]
 mod smart_folders_tests;
 #[cfg(test)]
@@ -57,8 +68,10 @@ mod wsl_tests;
 mod windows_device_tests;
 
 pub use ansi_parser::*;
+pub use archive_manager::*;
 pub use batch_rename::*;
 pub use bookmarks::*;
+pub use clipboard::*;
 pub use column_view::*;
 pub use default_app::*;
 pub use device_monitor::*;
@@ -70,6 +83,7 @@ pub use file_system::*;
 pub use icon_cache::*;
 pub use network_storage::*;
 pub use open_with::*;
+pub use permissions::*;
 pub use platform_adapter::*;
 pub use pty_service::*;
 pub use search_engine::*;

@@ -967,6 +967,159 @@ impl Workspace {
             ContextMenuAction::NewFile => {
                 self.open_dialog(true, cx);
             }
+            ContextMenuAction::CompressAs { path, format } => {
+                let name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("archive");
+                let parent = path.parent().unwrap_or(&self.current_path);
+                let archive_name = format!("{}{}", name, format.extension());
+                let archive_path = parent.join(&archive_name);
+
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info(format!("Compressing to {}...", archive_name), cx);
+                });
+
+                let path_clone = path.clone();
+                let archive_path_clone = archive_path.clone();
+                let name_clone = name.to_string();
+                let format_clone = format;
+
+                cx.spawn(async move |this, cx| {
+                    let result = std::thread::spawn(move || {
+                        let manager = crate::models::ArchiveManager::new();
+                        let options = crate::models::CompressOptions {
+                            format: format_clone,
+                            compression_level: 6,
+                            password: None,
+                        };
+                        manager.compress(&[path_clone], &archive_path_clone, &options, |_| {})
+                    })
+                    .join();
+
+                    let _ = this.update(cx, |workspace, cx| match result {
+                        Ok(Ok(())) => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Created: {}", name_clone), cx);
+                            });
+                            workspace.refresh_current_directory(cx);
+                        }
+                        _ => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error("Failed to compress".to_string(), cx);
+                            });
+                        }
+                    });
+                })
+                .detach();
+            }
+            ContextMenuAction::ExtractHere(path) => {
+                let parent = path.parent().unwrap_or(&self.current_path).to_path_buf();
+                let name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("archive");
+
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info(format!("Extracting {}...", name), cx);
+                });
+
+                let path_clone = path.clone();
+                let name_clone = name.to_string();
+
+                cx.spawn(async move |this, cx| {
+                    let result = std::thread::spawn(move || {
+                        let manager = crate::models::ArchiveManager::new();
+                        let options = crate::models::ExtractOptions {
+                            destination: parent,
+                            password: None,
+                            overwrite: crate::models::OverwriteMode::Replace,
+                        };
+                        manager.extract(&path_clone, &options, |_| {})
+                    })
+                    .join();
+
+                    let _ = this.update(cx, |workspace, cx| match result {
+                        Ok(Ok(())) => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Extracted: {}", name_clone), cx);
+                            });
+                            workspace.refresh_current_directory(cx);
+                        }
+                        Ok(Err(e)) => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error(format!("Extraction failed: {}", e), cx);
+                            });
+                        }
+                        Err(_) => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error("Extraction failed".to_string(), cx);
+                            });
+                        }
+                    });
+                })
+                .detach();
+            }
+            ContextMenuAction::ExtractToFolder(path) => {
+                // Extract to a folder with the same name as the archive (without extension)
+                let parent = path.parent().unwrap_or(&self.current_path);
+                let stem = path
+                    .file_stem()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("extracted");
+                // Handle double extensions like .tar.gz
+                let stem = if stem.ends_with(".tar") {
+                    &stem[..stem.len() - 4]
+                } else {
+                    stem
+                };
+                let dest_folder = parent.join(stem);
+                let name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("archive");
+
+                self.toast_manager.update(cx, |toast, cx| {
+                    toast.show_info(format!("Extracting {} to folder...", name), cx);
+                });
+
+                let path_clone = path.clone();
+                let name_clone = name.to_string();
+                let stem_clone = stem.to_string();
+
+                cx.spawn(async move |this, cx| {
+                    let result = std::thread::spawn(move || {
+                        let manager = crate::models::ArchiveManager::new();
+                        let options = crate::models::ExtractOptions {
+                            destination: dest_folder,
+                            password: None,
+                            overwrite: crate::models::OverwriteMode::Replace,
+                        };
+                        manager.extract(&path_clone, &options, |_| {})
+                    })
+                    .join();
+
+                    let _ = this.update(cx, |workspace, cx| match result {
+                        Ok(Ok(())) => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_success(format!("Extracted to: {}/", stem_clone), cx);
+                            });
+                            workspace.refresh_current_directory(cx);
+                        }
+                        Ok(Err(e)) => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error(format!("Extraction failed: {}", e), cx);
+                            });
+                        }
+                        Err(_) => {
+                            workspace.toast_manager.update(cx, |toast, cx| {
+                                toast.show_error("Extraction failed".to_string(), cx);
+                            });
+                        }
+                    });
+                })
+                .detach();
+            }
         }
     }
 

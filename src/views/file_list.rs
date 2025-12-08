@@ -35,6 +35,12 @@ pub enum ContextMenuAction {
     Duplicate(PathBuf),
     MoveToTrash(PathBuf),
     Compress(PathBuf),
+    CompressAs {
+        path: PathBuf,
+        format: crate::models::ArchiveFormat,
+    },
+    ExtractHere(PathBuf),
+    ExtractToFolder(PathBuf),
     Share(PathBuf),
     CopyPath(PathBuf),
     ShowInFinder(PathBuf),
@@ -708,6 +714,9 @@ impl Render for FileListView {
                 let entity = cx.entity().clone();
                 let selected_entry = context_menu_idx.and_then(|idx| self.file_list.entries.get(idx).cloned());
                 let is_dir = selected_entry.as_ref().map(|e| e.is_dir).unwrap_or(false);
+                let is_archive = selected_entry.as_ref()
+                    .map(|e| crate::models::ArchiveManager::new().is_archive(&e.path))
+                    .unwrap_or(false);
 
                 this.child(
                     anchored()
@@ -871,19 +880,49 @@ impl Render for FileListView {
                                     }
                                 }))
                                 .child(render_context_menu_divider(border_subtle))
-                                .child(render_context_menu_item("archive", "Compress", text_light, hover_bg, {
+                                .when(!is_archive, |this| {
                                     let entity = entity.clone();
                                     let entry = selected_entry.clone();
-                                    move |_window, cx| {
-                                        if let Some(ref e) = entry {
-                                            entity.update(cx, |view, cx| {
-                                                view.pending_context_action = Some(ContextMenuAction::Compress(e.path.clone()));
-                                                view.close_context_menu();
-                                                cx.notify();
-                                            });
+                                    this.child(render_context_menu_item("archive", "Compress", text_light, hover_bg, {
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry {
+                                                entity.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(ContextMenuAction::Compress(e.path.clone()));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
                                         }
-                                    }
-                                }))
+                                    }))
+                                })
+                                .when(is_archive, |this| {
+                                    let entity1 = entity.clone();
+                                    let entity2 = entity.clone();
+                                    let entry1 = selected_entry.clone();
+                                    let entry2 = selected_entry.clone();
+                                    this.child(render_context_menu_item("archive", "Extract Here", text_light, hover_bg, {
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry1 {
+                                                entity1.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(ContextMenuAction::ExtractHere(e.path.clone()));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    }))
+                                    .child(render_context_menu_item("folder-output", "Extract to Folder...", text_light, hover_bg, {
+                                        move |_window, cx| {
+                                            if let Some(ref e) = entry2 {
+                                                entity2.update(cx, |view, cx| {
+                                                    view.pending_context_action = Some(ContextMenuAction::ExtractToFolder(e.path.clone()));
+                                                    view.close_context_menu();
+                                                    cx.notify();
+                                                });
+                                            }
+                                        }
+                                    }))
+                                })
                                 .child(render_context_menu_item("share-2", "Share...", text_light, hover_bg, {
                                     let entity = entity.clone();
                                     let entry = selected_entry.clone();
