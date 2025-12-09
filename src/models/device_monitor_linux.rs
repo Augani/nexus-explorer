@@ -432,10 +432,12 @@ impl LinuxDeviceMonitor {
         devices: &mut Vec<LinuxBlockDevice>,
         mount_points: &HashMap<String, PathBuf>,
     ) {
-        let existing_mounts: std::collections::HashSet<_> = devices
+        let existing_mounts: std::collections::HashSet<PathBuf> = devices
             .iter()
-            .filter_map(|d| d.mount_point.as_ref())
+            .filter_map(|d| d.mount_point.clone())
             .collect();
+
+        let mut new_devices = Vec::new();
 
         for base_path in &["/media", "/mnt"] {
             let base = PathBuf::from(base_path);
@@ -467,7 +469,7 @@ impl LinuxDeviceMonitor {
                         .unwrap_or("Unknown")
                         .to_string();
 
-                    devices.push(LinuxBlockDevice {
+                    new_devices.push(LinuxBlockDevice {
                         device_node,
                         device_type: "partition".to_string(),
                         id_fs_label: Some(name),
@@ -478,6 +480,8 @@ impl LinuxDeviceMonitor {
                 }
             }
         }
+
+        devices.extend(new_devices);
     }
 }
 
@@ -569,14 +573,14 @@ impl UdevMonitor {
             }
 
             while let Some(event) = monitor.iter().next() {
-                let action = event.action().and_then(|a| a.to_str().ok()).unwrap_or("");
+                let action = event.action().map(|a| a.to_string_lossy().to_string()).unwrap_or_default();
                 
                 let Some(device_node) = event.devnode() else {
                     continue;
                 };
                 let device_node_str = device_node.to_string_lossy().to_string();
 
-                let dev_type = event.devtype().and_then(|s| s.to_str().ok()).unwrap_or("");
+                let dev_type = event.devtype().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
                 if dev_type == "disk" {
                     continue;
                 }
@@ -765,7 +769,8 @@ impl LinuxDeviceMonitor {
                 }
             };
 
-            let mut monitor = match udev::MonitorBuilder::new(&udev) {
+            let _udev = udev;
+            let mut monitor = match udev::MonitorBuilder::new() {
                 Ok(builder) => match builder.match_subsystem("block") {
                     Ok(b) => match b.listen() {
                         Ok(m) => m,
@@ -1114,6 +1119,26 @@ impl UDisks2Client {
             Ok(PathBuf::from(mount_path))
         })
     }
+
+    pub fn get_device_properties(&self, _block_device: &str) -> Option<UDisks2DeviceProperties> {
+        None
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct UDisks2DeviceProperties {
+    pub device: String,
+    pub id_label: Option<String>,
+    pub id_type: Option<String>,
+    pub id_uuid: Option<String>,
+    pub size: u64,
+    pub read_only: bool,
+    pub removable: bool,
+    pub ejectable: bool,
+    pub mount_points: Vec<PathBuf>,
+    pub vendor: Option<String>,
+    pub model: Option<String>,
+    pub serial: Option<String>,
 }
 
 fn device_to_dbus_path(device_path: &str) -> String {
