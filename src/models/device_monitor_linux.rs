@@ -742,7 +742,7 @@ fn hash_string(s: &str) -> u64 {
 }
 
 
-
+impl LinuxDeviceMonitor {
     pub fn start_monitoring(&self, sender: flume::Sender<DeviceEvent>) -> Result<(), String> {
         if self.is_monitoring.load(Ordering::SeqCst) {
             return Ok(());
