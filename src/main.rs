@@ -13,7 +13,9 @@ use gpui::{
 use tokio::runtime::Runtime;
 
 use app::Workspace;
-use models::{open_with, GlobalSettings, IconCache, IconKey, WindowManager};
+use models::{open_with, GlobalSettings, IconCache, IconKey};
+#[cfg(not(test))]
+use models::WindowManager;
 
 struct Assets {
     base: PathBuf,

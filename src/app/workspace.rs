@@ -12,8 +12,10 @@ use gpui::{
 use crate::io::{SortKey, SortOrder};
 use crate::models::{
     current_theme, theme_colors, Device, DeviceId, FileSystem, GlobalSettings, GridConfig,
-    IconCache, PlatformAdapter, SearchEngine, ShareManager, ThemeId, ViewMode, WindowManager,
+    IconCache, PlatformAdapter, SearchEngine, ShareManager, ThemeId, ViewMode,
 };
+#[cfg(not(test))]
+use crate::models::WindowManager;
 use crate::views::{
     create_symbolic_link, ContextMenuAction, FileList, FileListView, FormatDialog, GridView,
     GridViewComponent, PreviewView, QuickLookView, SearchInputView, SidebarView, SmartFolderDialog,
