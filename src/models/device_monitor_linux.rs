@@ -125,9 +125,10 @@ impl UdevDeviceEnumerator {
 
 
     pub fn get_device_info(&self, device_node: &str) -> Option<UdevDeviceInfo> {
-        let udev = self.udev.as_ref()?;
+        let _udev = self.udev.as_ref()?;
         
-        let device = udev::Device::from_devnode(udev, std::path::Path::new(device_node)).ok()?;
+        let syspath = device_node_to_syspath(device_node)?;
+        let device = udev::Device::from_syspath(std::path::Path::new(&syspath)).ok()?;
         
         let is_removable = device
             .property_value("ID_BUS")
@@ -170,6 +171,26 @@ impl UdevDeviceEnumerator {
     }
 }
 
+
+fn device_node_to_syspath(device_node: &str) -> Option<String> {
+    let dev_name = device_node.trim_start_matches("/dev/");
+    let syspath = format!("/sys/class/block/{}", dev_name);
+    if std::path::Path::new(&syspath).exists() {
+        Some(syspath)
+    } else {
+        None
+    }
+}
+
+fn find_mount_point_for_device(device: &str) -> Option<PathBuf> {
+    let mounts = parse_proc_mounts();
+    for mount in mounts {
+        if mount.device == device || mount.device.ends_with(device.trim_start_matches("/dev/")) {
+            return Some(mount.mount_point);
+        }
+    }
+    None
+}
 
 #[derive(Debug, Clone)]
 pub struct MountEntry {
@@ -289,8 +310,8 @@ impl LinuxDeviceMonitor {
         let mut devices = Vec::new();
         let mount_points = parse_mount_points();
 
-        if let Ok(udev) = udev::Udev::new() {
-            if let Ok(mut enumerator) = udev::Enumerator::new(&udev) {
+        if let Ok(_udev) = udev::Udev::new() {
+            if let Ok(mut enumerator) = udev::Enumerator::new() {
                 let _ = enumerator.match_subsystem("block");
 
                 if let Ok(device_list) = enumerator.scan_devices() {
@@ -376,6 +397,7 @@ impl LinuxDeviceMonitor {
             .map(|sectors| sectors * 512)
             .unwrap_or(0);
 
+        let is_partition = devtype == "partition";
         Some(LinuxBlockDevice {
             device_node: device_node.clone(),
             device_type: devtype,
@@ -399,7 +421,7 @@ impl LinuxDeviceMonitor {
                 .property_value("ID_BUS")
                 .map(|v| v.to_string_lossy().to_string()),
             is_removable,
-            is_partition: devtype == "partition",
+            is_partition,
             size_bytes,
             mount_point: mount_points.get(&device_node).cloned(),
         })
@@ -457,7 +479,7 @@ impl LinuxDeviceMonitor {
             }
         }
     }
-
+}
 
 
 #[cfg(target_os = "linux")]
@@ -513,9 +535,9 @@ impl UdevMonitor {
 
 
     fn monitor_loop(sender: flume::Sender<DeviceEvent>, stop_signal: Arc<AtomicBool>) -> Result<(), String> {
-        let context = udev::Udev::new().map_err(|e| format!("Failed to create udev context: {}", e))?;
+        let _context = udev::Udev::new().map_err(|e| format!("Failed to create udev context: {}", e))?;
         
-        let mut monitor = udev::MonitorBuilder::new(&context)
+        let monitor = udev::MonitorBuilder::new()
             .map_err(|e| format!("Failed to create udev monitor: {}", e))?
             .match_subsystem("block")
             .map_err(|e| format!("Failed to match subsystem: {}", e))?
@@ -671,12 +693,12 @@ impl Default for UdevMonitor {
 
 
 #[cfg(target_os = "linux")]
-fn find_mount_point_for_device(device_node: &str) -> Option<PathBuf> {
+fn find_mount_point_for_device_linux(device_node: &str) -> Option<PathBuf> {
     let mounts = parse_proc_mounts();
     
-    for mount in mounts {
+    for mount in &mounts {
         if mount.device == device_node {
-            return Some(mount.mount_point);
+            return Some(mount.mount_point.clone());
         }
     }
     
@@ -1120,14 +1142,15 @@ impl super::device_monitor::DeviceMonitor {
         }
 
         for block_device in block_devices {
-            if let Some(mount_point) = block_device.mount_point {
-                if mount_point == PathBuf::from("/") {
+            if let Some(ref mount_point) = block_device.mount_point {
+                if *mount_point == PathBuf::from("/") {
                     continue;
                 }
 
                 let id = device_node_to_id(&block_device.device_node);
                 let device_type = block_device.device_type();
                 let name = block_device.display_name();
+                let mount_point = mount_point.clone();
 
                 let mut device =
                     Device::new(id, name, mount_point.clone(), device_type)
@@ -1221,109 +1244,7 @@ fn find_device_node_for_mount(mount_point: &PathBuf) -> Option<String> {
 
 
 
-#[cfg(target_os = "linux")]
-pub struct UDisks2Client {
-    runtime: Option<tokio::runtime::Runtime>,
-}
 
-#[cfg(target_os = "linux")]
-impl UDisks2Client {
-    pub fn new() -> Self {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .ok();
-        
-        Self { runtime }
-    }
-
-
-    pub fn mount(&self, block_device: &str) -> Result<PathBuf, String> {
-        let output = std::process::Command::new("udisksctl")
-            .args(["mount", "-b", block_device])
-            .output()
-            .map_err(|e| format!("Failed to execute udisksctl: {}", e))?;
-
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if let Some(mount_point) = parse_udisksctl_mount_output(&stdout) {
-                return Ok(mount_point);
-            }
-            
-            if let Some(mount_point) = find_mount_point_for_device(block_device) {
-                return Ok(mount_point);
-            }
-            
-            return Err("Mount succeeded but could not determine mount point".to_string());
-        }
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Mount failed: {}", stderr))
-    }
-
-
-    pub fn unmount(&self, block_device: &str) -> Result<(), String> {
-        let output = std::process::Command::new("udisksctl")
-            .args(["unmount", "-b", block_device])
-            .output()
-            .map_err(|e| format!("Failed to execute udisksctl: {}", e))?;
-
-        if output.status.success() {
-            return Ok(());
-        }
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Unmount failed: {}", stderr))
-    }
-
-
-    pub fn power_off(&self, block_device: &str) -> Result<(), String> {
-        let parent_device = get_parent_block_device(block_device);
-        
-        let output = std::process::Command::new("udisksctl")
-            .args(["power-off", "-b", &parent_device])
-            .output()
-            .map_err(|e| format!("Failed to execute udisksctl: {}", e))?;
-
-        if output.status.success() {
-            return Ok(());
-        }
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Power off failed: {}", stderr))
-    }
-
-
-    pub fn get_device_properties(&self, block_device: &str) -> Option<UDisks2DeviceProperties> {
-        let output = std::process::Command::new("udisksctl")
-            .args(["info", "-b", block_device])
-            .output()
-            .ok()?;
-
-        if !output.status.success() {
-            return None;
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        parse_udisksctl_info_output(&stdout)
-    }
-
-
-    pub fn is_available() -> bool {
-        std::process::Command::new("udisksctl")
-            .arg("--version")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-    }
-}
-
-#[cfg(target_os = "linux")]
-impl Default for UDisks2Client {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 
 #[cfg(target_os = "linux")]

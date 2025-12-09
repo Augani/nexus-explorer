@@ -1331,13 +1331,14 @@ impl PlatformAdapter for LinuxAdapter {
         }
 
         for block_device in block_devices {
-            if let Some(mount_point) = block_device.mount_point {
-                if mount_point == PathBuf::from("/") {
+            if let Some(ref mount_point) = block_device.mount_point {
+                if *mount_point == PathBuf::from("/") {
                     continue;
                 }
 
                 let device_type = block_device.device_type();
                 let name = block_device.display_name();
+                let mount_point = mount_point.clone();
 
                 let mut device = Device::new(
                     DeviceId::new(next_id),
@@ -1729,11 +1730,12 @@ fn unmount_linux_disk_image(mount_point: &Path) -> PlatformResult<()> {
         }
     }
 
-    let error = String::from_utf8_lossy(&std::process::Command::new("umount")
+    let stderr = std::process::Command::new("umount")
         .arg(mount_str)
         .output()
         .map(|o| o.stderr)
-        .unwrap_or_default());
+        .unwrap_or_default();
+    let error = String::from_utf8_lossy(&stderr);
     
     Err(PlatformError::MountFailed(
         if error.is_empty() {

@@ -225,15 +225,16 @@ fn list_trash_entries_linux() -> Vec<TrashEntry> {
         for item in items {
             let name = item.name.to_string_lossy().to_string();
             let original_path = item.original_parent.join(&item.name);
+            let item_path = PathBuf::from(&item.id);
             
-            let is_dir = std::fs::metadata(&item.id)
+            let is_dir = std::fs::metadata(&item_path)
                 .map(|m| m.is_dir())
                 .unwrap_or(false);
             
             let size = if is_dir {
-                calculate_dir_size(&item.id)
+                calculate_dir_size(&item_path)
             } else {
-                std::fs::metadata(&item.id)
+                std::fs::metadata(&item_path)
                     .map(|m| m.len())
                     .unwrap_or(0)
             };
@@ -250,7 +251,7 @@ fn list_trash_entries_linux() -> Vec<TrashEntry> {
                 deletion_date,
                 size,
                 is_dir,
-                trash_id: TrashId::Path(item.id),
+                trash_id: TrashId::Path(item_path),
             });
         }
     }
