@@ -270,15 +270,16 @@ fn list_trash_entries_windows() -> Vec<TrashEntry> {
         for item in items {
             let name = item.name.to_string_lossy().to_string();
             let original_path = item.original_parent.join(&item.name);
+            let item_path = PathBuf::from(&item.id);
             
-            let is_dir = std::fs::metadata(&item.id)
+            let is_dir = std::fs::metadata(&item_path)
                 .map(|m| m.is_dir())
                 .unwrap_or(false);
             
             let size = if is_dir {
-                calculate_dir_size(&item.id)
+                calculate_dir_size(&item_path)
             } else {
-                std::fs::metadata(&item.id)
+                std::fs::metadata(&item_path)
                     .map(|m| m.len())
                     .unwrap_or(0)
             };
@@ -445,10 +446,11 @@ fn empty_trash_internal() -> Result<(), TrashError> {
     {
         if let Ok(items) = trash::os_limited::list() {
             for item in items {
-                if item.id.is_dir() {
-                    let _ = std::fs::remove_dir_all(&item.id);
+                let item_path = PathBuf::from(&item.id);
+                if item_path.is_dir() {
+                    let _ = std::fs::remove_dir_all(&item_path);
                 } else {
-                    let _ = std::fs::remove_file(&item.id);
+                    let _ = std::fs::remove_file(&item_path);
                 }
             }
         }

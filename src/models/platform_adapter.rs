@@ -662,14 +662,16 @@ fn eject_windows_drive(drive_letter: char) -> PlatformResult<()> {
     let wide_path: Vec<u16> = volume_path.encode_utf16().chain(std::iter::once(0)).collect();
 
     unsafe {
+        const GENERIC_READ: u32 = 0x80000000;
+        const GENERIC_WRITE: u32 = 0x40000000;
         let handle = windows_sys::Win32::Storage::FileSystem::CreateFileW(
             wide_path.as_ptr(),
-            windows_sys::Win32::Storage::FileSystem::GENERIC_READ | windows_sys::Win32::Storage::FileSystem::GENERIC_WRITE,
+            GENERIC_READ | GENERIC_WRITE,
             windows_sys::Win32::Storage::FileSystem::FILE_SHARE_READ | windows_sys::Win32::Storage::FileSystem::FILE_SHARE_WRITE,
             std::ptr::null(),
             windows_sys::Win32::Storage::FileSystem::OPEN_EXISTING,
             0,
-            std::ptr::null_mut(),
+            0,
         );
 
         if handle == windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE {
