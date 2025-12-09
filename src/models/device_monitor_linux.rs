@@ -585,7 +585,7 @@ impl UdevMonitor {
                     continue;
                 }
 
-                match action {
+                match action.as_str() {
                     "add" => {
                         std::thread::sleep(std::time::Duration::from_millis(500));
 
@@ -1266,29 +1266,6 @@ fn find_device_node_for_mount(mount_point: &PathBuf) -> Option<String> {
     }
     None
 }
-
-
-
-
-
-
-#[cfg(target_os = "linux")]
-#[derive(Debug, Clone, Default)]
-pub struct UDisks2DeviceProperties {
-    pub device: String,
-    pub id_label: Option<String>,
-    pub id_type: Option<String>,
-    pub id_uuid: Option<String>,
-    pub size: u64,
-    pub read_only: bool,
-    pub removable: bool,
-    pub ejectable: bool,
-    pub mount_points: Vec<PathBuf>,
-    pub vendor: Option<String>,
-    pub model: Option<String>,
-    pub serial: Option<String>,
-}
-
 
 #[cfg(target_os = "linux")]
 fn parse_udisksctl_mount_output(output: &str) -> Option<PathBuf> {
